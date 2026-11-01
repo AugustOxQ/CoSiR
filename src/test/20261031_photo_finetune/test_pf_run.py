@@ -115,3 +115,49 @@ def test_stages_refuse_when_gates_not_ok(repo, stage):
     write_gates(P.OUTPUTS, False)
     with pytest.raises(SystemExit, match=f'REFUSED: stage {stage}: stage 0a did not pass'):
         getattr(pf_run, f'stage{stage}')(ARGS)
+
+
+@pytest.fixture
+def picked_run(repo, monkeypatch):
+    import rs_vh
+    keys = ['source/fit_a', 'other/fit_b']
+    monkeypatch.setattr(pf_run.pf_data, 'fit_keys', lambda: list(keys))
+    pick = dict(row=4, settings=dict(P.GRID[4]))
+    pf_run.write_json(P.SHEET_FILE, dict(pick=pick))
+    commit(repo, P.SHEET_FILE)
+    run = dict(status='ok', settings=pick['settings'], cstar_seed=0, train_seed=0,
+               fit_keys_sha256=rs_vh.names_sha(keys))
+    path = P.OUTPUTS / 'runs/sweep/row4/run.json'
+    pf_run.write_json(path, run)
+    return path, run
+
+
+@pytest.mark.parametrize('bad', ['missing', 'status', 'settings', 'fit_keys_sha256'])
+def test_stage2_refuses_stale_sheet_before_arrays(picked_run, monkeypatch, bad):
+    path, run = picked_run
+    if bad == 'missing':
+        path.rename(path.with_suffix('.aside'))
+    else:
+        run[bad] = {'status': 'failed', 'settings': dict(P.GRID[1]), 'fit_keys_sha256': 'stale'}[bad]
+        pf_run.write_json(path, run)
+    monkeypatch.setattr(pf_run, 'load_arrays', lambda: pytest.fail('loaded arrays before stale-sheet refusal'))
+    monkeypatch.setattr(pf_run, 'train', lambda *a: pytest.fail('trained before stale-sheet refusal'))
+    with pytest.raises(SystemExit, match='REFUSED: stage 2:.*sweep/row4'):
+        pf_run.stage2(ARGS)
+
+
+@pytest.mark.parametrize('status', ['ok', 'failed'])
+def test_train_refuses_finished_run_with_other_fit_keys(picked_run, status):
+    path, run = picked_run
+    run.update(status=status, fit_keys_sha256='stale')
+    pf_run.write_json(path, run)
+    with pytest.raises(SystemExit, match='REFUSED:.*fit_keys_sha256'):
+        pf_run.train('1', 'sweep/row4', run['settings'], 0, 0, None, {}, {}, ARGS)
+
+
+@pytest.mark.parametrize('status', ['ok', 'failed'])
+def test_train_reuses_finished_run_with_current_fit_keys(picked_run, status):
+    path, run = picked_run
+    run['status'] = status
+    pf_run.write_json(path, run)
+    assert pf_run.train('1', 'sweep/row4', run['settings'], 0, 0, None, {}, {}, ARGS) == run

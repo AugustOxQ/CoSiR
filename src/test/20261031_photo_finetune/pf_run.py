@@ -41,6 +41,7 @@ import pf_stage2
 import pf_stage3
 import pf_sweep
 import pf_train
+import rs_vh
 
 STAGES = ('0a', '1', '2', '3', 'diag')
 SKIP_NOTE = 'only in smoke (PF_SMOKE)'
@@ -290,6 +291,9 @@ def train(stage, run_id, settings, cstar_seed, train_seed, graphs, fit, val, arg
     run_json = outputs() / 'runs' / run_id / 'run.json'
     if run_json.is_file():
         rec = read_json(run_json)
+        if rec.get('fit_keys_sha256') != rs_vh.names_sha(pf_data.fit_keys()):
+            raise SystemExit(f'REFUSED: {run_id}: existing run.json has other fit_keys_sha256; '
+                             f'move {run_json.parent} aside to retrain')
         assert rec['settings'] == dict(settings) and rec['cstar_seed'] == cstar_seed and rec['train_seed'] == train_seed, \
             f'{run_id}: existing run.json has other settings or seeds; move {run_json.parent} aside to retrain'
         print(f'  {run_id}: reusing the finished run (status {rec["status"]})', flush=True)
@@ -363,6 +367,19 @@ def final_id(s):
     return f'final/s{s}'
 
 
+def require_sweep_pick(pick):
+    """Reject a stale sheet before loading arrays or training with another outputs root / fit set."""
+    run_id = f'sweep/row{pick["row"]}'
+    path = outputs() / 'runs' / run_id / 'run.json'
+    if not path.is_file():
+        raise SystemExit(f'REFUSED: stage 2: {run_id}: {path} does not exist')
+    run = read_json(path)
+    if (run.get('status') != 'ok' or run.get('settings') != pick['settings']
+            or run.get('fit_keys_sha256') != rs_vh.names_sha(pf_data.fit_keys())):
+        raise SystemExit(f'REFUSED: stage 2: {run_id}: run must be ok with the sheet pick settings '
+                         'and current fit_keys_sha256')
+
+
 def stage2(args):
     require_gates('2')
     require_records('2')                            # the guard comes before any data is loaded
@@ -371,6 +388,7 @@ def stage2(args):
     pick = sheet['pick']
     settings = {c: pick['settings'][c] for c in P.COLUMNS}
     assert settings == pick['settings'], pick
+    require_sweep_pick(pick)
     print(f'  pick: row {pick["row"]}, settings {settings}', flush=True)
     fit, val = load_arrays()
     graphs = Graphs(fit, val, '2')

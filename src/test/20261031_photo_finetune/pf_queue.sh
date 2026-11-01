@@ -244,7 +244,7 @@ run_step extract_texts "${GPU[@]}" "${PFEXTRACT[@]}" texts "${EXTRACT_FLAGS[@]}"
 SEALS=("$OUT/stage0a/gates.json")
 run_step stage0a "${GPU[@]}" "${PFRUN[@]}" 0a "${S0A_FLAGS[@]}"
 
-SEALS=("$SHEET_FILE")
+SEALS=("$SHEET_FILE" "$OUT/stage1/rows.json")
 run_step stage1 "${GPU[@]}" "${PFRUN[@]}" 1 "${S1_FLAGS[@]}"
 if [[ $MODE == smoke ]]; then
     skip_step commit_sheet_nearcopy 'smoke: no commits'
