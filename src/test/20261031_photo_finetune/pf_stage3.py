@@ -112,8 +112,13 @@ def load_comparators(picks, n_test, r12=None):
     labels}}: `ap`, `rows` from `stage2/perquery/affection__<arm>__emotion__s-.npz` (CRL's from `stage3/perquery`, and
     checked equal to its stage 2 file); `point` = ap.mean() (r12's `arm_retrieval` point of an unseeded arm); `labels`
     the arm's r12 test partitions, hash-checked against their JSON (None for CRL: it is only an SC5 comparator).
+    AP means must match r12's SC2/SC4/SC8 comparator points; partition AMI must match its saved arm row.
     """
+    import ac_data
     r12 = Path(pf_paths.R12_OUT if r12 is None else r12)
+    ref2 = json.loads((r12 / 'stage2/verdict.json').read_text())
+    ref3 = json.loads((r12 / 'stage3/verdict.json').read_text())
+    labels = ac_data.labels('test')
     out = {}
     for key, arm in comparator_arms(picks).items():
         stage = 3 if key == 'crl' else 2
@@ -123,6 +128,13 @@ def load_comparators(picks, n_test, r12=None):
             assert np.array_equal(ap, ap2) and np.array_equal(rows, rows2), f'{arm}: AP differs between stages 2 and 3'
         out[key] = dict(arm=arm, readout=picks['readout'][arm], ap=ap, rows=rows, point=float(ap.mean()),
                         labels=None if key == 'crl' else _load_partition(r12, arm, n_test))
+        sid = {'plain': 'SC2', 'teacher': 'SC4', 'crl': 'SC8'}[key]
+        reference = ref3 if key == 'crl' else ref2
+        assert abs(out[key]['point'] - reference['sc'][sid]['point_t']) <= pf_paths.TOL['ii'], \
+            f'{arm}: AP point differs from r12 {sid}'
+        if out[key]['labels'] is not None:
+            assert abs(ac_cluster.ami(out[key]['labels'], labels) - ref2['rows'][arm]['ami']) <= pf_paths.TOL['ii'], \
+                f'{arm}: partition AMI differs from r12 row'
     return out
 
 

@@ -103,7 +103,9 @@ def _write_ap(root, stage, arm, ap, rows):
 
 
 @pytest.fixture
-def fake_r12(tmp_path):
+def fake_r12(tmp_path, monkeypatch):
+    import ac_data
+    monkeypatch.setattr(ac_data, 'labels', lambda split: LABELS)
     rng = np.random.default_rng(1)
     rows = np.arange(N_Q, dtype=np.int64)
     aps = {a: rng.uniform(0.1, 0.5, N_Q) for a in ('plain', 'teacher_artwork', 'crl_clip_painting')}
@@ -112,6 +114,7 @@ def fake_r12(tmp_path):
         _write_ap(tmp_path, 2, arm, aps[arm], rows)
     _write_ap(tmp_path, 2, 'crl_clip_painting', aps['crl_clip_painting'], rows)
     _write_ap(tmp_path, 3, 'crl_clip_painting', aps['crl_clip_painting'], rows)
+    _write_verdicts(tmp_path)
     return tmp_path, aps
 
 
@@ -173,6 +176,7 @@ def _perfect_comparators(fake, good):
         _write_ap(root, 2, arm, np.ones(N_Q) if good else np.full(N_Q, 0.3), rows)
     for stage in (2, 3):
         _write_ap(root, stage, 'crl_clip_painting', np.ones(N_Q) if good else np.full(N_Q, 0.3), rows)
+    _write_verdicts(root)
     return pf_stage3.load_comparators(PICKS, N_Q, r12=root)
 
 
@@ -313,3 +317,80 @@ def test_crl_ap_must_agree_between_r12_stages(fake_r12):
     _write_ap(root, 3, 'crl_clip_painting', aps['crl_clip_painting'] + 1e-3, np.arange(N_Q, dtype=np.int64))
     with pytest.raises(AssertionError, match='stages 2 and 3'):
         pf_stage3.load_comparators(PICKS, N_Q, r12=root)
+
+
+def _write_verdicts(root):
+    """Save independent SC comparator points and row AMIs alongside synthetic exports."""
+    sc, rows = {}, {}
+    for sid, arm in (('SC2', 'plain'), ('SC4', 'teacher_artwork'), ('SC8', 'crl_clip_painting')):
+        stage = 3 if sid == 'SC8' else 2
+        with np.load(root / f'stage{stage}/perquery/affection__{arm}__emotion__s-.npz') as z:
+            sc[sid] = {'point_t': float(z['ap'].mean())}
+        if stage == 2:
+            with np.load(root / f'partitions/affection__test__{arm}__s-.npz') as z:
+                rows[arm] = {'ami': pf_stage3.ac_cluster.ami(z['labels'], LABELS)}
+    (root / 'stage2/verdict.json').write_text(json.dumps({'sc': {k: sc[k] for k in ('SC2', 'SC4')}, 'rows': rows}))
+    (root / 'stage3/verdict.json').write_text(json.dumps({'sc': {'SC8': sc['SC8']}}))
+
+
+def test_teacher_wordings_must_agree():
+    bad = dict(PICKS, teacher_wording={'clustering': 'artwork', 'retrieval': 'photo'})
+    with pytest.raises(AssertionError, match='wording differs'): pf_stage3.comparator_arms(bad)
+
+
+def test_ap_count_cannot_exceed_test_rows(fake_r12):
+    root, _ = fake_r12
+    path = root / 'stage2/perquery/affection__plain__emotion__s-.npz'
+    with pytest.raises(AssertionError): pf_stage3._load_ap(path, N_Q - 1)
+
+
+def test_partition_sidecar_row_count_must_match(fake_r12):
+    root, _ = fake_r12
+    path = root / 'partitions/affection__test__plain__s-.json'
+    side = json.loads(path.read_text())
+    side['shape'][0] += 1
+    path.write_text(json.dumps(side))
+    with pytest.raises(AssertionError): pf_stage3._load_partition(root, 'plain', N_Q)
+
+
+@pytest.mark.parametrize('bad', ['unit', 'val_shape'])
+def test_candidate_array_guards(bad):
+    cand = _candidate(good=True)
+    cand = cand._replace(val_embed=cand.val_embed * 2 if bad == 'unit' else cand.val_embed[:4])
+    with pytest.raises(AssertionError): pf_stage3._check_candidate(cand)
+
+
+def test_candidate_retrieval_refuses_dropped_queries(monkeypatch):
+    monkeypatch.setattr(pf_stage3.ac_stats, 'arm_retrieval', lambda *a, **kw: {'dropped': 1})
+    with pytest.raises(AssertionError, match='queries without'): pf_stage3.candidate_retrieval(_candidate(True), 'none+k0', LABELS)
+
+
+@pytest.mark.parametrize('metric', ['clu', 'map'])
+@pytest.mark.parametrize('value', [0.0, -0.1, float('nan'), float('inf')])
+def test_seed_ranges_must_be_finite_positive(metric, value):
+    with pytest.raises(AssertionError, match='finite and positive'): pf_stage3._check_r(dict(R, **{metric: value}))
+
+
+def test_score_refuses_wrong_candidate_row_count(tmp_path, monkeypatch):
+    # Stop at the next boundary when the guard is missing; no fitting is needed.
+    monkeypatch.setattr(pf_stage3, 'candidate_partitions', lambda *a, **kw: (_ for _ in ()).throw(RuntimeError('past row guard')))
+    with pytest.raises(AssertionError, match='candidate rows'):
+        pf_stage3.score(_candidate(True), R, LABELS[:-1], DIST[:-1], {}, PICKS, tmp_path)
+
+
+@pytest.mark.parametrize('which', ['plain', 'teacher', 'crl'])
+def test_comparator_ap_point_must_match_r12(fake_r12, which):
+    root, aps = fake_r12
+    arm = pf_stage3.comparator_arms(PICKS)[which]
+    # CRL agrees across both stages, so only the new provenance check can refuse it.
+    for stage in ((2, 3) if which == 'crl' else (2,)):
+        _write_ap(root, stage, arm, aps[arm] + 1e-6, np.arange(N_Q, dtype=np.int64))
+    with pytest.raises(AssertionError, match='AP point differs'): pf_stage3.load_comparators(PICKS, N_Q, r12=root)
+
+
+@pytest.mark.parametrize('arm', ['plain', 'teacher_artwork'])
+def test_comparator_partition_ami_must_match_r12(fake_r12, arm):
+    root, _ = fake_r12
+    # Re-seal a different, valid partition: its hash and shape still pass.
+    _write_partition(root, arm, np.tile(LABELS, (3, 1)).astype(np.int32))
+    with pytest.raises(AssertionError, match='partition AMI differs'): pf_stage3.load_comparators(PICKS, N_Q, r12=root)
