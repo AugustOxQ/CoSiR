@@ -145,7 +145,7 @@ def _default_texts(requested):
     return _group_mean(requested, rows['key'], rows['store_row'], txt)
 
 
-def _check_meta(side, required, count_shape):
+def _check_meta(side, required, count_shape, view):
     """The meta gate of a new view (adapted from ac_data._view): identity, extraction gate and shape."""
     assert set(required) <= set(side), f'missing metadata fields: {sorted(set(required) - set(side))}'
     gate = side['gate']
@@ -154,6 +154,7 @@ def _check_meta(side, required, count_shape):
     assert all(type(gate[f]) is int and gate[f] == 0 for f in ('n_nonfinite', 'n_bad_norm')), 'view gate counts'
     dev = gate['max_norm_dev']
     assert isinstance(dev, (int, float)) and np.isfinite(dev) and 0 <= dev <= 1e-3, 'view gate norm deviation'
+    assert side['view'] == Path(view).name, 'view name'      # the view's folder name, as pf_paths gives it
     assert side['smoke'] is (pf_paths.SMOKE > 0), 'view smoke flag'
     assert side['dtype'] == 'float16' and side['shape'] == list(count_shape), 'view shape/dtype'
     assert side['model_id'] == 'Qwen/Qwen3-VL-Embedding-2B' and \
@@ -171,7 +172,7 @@ def _train_view():
     assert sorted(stored) == keys('train'), 'train view keys are not the train keys'
     assert side['keys_sha256'] == rs_vh.names_sha(stored), 'view keys hash'
     _check_meta(side, ('view', 'instruction', 'model_id', 'model_revision', 'dtype', 'shape', 'keys_sha256',
-                       'img_sha256', 'gate', 'smoke'), (len(stored), WIDTH))
+                       'img_sha256', 'gate', 'smoke'), (len(stored), WIDTH), path)
     x = np.load(path / 'img.npy', mmap_mode='r', allow_pickle=False)
     ac_data._array(x, len(stored), WIDTH, np.float16, unit=True)
     assert side['img_sha256'] == rs_vh.array_sha(x), 'view image array hash'
@@ -213,10 +214,12 @@ def _instructed_texts(requested):
     index_key = dict(zip(np.concatenate([e['csv_row'] for e in expect]).tolist(), expect[0]['key'] + expect[1]['key']))
     assert dict(zip(view_csv, view_key)) == index_key, 'rows.json disagrees with the index text rows (csv_row -> key)'
     _check_meta(side, ('view', 'instruction', 'model_id', 'model_revision', 'dtype', 'shape', 'txt_sha256',
-                       'rows_sha256', 'gate', 'smoke'), (len(view_csv), WIDTH))
+                       'rows_sha256', 'gate', 'smoke'), (len(view_csv), WIDTH), path)
     x = np.load(path / 'txt.npy', mmap_mode='r', allow_pickle=False)
-    ac_data._array(x, len(view_csv), WIDTH, np.float16)
+    ac_data._array(x, len(view_csv), WIDTH, np.float16, unit=True)
     assert side['txt_sha256'] == rs_vh.array_sha(x), 'view text array hash'
+    assert side['rows_sha256'] == rs_vh.names_sha([f'{c}\t{k}' for c, k in zip(view_csv, view_key)]), \
+        'view rows hash'
     rows = _eligible_rows(requested)
     where = {c: i for i, c in enumerate(view_csv)}
     view_pos = [where[c] for c in rows['csv_row'].tolist()]
@@ -235,9 +238,11 @@ def photo_arrays(requested):
 
 def fit_keys():
     """The sorted train keys minus the near-copies that 02 recorded (D12)."""
-    removed = ac_data._json(pf_paths.NEARCOPY_FILE, ('removed_keys',))['removed_keys']
+    record = ac_data._json(pf_paths.NEARCOPY_FILE, ('removed_keys', 'n_train'))
+    removed = record['removed_keys']
     ac_data._key_list(removed)
     train = keys('train')
+    assert record['n_train'] == len(train), 'near-copy file n_train differs from the train key count (smoke file?)'
     assert set(removed) <= set(train), 'removed keys must be train keys'
     drop = set(removed)
     return [k for k in train if k not in drop]

@@ -44,7 +44,7 @@ def write_view(path, keys, x, instruction=ART_PROMPT, smoke=False, gate=GATE):
     np.save(path / 'img.npy', x)
     write_json(path / 'keys.json', keys)
     write_json(path / 'meta.json', dict(
-        view='v', instruction=instruction, model_id=QWEN[0], model_revision=QWEN[1], dtype='float16',
+        view=path.name, instruction=instruction, model_id=QWEN[0], model_revision=QWEN[1], dtype='float16',
         shape=list(x.shape), keys_sha256=rs_vh.names_sha(keys), img_sha256=rs_vh.array_sha(x), gate=gate,
         smoke=smoke, batch_size=32, seconds=1.0))
 
@@ -54,8 +54,9 @@ def write_txt_view(path, csv_rows, keys, x, instruction=ART_PROMPT, smoke=False,
     np.save(path / 'txt.npy', x)
     write_json(path / 'rows.json', {'csv_row': [int(c) for c in csv_rows], 'key': list(keys)})
     write_json(path / 'meta.json', dict(
-        view='v', instruction=instruction, model_id=QWEN[0], model_revision=QWEN[1], dtype='float16',
-        shape=list(x.shape), txt_sha256=rs_vh.array_sha(x), rows_sha256='0' * 64, gate=gate,
+        view=path.name, instruction=instruction, model_id=QWEN[0], model_revision=QWEN[1], dtype='float16',
+        shape=list(x.shape), txt_sha256=rs_vh.array_sha(x),
+        rows_sha256=rs_vh.names_sha([f'{int(c)}\t{k}' for c, k in zip(csv_rows, keys)]), gate=gate,
         smoke=smoke, batch_size=128, seconds=1.0))
 
 
@@ -224,8 +225,10 @@ def write_all_views(world, perm=None):
     row_keys = rows[0]['key'] + rows[1]['key']
     store = np.concatenate([r['store_row'] for r in rows])
     live = np.concatenate([r['eligible'] for r in rows])
-    x = world.txt[store].copy()
-    x[~live] = 7.0 / 2048                                     # ignored rows: junk that would show in any mean
+    x = world.txt[store].astype(np.float32)
+    x[live] = unit16(world.rng, int(live.sum())).astype(np.float32)        # view rows are unit (index "New views")
+    x[~live] = 7.0                                            # ignored rows: junk that would show in any mean
+    x = (x / np.linalg.norm(x, axis=1, keepdims=True)).astype(np.float16)
     perm = np.arange(len(csv_rows)) if perm is None else perm
     write_txt_view(world.txt_view, csv_rows[perm], [row_keys[i] for i in perm], x[perm])
     return csv_rows, row_keys, x
@@ -321,11 +324,83 @@ def test_photo_arrays_returns_I_D_E_T_in_keys_order_and_refuses_unknown_keys(wor
 
 
 def test_fit_keys_are_the_sorted_train_keys_minus_the_near_copies(world):
-    write_json(world.tmp / 'nearcopy.json', {'removed_keys': ['b/1.jpg']})
+    write_json(world.tmp / 'nearcopy.json', {'n_train': 3, 'removed_keys': ['b/1.jpg']})
     assert pf_data.fit_keys() == ['a/1.jpg', 'a/2.jpg']
-    write_json(world.tmp / 'nearcopy.json', {'removed_keys': ['c/v1.jpg']})        # not a train key
+    write_json(world.tmp / 'nearcopy.json', {'n_train': 3, 'removed_keys': ['c/v1.jpg']})   # not a train key
     with pytest.raises(AssertionError):
         pf_data.fit_keys()
+
+
+def test_fit_keys_refuses_a_near_copy_file_written_for_another_train_count(world, monkeypatch):
+    write_json(world.tmp / 'nearcopy.json', {'n_train': 2, 'removed_keys': ['b/1.jpg']})   # e.g. written under PF_SMOKE
+    with pytest.raises(AssertionError, match='n_train'):
+        pf_data.fit_keys()
+    write_json(world.tmp / 'nearcopy.json', {'removed_keys': ['b/1.jpg']})                  # no count at all
+    with pytest.raises(AssertionError):
+        pf_data.fit_keys()
+    write_json(world.tmp / 'nearcopy.json', {'n_train': 3, 'removed_keys': ['b/1.jpg']})   # full file, smoke run
+    monkeypatch.setattr(pf_paths, 'SMOKE', 2)
+    with pytest.raises(AssertionError, match='n_train'):
+        pf_data.fit_keys()
+
+
+def tamper_meta(path, **change):
+    meta = json.loads((path / 'meta.json').read_text())
+    meta.update(change)
+    write_json(path / 'meta.json', meta)
+
+
+def test_train_view_refuses_a_wrong_keys_hash(world):
+    write_view(world.train_view, pf_data.keys('train'), unit16(world.rng, 3))
+    pf_data._train_view()
+    tamper_meta(world.train_view, keys_sha256='0' * 64)
+    with pytest.raises(AssertionError, match='view keys hash'):
+        pf_data._train_view()
+
+
+def test_train_view_refuses_a_wrong_image_array_hash(world):
+    write_view(world.train_view, pf_data.keys('train'), unit16(world.rng, 3))
+    tamper_meta(world.train_view, img_sha256='0' * 64)
+    with pytest.raises(AssertionError, match='view image array hash'):
+        pf_data._train_view()
+
+
+def test_txt_view_refuses_a_wrong_array_hash(world):
+    write_all_views(world)
+    pf_data._instructed_texts(['a/1.jpg'])
+    tamper_meta(world.txt_view, txt_sha256='0' * 64)
+    with pytest.raises(AssertionError, match='view text array hash'):
+        pf_data._instructed_texts(['a/1.jpg'])
+
+
+def test_txt_view_refuses_a_wrong_rows_hash(world):
+    write_all_views(world)
+    tamper_meta(world.txt_view, rows_sha256='0' * 64)
+    with pytest.raises(AssertionError, match='view rows hash'):
+        pf_data._instructed_texts(['a/1.jpg'])
+
+
+def test_txt_view_rows_hash_follows_rows_json_order(world):
+    write_all_views(world, perm=np.random.default_rng(2).permutation(12))      # permuted view, hash of that order
+    assert pf_data._instructed_texts(['a/1.jpg']).shape == (1, 2048)
+
+
+def test_txt_view_refuses_non_unit_rows(world):
+    csv_rows, row_keys, x = write_all_views(world)
+    write_txt_view(world.txt_view, csv_rows, row_keys, (x.astype(np.float32) * 2).astype(np.float16))
+    with pytest.raises(AssertionError):
+        pf_data._instructed_texts(['a/1.jpg'])
+
+
+def test_new_views_must_carry_their_own_view_name(world):
+    write_view(world.train_view, pf_data.keys('train'), unit16(world.rng, 3))
+    tamper_meta(world.train_view, view='emotion_focus_txt')
+    with pytest.raises(AssertionError, match='view name'):
+        pf_data._train_view()
+    write_all_views(world)
+    tamper_meta(world.txt_view, view='emotion_focus_train')
+    with pytest.raises(AssertionError, match='view name'):
+        pf_data._instructed_texts(['a/1.jpg'])
 
 
 @pytest.mark.real_data
