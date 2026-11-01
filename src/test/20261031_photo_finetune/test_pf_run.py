@@ -341,3 +341,14 @@ def test_stage3_preexport_argument_checks(wiring, bad):
     with pytest.raises(AssertionError, match='read-out|photo-model ranges'):
         pf_run.require_final_runs(pf_run.read_json(P.SHEET_FILE), rec, pick, r)
     assert wiring.exports == []
+
+
+@pytest.mark.parametrize('stage,flag,value', [('1', '--rows', '1,8'), ('2', '--max-epochs', '2'),
+                                             ('3', '--draws-clu', '200'), ('3', '--draws-ret', '500')])
+def test_main_refuses_smoke_flags_in_full_mode(repo, monkeypatch, stage, flag, value):
+    # A spy makes removing the parser refusal observable even when later stage guards would refuse as well.
+    called = []
+    monkeypatch.setattr(pf_run, f'stage{stage}', lambda args: called.append(args) or dict(ok=True, summary='ran'))
+    with pytest.raises(SystemExit) as exc:
+        pf_run.main([stage, flag, value])
+    assert exc.value.code == 2 and not called
