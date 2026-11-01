@@ -79,3 +79,67 @@ exit 0; the two commit steps are skipped in smoke, as designed.
 Gates 10 of 10 ok; C13 compare 298 items, 0 mismatches; diag ok. The new stage 3 comparator checks pass on r12's
 records. Rerun test of B1: with `stage3/verdict.json` moved aside, the queue reran stage 3, compare and diag (3 run,
 8 skipped, 18:37 to 18:40), and the new verdict equals the first byte for byte.
+
+## Full run (2026-11-01 18:43 to 21:24, r13 run chat)
+
+`bash src/test/20261031_photo_finetune/pf_queue.sh full` on main at `949ad04`, local GPU (RTX 3090) under the lock,
+Sunday evening. All 11 steps exit 0. Outputs: `/data/SSD2/cosir_r13/20261031_photo_finetune/outputs/` (849 MB); new
+views `emotion_focus_train` (286 MB) and `emotion_focus_txt` (1.9 GB) under
+`/data/SSD2/pre_extract/affection_local/qwen3vl_emb_2b_aspect_prompts/`.
+
+| Step | Seconds | Note |
+|---|---|---|
+| extract_images | 3,630 | 72,255 instructed train images (about 20 per second); GPU about 350 W |
+| extract_texts | 2,142 | 474,051 instructed explanations (train and validation) |
+| stage0a | 646 | gates 10 of 10 ok |
+| stage1 | 1,840 | 9 rows, none failed; sheet committed `ee67eb2` |
+| stage2 | 910 | five final runs; record committed `dd51dde` |
+| stage3 | 95 | verdict |
+| c13_derive | 266 | |
+| c13_compare | 4 | 378 items, 0 mismatches (max difference 1.1e-16) |
+| diag | 115 | |
+
+The whole queue took 2 h 41 min, against the 5 to 6 h estimate (the explanation and training steps were faster).
+
+**Text join check (final review B4), 20:20, on the full view** (474,051 rows; script
+`.scratch/r13-photo-finetune/review_final/B/join_check.py`): matched cosine 0.5972 against 0.3842 (row before), 0.3843
+(row after) and 0.3843 (next view row); the matched row wins in 93.1% to 96.1% of rows per source (94.4% overall). The
+key check passed. The join is right, as on the smoke view.
+
+**Stage 0a gates:** all ok. Image parity min cosine 0.99974 (200 rows), text parity 0.99935 (200 rows); the r12 replays
+within 1e-9; inference max difference 0.0; the three r10 graphs exact; loss 6.161110545314756 (difference 0.0).
+Near-copies: 2,328 of 72,255 train photos removed (cut 0.85), so 69,927 fit photos.
+
+**Stage 1 (validation, seed 0):** pick row 5 (k = 80), score 5.42 r_clu (validation AMI 0.1905, mAP 0.3280; the
+teacher's 0.1719, 0.3044). Next best: row 2 (learning rate 0.0003) 4.49, row 4 (k = 20) 4.04, row 3 3.55, row 9 (three
+changed settings: learning rate 0.0003, k = 80, teacher weight 1) 3.43, row 7 (teacher weight 1) 2.52, row 8 (random
+start) 2.40, row 1 (c*'s settings) 1.45, row 6 (no content correction) -11.06; frozen c* (row 0, reference) -18.65. The
+pick leads row 2 by 0.93 r_clu. Training is not deterministic across devices (final review C-N1: about 0.6 r_clu
+between GPU and CPU for one row), so the margin is above that noise, but not by much. Best epochs: 1 to 4 for rows
+1 to 6 and 8; 14 for row 7; 10 for row 9.
+
+**Stage 2 (validation, five fresh runs):** all ok, all stopped at best epoch 1 (the validation loss rises from epoch 2).
+r'_clu 0.00707 (r12's c* 0.00343), r'_mAP 0.00242 (r12's 0.00101); read-out centering plus k = 10.
+
+**Stage 3 (Affection test, 8,501 photos): holds.** SC1 to SC5 all WIN; `stage3/verdict.json` 21:17, then C13 ok at
+21:22 (newer, `"ok": true`), so the verdict is final (final review B3).
+
+| ID | Photo model | Comparator | Difference [95%] | Outcome |
+|---|---|---|---|---|
+| SC1 AMI | 0.1838 | plain 0.1041 | +0.0797 [+0.0741, +0.0857] | WIN |
+| SC2 mAP | 0.3172 | plain 0.2452 | +0.0720 [+0.0699, +0.0742] | WIN |
+| SC3 AMI | 0.1838 | teacher 0.1666 | +0.0172 [+0.0121, +0.0225] | WIN |
+| SC4 mAP | 0.3172 | teacher 0.2945 | +0.0227 [+0.0210, +0.0244] | WIN |
+| SC5 mAP | 0.3172 | CRL 0.2739 | +0.0433 [+0.0411, +0.0455] | WIN |
+
+**Diagnostics:** photo model minus frozen c*: AMI +0.0454 [+0.0408, +0.0501], mAP +0.0417 [+0.0399, +0.0436]. Share of
+the teacher's gain over the plain image: 1.28 (AMI) and 1.46 (mAP), against frozen c*'s 0.55 and 0.61. With tied
+images dropped (6,584 photos): holds. Row 8 against row 1 (seed 0): AMI +0.0033, mAP +0.00001.
+
+**Agent defaults from builds 1 to 5** (run handoff §4): smoke subsets train only; train keys from the index's text
+rows; the within-train near-copy count (10,114) counts photos, 1,057 of them also near-copies of held photos; gate (i)
+uses the first 100 sorted validation keys plus the first 100 FI validation keys; gate (ii)'s frozen c* mAP is r12's
+five-seed `center+k10` mAP; sweep rows start from c* seed 0 with training seed 0, final runs from c* seed s with
+training seed 100 + s; row 8 uses c*'s factory under the run's seed; finished runs are reused, never retrained;
+comparators' partitions and per-query AP come from r12's outputs (hash- and row-checked); diagnostics as listed in
+`diag.json`'s `reading` block.
