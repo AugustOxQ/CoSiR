@@ -36,6 +36,17 @@ def test_emotion_pairs_match_frozen_builder(n, k, correction):
     np.testing.assert_array_equal(actual, rs_graphs.ags.pair_array(expected))
 
 
+def test_emotion_pairs_zero_degree_lambda_fallback_matches_frozen_builder():
+    x = spaces(2000, seed=3, dim=13)
+    nodes = np.arange(2000)
+    r0 = rs_graphs._mutual(rs_graphs.ags.l2(x['E'][nodes]), 3)
+    degree = np.bincount(rs_graphs.ags.pair_array(r0).ravel(), minlength=len(nodes))
+    assert np.any(degree == 0)
+    expected = rs_graphs._partition_aspect(x, nodes, 3)['emotion']
+    actual = pf_graphs.emotion_pairs(x['E'], x['D'], x['I'], 3, True)
+    np.testing.assert_array_equal(actual, rs_graphs.ags.pair_array(expected))
+
+
 @pytest.fixture
 def output_root(tmp_path, monkeypatch):
     monkeypatch.setenv('PF_OUTPUTS', str(tmp_path))
@@ -74,6 +85,18 @@ def test_build_and_load_independent_fit_and_validation(output_root, correction):
     for fit_keys, val_keys in ((fit['keys'][::-1], val['keys']), (fit['keys'], val['keys'][::-1])):
         with pytest.raises(AssertionError, match='keys hash'):
             pf_graphs.load(3, correction, fit_keys, val_keys)
+
+
+def test_load_survives_unrelated_paths_file_edit(output_root, monkeypatch):
+    fit, val = photos(17, 'train', 7), photos(13, 'val', 11)
+    folder = pf_graphs.build(3, False, fit, val)
+    paths_file = output_root / 'pf_paths.py'
+    paths_file.write_text('# Later edits to constants or the sweep grid.\n')
+    monkeypatch.setattr(P, '__file__', str(paths_file))
+    graph = pf_graphs.load(3, False, fit['keys'], val['keys'])
+    with np.load(folder / 'emotion.npz', allow_pickle=False) as archive:
+        for key in ('fit_pairs', 'dev_pairs'):
+            np.testing.assert_array_equal(graph[key], archive[key])
 
 
 @pytest.mark.parametrize('mutation,reason', [('archive', 'pairs hash'), ('code', 'code hash'), ('count', 'count mismatch')])

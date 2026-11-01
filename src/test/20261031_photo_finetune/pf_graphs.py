@@ -65,8 +65,7 @@ def _keys_hash(keys):
 
 
 def _code_sha():
-    files = dict(rs_graphs.code_files(), pf_graphs=ags.sha_file(Path(__file__)),
-                 pf_paths=ags.sha_file(Path(P.__file__)))
+    files = dict(rs_graphs.code_files(), pf_graphs=ags.sha_file(Path(__file__)))
     return hashlib.sha256(json.dumps(files, sort_keys=True).encode()).hexdigest()
 
 
