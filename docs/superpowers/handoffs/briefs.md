@@ -1412,3 +1412,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-01-r13-build-2-handoff.md
 - New chat: tab 'r13 build 2', session 16ca8eb8-97ea-4bd0-aa38-2c4c7e896f7c
 
+[brief] CoSiR: r13 build 2 -> r13 build 3 (2026-11-01 16:24 Amsterdam)
+- Done: build chat 2 merged tickets 01, 02, 03, 05, 06 and 07; their gates (i), (ii) sweep, (iii), (iv) and (vi) pass.
+- State: 04 and 09 are reviewed, each waiting on one test fix; 08 is built by Codex with its gate passing, review not started.
+- Next: fixers for 04 and 09, an Opus review of 08, merge all three; then tickets 10, 11, 12, 13 and the final review.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-01-r13-build-3-handoff.md
+- New chat: tab 'r13 build 3', session 961079eb-9f0b-4f5f-a7c8-6b9c3058cc4f
+
