@@ -1,7 +1,4 @@
-"""Tests for pf_run (ticket 10): only the held guard. Stage 2 refuses without a committed sheet, stage 3 without a
-committed stage 2 record (and sheet). The records live in a temporary git repo; `pf_paths.SHEET_FILE`,
-`STAGE2_FILE` and `SMOKE` are monkeypatched (the stages read them at call time). The files hold junk ('{}'), so a
-stage whose guard was removed fails with a KeyError right after the guard, before any data, run or export is touched."""
+"""Runner guards, provenance and wiring, using temporary git records and small arrays; no real data or GPU."""
 import argparse
 import json
 import subprocess
@@ -32,7 +29,7 @@ def repo(tmp_path, monkeypatch):
 
 def write_gates(outputs, ok):
     (outputs / 'stage0a').mkdir(parents=True, exist_ok=True)
-    (outputs / 'stage0a/gates.json').write_text(json.dumps({'items': {}, 'ok': ok}))
+    (outputs / 'stage0a/gates.json').write_text(json.dumps({'items': {}, 'ok': ok, 'smoke': P.SMOKE}))
 
 
 def commit(repo, f):
@@ -74,7 +71,7 @@ def test_stage3_refuses_without_committed_stage2_record(repo):
     P.STAGE2_FILE.write_text('{}')                                  # present, not committed
     with pytest.raises(SystemExit, match='REFUSED: stage 3: stage 2 record'):
         pf_run.stage3(ARGS)
-    P.STAGE2_FILE.unlink()
+    P.STAGE2_FILE.rename(P.STAGE2_FILE.with_suffix('.aside'))
     with pytest.raises(SystemExit, match='REFUSED: stage 3: stage 2 record'):
         pf_run.stage3(ARGS)
 
@@ -104,7 +101,8 @@ def commit_records(repo):
 @pytest.mark.parametrize('stage', ['1', '2', '3'])
 def test_stages_refuse_without_gates_json(repo, stage):
     commit_records(repo)                                            # so only the gates guard can refuse
-    (P.OUTPUTS / 'stage0a/gates.json').unlink()
+    path = P.OUTPUTS / 'stage0a/gates.json'
+    path.rename(path.with_suffix('.aside'))
     with pytest.raises(SystemExit, match=f'REFUSED: stage {stage}: .*gates.json does not exist'):
         getattr(pf_run, f'stage{stage}')(ARGS)
 
@@ -352,3 +350,20 @@ def test_main_refuses_smoke_flags_in_full_mode(repo, monkeypatch, stage, flag, v
     with pytest.raises(SystemExit) as exc:
         pf_run.main([stage, flag, value])
     assert exc.value.code == 2 and not called
+
+
+@pytest.mark.parametrize('stage', ['1', '2', '3'])
+@pytest.mark.parametrize('current,recorded', [(0, 2000), (2000, 0), (2000, 123), (0, None)])
+def test_stages_refuse_gates_from_another_smoke_setting(repo, monkeypatch, stage, current, recorded):
+    monkeypatch.setattr(P, 'SMOKE', current)
+    path = P.OUTPUTS / 'stage0a/gates.json'
+    pf_run.write_json(path, dict(ok=True, smoke=recorded))
+    with pytest.raises(SystemExit, match=f'REFUSED: stage {stage}:.*smoke'):
+        getattr(pf_run, f'stage{stage}')(ARGS)
+
+
+@pytest.mark.parametrize('smoke', [0, 2000])
+def test_require_gates_accepts_matching_smoke(repo, monkeypatch, smoke):
+    monkeypatch.setattr(P, 'SMOKE', smoke)
+    pf_run.write_json(P.OUTPUTS / 'stage0a/gates.json', dict(ok=True, smoke=smoke))
+    pf_run.require_gates('2')

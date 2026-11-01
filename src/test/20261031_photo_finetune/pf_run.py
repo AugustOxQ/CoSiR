@@ -127,12 +127,15 @@ def guard_reason(f):
 
 def require_gates(stage):
     """Spec §3.5: stages 1 to 3 run only after stage 0a passed. SystemExit unless OUTPUTS/stage0a/gates.json exists
-    and holds "ok": true (a failed 0a leaves no verdict). Smoke included."""
+    and holds "ok": true for the current smoke setting (a failed 0a leaves no verdict)."""
     f = outputs() / 'stage0a/gates.json'
     if not f.is_file():
         raise SystemExit(f'REFUSED: stage {stage}: {f} does not exist: run stage 0a first')
-    if read_json(f).get('ok') is not True:
+    doc = read_json(f)
+    if doc.get('ok') is not True:
         raise SystemExit(f'REFUSED: stage {stage}: stage 0a did not pass ({f} has no "ok": true)')
+    if doc.get('smoke') != P.SMOKE:
+        raise SystemExit(f'REFUSED: stage {stage}: gates.json smoke differs from PF_SMOKE={P.SMOKE}')
 
 
 def require_records(stage):
