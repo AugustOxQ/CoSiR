@@ -27,6 +27,7 @@ import json
 import subprocess
 import sys
 import time
+import traceback
 from pathlib import Path
 
 import numpy as np
@@ -88,6 +89,10 @@ def logged(stage):
         sys.stdout, sys.stderr = _Tee(old[0], f), _Tee(old[1], f)
         try:
             yield
+        except BaseException:
+            # The uncaught traceback reaches real stderr after these streams are restored.
+            traceback.print_exc(file=f)
+            raise
         finally:
             sys.stdout.flush()
             sys.stdout, sys.stderr = old

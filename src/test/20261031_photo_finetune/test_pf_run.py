@@ -367,3 +367,27 @@ def test_require_gates_accepts_matching_smoke(repo, monkeypatch, smoke):
     monkeypatch.setattr(P, 'SMOKE', smoke)
     pf_run.write_json(P.OUTPUTS / 'stage0a/gates.json', dict(ok=True, smoke=smoke))
     pf_run.require_gates('2')
+
+
+def test_stage_crash_traceback_is_saved_in_stage_log(repo, monkeypatch, capsys):
+    import sys
+
+    def crash(args):
+        print('before crash stdout')
+        print('before crash stderr', file=sys.stderr)
+        raise RuntimeError('stage regression sentinel')
+
+    monkeypatch.setattr(pf_run, 'stage2', crash)
+    streams = sys.stdout, sys.stderr
+    with pytest.raises(RuntimeError, match='stage regression sentinel'):
+        pf_run.main(['2'])
+    assert (sys.stdout, sys.stderr) == streams
+    log = (P.OUTPUTS / 'logs/2.log').read_text()
+    assert 'Traceback (most recent call last):' in log
+    assert 'in crash' in log and 'RuntimeError: stage regression sentinel' in log
+    assert 'stage 2 FAILED' in log
+    assert 'before crash stdout' in log and 'before crash stderr' in log
+    captured = capsys.readouterr()
+    assert 'before crash stdout' in captured.out and 'before crash stderr' in captured.err
+    print('after restoration')
+    assert 'after restoration' not in (P.OUTPUTS / 'logs/2.log').read_text()
