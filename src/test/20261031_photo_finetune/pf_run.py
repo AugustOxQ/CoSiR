@@ -426,22 +426,35 @@ class RunLoader:
         return pf_export.embed(final_id(seed), split)
 
 
+def require_final_runs(sheet, rec, pick, r):
+    """D10/D12 and frozen argument checks that need no test data, before any test export."""
+    assert pick == rec['readout']['pick'], 'read-out differs from the stage 2 record'
+    assert r == {'clu': rec['ranges']['clu']['r'], 'map': rec['ranges']['map']['r']} and \
+        rec['ranges'] != rec['r12_ranges'], 'r must be the record\'s photo-model ranges, not r12\'s'
+    fit_sha = rs_vh.names_sha(pf_data.fit_keys())
+    for s in P.SEEDS:
+        run = read_json(outputs() / 'runs' / final_id(s) / 'run.json')
+        assert run['status'] == 'ok' and run['settings'] == sheet['pick']['settings'], (final_id(s), 'not the sheet pick')
+        assert type(run['cstar_seed']) is int and run['cstar_seed'] == s, (final_id(s), 'cstar_seed')
+        assert type(run['train_seed']) is int and run['train_seed'] == P.train_seed(s), (final_id(s), 'train_seed')
+        expected_start = (read_json(Path(P.CSTAR_WEIGHTS) / f'emotion__s{s}.json')['weights_sha256']
+                          if run['settings']['start'] == 'cstar' else None)
+        assert run['cstar_weights_sha256'] == expected_start, (final_id(s), 'cstar_weights_sha256')
+        assert run['fit_keys_sha256'] == fit_sha, (final_id(s), 'fit_keys_sha256')
+
+
 def stage3(args):
     require_gates('3')
     require_records('3')                            # the guard comes before any test export
     sheet, rec = read_json(P.SHEET_FILE), read_json(P.STAGE2_FILE)
     pick = rec['readout']['pick']
     r = {'clu': rec['ranges']['clu']['r'], 'map': rec['ranges']['map']['r']}      # the photo model's r' from the record
-    for s in P.SEEDS:
-        run = read_json(outputs() / 'runs' / final_id(s) / 'run.json')
-        assert run['status'] == 'ok' and run['settings'] == sheet['pick']['settings'], (final_id(s), 'not the sheet pick')
+    require_final_runs(sheet, rec, pick, r)
     with step('3', 'test exports'):                 # the first test number: only now, after the guard
         for s in P.SEEDS:
             pf_export.export(final_id(s), 'test')
     cand = pf_stage3.candidate_from_data('photo', pick, RunLoader)
     assert cand.readout == pick == rec['readout']['pick'], 'candidate read-out differs from the stage 2 record'
-    assert r == {'clu': rec['ranges']['clu']['r'], 'map': rec['ranges']['map']['r']} and \
-        rec['ranges'] != rec['r12_ranges'], 'r must be the record\'s photo-model ranges, not r12\'s'
     assert cand.val_embed.shape[:2] == (5, N_VAL), ('validation embeddings', cand.val_embed.shape)
     with step('3', 'SC1-SC5'):
         res = pf_stage3.stage3(cand, r, workers=args.workers, draws_clu=args.draws_clu, draws_ret=args.draws_ret)
