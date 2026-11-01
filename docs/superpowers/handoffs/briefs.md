@@ -1428,3 +1428,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-01-r13-build-4-handoff.md
 - New chat: tab 'r13 build 4', session bdddaed0-e3a1-4db8-b151-872b891c175d
 
+[brief] CoSiR: r13 build 4 -> r13 build 5 (2026-11-01 17:32 Amsterdam)
+- Done: build chat 4 merged tickets 12 and 13; all 13 tickets are built and merged. The end-to-end smoke passes.
+- State: the smoke found two bugs, both fixed. The C13 re-derivation agrees with our pipeline on all 298 items.
+- Next: the final Opus `xhigh` review (brief ready), one fix wave, a Sonnet `high` re-review, merge into main, push, then the run handoff.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-01-r13-build-5-handoff.md
+- New chat: tab 'r13 build 5', session 2e68287b-d82f-48de-a02f-92b84b958992
+
