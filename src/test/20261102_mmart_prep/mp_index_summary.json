@@ -1,0 +1,73 @@
+{
+ "n": 74234,
+ "bytes_match": 74234,
+ "index_sha256": "c2c9033b293f2d37f9bd26741d01fe3ab3bc7bace37500682078335d41c2ad05",
+ "artelingo": {
+  "trainval": 45924,
+  "none": 16782,
+  "held": 11528
+ },
+ "artelingo_path_differs": 547,
+ "none_exact_dup_of_trainval": 34,
+ "md5_duplicates_within_mmart": 97,
+ "emotion": {
+  "sadness": 19428,
+  "contentment": 16252,
+  "fear": 12503,
+  "awe": 6357,
+  "disgust": 6211,
+  "amusement": 3906,
+  "something else": 3691,
+  "excitement": 3244,
+  "anger": 1922,
+  "(none)": 720
+ },
+ "style": {
+  "impressionism": 12487,
+  "realism": 11126,
+  "romanticism": 6775,
+  "post_impressionism": 6709,
+  "expressionism": 6458,
+  "art_nouveau_modern": 4197,
+  "baroque": 4181,
+  "abstract_expressionism": 2830,
+  "northern_renaissance": 2535,
+  "cubism": 2481,
+  "naive_art_primitivism": 2244,
+  "rococo": 2046,
+  "color_field_painting": 1535,
+  "pop_art": 1435,
+  "early_renaissance": 1382,
+  "high_renaissance": 1337,
+  "mannerism_late_renaissance": 1267,
+  "minimalism": 1261,
+  "ukiyo_e": 1143,
+  "fauvism": 805
+ },
+ "genre_labelled": {
+  "held": 9401,
+  "trainval": 37482,
+  "none": 13739
+ },
+ "genre": {
+  "(none)": 13612,
+  "portrait": 13456,
+  "landscape": 11985,
+  "genre_painting": 10101,
+  "religious_painting": 6010,
+  "abstract_painting": 4927,
+  "cityscape": 4387,
+  "sketch_and_study": 3579,
+  "still_life": 2720,
+  "nude_painting": 1804,
+  "illustration": 1653
+ },
+ "emotion_agrees_artelingo_majority": {
+  "n": 56922,
+  "same": 24820
+ },
+ "style_agrees_artelingo": {
+  "n": 57452,
+  "same": 55681
+ }
+}
