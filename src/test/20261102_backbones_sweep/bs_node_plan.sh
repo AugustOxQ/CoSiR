@@ -25,7 +25,8 @@ CLUSTER=/root/.claude/skills/cluster-run/cluster          # (spelled out: the `c
      $CLUSTER launch --node node402 -- bash scripts/run_bs_node.sh sweep --kind photo knob     (x3; add --reset-claims to the first only after a lost job)
 6  after each job:   $CLUSTER watch <tag>    $CLUSTER pull --tag <tag>    then, for time left:
      python src/test/20261102_backbones_sweep/bs_node.py estimate
-7  pulled results land in <worktree>/res/<name>/ (name = r14_bs, r14_bs_smoke, r14_bs_probe). Make res/r14_bs a symlink to
-   /data/SSD2/cosir_r14/20261102_backbones_sweep/outputs before the first pull, or move the pulled folder there (see the t10b hand-back).
-8  smoke and probe results on the node: $CLUSTER clean --node node402 --path /local/wding/res/r14_bs_smoke   (list first; --yes only after review)
+7  pulled results land in <worktree>/res/<name>/ (name = r14_bs, r14_bs_smoke, r14_bs_probe); the pull follows a symlink there
+   (proved with the probe, verified 24 files). Before the first pull, from the worktree you pull in:
+     mkdir -p res && ln -sfn /data/SSD2/cosir_r14/20261102_backbones_sweep/outputs res/r14_bs     (smoke: res/r14_bs_smoke -> .../smoke_pull)
+8  smoke result on the node: list with `$CLUSTER clean --node node402 --jobs --tag <smoke tag>` (no --yes until the user agrees)
 PLAN
