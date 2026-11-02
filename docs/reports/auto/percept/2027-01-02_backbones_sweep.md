@@ -21,6 +21,7 @@ Against the Qwen teacher, 18 of 24 encoder cells are WIN and 5 are LEVEL. One is
 - The Affection test photos were already scored in r12 and r13. EmoSet is the only test set that shaped nothing before.
 - A LEVEL teacher cell licenses only "level with or better than the teacher".
 - EmoSet is one more photo set, emotion only. With its 368 near-copies kept, the AMI gain over plain Qwen falls from +0.0653 to +0.0390.
+- The EmoSet gain over the teacher is not uniform across emotions: on amusement, the photo model's AP is below the teacher's (0.3203 against 0.3471; diagnostic, not a claim cell).
 - Part b names no better setting.
 
 **Options for next.**
@@ -62,6 +63,7 @@ All claim paths passed checks; analysis selected nothing.
 
 - **Data and seeds:** validation sets stopping, ranges and read-outs; held and test sets carry the claims. A near-copy is a default-Qwen cosine of 0.85 or more to any of the 72,255 Affection train photos; EmoSet keys follow sha256 order (D17). Seeds: claims 0 to 4; knob sweep 1 to 3; photo sweep 0 to 2; ablation 0 to 4. EmoSet validation picked centering plus ten-neighbour expansion and the artwork teacher wording in both tasks.
 - **Statistics:** AMI with 20 clusters; 95% bootstrap intervals (2,000 clustering and 10,000 retrieval draws). WIN: lower bound above zero; LEVEL: lower bound above minus the model's own validation seed range; else BELOW.
+- **Terms:** recipe, the training loss terms c* keeps and their weights; buddy terms, the losses on the instructed graphs (graphs of related paintings built from instructed Qwen features); relational term, a genre loss that makes each painting's pattern of similarities to other paintings copy the teacher's; content correction, the step that removes image content from the emotion and style features before their graphs are built; matched PercepT, PercepT trained on the same encoder's image features; read-out, how stored embeddings are compared for retrieval; claim test, a test whose verdict licenses a claim sentence.
 - **Code:** reviewed `4519762`; launches `5f28b2b`, `c5d7673`, `317ec92`, retry `91d79c3`; folder `src/test/20261102_backbones_sweep/`. Node402 (A6000) trained all runs and scored the two sweeps; the local 3090 extracted stores and ran the GPU checks; the local CPU exported and scored the rest.
 
 ## Results
