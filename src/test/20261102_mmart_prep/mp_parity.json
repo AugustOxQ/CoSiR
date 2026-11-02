@@ -1,0 +1,44 @@
+{
+  "qwen_default": {
+    "n": 200,
+    "min_cosine": 0.9993472695350647,
+    "mean_cosine": 0.9999198913574219,
+    "pass": true
+  },
+  "emotion_focus": {
+    "n": 200,
+    "min_cosine": 0.9997648596763611,
+    "mean_cosine": 0.9999656677246094,
+    "pass": true
+  },
+  "style_word": {
+    "n": 200,
+    "min_cosine": 0.9996968507766724,
+    "mean_cosine": 0.9999555945396423,
+    "pass": true
+  },
+  "genre_word": {
+    "n": 200,
+    "min_cosine": 0.9996907711029053,
+    "mean_cosine": 0.9999551177024841,
+    "pass": true
+  },
+  "siglip2": {
+    "n": 200,
+    "min_cosine": 0.9997805953025818,
+    "mean_cosine": 0.9999367594718933,
+    "pass": true
+  },
+  "siglip1": {
+    "n": 200,
+    "min_cosine": 0.9999648332595825,
+    "mean_cosine": 0.999998927116394,
+    "pass": true
+  },
+  "clip_l14": {
+    "n": 200,
+    "min_cosine": 1.0,
+    "mean_cosine": 1.0,
+    "pass": true
+  }
+}

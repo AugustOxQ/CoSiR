@@ -80,3 +80,27 @@ worktree (commit 4b8dbda); the controller read the diff, fixed the smoke status 
 stores, min cosine per view: Qwen default 0.99974, emotion 0.99980, style 0.99971, genre 0.99976, SigLIP 2 0.99991,
 SigLIP 1 0.99987, CLIP L/14 1.00000 (bar 0.999); store check 14 of 14; near-copy step runs. Rates: Qwen about 88
 ms/image, SigLIP about 26, CLIP L/14 about 13: the full run is about 2 h (new set) plus the 200-painting parity set.
+
+## Run (2026-11-02 18:01 to 19:55, local GPU, this decide chat)
+
+`mp_extract_queue.sh` under the GPU lock; it ended "MP QUEUE DONE ok in 6816s". Log:
+`/data/SSD2/pre_extract/mmart/logs/queue_20261102_180138.log`.
+
+- **Stores** (16,782 new paintings each): Qwen default 1,449 s (86.3 ms/image), emotion_focus 1,489 s, style_word
+  1,472 s, genre_word 1,466 s, SigLIP 2 324 s (19.3 ms), SigLIP 1 323 s (19.2 ms), CLIP L/14 134 s (8.0 ms). The
+  200-painting parity stores took 2 to 18 s each.
+- **Parity** against the ArtELingo stores, min cosine over 200 paintings (bar 0.999): Qwen default 0.99935, emotion
+  0.99976, style 0.99970, genre 0.99969, SigLIP 2 0.99978, SigLIP 1 0.99996, CLIP L/14 1.00000. All pass
+  (`mp_parity.json`).
+- **Store check**: 14 of 14 stores pass (`mp_stores_check.json`).
+- **Near-copy check** (default Qwen image of each new painting against the 49,121 ArtELingo train and val paintings;
+  `/data/SSD/mmart/mmart_nearcopy.parquet`, summary `mp_nearcopy.json`): at cosine >= 0.85, 6,375 paintings; >= 0.90,
+  2,249; >= 0.95, 390; >= 0.99, 49. The median nearest cosine is 0.829, so 0.85 cuts 38% of the set.
+- **What the bands hold** (nearest ArtELingo painting has the same artist): 0.85 to 0.90, 45% of 4,126; 0.90 to 0.95,
+  70% of 1,859; 0.95 to 0.99, 96% of 341; >= 0.99, 76% of 49. Samples at 0.85 to 0.99 are different paintings,
+  mostly by the same artist (a Serov portrait next to a Serov self-portrait; two Schongauer "wise virgin" prints at
+  0.959). Samples at >= 0.99 are the same painting under another name (`...-avenue.jpg` against `...-avenue-1`,
+  cosine 1.000). On paintings, 0.85 removes neighbours by artist and subject, not only copies; on EmoSet photos it
+  removed 2% (r14).
+- **Test count after the spec's cut** (exact copies, then >= 0.85, then the md5 groups; D5, D10): about 10,400; the
+  build computes the exact number. The threshold question goes to the user before the build (direction log).

@@ -1,0 +1,89 @@
+{
+  "ok": true,
+  "stores": [
+    {
+      "view": "qwen_default",
+      "set": "new",
+      "n": 16782,
+      "ok": true
+    },
+    {
+      "view": "emotion_focus",
+      "set": "new",
+      "n": 16782,
+      "ok": true
+    },
+    {
+      "view": "style_word",
+      "set": "new",
+      "n": 16782,
+      "ok": true
+    },
+    {
+      "view": "genre_word",
+      "set": "new",
+      "n": 16782,
+      "ok": true
+    },
+    {
+      "view": "siglip2",
+      "set": "new",
+      "n": 16782,
+      "ok": true
+    },
+    {
+      "view": "siglip1",
+      "set": "new",
+      "n": 16782,
+      "ok": true
+    },
+    {
+      "view": "clip_l14",
+      "set": "new",
+      "n": 16782,
+      "ok": true
+    },
+    {
+      "view": "qwen_default",
+      "set": "parity",
+      "n": 200,
+      "ok": true
+    },
+    {
+      "view": "emotion_focus",
+      "set": "parity",
+      "n": 200,
+      "ok": true
+    },
+    {
+      "view": "style_word",
+      "set": "parity",
+      "n": 200,
+      "ok": true
+    },
+    {
+      "view": "genre_word",
+      "set": "parity",
+      "n": 200,
+      "ok": true
+    },
+    {
+      "view": "siglip2",
+      "set": "parity",
+      "n": 200,
+      "ok": true
+    },
+    {
+      "view": "siglip1",
+      "set": "parity",
+      "n": 200,
+      "ok": true
+    },
+    {
+      "view": "clip_l14",
+      "set": "parity",
+      "n": 200,
+      "ok": true
+    }
+  ]
+}
