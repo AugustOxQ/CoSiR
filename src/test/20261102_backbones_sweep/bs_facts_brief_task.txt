@@ -1,0 +1,43 @@
+You are writing a FACTS BRIEF for round r14 of the CoSiR research project (repo: /project/CoSiR). You only read and report facts; you decide nothing and recommend nothing.
+
+## Rules
+- Read-only in /project/CoSiR and /data. Write exactly one file: /tmp/claude-0/-project-CoSiR/231885ae-9168-4719-bb17-fc882c65ec41/scratchpad/r14_facts/r14_facts_brief.md . Do not create .ccg task records. Delete nothing; list what you would remove.
+- Do not read anything under /project/CoSiR/archive/ (an archived line).
+- Do not run training, GPU jobs or long commands; nothing over about 4 minutes. Keep command output short (head, grep, wc).
+- Every fact carries its source as `path:line` (or the command you ran). Write "not found" when a fact is absent; never guess. Mark your own inferences "inference".
+- Terms: c* is the current recipe/model (picked by the r10 recipe sweep, 2026-10-28). "The teacher" is the instructed Qwen3-VL-Embedding-2B image view. "The photo model" is c* fine-tuned on Affection train photos (r13).
+- Length: at most about 220 lines, tables where they help. Use plain English.
+
+## Where to look first
+- Direction log: /project/CoSiR/docs/superpowers/direction_log.md (entries 2026-10-25 to 2026-11-02).
+- Reports index: /project/CoSiR/docs/reports/reports_sum.md; reports under docs/reports/auto/percept/ (2026-12-24_recipe_backbones, the encoders/genre report of 2026-10-26, 2026-12-28_recipe_sweep, 2026-12-29 retrieval, 2026-12-31_affection_confirmation, 2027-01-01_photo_finetune).
+- Specs: docs/superpowers/specs/ (2026-10-25-recipe-and-backbones-design.md, 2026-10-27-recipe-sweep-design.md, 2026-10-29-retrieval-design.md, 2026-10-30-affection-confirmation-design.md, 2026-10-31-photo-finetune-design.md).
+- Round folders: src/test/20261025_recipe_backbones, src/test/20261025_encoders_genre, src/test/20261027_recipe_sweep, src/test/20261029_retrieval, src/test/20261030_affection_confirmation, src/test/20261031_photo_finetune (each has a *_log.md).
+- Feature stores: /data/SSD2/pre_extract/artelingo_full/ and /data/SSD2/pre_extract/affection_local/ (list folders and read small metadata files only).
+- Feature extraction: /project/CoSiR/scripts/extract_features.py.
+
+## Questions (answer each under its own heading)
+
+### Q1. Backbones (c* and the photo model on other image encoders)
+a. Which backbone feature stores exist for ArtELingo (artelingo_full) and for Affection (affection_local): backbone name, splits covered, image count, dimension. Which are missing for a run of c* and the photo fine-tune on SigLIP 2 (so400m), SigLIP 1 (so400m) and CLIP L/14.
+b. The earlier held results on other encoders (rounds of 2026-10-25 and 2026-10-26): per encoder, the recipe used (D2, G or other), the held emotion AMI, its comparator and the difference with its 95% interval, and the verdict. Did any round run c* itself (the 40-neighbour recipe) on a non-Qwen encoder? Did r11 (retrieval) report SigLIP 2 / CLIP L/14 rows, and which models were they?
+c. For a student on encoder X: what does training read from Qwen (instructed views, graphs, teacher targets) and what from encoder X? What were its comparators (its own plain image, its own PercepT arm, the Qwen teacher)?
+d. Code path: does the c* training code used by src/test/20261027_recipe_sweep accept another encoder, and how (config key, feature path, input dimension)? Same question for the photo fine-tune code (src/test/20261031_photo_finetune), the retrieval code (src/test/20261029_retrieval) and the Affection test code (src/test/20261030_affection_confirmation). List what is hard-coded to Qwen.
+e. Cost per run: one c* training run (one seed, full scale) and one photo fine-tune run: minutes, GPU type (local RTX 3090 or node402 RTX A6000), memory if recorded.
+
+### Q2. The large sweep
+a. The r10 recipe sweep: its grid (axes and values, about 60 configurations), the pick rule, and what it picked. Which recipe settings were held fixed and never swept?
+b. The r13 photo fine-tune sweep: its 9 rows, their scores, the pick (80 graph neighbours) and its lead; the fact that all five final runs stopped at best epoch 1 (what the epoch budget and stopping rule were).
+c. Analysis items already promised for the late sweep: e.g. "c* without the caption endpoints" (direction log 2026-10-29), the ablation findings of 2026-10-29 (removing the direct teacher raised held emotion, removing the caption endpoints raised held style), anything in specs or handoffs that names work for "r13/r14 large sweep", "deep analysis" or "qualitative results".
+d. Throughput: how many runs per hour per GPU on node402 in the r10 sweep (e.g. "about 3 min per run on an A6000"), and anything about memory per run.
+
+### Q3. A test of the frozen photo model on EmoSet-118K
+EmoSet facts we already have (from its README, fetched 2026-11-02, saved at /tmp/claude-0/-project-CoSiR/231885ae-9168-4719-bb17-fc882c65ec41/scratchpad/emoset_check/readme.md): 118,102 images, 8 Mikels emotion classes, a Dropbox zip of 11.3 GB, info.json plus train.json / val.json / test.json, one annotation JSON per image in per-emotion folders. Read that README for the split sizes if it states them.
+a. The protocol of r12 and r13 on Affection: the AMI clustering setup (cluster count, k-means settings, seeds), the mAP definition (query, gallery, relevance), the read-out menu and its pick rule (picked on validation; cross-fit?), the teacher's wording and how it was picked, the near-copy cut between held and train photos (0.85) and how it was computed, how Affection's 9th class "something else" was handled, and the seed count.
+b. What a new dataset needs: does scripts/extract_features.py support adding a dataset (a loader registry or a --dataset choice list)? How were the instructed emotion views (qwen3vl_emb_2b_aspect_prompts/emotion_focus*) extracted (script, prompt text)? What inputs does the photo model's inference need (which feature views of the test images)?
+c. Disk: `df -h /data/SSD /data/SSD2`.
+
+### Q4. Timing of recent loops
+From the handoffs (docs/superpowers/handoffs/) and round logs: for r12 and r13, the time from the decide chat's start to the auto report (decide, build, run), and each run's wall time.
+
+End the brief with a short list "Gaps": facts you could not find.
