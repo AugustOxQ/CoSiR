@@ -254,8 +254,8 @@ def train_run(run_id, settings, width, cstar_seed, train_seed_, fit, val, graph,
         assert not ckpt.exists(), f'{ckpt}: exists (the run is done; move it aside to rerun)'
     settings = dict(settings)
     wall = time.monotonic()
-    record = dict(run_id=run_id, encoder=encoder, row=row, encoder_width=width, status='failed', settings=settings,
-                  fixed_epochs=settings.get('epochs'), cstar_seed=cstar_seed, cstar_weights_sha256=None,
+    record = dict(run_id=run_id, encoder=encoder, row=row, encoder_width=width, status='failed',
+                  failure_kind=None, error=None, settings=settings, fixed_epochs=settings.get('epochs'), cstar_seed=cstar_seed, cstar_weights_sha256=None,
                   train_seed=train_seed_, weights_sha256=None, best_epoch=None, best_dev_loss=None, history=[],
                   graph_manifest_sha256=graph.get('manifest_sha256'), fit_keys_sha256=rs_vh.names_sha(fit['keys']),
                   val_keys_sha256=rs_vh.names_sha(val['keys']), device=str(device), host=socket.gethostname(),
@@ -267,7 +267,8 @@ def train_run(run_id, settings, width, cstar_seed, train_seed_, fit, val, graph,
                                                max_epochs=max_epochs, cstar_root=cstar_root, record=record,
                                                on_epoch=on_epoch)
     except NonFiniteLoss as e:
-        record.update(error=f'non-finite {e.args[0]} loss', seconds=time.monotonic() - wall)
+        record.update(failure_kind='nonfinite_loss', error=f'non-finite {e.args[0]} loss',
+                      seconds=time.monotonic() - wall)
         if keep == 'all':
             _atomic_json(out_dir / 'failed.json', record)
         raise

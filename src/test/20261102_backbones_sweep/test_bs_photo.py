@@ -508,3 +508,18 @@ def test_check_export_compares_the_stored_sidecars_weights_and_keys_hashes(monke
         assert BP.check_export(seeds=(0,), splits=('val',)) == code, name
     with pytest.raises(FileNotFoundError):                                    # no sidecar: the gate cannot pass
         BP.check_sidecar(tmp_path / 'nothing.json', 'c' * 64, ['a'])
+
+
+def test_run_record_has_r13s_failure_fields(tmp_path, data):
+    fit, val, graph = data
+    run = BP.train_run('a', _ref(start='random'), 2048, 0, 100, fit, val, graph, 'cpu', max_epochs=1, keep='all',
+                       out_dir=tmp_path / 'ok')
+    rec = json.loads((tmp_path / 'ok/run.json').read_text())
+    assert rec['failure_kind'] is None and rec['error'] is None and run.record['status'] == 'ok'
+    bad = dict(fit, I=fit['I'].copy())
+    bad['I'][3] = np.nan
+    with pytest.raises(BP.NonFiniteLoss):
+        BP.train_run('n', _ref(start='random'), 2048, 0, 100, bad, val, graph, 'cpu', max_epochs=2, keep='all',
+                     out_dir=tmp_path / 'bad')
+    failed = json.loads((tmp_path / 'bad/failed.json').read_text())
+    assert failed['failure_kind'] == 'nonfinite_loss' and failed['error'] == 'non-finite train loss'
