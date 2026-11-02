@@ -7,7 +7,9 @@ with three differences, none of them in the computation:
   * the encoder is a parameter. `rg_full.ENCODER` (fixed to Qwen in r10) and `rb_encoders.WIDTH` are patched for the
     length of the call, so the image trunk's first layer takes the encoder's width (12-24's `rb_student.build_model`)
     and the image input is the encoder's ArtELingo default image. Qwen's instructed graphs, default captions and
-    teachers are untouched, and so is the output width (2048). For Qwen nothing changes at all: same model, data,
+    teachers are untouched, and so is the output width (2048). For non-Qwen, `bs_cstar_loss` copies the frozen genre
+    loss with only its teacher shape assertion changed to require the input row count and output width.
+    For Qwen nothing changes at all: same model, data,
     graphs, losses, stopping and seeds as r10's `k11=40` (stage 0 (iv) checks it, `regress-iv`);
   * none of r10's guards runs (frozen-code commit, stage 3 verdict, V4a/V4d, rule commit): they belong to r10's
     decision. What stays is the data hygiene: no output inside another round's folder, smoke never in the real output
@@ -67,6 +69,7 @@ import rb_student  # noqa: E402
 import rg_full  # noqa: E402
 import rg_variants as V  # noqa: E402
 from ab_paths import ms_train  # noqa: E402
+import bs_cstar_loss  # noqa: E402 (the frozen loss dependencies are now on sys.path)
 
 ASPECTS = tuple(rs_paths.ASPECTS)
 SEEDS = P.SEEDS
@@ -185,12 +188,15 @@ Context = namedtuple('Context', 'cfg arm knobs backbone width')
 def training_context(enc, row=REF, *, export=False, graph_out=None):
     """Everything r10's `rs_full.train` enters, in its order, with the encoder as a parameter: the encoder's width and
     folder, the knob patches of the row (the graph seam is `graph_data`; `export`: no graph seam, the exports read no
-    graph), and the run's arm name as a copy of G's arm."""
+    graph), and the run's arm name as a copy of G's arm. Non-Qwen uses the width-safe teacher assertion; Qwen keeps
+    the original loss function object."""
     cfg, arm = row_config(row), row_arm(row)
     name, w = backbone(enc), width(enc)
     assert enc == 'qwen' or row == REF, f'knob rows are Qwen only (the knob patches build the 2048-wide trunk): {enc} {row}'
     assert rb_encoders.WIDTH.get(name, w) == w, (name, rb_encoders.WIDTH[name], w)
     with ExitStack() as stack:
+        if enc != 'qwen':
+            stack.enter_context(patch.object(rg_full.rg_loss, 'switched_head_loss', bs_cstar_loss.switched_head_loss))
         stack.enter_context(patch.object(rg_full, 'ENCODER', name))
         stack.enter_context(patch.dict(rb_encoders.WIDTH, {name: w}))
         stack.enter_context(patch.object(rs_knobs, 'store_training_data', graph_data))

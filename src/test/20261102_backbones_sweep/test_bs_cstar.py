@@ -1,4 +1,6 @@
 """Tests of bs_cstar (r14 ticket 03): rows, the encoder wiring, keep modes, graph seam, exports, the stage 0 comparisons."""
+import difflib
+import inspect
 import json
 from pathlib import Path
 
@@ -11,6 +13,7 @@ import bs_paths as P
 from bs_cstar import S, V, ms_train, rb_encoders, rb_rows, rb_student, rg_full, rs_graphs, rs_knobs
 
 CPU = torch.device('cpu')
+R10_GENRE_LOSS = rg_full.rg_loss.switched_head_loss
 R10_WEIGHTS = P.R10_OUT / 'full/weights/k11=40'
 R10_HELD = P.R10_OUT / 'full/held/k11=40/emotion__s0.json'
 needs_r10 = pytest.mark.skipif(not R10_WEIGHTS.exists(), reason='r10 outputs are not on this machine')
@@ -58,6 +61,98 @@ def synthetic(width, n=6):
     images = unit(rng.normal(size=(n, width)))
     inputs = {a: dict(img=unit(rng.normal(size=(n, 2048))), cap=unit(rng.normal(size=(n, 2048)))) for a in C.ASPECTS}
     return s, inputs, images
+
+
+def genre_loss_args(width):
+    torch.manual_seed(17)
+    _, inputs, images = synthetic(width)
+    recipe = rb_rows.recipe(rg_full.RECIPE)
+    _, views = rb_student.build_model(recipe['base'], list(C.ASPECTS), CPU, width=width)
+    args = (views['genre'], torch.from_numpy(images), torch.from_numpy(inputs['genre']['cap']),
+            np.array([[0, 1], [2, 3], [4, 5]]), np.ones(3, dtype=np.float32), recipe['base'], 'genre')
+    kwargs = dict(teacher=torch.from_numpy(inputs['genre']['img']), switches=recipe['switches'],
+                  genre=rg_full.genre_for(C.STAR_ARM, 0, fit_teacher=None, n_dev=2))
+    return args, kwargs
+
+
+def test_non_qwen_checked_genre_loss_accepts_the_image_input_width():
+    with C.training_context('siglip2'):
+        args, kwargs = genre_loss_args(1152)
+        loss = rg_full.checked_head_loss(*args, **kwargs)
+        assert torch.isfinite(loss)
+        loss.backward()
+        assert args[0]['img'].trunk[0].weight.grad is not None
+
+
+def test_width_safe_loss_source_changes_exactly_the_teacher_assert():
+    original = inspect.getsource(rg_full.rg_loss.switched_head_loss).splitlines(keepends=True)
+    copied = inspect.getsource(C.bs_cstar_loss.switched_head_loss).splitlines(keepends=True)
+    changes = [line for line in difflib.ndiff(original, copied) if line.startswith(('- ', '+ '))]
+    assert changes == [
+        '-     assert teacher is not None and teacher.shape == img.shape and not teacher.requires_grad\n',
+        '+     assert teacher is not None and teacher.shape == (len(img), rb_student.OUT) and not teacher.requires_grad\n',
+    ]
+
+
+@pytest.mark.parametrize('include_mask_penalty', [True, False])
+def test_width_safe_loss_is_identical_to_original_for_2048(include_mask_penalty):
+    with C.training_context('qwen'):
+        args, kwargs = genre_loss_args(2048)
+        assert kwargs['genre'].switches == dict(m=1, lam=8, tau_t=0.02, anchors=0)
+        kwargs['include_mask_penalty'] = include_mask_penalty
+        torch.manual_seed(31)
+        original = rg_full.rg_loss.switched_head_loss(*args, **kwargs)
+        torch.manual_seed(31)
+        copied = C.bs_cstar_loss.switched_head_loss(*args, **kwargs)
+        assert torch.isfinite(copied) and torch.equal(original, copied)
+
+
+@pytest.mark.parametrize('width', [1152, 768])
+@pytest.mark.parametrize('include_mask_penalty', [True, False])
+def test_width_safe_loss_accepts_narrow_inputs_that_original_rejects(width, include_mask_penalty):
+    with C.training_context('qwen'):
+        args, kwargs = genre_loss_args(width)
+        kwargs['include_mask_penalty'] = include_mask_penalty
+        with pytest.raises(AssertionError):
+            rg_full.rg_loss.switched_head_loss(*args, **kwargs)
+        assert torch.isfinite(C.bs_cstar_loss.switched_head_loss(*args, **kwargs))
+
+
+@pytest.mark.parametrize('teacher_shape,requires_grad', [((6, 1152), False), ((7, 2048), False),
+                                                        ((5, 2048), False), ((6, 2048), True)])
+def test_width_safe_loss_still_rejects_invalid_teachers(teacher_shape, requires_grad):
+    with C.training_context('qwen'):
+        args, kwargs = genre_loss_args(1152)
+        kwargs['teacher'] = torch.zeros(teacher_shape, requires_grad=requires_grad)
+        handle = args[0]['img'].register_forward_pre_hook(
+            lambda *_: pytest.fail('invalid teacher must be rejected before the image forward'))
+        try:
+            with pytest.raises(AssertionError):
+                C.bs_cstar_loss.switched_head_loss(*args, **kwargs)
+        finally:
+            handle.remove()
+
+
+@pytest.mark.parametrize('enc', ['siglip2', 'siglip1', 'clip_l14'])
+@pytest.mark.parametrize('export', [False, True])
+def test_width_safe_loss_patch_is_scoped_to_non_qwen_contexts(enc, export):
+    original = R10_GENRE_LOSS
+    frozen = C.rs_full.frozen_modules()
+    with C.training_context('qwen', export=export):
+        assert rg_full.rg_loss.switched_head_loss is original
+    with pytest.raises(RuntimeError, match='unwind'):
+        with C.training_context(enc, export=export):
+            assert rg_full.rg_loss.switched_head_loss is C.bs_cstar_loss.switched_head_loss
+            C.rs_paths.check_imports()
+            assert C.rs_full.frozen_modules() == frozen
+            raise RuntimeError('unwind')
+    assert rg_full.rg_loss.switched_head_loss is original
+    with C.training_context(enc, export=export):
+        assert rg_full.rg_loss.switched_head_loss is C.bs_cstar_loss.switched_head_loss
+    assert rg_full.rg_loss.switched_head_loss is original
+    with C.training_context('qwen', export=export):
+        assert rg_full.rg_loss.switched_head_loss is original
+    assert C.rs_full.frozen_modules() == frozen
 
 
 @pytest.fixture
