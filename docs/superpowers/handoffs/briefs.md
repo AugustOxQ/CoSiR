@@ -1468,3 +1468,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-02-r14-decide-3-handoff.md
 - New chat: tab 'r14 decide 3', session 3b37edee-531f-453c-b86c-a4cc6113de3a
 
+[brief] CoSiR: r14 decide 3 -> r14 build (2026-11-02 04:15 Amsterdam)
+- Done: r14 specced, rule-reviewed (Opus xhigh, pass after fixes, all applied) and approved from the brief 2026-11-02 04:13; no container restart.
+- State: c* above its teacher on ArtELingo, the photo model above its teacher on Affection (both with Qwen only); r14 tests three more encoders and EmoSet.
+- Next: tickets and build; the extraction ticket first, then the extraction runs in the background; final review; then open the run chat.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-02-r14-build-handoff.md
+- New chat: tab 'r14 build', session 82023906-66a8-425d-b325-b84afcb47cf2
+
