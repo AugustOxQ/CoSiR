@@ -149,6 +149,17 @@ def test_contexts_leave_the_frozen_modules_as_they_were():
     assert before == (rg_full.ENCODER, dict(rb_encoders.WIDTH), dict(ms_train.CONFIG), {k: dict(v) for k, v in V.ARMS.items()})
 
 
+@pytest.mark.parametrize('enc', ['siglip1', 'clip_l14', 'siglip2'])
+def test_the_width_patch_is_removed_on_exit_and_qwens_width_is_never_touched(enc):
+    r10_table = {'siglip2_so400m': 1152, 'clip_b32': 512, 'qwen3vl_emb_2b': 2048, 'dinov2_large': 1024}   # rb_encoders, as r10 has it
+    before = dict(rb_encoders.WIDTH)
+    assert before == r10_table                  # no earlier test or context left a patch behind
+    with C.training_context(enc, 'ref'):
+        assert rb_encoders.WIDTH[P.ENCODERS[enc]['art']] == P.ENCODERS[enc]['width']
+        assert rb_encoders.WIDTH['qwen3vl_emb_2b'] == 2048
+    assert rb_encoders.WIDTH == before and rb_encoders.WIDTH['qwen3vl_emb_2b'] == 2048
+
+
 # ------------------------------------------------------------------------------------------------- graph stores
 def test_graphs_come_from_r10_when_it_has_them_and_are_built_here_otherwise(monkeypatch, tmp_path):
     monkeypatch.setattr(C.P, 'OUT', tmp_path)
@@ -406,3 +417,21 @@ def test_0ix_compares_held_and_both_validation_sides_within_1e3(tmp_path):
     assert not bad_cap['pass'] and not bad_cap['items']['val/emotion__s0/cap']['pass'] and bad_cap['items']['val/emotion__s0/img']['pass']
     bad_held = build(shift_held=0.004)
     assert not bad_held['pass'] and not bad_held['items']['held/genre__s0/img']['pass']
+
+
+@pytest.mark.parametrize('ours_shape,ours_dtype', [((3, 8), np.float16), ((4, 8), np.float32), ((1, 8), np.float16)])
+def test_0ix_fails_on_another_shape_or_dtype_and_does_not_broadcast(tmp_path, ours_shape, ours_dtype):
+    for aspect in C.ASPECTS:
+        held_theirs = tmp_path / 'ref/held/k11=40' / f'{aspect}__s0.npz'
+        val_theirs = tmp_path / 'ref/train/k11=40/R6-5' / f'{aspect}__{C.GRAPH_ROWS[aspect]}__s0.npz'
+        held_ours, val_ours = (tmp_path / 'ours' / d / 'k11=40' / f'{aspect}__s0.npz' for d in ('held', 'val'))
+        for p in (held_theirs, val_theirs, held_ours, val_ours):
+            p.parent.mkdir(parents=True, exist_ok=True)
+        ref = np.zeros((4, 8), np.float16)
+        mine = np.zeros(ours_shape, ours_dtype)
+        np.savez(held_theirs, img=ref)
+        np.savez(val_theirs, img=ref, cap=ref)
+        np.savez(held_ours, img=ref)
+        np.savez(val_ours, img=ref, cap=mine)
+    record = C.compare_exports(tmp_path / 'ours', tmp_path / 'ref', seeds=[0])
+    assert not record['pass'] and not record['items']['val/style__s0/cap']['pass'] and record['items']['val/style__s0/img']['pass']
