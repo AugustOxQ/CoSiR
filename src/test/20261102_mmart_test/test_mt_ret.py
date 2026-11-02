@@ -115,6 +115,7 @@ def world(monkeypatch, tmp_path):
     monkeypatch.setitem(sys.modules, 'mt_data', w.mt_data())
     monkeypatch.setitem(sys.modules, 'mt_export', w.mt_export())
     monkeypatch.setattr(MP, 'OUT', tmp_path / 'out')
+    monkeypatch.setattr(MP, 'SMOKE', 1)         # score_encoder takes ranges, picks and teacher only under smoke
     return w
 
 
@@ -313,7 +314,7 @@ def test_arm_ap_seeded_gives_five_rows_and_checks_the_seed_set(world):
 def _record_docs(enc='siglip2'):
     ranges = {'emotion': 0.011, 'style': 0.022, 'genre': 0.033}
     picks = dict(encoder=enc, arms={'cstar': dict(pick='center+k3'), 'frozen': dict(pick='none+k0')})
-    teacher = dict(arms={'teacher': dict(pick='center+k10')})
+    teacher = dict(ranges_encoder='qwen', arms={'teacher': dict(pick='center+k10')})
     return ranges, picks, teacher
 
 
@@ -388,6 +389,43 @@ def test_score_encoder_reads_the_committed_records_by_name(world, monkeypatch):
     assert {c['r'] for c in cells if c['sc'] == 'SC4'} == set(ranges.values())
 
 
+def test_score_encoder_sc2_only_needs_no_teacher_record(world, monkeypatch):
+    """D17: a missing teacher pick voids only the SC4 cells; SC2 must still score, and the teacher record is not read."""
+    ranges, picks, _ = _record_docs()
+    seen = []
+
+    def fake(name):
+        seen.append(name)
+        if name == 'stage1_teacher.json':
+            raise FileNotFoundError(name)
+        return dict(ret_ranges=dict(encoder='siglip2', ranges=ranges), picks=picks)
+    monkeypatch.setattr(MP, 'read_committed_record', fake)
+    cells = mt_ret.score_encoder('siglip2', n_draws=20, workers=1, scs=('SC2',))
+    assert seen == ['stage1_siglip2.json'] and {c['sc'] for c in cells} == {'SC2'} and len(cells) == 3
+    with pytest.raises(FileNotFoundError):                         # SC4 still needs it
+        mt_ret.score_encoder('siglip2', n_draws=20, workers=1, scs=('SC2', 'SC4'))
+
+
+def test_score_encoder_refuses_passed_records_outside_smoke(world, monkeypatch):
+    """Passing ranges, picks or teacher skips the committed-record check: only a smoke run may do that."""
+    ranges, picks, teacher = _record_docs()
+    monkeypatch.setattr(MP, 'SMOKE', 0)
+    with pytest.raises(AssertionError, match='smoke'):
+        mt_ret.score_encoder('siglip2', n_draws=20, workers=1, ranges=ranges, picks=picks, teacher=teacher)
+    with pytest.raises(AssertionError, match='smoke'):
+        mt_ret.score_encoder('siglip2', n_draws=20, workers=1, teacher=teacher)       # the teacher alone too
+
+
+def test_load_stage1_asserts_the_teacher_picked_with_qwens_ranges(world):
+    ranges, picks, teacher = _record_docs()
+    mt_ret.load_stage1('siglip2', ranges, picks, teacher)
+    for bad in (dict(teacher, ranges_encoder='siglip2'), {k: v for k, v in teacher.items() if k != 'ranges_encoder'},
+                dict(picks=dict(teacher, ranges_encoder='siglip2'))):                 # also inside a 'picks' wrapper
+        with pytest.raises(AssertionError, match='Qwen'):
+            mt_ret.load_stage1('siglip2', ranges, picks, bad)
+    mt_ret.load_stage1('siglip2', ranges, picks, dict(picks=teacher))
+
+
 def test_make_cell_asserts_the_bars():
     kw = dict(encoder='qwen', aspect='style', candidate='c', comparator='t', candidate_value=.3, comparator_value=.2,
               d=.1, lo=.05, hi=.15, r_source='x', n_draws=10, n_rows=5)
@@ -408,3 +446,66 @@ def test_replay_items_fail_beyond_1e9():
     ok = mt_ret.replay_result([mt_ret.replay_item('a', 1.0, 1.0 + 5e-10)])
     bad = mt_ret.replay_result([mt_ret.replay_item('a', 1.0, 1.0 + 2e-9)])
     assert ok['passed'] and not bad['passed'] and bad['max_abs_diff'] == pytest.approx(2e-9, rel=1e-3)
+
+
+# ============================================================================================ replay completeness
+@pytest.fixture
+def stub_replays(monkeypatch):
+    """Every stored value and every recomputed value is 0.5, so the values agree; the stubs stand in for the data and the
+    scoring (`arm_ap`, `aspect_cells`), only the replay bookkeeping is real."""
+    vals = {a: 0.5 for a in ASPECTS}
+    seeds = {str(s): 0.5 for s in range(5)}
+    table = {'none+k0': dict(map=dict(vals), score=0.5, kept=True), 'center+k3': dict(map=dict(vals), score=0.5, kept=True)}
+    docs = {'artret_picks_siglip2': {arm: dict(pick='none+k0') for arm in ('cstar', 'frozen', 'teacher')},
+            'artret_ranges_siglip2': dict(per_seed={a: dict(seeds) for a in ASPECTS}, ranges=dict(vals)),
+            'cells_artelingo_ret': [],
+            'verdict': dict(draws=10000, sc={}, map={arm: {a: dict(mean=0.5, per_seed=[0.5] * 5) for a in ASPECTS}
+                                                     for arm in ('cstar', 'plain', 'instructed')}),
+            'picks': {arm: 'none+k0' for arm in mt_ret.rt_data.ARMS},
+            'scores': {arm: table for arm in mt_ret.rt_data.ARMS},
+            'ranges_file': dict(map={a: dict(r=0.5) for a in ASPECTS})}
+
+    def read_json(path):
+        path = str(path)
+        if path == 'RANGES':
+            return docs['ranges_file']
+        return next(v for k, v in docs.items() if k in path)
+
+    ap = dict(ap=np.full(3, 0.5), rows=np.arange(3), point=0.5, per_seed=[0.5] * 5)
+    monkeypatch.setattr(mt_ret, 'read_json', read_json)
+    monkeypatch.setattr(mt_ret.ac_paths, 'R11_RANGES_FILE', 'RANGES')
+    monkeypatch.setattr(mt_ret, 'r0_map_per_seed', lambda f, labels, workers: {a: [0.5] * 5 for a in ASPECTS})
+    monkeypatch.setattr(mt_ret, 'own_ranges', lambda got: dict(vals))
+    monkeypatch.setattr(mt_ret, 'arm_ap', lambda *a, **k: ap)
+    monkeypatch.setattr(mt_ret, 'aspect_cells', lambda *a, **k: [])
+    monkeypatch.setattr(mt_ret, '_compare_cells', lambda *a, **k: [])
+    monkeypatch.setattr(mt_ret.rt_data, 'labels', lambda split: {a: np.zeros(3, dtype=int) for a in ASPECTS})
+    monkeypatch.setattr(mt_ret.rt_data, 'embed', lambda *a, **k: None)
+    monkeypatch.setattr(mt_ret.bs_artret, 'frozen_embed', lambda *a, **k: None)
+    monkeypatch.setattr(mt_ret.bs_artret, 'cstar_embed', lambda *a, **k: None)
+    monkeypatch.setattr(mt_ret.bs_artret, 'r11_stored', lambda arm, a: dict(ap=np.full(3, 0.5), rows=np.arange(3)))
+    monkeypatch.setattr(mt_ret, 'readout_doc', lambda xs, labels, r_a, workers: dict(table=table, pick='none+k0'))
+    return docs
+
+
+def test_replay_iii_complete_run_passes(stub_replays):
+    res = mt_ret.replay_iii_ret(10000, 1)                       # the control: the stubs agree, so only a reduction can fail
+    assert res['values_ok'] and res['complete'] and res['passed'] and res['max_abs_diff'] == 0
+
+
+@pytest.mark.parametrize('kw', [dict(parts=('r14',)), dict(parts=('r11',)), dict(n_draws=100), dict(aspects=('emotion',))],
+                         ids=['one part r14', 'one part r11', 'fewer draws', 'subset of aspects'])
+def test_replay_iii_reduced_run_cannot_pass(stub_replays, kw):
+    res = mt_ret.replay_iii_ret(**dict(dict(n_draws=10000, workers=1), **kw))
+    assert res['values_ok'] is True and res['complete'] is False and res['passed'] is False
+
+
+def test_replay_vi_complete_run_passes(stub_replays):
+    res = mt_ret.replay_vi(None, 1)
+    assert res['values_ok'] and res['complete'] and res['passed'] and res['arms'] == list(mt_ret.rt_data.ARMS)
+
+
+@pytest.mark.parametrize('arms', [('cstar',), ('plain', 'instructed')], ids=['one arm', 'two arms'])
+def test_replay_vi_subset_of_arms_cannot_pass(stub_replays, arms):
+    res = mt_ret.replay_vi(arms, 1)
+    assert res['values_ok'] is True and res['complete'] is False and res['passed'] is False
