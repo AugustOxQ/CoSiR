@@ -233,9 +233,24 @@ def legacy_loader(enc, names):
 
 
 def store_loader(enc, names):
-    """The r14 store reader (ticket 01): `bs_stores.load('artelingo', view, keys)`."""
+    """The r14 store reader (ticket 01), same output as `legacy_loader`: float32, rows in the order of `names`, unit norm.
+    `names` are painting names; `bs_stores` keys ArtELingo rows by `image` (genre folder + file), so each name is mapped
+    through the store's own index (`painting` -> `image`, one-to-one, asserted)."""
     import bs_stores
-    return bs_stores.load('artelingo', enc, list(names))
+    view = 'qwen_default' if enc == 'qwen' else enc
+    (folder,) = bs_stores.folders('artelingo', view)
+    rows = json.loads((Path(folder) / 'index.json').read_text())['images']
+    to_image = {m['painting']: m['image'] for m in rows}
+    assert len(to_image) == len(rows), f'{folder}: duplicate painting names'
+    names = [str(n) for n in names]
+    missing = [n for n in names if n not in to_image]
+    assert not missing, f'{folder}: {len(missing)} painting names not in the index, e.g. {missing[:2]}'
+    x = bs_stores.load('artelingo', view, [to_image[n] for n in names])
+    norm = np.linalg.norm(x, axis=1, keepdims=True)
+    assert (norm > 0).all()
+    x = (x / norm).astype(np.float32)
+    assert np.isfinite(x).all()
+    return x
 
 
 def frozen_fixed(enc, names, cache, held_sha, loader=legacy_loader):
@@ -554,6 +569,8 @@ def main(argv=None):
     rp.add_argument('gate', choices=('vi', 'vii-matched', 'vii-sha', 'vii-removals', 'xii-f', 'xii-k', 'standin'))
     rp.add_argument('--recompute', action='store_true', help='fix partitions again into OUT/replays/cache and compare')
     rp.add_argument('--removals', nargs='+')
+    rp.add_argument('--loader', choices=('legacy', 'bs_stores'), default='legacy', help='xii-f --recompute: image reader')
+    rp.add_argument('--encs', nargs='+', choices=sorted(ENC), help='xii-f: encoders (default siglip2 clip_l14 siglip1)')
     args = p.parse_args(argv)
     t0 = time.monotonic()
     out = bs_paths.OUT
@@ -585,7 +602,8 @@ def main(argv=None):
     elif g == 'vii-removals':
         res = replay_0vii_removals(args.n_draws, args.workers, args.removals)
     elif g == 'xii-f':
-        res = replay_0xii_f(recompute_cache=cache)
+        res = replay_0xii_f(*([tuple(args.encs)] if args.encs else []), recompute_cache=cache,
+                            loader=store_loader if args.loader == 'bs_stores' else legacy_loader)
     else:
         res = replay_0xii_k(n_resamples=args.n_draws, workers=args.workers)
     path = out / f'replays/replay_{g}.json'
