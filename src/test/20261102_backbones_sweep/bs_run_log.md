@@ -98,3 +98,8 @@ times here are Amsterdam.
 - 11:47 early diagnostics: eight of ten ok (r0_rows 959 s, emoset_per_class_ap 810 s, held_spreads 852 s,
   r_e_vs_spread 126 s, the rest seconds). `photo_minus_cstar` and `emoset_uncut` failed alone (`ac_cluster` imported
   before `ctx()` puts its folder on the path; an `all` run is not hit). Fixed (import order; change log), rerun.
+- 11:49 node402: photo sweep 45 of 45 units done; knob sweep 46 of 120 (about 20 units an hour on 3 workers): end
+  about 15:30. Early ablation sheet: 3 of 8 removals done (about 500 s each).
+- 11:55 part b spot re-derivation (spec §3.4, C13): five rows drawn before any sheet exists, `default_rng(14)`, in this
+  order: knob `k2=16`, `k11=80` (of 39), photo `lr=0.003` (of 14), ablation `content_correction`, `relational` (of 8).
+  Codex re-derives them from the stored partitions and per-query AP after stage 4.
