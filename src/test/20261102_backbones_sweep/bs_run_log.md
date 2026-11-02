@@ -168,3 +168,9 @@ times here are Amsterdam.
   `OUT/stage5_run4.log`). Codex 5h window 76% left (report job needs 14%).
 - 17:11 stage 5 rc 0 (1,499 s): **all twelve diagnostics ok** (knob_curves and photo_length now too); `OUT/diag/`,
   figure `OUT/diag/knob_curves.png`. 17:13 Codex job (gpt-6.1-sol, medium): the auto report draft.
+- 17:19 Codex draft back (6 min; 5h window 56% to 49%): `docs/reports/auto/percept/2027-01-02_backbones_sweep.md`,
+  figure copy, index row. It found the handoffs' teacher count wrong: `outcomes.json` gives **18 WIN, 5 LEVEL, 1 BELOW**
+  (the run 3 and run 4 handoffs said 17, 6, 1; checked by the run chat and the claim review). 17:20 claim review (Sonnet
+  high worker): about 235 numbers checked, none wrong; 4 must-fix (BELOW cell missing from title and brief, storage
+  line, a reading too strong) and 10 minor; all applied by the run chat. Storage items listed on
+  `.scratch/pending_deletions.md`.
