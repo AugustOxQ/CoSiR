@@ -226,7 +226,7 @@ def _dev_outputs(folder, aspect, seed):
         return {side: z[side] for side in z.files}
 
 
-def _record(enc, row, ctx, seed, device, smoke, max_epochs, root, seconds, outcome):
+def _record(enc, row, ctx, seed, device, smoke, max_epochs, root, seconds):
     commit, dirty = code_state()
     record = dict(encoder=enc, backbone=ctx.backbone, width=ctx.width, row=row, name=ctx.arm, seed=seed,
                   config=rs_full.jsonable(ctx.cfg), smoke=smoke, max_epochs=max_epochs, device=str(device),
@@ -294,7 +294,7 @@ def train(enc, row, seeds, device, root, *, keep='all', smoke=False, max_epochs=
                 seconds = time.monotonic() - start
                 if outcome.get('status') == 'failed':
                     raise CstarNonFiniteLoss(f'{arm} s{seed}: {outcome["cause"]}')
-                record = _record(enc, row, ctx, seed, device, smoke, max_epochs, folder, seconds, outcome)
+                record = _record(enc, row, ctx, seed, device, smoke, max_epochs, folder, seconds)
                 dev = {a: _dev_outputs(folder / 'train' / arm, a, seed) for a in ASPECTS} if keep == 'none' else None
             finally:
                 if cleanup is not None:
