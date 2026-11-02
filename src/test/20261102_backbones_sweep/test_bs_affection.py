@@ -304,3 +304,131 @@ def test_score_needs_the_stage1_file_before_any_test_photo(tmp_path, monkeypatch
         monkeypatch.setattr(obj, name, touched)
     with pytest.raises(FileNotFoundError):
         A.score('siglip2', root=tmp_path)
+
+
+# ------------------------------------------------------------------------------------- review fixes (ticket 07)
+def write_r12_files(tmp_path, monkeypatch, r12_r, picks=R12_PICKS):
+    """r12's ranges and picks files replaced by small tmp copies (the loaders' module constants)."""
+    rp, pp = tmp_path / 'r12_ranges.json', tmp_path / 'r12_picks.json'
+    rp.write_text(json.dumps(ranges_with_map_r(r12_r)))
+    pp.write_text(json.dumps({'affection': picks}))
+    monkeypatch.setattr(A, 'R12_RANGES', rp)
+    monkeypatch.setattr(A, 'R12_PICKS', pp)
+
+
+@pytest.fixture
+def stage1_world(tmp_path, val, monkeypatch):
+    """Five-seed val exports of `photo_siglip2` on disk and patched loaders; the test split raises on any read."""
+    for s in range(5):
+        write_export(tmp_path, 'photo_siglip2', 'val', s, val['keys'], val['stored'][s])
+
+    def keys(split):
+        assert split == 'val', f'stage 1 read the {split} split'
+        return val['keys']
+    monkeypatch.setattr(ac_data, 'keys', keys)
+    monkeypatch.setattr(ac_data, 'labels', lambda split: val['labels'] if split == 'val' else pytest.fail(f'labels({split})'))
+    monkeypatch.setattr(ac_data, 'emotion_dist', lambda split: val['dist'] if split == 'val' else pytest.fail(split))
+    monkeypatch.setattr(A, 'frozen_embed', lambda enc, ks: val['embed'][0])
+    write_r12_files(tmp_path, monkeypatch, R12_BIG)
+    orig = A.photo_stage1                                           # the synthetic rows are D wide, not the 2048 of a photo model
+    monkeypatch.setattr(A, 'photo_stage1', lambda *a, **k: orig(*a, width=D, **k))
+    return tmp_path
+
+
+def test_stage1_frozen_pick_uses_r12s_range_not_the_photo_models(stage1_world):
+    rec = A.stage1('siglip2', root=stage1_world, workers=1)
+    own = rec['ranges']['map']
+    assert own < 0.1 and rec['photo_readout']['pick'] != 'none+k0'
+    assert rec['frozen']['r'] == pytest.approx(R12_BIG) and rec['frozen']['r'] != own     # r12's r_ret,mAP, D19
+    assert rec['frozen']['pick'] == 'none+k0'                      # with r12's huge range nothing beats R0
+    assert A.read_record(A.ranges_path('siglip2', stage1_world), 'siglip2')['frozen']['r'] == pytest.approx(R12_BIG)
+
+
+def test_stage1_does_not_load_the_test_split(stage1_world):
+    A.stage1('siglip2', root=stage1_world, workers=1)               # ac_data.keys('test') / labels('test') would fail here
+    pa = A.PhotoArm('photo_siglip2', stage1_world)
+    assert set(pa.keys) == {'val'}
+
+
+def test_read_record_refuses_a_frozen_range_that_is_not_r12s(stage1_world):
+    path = A.ranges_path('siglip2', stage1_world)
+    A.stage1('siglip2', root=stage1_world, workers=1)
+    doc = json.loads(path.read_text())
+    for r in (doc['ranges']['map'], 0.5):                          # the photo model's own range; any other number
+        bad = dict(doc, frozen=dict(doc['frozen'], r=r))
+        path.write_text(json.dumps(bad))
+        with pytest.raises(AssertionError, match='frozen'):
+            A.read_record(path, 'siglip2')
+    path.write_text(json.dumps(dict(doc, frozen=dict(doc['frozen'], r=None, scores=None))))
+    assert A.read_record(path, 'siglip2')['frozen']['r'] is None   # a kept r12 pick has no range
+
+
+def frozen_world(val, monkeypatch):
+    """`frozen_embed` patched: the val key list gets one set of rows, its reversed copy (the "test" keys) another."""
+    labels = val['labels']
+    rows = {'val': make_rows(labels, 500, noise=1.6), 'test': make_rows(labels, 501, noise=1.6)}
+    which = {tuple(val['keys']): 'val', tuple(val['keys'][::-1]): 'test'}
+    monkeypatch.setattr(A, 'frozen_embed', lambda enc, ks: rows[which[tuple(ks)]])
+    return rows, val['keys'], val['keys'][::-1]
+
+
+def test_frozen_comparator_is_unseeded_and_equals_arm_retrieval(tmp_path, val, monkeypatch):
+    rows, vk, tk = frozen_world(val, monkeypatch)
+    labels = val['labels']
+    comp = A.frozen_comparator('siglip2', 'center+k3', vk, tk, labels, tmp_path, workers=1)
+    assert comp['arm'] == 'frozen_siglip2' and comp['readout'] == 'center+k3'
+    assert comp['labels'].shape == (3, len(labels)) and comp['labels'].dtype == np.int32    # 3 k-means states, no seeds
+    ref = ac_stats.arm_retrieval(lambda s: rows['val'], lambda s: rows['test'], 'center+k3', labels, seeds=None, workers=1)
+    assert comp['point'] == ref['point'] and np.array_equal(comp['ap'], ref['ap']) and np.array_equal(comp['rows'], ref['rows'])
+    assert np.array_equal(comp['labels'], ac_cluster.cached_partitions(rows['test'], 'x', tmp_path / 'other'))
+
+
+def test_clip_l14_bar_is_checked_against_r12s_stored_row(tmp_path, val, monkeypatch):
+    rows, vk, tk = frozen_world(val, monkeypatch)
+    labels = val['labels']
+    ref = A.frozen_comparator('siglip2', 'center+k3', vk, tk, labels, tmp_path / 'a', workers=1)
+    ami = ac_cluster.ami(ref['labels'], labels)
+
+    def verdict(**kw):
+        row = dict(ami=ami, readout='center+k3', map_picked=dict(map=ref['point'], per_seed=None))
+        row.update(kw)
+        path = tmp_path / 'verdict.json'
+        path.write_text(json.dumps(dict(rows=dict(clip=row))))
+        monkeypatch.setattr(A, 'R12_VERDICT', path)
+    verdict()
+    got = A.frozen_comparator('clip_l14', 'center+k3', vk, tk, labels, tmp_path / 'b', workers=1)
+    assert got['point'] == ref['point'] and got['arm'] == 'frozen_clip_l14'
+    verdict(ami=ami + 1e-6)                                         # r12 row differs in the AMI
+    with pytest.raises(AssertionError, match='r12'):
+        A.frozen_comparator('clip_l14', 'center+k3', vk, tk, labels, tmp_path / 'b', workers=1)
+    row = json.loads((tmp_path / 'verdict.json').read_text())
+    row['rows']['clip'].update(ami=ami, map_picked=dict(map=ref['point'] + 1e-6, per_seed=None))     # ... in the point
+    (tmp_path / 'verdict.json').write_text(json.dumps(row))
+    with pytest.raises(AssertionError, match='r12'):
+        A.frozen_comparator('clip_l14', 'center+k3', vk, tk, labels, tmp_path / 'b', workers=1)
+    # the other encoders have no r12 row to compare with
+    A.frozen_comparator('siglip1', 'center+k3', vk, tk, labels, tmp_path / 'c', workers=1)
+
+
+@pytest.mark.parametrize('argv', [['score', '--enc', 'qwen'], ['ranges', '--enc', 'qwen'], ['standin', 'prepare'],
+                                  ['standin', 'check']])
+def test_main_refuses_qwen_and_standin_on_the_production_folder(monkeypatch, capsys, argv):
+    import bs_paths
+    monkeypatch.setattr(bs_paths, 'OUT', bs_paths.DEFAULT_OUT)
+    for name in ('stage1', 'score', 'standin_prepare', 'standin_check'):
+        monkeypatch.setattr(A, name, lambda *a, **k: pytest.fail('ran on the production folder'))
+    with pytest.raises(SystemExit) as e:
+        A.main(argv)
+    assert e.value.code != 0 and 'BS_OUTPUTS' in capsys.readouterr().err
+
+
+def test_main_lets_a_real_encoder_and_a_redirected_folder_through(monkeypatch, tmp_path):
+    import bs_paths
+    calls = []
+    monkeypatch.setattr(A, 'standin_prepare', lambda *a, **k: calls.append('prepare') or [])
+    monkeypatch.setattr(bs_paths, 'OUT', tmp_path)
+    assert A.main(['standin', 'prepare']) == 0 and calls == ['prepare']
+    monkeypatch.setattr(bs_paths, 'OUT', bs_paths.DEFAULT_OUT)
+    monkeypatch.setattr(A, 'stage1', lambda *a, **k: dict(ranges=dict(clu=1, map=1), photo_readout=dict(pick='p'),
+                                                          frozen=dict(pick='f')))
+    assert A.main(['ranges', '--enc', 'siglip2']) == 0

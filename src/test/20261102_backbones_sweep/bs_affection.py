@@ -68,6 +68,8 @@ VIEW = {'qwen': 'qwen_default', 'siglip2': 'siglip2', 'siglip1': 'siglip1', 'cli
 R12_PICK_ARM = {'qwen': 'plain', 'clip_l14': 'clip'}        # frozen arms that keep r12's committed pick (D19)
 R12_PICKS = pf_paths.R12_OUT / 'stage1/picks.json'
 R12_RANGES = pf_paths.R12_OUT / 'stage0b/ranges.json'
+R12_VERDICT = pf_paths.R12_OUT / 'stage2/verdict.json'
+R12_BAR_ARM = {'clip_l14': 'clip'}                          # frozen bars that r12 scored (row of its stage 2 verdict)
 SC_ROWS = (('SC4', 'clu', 'frozen'), ('SC5', 'ret', 'frozen'), ('SC6', 'clu', 'teacher'), ('SC6', 'ret', 'teacher'))
 
 
@@ -116,12 +118,18 @@ class PhotoArm:
 
     def __init__(self, arm, root=None):
         self.arm, self.root = arm, root
-        self.keys = {sp: ac_data.keys(sp) for sp in ('val', 'test')}
+        self.keys = {'val': ac_data.keys('val')}                # the test split is loaded only when scoring (`test_keys`)
         self._cache = {}
+
+    def test_keys(self):
+        if 'test' not in self.keys:
+            self.keys['test'] = ac_data.keys('test')
+        return self.keys['test']
 
     def stored(self, split, seed):
         if (split, seed) not in self._cache:
-            self._cache[(split, seed)] = load_export(self.arm, split, seed, self.keys[split], self.root)
+            keys = self.test_keys() if split == 'test' else self.keys[split]
+            self._cache[(split, seed)] = load_export(self.arm, split, seed, keys, self.root)
         return self._cache[(split, seed)]
 
     def embed(self, split, seed):
@@ -204,6 +212,8 @@ def read_record(path, enc):
         assert len(per_seed) == 5 and rec['ranges'][m] == rec['ranges_doc'][m]['r'] == ac_stats.seed_range(per_seed), (path, m)
         assert np.isfinite(rec['ranges'][m]) and rec['ranges'][m] > 0, (path, m)
     assert rec['photo_readout']['pick'] in rec['photo_readout']['scores'] and rec['frozen']['pick'], path
+    r12_r = ac_stats.load_ranges(R12_RANGES)['map']['r']      # the frozen pick uses r12's range (D19), never the photo model's
+    assert rec['frozen']['r'] in (None, r12_r), (path, 'frozen pick range is not r12 r_ret,mAP', rec['frozen']['r'], r12_r)
     return rec
 
 
@@ -274,7 +284,21 @@ def frozen_comparator(enc, readout, val_keys, test_keys, labels, partition_root,
     res = ac_stats.arm_retrieval(lambda s: x_val, lambda s: x_test, readout, labels, seeds=None, workers=workers)
     assert res['dropped'] == 0, (readout, 'queries without a relevant item', res['dropped'])
     parts = ac_cluster.cached_partitions(x_test, f'affection__test__{name}__s-', partition_root)
-    return dict(arm=name, readout=readout, ap=res['ap'], rows=res['rows'], point=res['point'], labels=parts)
+    out = dict(arm=name, readout=readout, ap=res['ap'], rows=res['rows'], point=res['point'], labels=parts)
+    check_against_r12(enc, out, labels)
+    return out
+
+
+def check_against_r12(enc, comp, labels, verdict_path=None):
+    """CLIP L/14's frozen bar is r12's `clip` arm: its read-out, mAP at the pick and AMI must equal r12's stored row of
+    `stage2/verdict.json` within 1e-9 (as r13's `pf_stage3.load_comparators` does for its arms). No-op for other encoders."""
+    arm = R12_BAR_ARM.get(enc)
+    if arm is None:
+        return
+    row = json.loads(Path(verdict_path or R12_VERDICT).read_text())['rows'][arm]
+    assert comp['readout'] == row['readout'], f"{enc}: read-out {comp['readout']} differs from r12's {row['readout']}"
+    assert abs(comp['point'] - row['map_picked']['map']) <= TOL, f"{enc}: mAP point differs from r12 row {arm}"
+    assert abs(ac_cluster.ami(comp['labels'], labels) - row['ami']) <= TOL, f"{enc}: AMI differs from r12 row {arm}"
 
 
 def score_cells(enc, cand, r, labels, comparators, partition_root, draws_clu=N_CLU, draws_ret=N_RET, workers=8):
@@ -313,7 +337,7 @@ def score(enc, root=None, workers=8, draws_clu=N_CLU, draws_ret=N_RET, cache=Non
     r = {'clu': rec['ranges']['clu'], 'map': rec['ranges']['map']}
     r12_picks = json.loads(R12_PICKS.read_text())['affection']
     pa = PhotoArm(f'photo_{enc}', root)
-    val_keys, test_keys, labels = pa.keys['val'], pa.keys['test'], ac_data.labels('test')
+    val_keys, test_keys, labels = pa.keys['val'], pa.test_keys(), ac_data.labels('test')
     cache = Path(cache or root / 'stage3/partitions')
     comps = pf_stage3.load_comparators(r12_picks, len(labels))
     comparators = dict(teacher=comps['teacher'],
@@ -467,6 +491,9 @@ def main(argv=None):
     st = sub.add_parser('standin', help='the Qwen stand-in: prepare | check')
     st.add_argument('what', choices=('prepare', 'check'))
     args = p.parse_args(argv)
+    if P.OUT == P.DEFAULT_OUT and (args.cmd == 'standin' or getattr(args, 'enc', None) == 'qwen'):
+        p.error('the Qwen stand-in writes cells that ticket 09 would stop on: set BS_OUTPUTS to a scratch folder first '
+                f'(OUT is the production folder {P.DEFAULT_OUT})')
     t0 = time.monotonic()
     out = P.OUT
     assert not str(out).startswith(str(P.R13_OUT)) and not str(out).startswith(str(P.R12_OUT)), 'never write into an older round'
