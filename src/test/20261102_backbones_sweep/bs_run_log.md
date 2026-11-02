@@ -34,4 +34,15 @@ times here are Amsterdam.
   v (194 s), ix (c*, photo): all rc 0. 08:26 gate ii rc 0. **Stage 0: 26 of 26 gates pass, none failed or pending.**
   `status.json` waits for the three part a results and stage 2.
 - 08:27 `exports-qwen`: photo_qwen and cstar_qwen EmoSet exports, rc 0, 18 s, none missing.
+- 08:32 part a SigLIP 2 succeeded: 10 of 10 units ok, first attempt each (`part_a_siglip2.json` status ok). Pulled,
+  verified, 2.96 GB.
+- 08:33 sync of c5d7673 (log only; the launch refused the older node commit), then sweep worker 1:
+  `20261102-073350-c5d7673`, slot 2.
+- 08:35 `exports-part-a --enc siglip2` on the local CPU.
+- 08:35 SigLIP 2 exports rc 0 (held, Affection photo, EmoSet photo; 32 s, none missing); stage 1 SigLIP 2 started.
+- 08:36 part a SigLIP 1 succeeded: 10 of 10 ok. 08:39 sweep worker 2: `20261102-073909-c5d7673`, slot 0. Pulled,
+  verified. 08:40 `exports-part-a --enc siglip1`.
+- 08:41 SigLIP 1 exports rc 0 (46 s, none missing).
+- 08:46 stage 1 SigLIP 2 rc 0 (640 s): ranges, ArtELingo retrieval pick, Affection ranges and pick; record committed
+  (1493b87) before any held number. 08:46 stage 1 SigLIP 1 started.
 - `res/r14_bs -> /data/SSD2/cosir_r14/20261102_backbones_sweep/outputs` created (plan step 7).
