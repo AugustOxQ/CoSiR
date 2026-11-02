@@ -1524,3 +1524,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-02-r14-run2-handoff.md
 - New chat: tab 'r14 run 2', session 5b342cfb-243a-4b2e-b78b-21c498c9f997
 
+[brief] CoSiR: r14 run 2 -> r14 run 3 (2026-11-02 15:00 Amsterdam)
+- Done: stage 3, C13 (2,768 items, 0 mismatches) and the verdicts: every claim holds (three encoders, paintings and photos; EmoSet).
+- State: all three sweep jobs ended; 162 of 165 units ok; knob row k11=20 failed on a missing node input (the base graphs).
+- Next: add that input, rerun the k11=20 row, pull all, then stage 4, stage 5, spot re-derivation, reports.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-02-r14-run3-handoff.md
+- New chat: tab 'r14 run 3', session 77c12d10-f22f-41f7-a44f-526d014fe576
+
