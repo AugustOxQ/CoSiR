@@ -12,6 +12,7 @@ from bs_cstar import S, V, ms_train, rb_encoders, rb_rows, rb_student, rg_full, 
 
 CPU = torch.device('cpu')
 R10_WEIGHTS = P.R10_OUT / 'full/weights/k11=40'
+R10_HELD = P.R10_OUT / 'full/held/k11=40/emotion__s0.json'
 needs_r10 = pytest.mark.skipif(not R10_WEIGHTS.exists(), reason='r10 outputs are not on this machine')
 
 
@@ -325,6 +326,12 @@ def test_held_export_of_a_checkpoint_of_any_width(monkeypatch, tmp_path, enc):
         assert (info['kind'], info['arm'], info['aspect'], info['seed'], info['width'], info['rows'], info['list_sha256']) == (
             'held', 'k11=40', aspect, seed, 2048, n, 'f' * 64)
         assert info['sha256'] == rb_student.sha_array(got) and info['encoder'] == P.ENCODERS[enc]['art']
+        assert info['vc3_attempts'] == 1 and info['vc3_problems'] == []                    # r10's readers index these
+        if R10_HELD.exists():                                                              # r10's own held sidecar: same keys, same types
+            theirs = json.loads(R10_HELD.read_text())
+            assert set(info) - set(theirs) == {'export_device'} and set(theirs) <= set(info)
+            for key in ('vc3_attempts', 'vc3_problems', 'kind', 'rows', 'width', 'dtype', 'switches', 'recipe'):
+                assert type(info[key]) is type(theirs[key]), key
     assert files(tmp_path / 'w') == sorted(files(tmp_path / 'w'))                    # the weights folder got no export
     assert not list((tmp_path / 'w').rglob('*.npz'))
     again = C.export_held(enc, 'ref', [0], tmp_path / 'w', out_root=tmp_path / 'o')   # an existing file must match

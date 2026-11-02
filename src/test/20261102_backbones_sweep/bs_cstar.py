@@ -399,7 +399,8 @@ def _export(kind, enc, row, seeds, root, device, out_root, smoke):
                     for side, y in out.items():
                         problem = rg_full.vc3_problem(y, n_rows=len(names))
                         assert problem is None, f'{path}: {side}: {problem}'
-                    rb_student.write_outputs(path, out, dict(meta, sha256=rb_student.sha_array(out['img'])))
+                    extra = dict(vc3_attempts=1, vc3_problems=[]) if kind == 'held' else {}     # as rg_full.infer_held writes (r10's readers)
+                    rb_student.write_outputs(path, out, dict(meta, sha256=rb_student.sha_array(out['img']), **extra))
                     arrays, info = rb_student.read_outputs(path)
                 result[aspect, seed] = arrays
     return result
