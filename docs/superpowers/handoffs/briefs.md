@@ -1580,3 +1580,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-02-r15-build2-handoff.md
 - New chat: tab 'r15 build 2', session 877af933-b98a-4928-b297-dab9007ed6b9
 
+[brief] CoSiR: r15 build 2 -> r15 build 3 (2026-11-02 22:15 Amsterdam)
+- Done: all 8 tickets built, checked and merged into `r15-mmart-test` (eb7f205, pushed); 251 tests pass.
+- State: every stage 0 gate checked on real data passes: (ii) 4 of 4, (iii) clustering and retrieval, (iv), (vi), max difference 0 (6.1e-5 for Qwen's export).
+- Next: the end-to-end smoke (`mt_run_cpu.sh smoke`) and the final Opus `xhigh` review, in parallel; fix wave; merge; open the run chat.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-02-r15-build3-handoff.md
+- New chat: tab 'r15 build 3', session 1814cb12-2f45-4cf8-9ff6-54679c366f39
+
