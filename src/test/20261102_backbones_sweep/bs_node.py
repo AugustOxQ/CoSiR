@@ -20,7 +20,8 @@ the smoke, the time estimate). Run from the repo root, on the node inside `scrip
     estimate                   node time left from `OUT/node/units.jsonl`: rows that cannot finish by `bs_paths.NODE_END`.
 
 Rerun rule (spec §3.4): a unit that raises (a non-finite loss included) is run once more with the same seed; a second
-failure is recorded and stops that encoder's part (part a: `OUT/node/part_a_<enc>.json`) or that row (sweeps:
+failure is recorded and stops that kind of run (part a: `OUT/node/part_a_<enc>.json`: a failed X photo run stops the X photo
+units only, a failed X-c* run stops the part) or that row (sweeps:
 `OUT/sweeps/<kind>/<row>/failed.json`; its other seeds are skipped). Every unit appends a line to `OUT/node/units.jsonl`.
 
 Claims: `os.mkdir(OUT/sweeps/.claims/<kind>__<row>__s<seed>)` (atomic); a unit is done when its `metrics.json` exists.
@@ -182,31 +183,42 @@ def unit_xphoto_part_a(enc, seed, device, pdata):
     cstar_root = P.OUT / 'cstar' / enc
 
     def fn():
+        existed = (bs_photo.run_dir(enc, bs_photo.REF, seed, P.OUT) / 'run.json').is_file()    # train() skips a finished run
         data, graphs = pdata.get(enc)
         out = bs_photo.train(enc, [bs_photo.REF], [seed], device, keep='all', root=P.OUT, max_epochs=photo_epochs(),
                              data=data, graphs=graphs, cstar_root=cstar_root)
         rec = out[(bs_photo.REF, seed)].record
-        return dict(best_epoch=rec['best_epoch'], epochs=history_len(rec), train_seconds=rec['seconds'])
+        return dict(skipped=existed, best_epoch=rec['best_epoch'], epochs=history_len(rec), train_seconds=rec['seconds'])
     return attempt(f'xphoto__{enc}__s{seed}', fn, dict(kind='xphoto', enc=enc, seed=seed))
 
 
 def part_a(enc, device):
+    """Seeds 0 to 4: the X-c* run, then the X photo run from it. A run that fails twice stops only its own kind (§6, D18: a
+    failed photo run leaves the paintings verdict as it is): after an X photo failure the later X-c* seeds still train and
+    the later X photo units are skipped; after an X-c* failure that seed's photo unit cannot run (it starts from X-c*) and
+    the part stops (failed X-c* runs mean photo_runs failed, bs_run.part_a_state)."""
     assert enc in P.NEW_ENCODERS, enc
-    pdata, done, failed = PhotoData(), [], None
+    pdata, done, failed, photo_failed = PhotoData(), [], None, None
     for seed in P.SEEDS:
-        for step in (lambda: unit_cstar_part_a(enc, seed, device), lambda: unit_xphoto_part_a(enc, seed, device, pdata)):
-            rec = step()
-            if rec['status'] == 'failed':
-                failed = dict(label=rec['label'], errors=rec['errors'])
-                break
-            done.append(rec['label'])
-        if failed:
+        rec = unit_cstar_part_a(enc, seed, device)
+        if rec['status'] == 'failed':
+            failed = dict(label=rec['label'], errors=rec['errors'])
             break
-    doc = dict(encoder=enc, status='failed' if failed else 'ok', failed=failed, done=done, finished_at=now(),
+        done.append(rec['label'])
+        if photo_failed:
+            print(f'BS_NODE part-a {enc}: X photo s{seed} skipped (after {photo_failed["label"]} failed)', flush=True)
+            continue
+        rec = unit_xphoto_part_a(enc, seed, device, pdata)
+        if rec['status'] == 'failed':
+            photo_failed = dict(label=rec['label'], errors=rec['errors'])
+            continue
+        done.append(rec['label'])
+    doc = dict(encoder=enc, status='failed' if failed or photo_failed else 'ok', failed=failed, photo_failed=photo_failed,
+               done=done, finished_at=now(),
                host=socket.gethostname(), smoke=smoke_on())
     atomic_write(NODE / f'part_a_{enc}.json', jdump(doc))
     print(f'BS_NODE part-a {enc}: {doc["status"]}', flush=True)
-    return 1 if failed else 0
+    return 1 if failed or photo_failed else 0
 
 
 # ------------------------------------------------------------------------------------------------- the sweeps
@@ -421,6 +433,7 @@ def estimate(now_ts=None, units_path=None, print_out=True):
     import bs_photo
     lines = [u for u in read_units(units_path) if u.get('status') == 'ok']
     real = [u for u in lines if not u.get('smoke')]
+    from_smoke = bool(lines) and not real
     lines = real or lines
 
     def secs(kind):
@@ -435,6 +448,8 @@ def estimate(now_ts=None, units_path=None, print_out=True):
     s_cstar, s_xphoto = secs('cstar'), secs('xphoto')
     sec = dict(cstar=s_cstar, xphoto=s_xphoto, knob=secs('knob') or s_cstar, photo=secs('photo') or s_xphoto)
     notes = []
+    if from_smoke:
+        notes.append('from smoke units (2 epochs, unscaled): full runs take longer')
     if sec['cstar'] is None:
         notes.append('no X-c* unit timed yet; no estimate')
         out = dict(per_unit=sec, notes=notes, late_rows=[], finish=None)
