@@ -525,6 +525,7 @@ def main(argv=None):
             return 0
         picks = read_json(ppath)
         assert picks['encoder'] == args.enc
+        assert picks['cstar']['ranges'] == ranges, f'{ppath}: picks made with another ranges file; run pick again'
         cells = score_encoder(args.enc, root, ranges, picks, out / 'stage3/artret', args.n_draws, args.workers)
         write_cells(out / 'stage3' / CELLS_NAME, cells, [args.enc])
         print(f'{args.enc}: {len(cells)} cells -> {out / "stage3" / CELLS_NAME} ({time.monotonic() - t0:.0f}s)')
