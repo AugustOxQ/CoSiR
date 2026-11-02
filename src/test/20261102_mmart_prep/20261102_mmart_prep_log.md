@@ -102,5 +102,7 @@ ms/image, SigLIP about 26, CLIP L/14 about 13: the full run is about 2 h (new se
   0.959). Samples at >= 0.99 are the same painting under another name (`...-avenue.jpg` against `...-avenue-1`,
   cosine 1.000). On paintings, 0.85 removes neighbours by artist and subject, not only copies; on EmoSet photos it
   removed 2% (r14).
-- **Test count after the spec's cut** (exact copies, then >= 0.85, then the md5 groups; D5, D10): about 10,400; the
-  build computes the exact number. The threshold question goes to the user before the build (direction log).
+- **Test cut** (exact copies, then near-copies, then the md5 groups; D5, D10): at 0.85, 10,403 paintings. The user
+  moved the threshold to 0.95 (2026-11-02 21:00, after seeing the recommendation; spec D19): **16,384 test
+  paintings**. The 0.85 set (10,403) becomes the far-subset diagnostic. All 34 exact copies have cosine >= 0.9995, so
+  they fall inside every threshold.

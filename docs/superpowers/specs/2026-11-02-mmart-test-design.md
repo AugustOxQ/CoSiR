@@ -1,7 +1,7 @@
 # c* on MMArt's unseen paintings, four encoders: design
 
 > Date: 2026-11-02 18:30, revised after the rule review · Status: approved 2026-11-02 18:37 (from the brief, r15 decide; no
-> container restart) · Kind: experiment
+> container restart); amended 2026-11-02 21:00 (D19: the test cut at 0.95, user) · Kind: experiment
 > Builds on: [report 2027-01-02](../../reports/auto/percept/2027-01-02_backbones_sweep.md) (c* holds on three more
 > encoders; the photo model beats its teacher on EmoSet); decisions C and A of 2026-11-02 and the grill in the r15
 > decide chat (2026-11-02, one round and a closing summary, about 18:15 to 18:20; its answers are §4) · Constitution:
@@ -46,7 +46,8 @@ report on Tuesday 11-03, at the latest 11-04 12:00.
 
 **Check these.**
 1. Your picks after seeing our recommendation: the WIN bar on the teacher cells won on ArtELingo (D3); the minor
-   batch (D5), with the test cut at 0.85 and PercepT frozen with its ArtELingo topics.
+   batch (D5), with PercepT frozen with its ArtELingo topics. The test cut moved from 0.85 to 0.95 after the
+   near-copy counts (D19, user after seeing the recommendation): 16,384 test paintings.
 2. The WIN-bar cells of the three other encoders follow the same rule from r14's results (agent default, D7).
 3. The main stage is a claim test, not a confirmation, since it feeds paper claims (agent default, D6); the loop
    stays medium.
@@ -118,10 +119,11 @@ Per encoder X (Qwen, SigLIP 2, SigLIP 1, CLIP L/14), on MMArt features only at t
 | MMArt train (ArtELingo train paintings) | not touched | none |
 
 Test cut (D5), in this order: drop the 34 exact byte copies of ArtELingo train or validation images; then every
-test painting whose default Qwen image has cosine ≥ 0.85 with any of the 49,121 ArtELingo train and validation
+test painting whose default Qwen image has cosine ≥ 0.95 (D19) with any of the 49,121 ArtELingo train and validation
 paintings (the prep queue's `mmart_nearcopy.parquet`; float32, L2-normalized, joined by key); then, of the remaining
 test paintings sharing an md5, keep the first in the order below (D10; 7 groups, 8 paintings dropped). The cut set is
-the evaluation set of every arm. Labels: MMArt's 9 emotion classes as given ("something else" included), its 20
+the evaluation set of every arm: 16,384 paintings (computed 2026-11-02 21:00 from the index and the near-copy file;
+the build recomputes it and gate (i) checks it). Labels: MMArt's 9 emotion classes as given ("something else" included), its 20
 style classes, the 10 WikiArt genre classes.
 
 Populations (r10, r11 and r14, unchanged; D16): clustering, for every arm and for the validation ranges, fits
@@ -202,7 +204,8 @@ After the verdicts, deciding nothing: R0 rows for every arm; clustering with K =
 AP; the 11,528 shared ArtELingo held paintings scored with MMArt labels (SC1, SC2 and SC4 cells, same protocol, picks
 of stage 1), beside their ArtELingo-label numbers, which separates new labels from new images; the unseen-artist
 subset (artist = the part of the WikiArt file name before the first underscore; test paintings whose artist has no
-ArtELingo train painting) with its count and SC1, SC2 and SC4 cells (D14); the uncut test set; the near-copy count
+ArtELingo train painting) with its count and SC1, SC2 and SC4 cells (D14); the far subset (D19: the cut at 0.85, 10,403
+paintings, SC1, SC2 and SC4 cells; it replaces the uncut test set); the near-copy count
 with its 0.80 to 1.0 histogram and the removed paintings per class; test pairs with default-Qwen cosine ≥ 0.95 inside
 the cut set; each encoder's share of the teacher's gain over the plain image; seed spreads on test
 beside the validation ranges; the strongest PercepT entry (C1).
@@ -223,7 +226,7 @@ Grill rows: the r15 decide chat, 2026-11-02 (decision A about 18:00; round 1 abo
 | D2 | Scope | all four encoders | "a more complete test" (Qwen c* only) | user (Q1 b) | 2026-11-02 18:15 |
 | D3 | Teacher bar | per cell: WIN bar ("better than") in the cells c* won on ArtELingo, LEVEL or WIN ("level with or better than") in all cells | "good reason": no extra cost, licenses "better than" on paintings (LEVEL or WIN only, as r14; WIN in all six) | user, after seeing the recommendation (Q2 d) | 2026-11-02 18:20 |
 | D4 | Where picks and ranges come from | MMArt validation with MMArt labels, as Affection (r12) and EmoSet (r14) | one rule for every new set (all frozen from ArtELingo; ranges only) | user (Q3 h) | 2026-11-02 18:15 |
-| D5 | Minor batch | test cut (exact copies, near-copies at 0.85 to ArtELingo train and validation), unlabelled per aspect dropped; r14's verdict structure, a failed verdict stands; K = 20, seeds 0 to 4, no training, class-count K as a diagnostic; matched arms frozen with ArtELingo topics; the shared held diagnostic; local CPU, build tonight, run and report 11-03 | the grill's minor batch i to vi | user, after seeing the recommendation | 2026-11-02 18:15 |
+| D5 | Minor batch | test cut (exact copies, near-copies at 0.85 to ArtELingo train and validation; the threshold changed to 0.95 by D19), unlabelled per aspect dropped; r14's verdict structure, a failed verdict stands; K = 20, seeds 0 to 4, no training, class-count K as a diagnostic; matched arms frozen with ArtELingo topics; the shared held diagnostic; local CPU, build tonight, run and report 11-03 | the grill's minor batch i to vi | user, after seeing the recommendation | 2026-11-02 18:15 |
 | D6 | Stage types | stage 2 a claim test; stage 1 a sweep on development only; stage 3 descriptive | the result feeds paper claims (confirmation) | agent default | 2026-11-02 18:30 |
 | D7 | WIN-bar cells per encoder | the cells WIN against the teacher on ArtELingo held: Qwen emotion AMI, style AMI, genre mAP (report 12-28, r11 stage 5); SigLIP 2, SigLIP 1, CLIP L/14 emotion AMI, style AMI, style mAP, genre mAP (r14 SC6) | D3's rule applied to each encoder's own record (the Qwen cells for all) | agent default | 2026-11-02 18:30 |
 | D8 | Validation teacher views | read the stored ArtELingo `<view>_s2img` views (r11's) of the same images | byte-identical images (57 filed in another style folder, md5 checked); all 5,769 found in each view (rule review) (a fresh extraction of 17,307 images, about 25 min GPU) | agent default | 2026-11-02 18:30 |
@@ -238,7 +241,10 @@ Grill rows: the r15 decide chat, 2026-11-02 (decision A about 18:00; round 1 abo
 | D17 | Gate scope | the table under §3.5 | a failure voids only the cells that use the failed part (an encoder's whole verdict for any gate) | agent default (rule review) | 2026-11-02 18:35 |
 | D18 | Mapper replay tolerance | CPU probabilities within 1e-5; readings within 1e-9 only from stored probabilities | the mappers ran on CUDA; a 1e-6 change can flip an argmax (readings within 1e-9 from CPU probabilities) | agent default (rule review) | 2026-11-02 18:35 |
 
-**Amendments**: none.
+| D19 | Test cut threshold | cosine ≥ 0.95 (16,384 test paintings); the 0.85 cut becomes the far-subset diagnostic in place of the uncut set | the near-copy check (19:55): at 0.85 the cut removed 6,375 of 16,782 (38%), mostly different paintings by the same artist (45% to 96% same artist per band); true copies sit at ≥ 0.99; 0.95 removes 2.4%, as EmoSet's 0.85 removed 2%, and keeps same-artist paintings as ArtELingo's own held split does | user, after seeing the recommendation | 2026-11-02 21:00 |
+
+**Amendments**: D19 (2026-11-02 21:00, user) changes D5's cut from 0.85 to 0.95 after the near-copy counts; no test
+score had been read.
 
 ## 5. Assumptions and open questions
 
@@ -300,7 +306,7 @@ Exceptions: none.
 
 | What could make the result wrong or misleading | How we would notice | What we do then |
 |---|---|---|
-| Test paintings near-copy ArtELingo train or validation paintings | the near-copy count and histogram | the cut (0.85); counts reported |
+| Test paintings near-copy ArtELingo train or validation paintings | the near-copy count and histogram | the cut (0.95, D19); counts reported; the far subset (0.85) as a diagnostic |
 | Shared artists make the test easier than "unseen paintings" suggests | the unseen-artist diagnostic | the claim says "paintings outside ArtELingo", not "unseen artists" |
 | MMArt's emotion labels measure something else than ours (43% agreement) | per-class AP; the shared held diagnostic | emotion cells reported with this note; no label mapping |
 | A mapper is missing or does not replay | stage 0(iv) | retrain from saved topics, flagged; else that encoder's verdict inconclusive (§3.5 table) |
