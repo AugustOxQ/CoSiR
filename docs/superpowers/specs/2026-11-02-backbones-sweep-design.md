@@ -1,6 +1,7 @@
 # c* on three more encoders, the photo model on EmoSet, and the large analysis sweep: design
 
-> Date: 2026-11-02 03:40, revised after the rule review · Status: draft · Kind: experiment
+> Date: 2026-11-02 03:40, revised after the rule review · Status: approved 2026-11-02 04:13 (from the brief, r14
+> decide 3; no container restart) · Kind: experiment
 > Builds on: [report 2027-01-01](../../reports/auto/percept/2027-01-01_photo_finetune.md) (the photo model above its
 > teacher on Affection; licensed "level with or better than"); decision C and A of 2026-11-02 and the grill in the r14
 > decide 2 chat (2026-11-02, two rounds, ending about 03:35; its answers are §4) · Constitution:

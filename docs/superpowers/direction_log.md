@@ -84,7 +84,10 @@ proposed. PolyArt waits for the user's link. Deadlines: abstract 2026-11-10, pap
   over the teacher in AMI and mAP, qualified with a WIN and a LEVEL, the verdict stands after a failure; r12's rule
   makes the evaluation choices on EmoSet validation, K = 20 (user). (b) The full analysis: c*'s knob sensitivity at
   full scale, the ablation table with retrieval, the photo fine-tune sensitivity; the sweeps read validation only
-  (user). One spec, build and run; the extraction first, on the local GPU in the day (user).
+  (user). One spec, build and run; the extraction first, on the local GPU in the day (user). Spec:
+  [2026-11-02-backbones-sweep-design.md](specs/2026-11-02-backbones-sweep-design.md), rule-reviewed (Opus `xhigh`;
+  EmoSet in a hashed order, one failed encoder no longer stops part a) and approved from the brief 2026-11-02 04:13
+  (user; no container restart); build next.
 - **Why:** the user wants wider tests than one arm before the freeze (decision C); EmoSet is the only test that can
   license "better than the teacher".
 - **Links:** [report](../reports/auto/percept/2027-01-01_photo_finetune.md) ·
