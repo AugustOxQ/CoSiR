@@ -209,8 +209,8 @@ def test_near_copy_record_joins_by_key_when_the_stores_list_keys_in_other_orders
     d = bs_stores.WIDTH['qwen_default']
     ref_keys = [f'coco_affective/r{i}.jpg' for i in range(30)]
     ref = rng.normal(size=(30, d)).astype(np.float32)
-    val_keys = [f'image/awe/awe_{i:05d}.jpg' for i in range(6)]
-    test_keys = [f'image/fear/fear_{i:05d}.jpg' for i in range(5)]
+    val_keys = [f'image/awe/awe_{i:05d}.jpg' for i in (4, 1, 5, 0, 3, 2)]      # split-file order is not sorted
+    test_keys = [f'image/fear/fear_{i:05d}.jpg' for i in (3, 0, 4, 2, 1)]
     qvecs = rng.normal(size=(11, d)).astype(np.float32)
     planted = {0: 4, 3: 17, 8: 29}                               # query row -> reference row it nearly copies
     for qi, ri in planted.items():
