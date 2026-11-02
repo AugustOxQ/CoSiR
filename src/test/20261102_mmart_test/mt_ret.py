@@ -283,24 +283,26 @@ def _ranges_of(doc):
     return {a: float(doc[a]) for a in ASPECTS}
 
 
-def load_stage1(enc, ranges=None, picks=None, teacher=None):
+def load_stage1(enc, ranges=None, picks=None, teacher=None, need_teacher=True):
     """X's ranges, X's picks and the teacher's picks from the COMMITTED stage 1 records (`mt_paths.read_committed_record`:
     `stage1_<enc>.json` keys `ret_ranges` and `picks`, `stage1_teacher.json`), unless given (smoke and tests only: a given record
-    skips the committed-record check). Returns (ranges, arms, teacher arm)."""
+    skips the committed-record check). The teacher record is read only when `need_teacher` (SC4); else its arm is None (D17: a
+    missing teacher pick voids only the SC4 cells). Returns (ranges, arms, teacher arm)."""
     if ranges is not None or picks is not None or teacher is not None:
         assert MP.SMOKE, 'ranges, picks and teacher are read from the committed records; passing them is for smoke runs and tests'
     if ranges is None or picks is None:
         assert ranges is None and picks is None, 'give both ranges and picks, or neither'
         rec = MP.read_committed_record(f'stage1_{enc}.json')
         ranges, picks = rec['ret_ranges'], rec['picks']
-    if teacher is None:
-        teacher = MP.read_committed_record('stage1_teacher.json')
-    assert teacher.get('picks', teacher).get('ranges_encoder') == 'qwen', 'the teacher is picked once, with Qwen\'s ranges (D12)'
+    if need_teacher:
+        if teacher is None:
+            teacher = MP.read_committed_record('stage1_teacher.json')
+        assert teacher.get('picks', teacher).get('ranges_encoder') == 'qwen', 'the teacher is picked once, with Qwen\'s ranges (D12)'
     arms = _arms_of(picks)
     if 'encoder' in picks.get('picks', picks):
         assert picks.get('picks', picks)['encoder'] == enc
     assert {'cstar', 'frozen'} <= set(arms)
-    return _ranges_of(ranges), arms, _arms_of(teacher)['teacher']
+    return _ranges_of(ranges), arms, (_arms_of(teacher)['teacher'] if need_teacher else None)
 
 
 def score_encoder(enc, keyset='test', scs=('SC2', 'SC4'), n_draws=10000, workers=8, ranges=None, picks=None, teacher=None):
@@ -310,7 +312,7 @@ def score_encoder(enc, keyset='test', scs=('SC2', 'SC4'), n_draws=10000, workers
     (or are passed); the validation labels are not read here. Returns a list of cells (aspect by aspect: SC2, SC4)."""
     assert enc in MP.ENCODERS and set(scs) <= {'SC2', 'SC4'} and scs, scs
     data_tag = cell_data(keyset)
-    ranges, arms, teach = load_stage1(enc, ranges, picks, teacher)
+    ranges, arms, teach = load_stage1(enc, ranges, picks, teacher, 'SC4' in scs)
     d = _data()
     val_keys, keys = list(d.keys('val')), list(d.keys(keyset))
     check_order(val_keys)
@@ -332,7 +334,7 @@ def score_encoder(enc, keyset='test', scs=('SC2', 'SC4'), n_draws=10000, workers
             tv, te = view_rows(MP.TEACHER_VIEW[a], val_keys), view_rows(MP.TEACHER_VIEW[a], keys)
             teach_res = arm_ap(lambda s: tv, lambda s: te, teach['pick'], y, False, workers)
         cells += aspect_cells(enc, a, cand, frozen, teach_res, ranges[a], n_draws,
-                              dict(cstar=arms['cstar']['pick'], frozen=arms['frozen']['pick'], teacher=teach['pick']),
+                              dict(cstar=arms['cstar']['pick'], frozen=arms['frozen']['pick'], teacher=teach and teach['pick']),
                               len(keys), data_tag, scs)
     return cells
 

@@ -389,6 +389,23 @@ def test_score_encoder_reads_the_committed_records_by_name(world, monkeypatch):
     assert {c['r'] for c in cells if c['sc'] == 'SC4'} == set(ranges.values())
 
 
+def test_score_encoder_sc2_only_needs_no_teacher_record(world, monkeypatch):
+    """D17: a missing teacher pick voids only the SC4 cells; SC2 must still score, and the teacher record is not read."""
+    ranges, picks, _ = _record_docs()
+    seen = []
+
+    def fake(name):
+        seen.append(name)
+        if name == 'stage1_teacher.json':
+            raise FileNotFoundError(name)
+        return dict(ret_ranges=dict(encoder='siglip2', ranges=ranges), picks=picks)
+    monkeypatch.setattr(MP, 'read_committed_record', fake)
+    cells = mt_ret.score_encoder('siglip2', n_draws=20, workers=1, scs=('SC2',))
+    assert seen == ['stage1_siglip2.json'] and {c['sc'] for c in cells} == {'SC2'} and len(cells) == 3
+    with pytest.raises(FileNotFoundError):                         # SC4 still needs it
+        mt_ret.score_encoder('siglip2', n_draws=20, workers=1, scs=('SC2', 'SC4'))
+
+
 def test_score_encoder_refuses_passed_records_outside_smoke(world, monkeypatch):
     """Passing ranges, picks or teacher skips the committed-record check: only a smoke run may do that."""
     ranges, picks, teacher = _record_docs()
