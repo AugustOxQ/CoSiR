@@ -353,7 +353,7 @@ def _compare_cells(got, stored, prefix, intervals=True):
     by = {(c['sc'], c['aspect']): c for c in stored}
     items = []
     for c in got:
-        s = by[(c['sc'], c['aspect'])]
+        s = by[({'SC2': 'SC2', 'SC4': 'SC6'}[c['sc']], c['aspect'])]      # r14 calls the teacher comparison SC6
         names = ['candidate_value', 'comparator_value', 'n_queries'] + (['d', 'lo', 'hi'] if intervals else [])
         items += [replay_item(f'{prefix}/{c["sc"]}/{c["aspect"]}/{n}', c[n], s[n]) for n in names]
         if c['r'] is not None or s['r'] is not None:
