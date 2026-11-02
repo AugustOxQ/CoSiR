@@ -4,7 +4,7 @@ runner). Pattern: r14's `bs_run.py`. Each step logs to OUT/stage<k>/logs/<step>.
 attempt, ...} to OUT/stage<k>/steps.jsonl and prints one line `MT_RUN <stage> <step> rc=<rc> seconds=<s>`. A step whose
 exit code is bad, or whose declared output files are missing or hold NaN/Infinity, is retried once; a second failure is
 a failed step (rc stays non-zero; status says "failed"); a step whose dependency failed is recorded with rc=-1.
-No GPU anywhere. Steps run at most 3 at a time (8 threads each). The runner never commits; it prints the command.
+No GPU anywhere. Steps run at most 3 at a time (8 threads each; MT_PARALLEL=N sets the number). The runner never commits; it prints the command.
 
     python mt_run.py stage0 [--enc E ...] [--only STEP ...] [--n-clu N] [--n-ret N]
         gates (i) (v) (ii) (iv) (iii) (vi), then the exports (mt_export, mt_matched), records/cutsets.json; gate evidence in
@@ -58,7 +58,7 @@ SMOKE = bool(MP.SMOKE)
 STUB = bool(os.environ.get('MT_RUN_STUB'))
 ENCS = tuple(MP.ENCODERS)
 ASPECTS = tuple(MP.ASPECTS)
-MAX_PARALLEL = 3
+MAX_PARALLEL = int(os.environ.get("MT_PARALLEL", 3))                         # steps at once; MT_PARALLEL=1 or 2 under a high load
 OK, FAILED, PENDING = 'ok', 'failed', 'pending'
 # Smoke scope of the long replays: a code path each, not the stored intervals (they need the full draws).
 SMOKE_REPLAY = dict(clu=['--encs', 'siglip2'], ret=['--parts', 'r14', '--aspects', 'emotion'], vi=['--arms', 'cstar'])
