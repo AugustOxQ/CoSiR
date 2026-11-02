@@ -17,18 +17,24 @@ No GPU anywhere. Steps run at most 3 at a time (8 threads each). The runner neve
         records/status.json completed; prints the `git add -f ... && git commit ...` command (the controller commits).
         A missing range or pick is "failed" in status (D17); the other encoders go on.
     python mt_run.py stage2 [--enc E ...] [--n-clu N] [--n-ret N]
-        refuses unless records/stage1_*.json, stage1_teacher.json, status.json and cutsets.json are committed unchanged in
+        refuses unless records/stage1_*.json, status.json and cutsets.json (also stage1_teacher.json when its pick is ok) are committed unchanged in
         HEAD (smoke: present); scorers per encoder (mt_clu score, mt_ret score; encoders in parallel, at most 3), then
         mt_outcome decide -> OUT/stage2/outcomes.json. An encoder fully voided by status (D17) is skipped, logged.
     python mt_run.py verdicts
-        copies OUT/stage2/outcomes.json to records/verdicts.json, only if records/c13.json exists with "pass": true (outside
-        smoke also committed unchanged in HEAD; under smoke it copies with a note). C13 is the run chat's Codex job.
+        copies OUT/stage2/outcomes.json to records/verdicts.json, only if records/c13.json has "pass": true and the current
+        hashes below (outside smoke also committed unchanged in HEAD). C13 is the run chat's Codex job.
     python mt_run.py stage3 [--workers N]
         refuses without records/verdicts.json; runs `mt_diag.py all`.
     python mt_run.py status        reassemble records/status.json from the files on disk
 
 Environment: MT_SMOKE=1 MT_OUTPUTS=<scratch> (records go to <scratch>/records). MT_RUN_STUB=1: steps are not run (rc 0, or 1
 for the names in MT_RUN_FAIL, comma list): wiring check only. MT_RUN_TRAILER: lines appended to the printed commit message.
+
+C13 record schema (records/c13.json; sha256 paths relative to OUT, digests of the exact file bytes):
+    {"pass": true, "sha256": {"stage2/outcomes.json": "<hex digest>",
+                             "stage2/cells_clu.json": "<hex digest>",
+                             "stage2/cells_ret.json": "<hex digest>"}}
+All three entries must match before verdicts can be copied, including in smoke.
 """
 import argparse
 import fcntl
@@ -261,12 +267,13 @@ def collect_gates(encs=ENCS):
                           scope=SMOKE_REPLAY[name.split('_')[-1]] if SMOKE else 'full')
     sg['iii'] = st(parts['iii_clu'] and parts['iii_ret'])
     sg['vi'] = st(parts['vi'])
-    # an encoder whose export step failed has no (ii): D17 (X's export)
+    # Failed exports invalidate their gates even if an older gate file passed (D17).
     for e in ENCS:
-        rec = last_step('stage0', f'export_{e}')
-        if rec is not None and rec.get('failed', rec['rc'] != 0):
-            sg['ii'][e] = FAILED
-            gate['ii'][e]['export_step_failed'] = True
+        for step, g in (('export', 'ii'), ('matched_export', 'iv')):
+            rec = last_step('stage0', f'{step}_{e}')
+            if rec is not None and rec.get('failed', rec['rc'] != 0):
+                sg[g][e] = FAILED
+                gate[g][e]['export_step_failed'] = True
     return gate, sg
 
 
@@ -282,18 +289,24 @@ def last_step(stage, name):
     return r
 
 
-def stage1_status(encs=ENCS):
+def stage1_status(steps=None):
     s1 = OUT / 'stage1'
     st = lambda b: OK if b else FAILED                                            # noqa: E731
-    ranges = {e: st(_load(s1 / f'clu_ranges_{e}.json') is not None and _load(s1 / f'ret_ranges_{e}.json') is not None) for e in ENCS}
-    picks = {e: st(_load(s1 / f'picks_{e}.json') is not None) for e in ENCS}
-    return dict(ranges=ranges, picks=picks, teacher_pick=st(_load(s1 / 'picks_teacher.json') is not None))
+
+    def good(step, filename):
+        rec = steps.get(step) if steps is not None else last_step('stage1', step)
+        return rec is not None and rec['rc'] == 0 and not rec.get('failed', False) and _load(s1 / filename) is not None
+
+    ranges = {e: st(good(f'clu_ranges_{e}', f'clu_ranges_{e}.json') and
+                    good(f'ret_ranges_{e}', f'ret_ranges_{e}.json')) for e in ENCS}
+    picks = {e: st(good(f'ret_pick_{e}', f'picks_{e}.json')) for e in ENCS}
+    return dict(ranges=ranges, picks=picks, teacher_pick=st(good('pick_teacher', 'picks_teacher.json')))
 
 
-def write_status(stage1_done):
+def write_status(stage1_done, stage1_steps=None):
     gate, sg = collect_gates()
     jdump(OUT / 'stage0' / 'gate.json', gate)
-    s1 = stage1_status() if stage1_done else dict(ranges={e: PENDING for e in ENCS}, picks={e: PENDING for e in ENCS},
+    s1 = stage1_status(stage1_steps) if stage1_done else dict(ranges={e: PENDING for e in ENCS}, picks={e: PENDING for e in ENCS},
                                                  teacher_pick=PENDING)
     status = dict(gates=sg, stage1=s1)
     jdump(MP.record_path('status.json'), status)
@@ -372,7 +385,7 @@ def run_stage1(args):
     encs = encs_of(args)
     done = run_graph('stage1', stage1_tasks(encs))
     files = merge_records(encs)
-    status = write_status(stage1_done=True)
+    status = write_status(stage1_done=True, stage1_steps=done)
     bad = sorted(k for k, v in flat(status['stage1']).items() if v != OK)
     print(f'stage 1 not ok (D17: that encoder is inconclusive): {bad or "none"}')
     if SMOKE:
@@ -385,9 +398,6 @@ def run_stage1(args):
 
 
 # ============================================================================================== stage 2
-RECORD_NAMES = ['status.json', 'cutsets.json', 'stage1_teacher.json'] + [f'stage1_{e}.json' for e in ENCS]
-
-
 def void_plan(status, e):
     """What to run for encoder e from the committed status (spec §3.5 table, D17): None = fully voided (skip), else
     {'clu': scs, 'ret': scs}."""
@@ -435,7 +445,14 @@ def stage2_tasks(encs, status, n_clu, n_ret):
 
 def refuse_unless_committed(encs):
     problems = []
-    for name in ['status.json', 'cutsets.json', 'stage1_teacher.json'] + [f'stage1_{e}.json' for e in encs]:
+    try:
+        status = MP.read_committed_record('status.json')
+    except Exception as ex:
+        return [f'status.json: {ex}']
+    names = ['cutsets.json'] + [f'stage1_{e}.json' for e in encs]
+    if status['stage1']['teacher_pick'] == OK:
+        names.append('stage1_teacher.json')
+    for name in names:
         try:
             MP.read_committed_record(name)
         except Exception as ex:                                              # missing, differs from HEAD, not in HEAD
@@ -453,6 +470,11 @@ def run_stage2(args):
         return 2
     status = jload(MP.record_path('status.json'))
     assert all(v in (OK, FAILED) for v in flat(status).values()), 'status.json has pending entries: run stage 1'
+    failed_aspects = [f'gates.{g}.{a}' for g in ('i_teacher', 'v') for a in ASPECTS if status['gates'][g][a] != OK]
+    if failed_aspects:
+        print(f'stage 2 refuses: failed aspect gates: {", ".join(failed_aspects)}; '
+              'the per-aspect SC4 skip of §3.5 is not built; the failure must be traced before scoring')
+        return 2
     tasks, skipped = stage2_tasks(encs, status, args.n_clu, args.n_ret)
     (OUT / 'stage2' / 'logs').mkdir(parents=True, exist_ok=True)
     for name, why in skipped:
@@ -468,14 +490,24 @@ def c13_ok():
     """'' when verdicts may be written, else the reason (§3.4: C13 passes before any verdict is written)."""
     p = MP.record_path('c13.json')
     if not p.is_file():
-        if SMOKE:
-            return ''                                                          # smoke: copy with a note
         return f'{p} does not exist: the run chat (Codex) writes it after C13 and the controller commits it'
     try:
         rec = MP.read_committed_record('c13.json')
     except Exception as ex:
         return str(ex)
-    return '' if rec.get('pass') is True else f'{p}: "pass" is not true'
+    if rec.get('pass') is not True:
+        return f'{p}: "pass" is not true'
+    hashes = rec.get('sha256')
+    for name in ('stage2/outcomes.json', 'stage2/cells_clu.json', 'stage2/cells_ret.json'):
+        if not isinstance(hashes, dict) or name not in hashes:
+            return f'{p}: missing sha256 entry for {name}'
+        try:
+            digest = hashlib.sha256((OUT / name).read_bytes()).hexdigest()
+        except OSError as ex:
+            return f'C13 checked file {name} cannot be read: {ex}'
+        if hashes[name] != digest:
+            return f'{p}: sha256 mismatch for {name}; rerun C13 on the current outputs'
+    return ''
 
 
 def run_verdicts(args):
@@ -491,8 +523,7 @@ def run_verdicts(args):
     dst = MP.record_path('verdicts.json')
     dst.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(src, dst)
-    note = ' (smoke: C13 not required)' if SMOKE and not MP.record_path('c13.json').is_file() else ''
-    print(f'MT_RUN verdicts copy rc=0 seconds=0.0 -> {dst}{note}')
+    print(f'MT_RUN verdicts copy rc=0 seconds=0.0 -> {dst}')
     if not SMOKE:
         print(f'COMMIT: git -C {MP.REPO} add -f {dst.resolve().relative_to(MP.REPO.resolve())} && git -C {MP.REPO} commit -m "r15 verdicts" -- {dst.resolve().relative_to(MP.REPO.resolve())}')
     return 0

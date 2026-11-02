@@ -18,6 +18,8 @@ RECORDS = ROUND / 'records'              # committed records: cut sets, stage 1 
 DEFAULT_OUT = Path('/data/SSD2/cosir_r15/20261102_mmart_test/outputs')
 OUT = Path(os.environ.get('MT_OUTPUTS', DEFAULT_OUT))
 SMOKE = int(os.environ.get('MT_SMOKE') or 0)
+if SMOKE:
+    assert (OUT / 'records').resolve() != RECORDS.resolve(), 'smoke OUT/records must differ from committed RECORDS'
 
 # Older rounds (read only, spec §3.7). r14's own constants are importable from its bs_paths.
 BS_ROUND = MAIN / 'src/test/20261102_backbones_sweep'
