@@ -1,6 +1,7 @@
 # c* on MMArt's unseen paintings, four encoders: design
 
-> Date: 2026-11-02 18:30 · Status: draft · Kind: experiment
+> Date: 2026-11-02 18:30, revised after the rule review · Status: approved 2026-11-02 18:37 (from the brief, r15 decide; no
+> container restart) · Kind: experiment
 > Builds on: [report 2027-01-02](../../reports/auto/percept/2027-01-02_backbones_sweep.md) (c* holds on three more
 > encoders; the photo model beats its teacher on EmoSet); decisions C and A of 2026-11-02 and the grill in the r15
 > decide chat (2026-11-02, one round and a closing summary, about 18:15 to 18:20; its answers are §4) · Constitution:

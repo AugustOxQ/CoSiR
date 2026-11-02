@@ -90,7 +90,8 @@ the test design is grilled in r15 decide. Deadlines: abstract 2026-11-10, paper 
   at 0.85 against ArtELingo train and validation, r14's verdict structure, K = 20, PercepT frozen with ArtELingo
   topics, a diagnostic on the shared held paintings with MMArt labels, local CPU) (user, after seeing the
   recommendation). No plan page (user). Spec: [2026-11-02-mmart-test-design.md](specs/2026-11-02-mmart-test-design.md)
-  (draft; rule review running).
+  rule-reviewed (Opus `xhigh`, pass after fixes, all applied) and approved from the brief 2026-11-02 18:37 (user; no container
+  restart); build next.
 - **Why:** the user wants c* tested on a second art source before the freeze; MMArt's data was already prepared.
 - **Links:** [report](../reports/auto/percept/2027-01-02_backbones_sweep.md) ·
   [user-read report](../user_read/2026-11-02_backbones_sweep.md) ·
