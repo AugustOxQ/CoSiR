@@ -504,3 +504,22 @@ def test_train_checks_the_imports_as_r10s_trainer_does(monkeypatch, tmp_path):
     monkeypatch.setattr(C.rs_paths, 'check_imports', refused)
     with pytest.raises(AssertionError, match='imported from another folder'):
         C.train('siglip2', 'ref', [0], 'cpu', tmp_path)
+
+
+@pytest.mark.parametrize('field,other', [('encoder', 'siglip2'), ('row', 'k6=0.0005'), ('seed', 2), ('smoke', True),
+                                         ('keep', 'none'), ('config', dict(k11=80))])
+def test_verified_weights_are_skipped_only_with_this_runs_record(monkeypatch, tmp_path, field, other):
+    calls = []
+    fake_cohort(monkeypatch, calls)
+    run = C.train('qwen', 'ref', [0], 'cpu', tmp_path)[0]
+    assert len(calls) == 1
+    assert C.train('qwen', 'ref', [0], 'cpu', tmp_path)[0].record == run.record and len(calls) == 1      # matching record: skipped
+    path = C.record_path(tmp_path, 'k11=40', 0)
+    path.write_text(json.dumps(dict(run.record, **{field: other})))                                       # a record of another run
+    with pytest.raises(AssertionError, match='another run'):
+        C.train('qwen', 'ref', [0], 'cpu', tmp_path)
+    assert len(calls) == 1                                                                                 # and nothing was retrained
+    path.unlink()
+    with pytest.raises(AssertionError, match='without a run record'):
+        C.train('qwen', 'ref', [0], 'cpu', tmp_path)
+    assert len(calls) == 1
