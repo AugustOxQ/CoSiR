@@ -47,6 +47,9 @@ proposed. PolyArt waits for the user's link. Deadlines: abstract 2026-11-10, pap
   by the user, 2026-10-25; [proposed in](../reports/auto/percept/2026-12-23_attention_maps.md))
 - Align and contrast the three aspect heads of one image (shared part aligned, aspect parts pushed apart) (never tried;
   not chosen by the user, 2026-10-20: the aspects may not be separable; proposed in the r10 decide 12 chat)
+- A style or mood aspect on photos (Flickr Style, 20 labels; or the AVA style subset, 14 labels): needs a new aspect
+  pathway and has access risk (never tried; deferred by the user (2026-11-02): discuss after r14's main experiments if
+  time remains, else after the abstract; [proposed in](../reports/literature/2027-01-02_photo_aspect_datasets.md))
 
 ## 2026-11-02 · Photo fine-tune read: the photo model above the plain Qwen image and above its teacher on Affection (holds); the CRL claim passes; next, open (step 2 in r14 decide)
 
@@ -67,9 +70,12 @@ proposed. PolyArt waits for the user's link. Deadlines: abstract 2026-11-10, pap
   wants wider tests (the large sweep, more aspects, more backbones).
 - **Decided (A):** one r14 loop now, before the 2026-11-10 freeze; type confirmation, medium loop; two parts on
   DAS6: c* and the photo fine-tune on more backbones with the frozen recipe, and the large sweep (user, after seeing
-  the recommendation). This moves the sweep, planned for after the freeze, to now; its role (analysis only, or able to
-  replace c*) is open until the user has seen the rerun cost. A dataset check for photo aspects ran as a side job
-  (user): [note 2027-01-02](../reports/literature/2027-01-02_photo_aspect_datasets.md). The user re-reserves a DAS6
+  the recommendation). This moves the sweep, planned for after the freeze, to now. The sweep is analysis only: c* and
+  the photo model stay frozen, whatever it finds (user, after seeing the rerun cost, about 7 h of compute and a day of
+  rework for r10 held to r13, and the recommendation). A third part: the frozen photo model tested on EmoSet-118K
+  against the plain Qwen image and the teacher, with a WIN bar set first (user, after seeing the recommendation). A
+  dataset check for photo aspects ran as a side job (user):
+  [note 2027-01-02](../reports/literature/2027-01-02_photo_aspect_datasets.md). The user re-reserves a DAS6
   node on 2026-11-04 and keeps one node (3 GPUs) until the main deadline. Storage: all recommendations approved (user).
 - **Links:** [report](../reports/auto/percept/2027-01-01_photo_finetune.md) ·
   [user-read report](../user_read/2026-11-01_photo_finetune.md) ·
