@@ -1,0 +1,32 @@
+{
+ "encoders": {
+  "siglip2": {
+   "cstar_runs": "ok",
+   "photo_runs": "ok",
+   "stage0": {
+    "paintings": "ok",
+    "photos": "ok"
+   }
+  },
+  "siglip1": {
+   "cstar_runs": "ok",
+   "photo_runs": "ok",
+   "stage0": {
+    "paintings": "ok",
+    "photos": "ok"
+   }
+  },
+  "clip_l14": {
+   "cstar_runs": "ok",
+   "photo_runs": "ok",
+   "stage0": {
+    "paintings": "ok",
+    "photos": "ok"
+   }
+  }
+ },
+ "part_c": {
+  "stage0": "ok",
+  "stage2": "ok"
+ }
+}
