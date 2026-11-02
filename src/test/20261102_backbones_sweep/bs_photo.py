@@ -533,6 +533,14 @@ def _stored_img(path):
         return z['img']
 
 
+def check_sidecar(stored, ckpt_sha, keys):
+    """r13's gate (`pf_export.gate_iii`): the stored export's sidecar (`<stored>.json`) holds the checkpoint's
+    `weights_sha256` and the key list's `keys_sha256`. Returns the list of mismatching fields (empty: it attests)."""
+    side = json.loads(Path(stored).with_suffix('.json').read_text())
+    return [f for f, want in (('weights_sha256', ckpt_sha), ('keys_sha256', rs_vh.names_sha(keys)))
+            if side.get(f) != want]
+
+
 def check_export(root=None, seeds=P.SEEDS, splits=('val', 'test')):
     """0(ix), emotion pathway: this module's export of r13's five photo models and of the frozen c* on Affection val
     and test against r13's stored exports (`exports/final/s<s>/<split>/emotion.npz`) and r12's stored c* exports
@@ -547,10 +555,13 @@ def check_export(root=None, seeds=P.SEEDS, splits=('val', 'test')):
             with np.load(path, allow_pickle=False) as z:
                 mine = z['emb']
                 assert z['keys'].tolist() == pf_data.keys(split)
-            ref = _stored_img(stored(split, seed))
+            path_ref = stored(split, seed)
+            ref = _stored_img(path_ref)
             assert ref.shape == mine.shape and ref.dtype == mine.dtype
             diff = float(np.max(np.abs(mine.astype(np.float64) - ref.astype(np.float64))))
-            items[f'{arm}/{split}/s{seed}'] = dict(max_abs_diff=diff, ok=bool(diff <= TOL_EXPORT))
+            bad = check_sidecar(path_ref, checkpoint_sha(arm, seed, root), pf_data.keys(split))
+            items[f'{arm}/{split}/s{seed}'] = dict(max_abs_diff=diff, sidecar_mismatch=bad,
+                                                   ok=bool(diff <= TOL_EXPORT and not bad))
     doc = dict(gate='0(ix) emotion pathway', ok=all(i['ok'] for i in items.values()), tol=TOL_EXPORT, items=items,
                seconds=time.monotonic() - t0)
     _atomic_json(root / 'stage0/photo_check_export.json', doc)

@@ -474,3 +474,37 @@ def test_sweep_train_writes_the_sweep_folder_and_keeps_no_weights(monkeypatch, t
     assert sorted(p.name for p in folder.iterdir()) == ['run.json']          # D15: sweep rows keep no weights
     assert json.loads((folder / 'run.json').read_text())['row'] == 'start=random'
     assert out[('start=random', 0)].state is not None
+
+
+def _fake_check_export(monkeypatch, tmp_path, side_r13, side_r12):
+    """check_export on two keys, one seed, val only; stored sidecars from the dicts, r13's exports the same as ours."""
+    keys, emb = ['a.jpg', 'b.jpg'], np.zeros((2, 2048), dtype=np.float16)
+    monkeypatch.setattr(P, 'R13_OUT', tmp_path / 'r13')
+    monkeypatch.setattr(P, 'R12_OUT', tmp_path / 'r12')
+    monkeypatch.setattr(P, 'OUT', tmp_path / 'out')
+    for path, side in ((tmp_path / 'r13/exports/final/s0/val/emotion.json', side_r13),
+                       (tmp_path / 'r12/exports/cstar/val/emotion__s0.json', side_r12)):
+        path.parent.mkdir(parents=True)
+        path.write_text(json.dumps(side))
+    mine = tmp_path / 'mine.npz'
+    np.savez(mine, keys=np.asarray(keys), emb=emb)
+    monkeypatch.setattr(BP.pf_data, 'keys', lambda split: keys)
+    monkeypatch.setattr(BP, 'export_arm', lambda dataset, arm, splits, seeds, **kw: [mine])
+    monkeypatch.setattr(BP, 'checkpoint_sha', lambda arm, seed, root=None, cstar_root=None: 'c' * 64)
+    monkeypatch.setattr(BP, '_stored_img', lambda path: emb)
+    return rs_vh.names_sha(keys)
+
+
+def test_check_export_compares_the_stored_sidecars_weights_and_keys_hashes(monkeypatch, tmp_path):
+    good = dict(weights_sha256='c' * 64, keys_sha256=rs_vh.names_sha(['a.jpg', 'b.jpg']))
+    cases = {'good': (good, good, 0)}
+    for field, value in (('weights_sha256', 'd' * 64), ('keys_sha256', '0' * 64)):
+        cases[f'r13 {field}'] = (dict(good, **{field: value}), good, 1)
+        cases[f'r12 {field}'] = (good, dict(good, **{field: value}), 1)
+    for n, (name, (side13, side12, code)) in enumerate(cases.items()):
+        folder = tmp_path / f'case{n}'
+        folder.mkdir()
+        _fake_check_export(monkeypatch, folder, side13, side12)
+        assert BP.check_export(seeds=(0,), splits=('val',)) == code, name
+    with pytest.raises(FileNotFoundError):                                    # no sidecar: the gate cannot pass
+        BP.check_sidecar(tmp_path / 'nothing.json', 'c' * 64, ['a'])
