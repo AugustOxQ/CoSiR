@@ -1540,3 +1540,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-02-r14-mmart-run-handoff.md
 - New chat: tab 'r14 mmart run', session 4facf96e-dd21-4ef8-b50f-8432f3ff9a71
 
+[brief] CoSiR: r14 run 3 -> r14 run 4 (2026-11-02 16:46 Amsterdam)
+- Done: k11=20 rerun ok (sweeps 165 of 165 units); stage 4 wrote all three part b sheets; the part b spot re-derivation agrees (429 items, 0 mismatches).
+- State: every claim holds (verdicts of run 2, C13 pass); node402 has no r14 work left.
+- Next: `bs_run_cpu.sh stage5`, then the two reports, then the cut to the next loop's decide chat.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-02-r14-run4-handoff.md
+- New chat: tab 'r14 run 4', session de71761f-ef38-42c6-b36b-32c5795b9afc
+
