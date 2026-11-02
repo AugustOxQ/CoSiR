@@ -623,11 +623,16 @@ def adapt_sheet(kind, sheet):
                 for metric, cell in metrics.items():
                     if isinstance(cell, dict):
                         effect(cell, ('aspects', a, metric), base + ('validation', a, metric))
+            # The r14 knob sheet (run chat fix, 2026-11-02): metric -> aspect -> cell, mAP at R0 only.
+            for src, metric in (('ami', 'ami'), ('map', 'map_r0')):
+                for a, cell in (rec.get(src) or {}).items():
+                    if a in ASPECTS and isinstance(cell, dict):
+                        effect(cell, (src, a), base + ('validation', a, metric))
             for field, metric in (('M', 'M_ami'), ('M_ami', 'M_ami'), ('M_map', 'M_map_r0'), ('M_map_r0', 'M_map_r0')):
                 if field in rec:
                     mcell(rec[field], (field,), base + ('validation', 'all', metric))
         # Keep every result number, including an unfamiliar future column.
-        skip = {'seeds', 'seed', 'seconds', 'row', 'removal', 'arm', 'config', 'inputs', 'timing'}
+        skip = {'seeds', 'seed', 'seconds', 'row', 'removal', 'arm', 'config', 'inputs', 'timing', 'knob', 'value'}
         numeric_tree = {k: v for k, v in rec.items() if k not in skip}
         for path, value in flatten_numbers(numeric_tree):
             normalized = path
