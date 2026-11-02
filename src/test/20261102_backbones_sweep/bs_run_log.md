@@ -116,3 +116,21 @@ times here are Amsterdam.
   15:00; worker 2 ended at 14:59 with 55 units, 0 failed: 162 of 165 ok). Next chat: add the folder to the node inputs, sync, rerun the `k11=20` units
   (spec D21: rows not done by 11-04 18:06 are "not run"; part b enters no verdict), as a deviation in the report.
 - 15:00 the chat cuts at the context meter (200k).
+
+## Run chat 3 ("r14 run 3", from 15:00)
+
+- 15:02 node402 quiet (3 free GPUs, env ok). k11=20 fix: new node input `ct_full_d2_graphs` (the CT's
+  `stage2/full/d2/graphs`, 8.9 MB, 4 files; group `knob_base`, added for the knob kind), its `cluster.conf` DATA_MAP
+  entry, and `bs_node.py retry-failed` / `sweep --retry-failed`, which moves `failed.json` to `failed_attempt1.json` and
+  the stale claim to `.claims_retired/` (nothing deleted). 340 round tests pass. Commits b280591, 91d79c3 ("cluster
+  run"); change log `.claude/20261102_log.md`.
+- 15:05 to 15:07 pulls, all verified, marked, code copies removed: sweep workers `20261102-073350-c5d7673`,
+  `20261102-073909-c5d7673`, `20261102-075201-317ec92` and the prep job `20261102-062941-5f28b2b` (its earlier pull was
+  not verified). Local: knob 117 units with `metrics.json`, photo 45.
+- 15:07 local `bs_node.py retry-failed --kind knob photo`: moved `knob/k11=20/failed.json` and the claim
+  `knob__k11=20__s1` aside (so `bs_partb` does not read the row as "not run" after the rerun's pull).
+- 15:08 `cluster sync` (91d79c3); `cluster check --sync-data`: the graphs copied to `/local/wding/r14_in/ct_full_d2_graphs`,
+  all four gates yes. 15:09 launch `20261102-140830-91d79c3` (slot 0): `sweep --kind knob --retry-failed`, one
+  worker, the three k11=20 units.
+- 15:09 early photo and knob sheets on the local CPU (`bs_partb.py photo`, `knob`; logs `OUT/stage4/logs/partb_*_early.log`),
+  for timing and as the layout the spot re-derivation compares against; stage 4 writes all three again after the pull.
