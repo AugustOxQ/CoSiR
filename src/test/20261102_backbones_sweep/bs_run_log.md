@@ -161,3 +161,8 @@ times here are Amsterdam.
 - 16:43 final compare against the three final sheets: **items 429, mismatches 0, max abs diff 5.1e-14, nothing
   unpaired**. Record `records/c13_partb.json` (sheet and derive hashes).
 - Node402: no r14 work left; nothing runs there (3 GPUs free at 16:17).
+
+## Run chat 4 ("r14 run 4", from 16:46)
+
+- 16:46 load 1.6, 52 GB free memory. 16:47 `bs_run_cpu.sh stage5` in the background (all twelve diagnostics; log
+  `OUT/stage5_run4.log`). Codex 5h window 76% left (report job needs 14%).
