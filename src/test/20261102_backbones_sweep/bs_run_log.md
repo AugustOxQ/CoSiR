@@ -103,3 +103,6 @@ times here are Amsterdam.
 - 11:55 part b spot re-derivation (spec §3.4, C13): five rows drawn before any sheet exists, `default_rng(14)`, in this
   order: knob `k2=16`, `k11=80` (of 39), photo `lr=0.003` (of 14), ablation `content_correction`, `relational` (of 8).
   Codex re-derives them from the stored partitions and per-query AP after stage 4.
+- 11:59 the two fixed diagnostics rc 0 (photo_minus_cstar 342 s, emoset_uncut 305 s): ten of twelve ok early.
+- 12:09 early ablation sheet rc 0 (4,063 s; 385 to 514 s per removal). Held relational term, genre AMI −0.0440
+  [−0.0512, −0.0372], as report 12-28. The runner's stage 4 writes it again.
