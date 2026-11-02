@@ -17,8 +17,8 @@ prints one line `BS_RUN <stage> <step> rc=<rc> seconds=<s>`.
         export --kind held --device cpu) and the photo_E exports on Affection and EmoSet (val, test), seeds 0 to 4. Skips the
         arms that part_a_state(E) marks failed (and says so). Before stage 1 (Affection val) and stage 3 (held, Affection test)
         and stage 2 (EmoSet). `--seeds` (default 0 to 4) is for a dry check. All exports run on the local CPU (every store is
-        local; gate 0(ix)'s c* part passed on CPU, max abs diff 6.1e-05). A job whose files exist with a matching sha256 is
-        skipped; a stage that needs a missing export refuses and names this step.
+        local; gate 0(ix)'s c* part passed on CPU, max abs diff 6.1e-05). Every job runs: on a file that exists, the CLI checks
+        it against the current weights and keys (so a stale export fails loudly); a stage that needs a missing export refuses and names this step.
     python bs_run.py stage1 [--enc E ...]       per encoder still in part a: seed ranges and read-out picks (tickets 05 to 07)
         -> RECORDS/stage1_<enc>.json, committed before any held number of that encoder. Needs the part-a exports.
     python bs_run.py stage2                     r_E, read-out and wording picks -> RECORDS/stage2_emoset.json, committed. Runs AFTER
@@ -422,25 +422,6 @@ def lacking(files):
     return [f for f in files if not (f.is_file() and f.with_suffix('.json').is_file())]
 
 
-def export_valid(npz, kind):
-    """The export file and its sidecar exist and agree: photo/EmoSet exports (bs_photo): sidecar `sha256` is the file's sha256;
-    held exports (bs_cstar, rb_student.write_outputs): each array's sha256 in the sidecar equals the stored array's."""
-    npz = Path(npz)
-    side = npz.with_suffix('.json')
-    if not (npz.is_file() and side.is_file()):
-        return False
-    try:
-        info = jload(side)
-        if kind == 'photo':
-            return info.get('sha256') == hashlib.sha256(npz.read_bytes()).hexdigest()
-        import numpy as np
-        with np.load(npz, allow_pickle=False) as z:
-            return sorted(z.files) == sorted(info['arrays']) and all(
-                hashlib.sha256(np.ascontiguousarray(z[k]).tobytes()).hexdigest() == v['sha256'] for k, v in info['arrays'].items())
-    except (OSError, ValueError, KeyError):             # a broken file or sidecar is re-exported (the CLI asserts on other content)
-        return False
-
-
 def export_job(item, seeds):
     """(step name, argv, files written, kind) of one export item: ('held', enc) or ('photo', dataset, arm)."""
     if item[0] == 'held':
@@ -454,8 +435,8 @@ def export_job(item, seeds):
 
 def run_exports(a):
     """Local CPU export steps (final review F1): `--set qwen` (EmoSet exports of photo_qwen and cstar_qwen) or `--set part-a
-    --enc E ...` (X-c* held export, X photo exports on Affection and EmoSet). Idempotent: a job whose files all exist with a
-    matching sha256 is skipped; the CLIs also refuse other content under an existing name."""
+    --enc E ...` (X-c* held export, X photo exports on Affection and EmoSet). Idempotent: every job runs, and on an existing
+    file the CLI checks it against the current weights and keys (re-inferred) and refuses other content."""
     seeds = tuple(a.seeds or P_SEEDS)
     items, notes = [], []
     if a.set == 'qwen':
@@ -479,10 +460,8 @@ def run_exports(a):
         print(f'BS_RUN exports SKIPPED {n}', flush=True)
     bad, left = 0, 0
     for item in items:
-        name, argv, files, kind = export_job(item, seeds)
-        if all(export_valid(f, kind) for f in files):
-            print(f'BS_RUN exports {name}: {len(files)} files present with matching sha256, skipped', flush=True)
-            continue
+        name, argv, files, kind = export_job(item, seeds)      # always run: an existing file is checked by the CLI against
+        # the current weights (bs_cstar.export_outputs: meta incl. weights_sha256) or re-inferred and compared (bs_photo._publish)
         bad += step('exports', name, argv)['rc'] != 0
         left += 0 if STUB else len(lacking(files))
     print(f'BS_RUN exports {a.set}: {f"{bad} step(s) FAILED" if bad else "done"}; files still missing: {left}'
@@ -643,11 +622,13 @@ def run_stage3(a):
 
 
 def c13_hashes():
-    """{'stage3/<cells file>': sha256, 'records/<stage 1 or 2 record>': sha256}: the files C13's re-derivation covers (§3.4:
-    the cells of OUT/stage3 and the committed stage 1 and stage 2 records)."""
+    """{'stage3/<cells file>': sha256, 'records/<record>': sha256}: the files C13's re-derivation covers (§3.4: the cells of
+    OUT/stage3, the committed stage 1 and stage 2 records) and the committed records `decide` also reads (status.json,
+    nearcopy_emoset.json)."""
     out = {f'stage3/{f.name}': hashlib.sha256(f.read_bytes()).hexdigest() for f in sorted((OUT / 'stage3').glob('cells_*.json'))}
-    for f in sorted(RECORDS.glob('stage1_*.json')) + [x for x in (RECORDS / 'stage2_emoset.json',) if x.exists()]:
-        require(f, 'decide: stage 1 / stage 2 record')
+    for f in sorted(RECORDS.glob('stage1_*.json')) + [x for x in (RECORDS / 'stage2_emoset.json',) if x.exists()] + [
+            RECORDS / 'status.json', RECORDS / 'nearcopy_emoset.json']:      # status and near-copy: decide reads them too
+        require(f, 'decide: stage 1 / stage 2 / status / near-copy record')
         out[f'records/{f.name}'] = hashlib.sha256(f.read_bytes()).hexdigest()
     return out
 

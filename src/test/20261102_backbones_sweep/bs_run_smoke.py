@@ -5,11 +5,11 @@
 Phases (each timed): (1) real steps: `stage0 --only x xi` on the real r13/r12 inputs (CPU, scratch OUT); (2) stubbed steps
 (BS_RUN_STUB) with failing gates: pending branch, resolve, failure propagation to status.json, part a states; (3) stage 1 and
 stage 3 wiring on synthetic stage 1 files: record written, refusal on a changed file; (3b) the new order (final review fix
-wave A): exports (steps, skip of valid files, skipped failed arms), stage 1 / 2 / 3 refusals without exports, stage 3 = cells
+wave A): exports (steps, skipped failed arms), stage 1 / 2 / 3 refusals without exports, stage 3 = cells
 only + sha256 map, `decide` refusals (no c13 record, pass false, sha256 differs) and its pass; (4) git: in a throwaway repo
 (`*.json` ignored), `commit` adds with -f and scoped, `require` refuses before and passes after (also the guard `decide` and the
-stage 1 / 2 records use; the stubbed phases run with BS_RUN_NO_COMMIT, where the guard checks the file only), export_valid on real
-small files, part_a_state with a photo-only failure; (5) `diag` without bs_diag. Not reachable without real data: the export CLIs
+stage 1 / 2 records use; the stubbed phases run with BS_RUN_NO_COMMIT, where the guard checks the file only),
+part_a_state with a photo-only failure; (5) `diag` without bs_diag. Not reachable without real data: the export CLIs
 themselves (their own tests and the dry check run them) and bs_outcome decide (stubbed here).
 """
 import json
@@ -116,6 +116,7 @@ assert (o2 / 'records/stage1_siglip2.json').exists() and not (o2 / 'records/stag
 (o2 / 'stage3').mkdir(exist_ok=True)
 (o2 / 'stage3/outcomes.json').write_text('{}')
 (o2 / 'records/stage2_emoset.json').write_text('{}')
+(o2 / 'records/nearcopy_emoset.json').write_text('{}')     # committed in production; decide reads it
 out = run('stage3 without held exports', o2, ['stage3'], dict(BS_RUN_STUB='1'), expect=1)
 assert 'REFUSED' in out and 'held' in out, out
 for enc in ('siglip2', 'clip_l14'):
@@ -127,7 +128,8 @@ out = run('stub stage3 (cells only)', o2, ['stage3'], dict(BS_RUN_STUB='1'))
 assert 'NO verdict yet' in out and 'sha256 stage3/cells_affection.json' in out and 'sha256 records/stage1_siglip2.json' in out, out
 assert not (o2 / 'records/verdicts.json').exists(), 'stage 3 must not write the verdict'
 sha = jl(o2 / 'stage3/c13_sha256.json')
-assert sorted(sha) == ['records/stage1_clip_l14.json', 'records/stage1_siglip2.json', 'records/stage2_emoset.json',
+assert sorted(sha) == ['records/nearcopy_emoset.json', 'records/stage1_clip_l14.json', 'records/stage1_siglip2.json',
+                       'records/stage2_emoset.json', 'records/status.json',
                        'stage3/cells_affection.json', 'stage3/cells_artelingo_clu.json', 'stage3/cells_emoset.json'], sorted(sha)
 out = run('decide without c13', o2, ['decide', '--smoke'], dict(BS_RUN_STUB='1'), expect=1)
 assert 'REFUSED' in out and 'c13.json' in out, out
@@ -165,6 +167,7 @@ for enc in ('siglip2', 'clip_l14'):
     fake_exports(o3, photo_f(o3, 'affection', f'photo_{enc}', ('val',)))
 run('stub stage1 with exports', o3, ['stage1'], dict(BS_RUN_STUB='1'))
 (o3 / 'records/stage2_emoset.json').write_text('{}')
+(o3 / 'records/nearcopy_emoset.json').write_text('{}')
 for enc in ('siglip2', 'clip_l14'):
     fake_exports(o3, held_f(o3, enc))
 out = run('stage3 without Affection test exports', o3, ['stage3'], dict(BS_RUN_STUB='1'), expect=1)
@@ -209,29 +212,12 @@ f.write_text('{"a": 2}\n')
 assert 'differs' in R.committed(f)
 print('[git] add -f, scoped commit, guard: ok', flush=True)
 
-# (4b) export_valid on real small files; part_a_state with a photo-only failure (F2)
-import hashlib  # noqa: E402
-import numpy as np  # noqa: E402
-ex = scratch / 'valid'
-ex.mkdir(exist_ok=True)
-pn = ex / 'val__s0.npz'
-np.savez(pn, keys=np.array(['a']), emb=np.zeros((1, 4), np.float16))
-pn.with_suffix('.json').write_text(json.dumps(dict(sha256=hashlib.sha256(pn.read_bytes()).hexdigest())))
-assert R.export_valid(pn, 'photo')
-pn.with_suffix('.json').write_text(json.dumps(dict(sha256='0' * 64)))
-assert not R.export_valid(pn, 'photo')
-hn = ex / 'emotion__s0.npz'
-img = np.arange(8, dtype=np.float16).reshape(2, 4)
-np.savez(hn, img=img)
-hn.with_suffix('.json').write_text(json.dumps(dict(arrays=dict(img=dict(sha256=hashlib.sha256(np.ascontiguousarray(img).tobytes()).hexdigest())))))
-assert R.export_valid(hn, 'held')
-np.savez(hn, img=img + 1)
-assert not R.export_valid(hn, 'held') and not R.export_valid(ex / 'nope.npz', 'held')
+# (4b) part_a_state with a photo-only failure (F2)
 (R.OUT / 'node').mkdir(parents=True, exist_ok=True)
 (R.OUT / 'node/part_a_siglip2.json').write_text(json.dumps(dict(
     encoder='siglip2', status='failed', done=[f'cstar__siglip2__s{s}' for s in range(5)] + [f'xphoto__siglip2__s{s}' for s in range(3)])))
 assert R.part_a_state('siglip2') == ('ok', 'failed')
-print('[exports] export_valid, part_a_state photo-only failure: ok', flush=True)
+print('[exports] part_a_state photo-only failure: ok', flush=True)
 
 # (5) diag without bs_diag
 r = subprocess.run([PY, str(HERE / 'bs_run.py'), 'diag', '--smoke'], env=dict(BASE, BS_OUTPUTS=str(scratch / 'diag')),
