@@ -285,13 +285,17 @@ def _ranges_of(doc):
 
 def load_stage1(enc, ranges=None, picks=None, teacher=None):
     """X's ranges, X's picks and the teacher's picks from the COMMITTED stage 1 records (`mt_paths.read_committed_record`:
-    `stage1_<enc>.json` keys `ret_ranges` and `picks`, `stage1_teacher.json`), unless given. Returns (ranges, arms, teacher arm)."""
+    `stage1_<enc>.json` keys `ret_ranges` and `picks`, `stage1_teacher.json`), unless given (smoke and tests only: a given record
+    skips the committed-record check). Returns (ranges, arms, teacher arm)."""
+    if ranges is not None or picks is not None or teacher is not None:
+        assert MP.SMOKE, 'ranges, picks and teacher are read from the committed records; passing them is for smoke runs and tests'
     if ranges is None or picks is None:
         assert ranges is None and picks is None, 'give both ranges and picks, or neither'
         rec = MP.read_committed_record(f'stage1_{enc}.json')
         ranges, picks = rec['ret_ranges'], rec['picks']
     if teacher is None:
         teacher = MP.read_committed_record('stage1_teacher.json')
+    assert teacher.get('picks', teacher).get('ranges_encoder') == 'qwen', 'the teacher is picked once, with Qwen\'s ranges (D12)'
     arms = _arms_of(picks)
     if 'encoder' in picks.get('picks', picks):
         assert picks.get('picks', picks)['encoder'] == enc
@@ -445,6 +449,7 @@ def replay_vi(arms=None, workers=8):
     picks = read_json(MP.R11_OUT / 'stage4/picks.json')
     r_a = {a: float(read_json(ac_paths.R11_RANGES_FILE)['map'][a]['r']) for a in ASPECTS}
     arms = tuple(rt_data.ARMS if arms is None else arms)
+    assert set(arms) <= set(rt_data.ARMS) and len(set(arms)) == len(arms), arms
     labels = rt_data.labels('val')
     items, got = [], {}
     for arm in arms:
@@ -464,7 +469,9 @@ def replay_vi(arms=None, workers=8):
             assert t['kept'] == scores[arm][name]['kept'], (arm, name, 'guard flag')
         assert doc['pick'] == picks[arm], (arm, 'pick', doc['pick'], picks[arm])
         got[arm] = doc['pick']
-    return replay_result(items, picks=got, arms=list(arms))
+    res = replay_result(items, complete=set(arms) == set(rt_data.ARMS), picks=got, arms=list(arms))
+    res['values_ok'], res['passed'] = res['passed'], bool(res['passed'] and res['complete'])      # a subset of arms cannot pass
+    return res
 
 
 # ============================================================================================ CLI
@@ -514,8 +521,6 @@ def main(argv=None):
             res, name = replay_iii_ret(args.n_draws, args.workers, tuple(args.parts), tuple(args.aspects)), 'gate_iii_ret.json'
         else:
             res, name = replay_vi(args.arms, args.workers), 'gate_vi.json'
-            res['complete'] = args.arms is None
-            res['values_ok'], res['passed'] = res['passed'], bool(res['passed'] and res['complete'])
         path = out / 'stage0' / name
         write_json(path, res)
         print(f'{args.cmd}: {"PASS" if res["passed"] else "FAIL"} max_abs_diff {res["max_abs_diff"]:.3g} '
