@@ -1476,3 +1476,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-02-r14-build-handoff.md
 - New chat: tab 'r14 build', session 82023906-66a8-425d-b325-b84afcb47cf2
 
+[brief] CoSiR: r14 build -> r14 build 2 (2026-11-02 04:36 Amsterdam)
+- Done: 12 tickets cut; ticket 01 (extraction code) merged; the extraction queue runs on the local GPU since 04:27.
+- State: tickets 03 (c* trainer) and 05 (ArtELingo clustering) built on their branches, not yet reviewed; 9 tickets wait.
+- Next: finish 03 and 05 (fresh workers), Opus reviews, merge; then 02, 04, 06, 07, 09 as the frontier allows.
+- Blocked: nothing. Codex had no room until 07:50.
+- Handoff: docs/superpowers/handoffs/2026-11-02-r14-build-2-handoff.md
+- New chat: tab 'r14 build 2', session db77954d-b795-425b-99f8-0fad77f9b7a2
+
