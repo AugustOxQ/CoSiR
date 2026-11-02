@@ -51,3 +51,32 @@ style_word, genre_word; SigLIP 2; SigLIP 1; CLIP L/14) under `/data/SSD2/pre_ext
 check against the ArtELingo stores, and a near-copy check of the new set against ArtELingo train/val (cosine >= 0.85,
 r14's cut). About 2 h on the local GPU at r14's rates (Qwen about 95 ms/image). The user: "no extraction now, we do
 that after 19:00".
+
+## Decisions after the first findings (user, 2026-11-02, about 14:50 to 15:15)
+
+- **Split** (user): "the same split" as ArtELingo. Shared paintings keep their ArtELingo split; the index column
+  `split` holds it: train 40,155 (not used: c* trained on them), val 5,769 (validation, scored with MMArt labels),
+  held 11,528 (an extra test: ArtELingo's held paintings with MMArt's own labels), new 16,782 (the main test, minus
+  the 34 exact copies and the near-copies that tonight's check finds).
+- **Emotion labels** (user): MMArt's `dominant_emotion` is its own label set.
+- **Aspects and instructions** (agent, user agreed): the three aspects stay emotion, style, genre with the ArtELingo
+  teacher instructions; MMArt's four perspectives are captions, not aspects. Two uses of them are parked in the
+  direction log (user): perspective retrieval (captions as queries in c*'s aspect spaces) and perspective names as
+  new Qwen instructions.
+- **Tonight's queue** (user, after seeing the recommendation): the seven views for the 16,782 new paintings only. Val
+  teacher views and caption embeddings wait for the decide chat that designs the MMArt test (about 25 min GPU for the
+  val teacher views).
+- **Storage** (user): the 22 image shards deleted, `data.parquet` kept.
+
+## The extractor
+
+Codex (`gpt-6.1-sol`, medium) wrote `mp_extract.py`, `mp_stores.py`, `mp_extract_queue.sh` and 16 CPU tests in a
+worktree (commit 4b8dbda); the controller read the diff, fixed the smoke status path and added the split column
+(2b18f42), merged into `r14-backbones-sweep` (1da403f). The Qwen views assert revision
+`9f2f7e710d6d81056aa5c0a4f04764fec6bb7bda` and take the teacher instruction from the ArtELingo `*_held` store's
+`meta.json` (checked against `pav_prompts.py`).
+
+**GPU smoke** (14:57, 76 s, 4 images per store, scratchpad): all 14 stores sealed; parity against the ArtELingo
+stores, min cosine per view: Qwen default 0.99974, emotion 0.99980, style 0.99971, genre 0.99976, SigLIP 2 0.99991,
+SigLIP 1 0.99987, CLIP L/14 1.00000 (bar 0.999); store check 14 of 14; near-copy step runs. Rates: Qwen about 88
+ms/image, SigLIP about 26, CLIP L/14 about 13: the full run is about 2 h (new set) plus the 200-painting parity set.
