@@ -1484,3 +1484,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-02-r14-build-2-handoff.md
 - New chat: tab 'r14 build 2', session db77954d-b795-425b-99f8-0fad77f9b7a2
 
+[brief] CoSiR: r14 build 2 -> r14 build 3 (2026-11-02 05:25 Amsterdam)
+- Done: tickets 01 to 06 merged, each with its Opus review and fixes; 07 and 09 built, not reviewed; every CPU replay passes with difference 0.
+- State: extraction queue at CLIP L/14 train (Affection SigLIP 2 and SigLIP 1 done); six EmoSet views left, end about 08:00.
+- Next: Opus reviews of 07 and 09; build 08 and 10 (both unblocked); then 11, 12; GPU checks 0(iv), 0(v) after the queue.
+- Blocked: nothing. Codex has room again after 07:50.
+- Handoff: docs/superpowers/handoffs/2026-11-02-r14-build-3-handoff.md
+- New chat: tab 'r14 build 3', session 1b6ad64e-1837-4f79-ba96-fb40cc313d4e
+
