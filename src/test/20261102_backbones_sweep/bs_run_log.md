@@ -106,3 +106,13 @@ times here are Amsterdam.
 - 11:59 the two fixed diagnostics rc 0 (photo_minus_cstar 342 s, emoset_uncut 305 s): ten of twelve ok early.
 - 12:09 early ablation sheet rc 0 (4,063 s; 385 to 514 s per removal). Held relational term, genre AMI −0.0440
   [−0.0512, −0.0372], as report 12-28. The runner's stage 4 writes it again.
+- 14:56 sweep worker 1 (`20261102-073350-c5d7673`) succeeded: 59 units, 0 failed. Worker 3 (`20261102-075201-317ec92`)
+  ended "failed": 48 units ok, 1 failed: knob `k11=20` seed 1, twice, `AssertionError` in `rb_student.load_scale`:
+  `CT_FULL/d2/graphs/manifest.json` missing on the node. Cause: `k11=20` is the base graph (20 neighbours), so it gets
+  no graph patch and reads the claim test's own graphs
+  (`/project/CoSiR/src/test/20261020_claim_test/outputs/stage2/full/d2/graphs`, 8.9 MB, gitignored), which
+  `bs_node_inputs.json` does not list; every other knob value reads graph stores built in the run's output folder.
+  A missing node input, not a training failure. Seeds 2 and 3 of `k11=20` had not run yet (161 units ok, 1 failed at
+  15:00; worker 2 ended at 14:59 with 55 units, 0 failed: 162 of 165 ok). Next chat: add the folder to the node inputs, sync, rerun the `k11=20` units
+  (spec D21: rows not done by 11-04 18:06 are "not run"; part b enters no verdict), as a deviation in the report.
+- 15:00 the chat cuts at the context meter (200k).
