@@ -215,15 +215,37 @@ def test_d17_every_encoder_gates(fail):
         assert all(c['claim'] == 'inconclusive' and c['sentence'] is None for c in res['sc4'][e])
 
 
-@pytest.mark.parametrize('fail', [dict(i_default='siglip2'), dict(ii='siglip2'), dict(ranges='siglip2'),
-                                  dict(picks='siglip2')])
-def test_d17_encoder_gates_void_that_encoders_verdict_and_sc4(fail):
+@pytest.mark.parametrize('fail', [dict(i_default='siglip2'), dict(ii='siglip2')])
+def test_d17_encoder_gates_void_that_encoders_verdict_and_every_cell(fail):
     res = run(status=st(**fail))
     assert inconclusive_encoders(res) == {'siglip2'}
     assert statuses(res, encoder='siglip2') == {'inconclusive'}
     assert all(c['claim'] == 'inconclusive' for c in res['sc4']['siglip2'])
     assert statuses(res, encoder='qwen') == statuses(res, encoder='siglip1') == {'decided'}
     assert res['verdicts']['qwen']['verdict'] == O.HOLDS
+
+
+@pytest.mark.parametrize('fail', [dict(ranges='siglip2'), dict(picks='siglip2')])
+def test_d17_stage1_failure_voids_verdict_sc2_sc4_only_sc1_sc3_keep_outcomes(fail):
+    # D17: a failure voids only the cells that use the failed part (ranges or picks: SC2 and SC4, not SC1 or SC3)
+    res = run(status=st(**fail))
+    assert inconclusive_encoders(res) == {'siglip2'}
+    for r in rows(res, encoder='siglip2'):
+        assert (r['status'] == 'inconclusive') == (r['sc'] in ('SC2', 'SC4')), r
+    assert all(c['claim'] == 'inconclusive' for c in res['sc4']['siglip2'])
+    assert statuses(res, encoder='qwen') == statuses(res, encoder='siglip1') == {'decided'}
+    assert res['verdicts']['qwen']['verdict'] == O.HOLDS
+    assert res['verdicts']['siglip2']['reason']
+
+
+def test_stage1_failure_excuses_missing_sc2_sc4_but_not_sc1_sc3():
+    s = st(ranges='siglip2')
+    gone = drop(all_cells(), lambda c: c['encoder'] == 'siglip2' and c['sc'] in ('SC2', 'SC4'))
+    assert len(run(gone, s)['cells']) == 60 - 9
+    for sc in ('SC1', 'SC3'):
+        gone = drop(all_cells(), lambda c: c['encoder'] == 'siglip2' and c['sc'] == sc and c['aspect'] == 'genre')
+        with pytest.raises(AssertionError, match='missing'):
+            run(gone, s)
 
 
 @pytest.mark.parametrize('gate', ['i_teacher', 'v'])
@@ -292,6 +314,21 @@ def test_inconclusive_notes_whether_sc1_and_sc2_won():
     assert res['verdicts']['siglip2']['sc1_sc2_all_win'] is False
     res = run(all_cells(), st(iv='siglip2'))
     assert res['verdicts']['siglip2']['sc1_sc2_all_win'] is True
+
+
+def test_sc1_sc2_note_counts_only_cells_the_same_failure_did_not_void():
+    # gate vi voids SC2: a not-WIN SC2 cell is no evidence, so the note is None (not False)
+    res = run(all_cells({'siglip2': {('SC2', 'style', 'ret'): NOT_WIN}}), st(vi=True))
+    assert res['verdicts']['siglip2']['sc1_sc2_all_win'] is None
+    # gate ii voids every cell of the encoder
+    res = run(all_cells({'siglip2': {('SC1', 'style', 'clu'): NOT_WIN}}), st(ii='siglip2'))
+    assert res['verdicts']['siglip2']['sc1_sc2_all_win'] is None
+    # stage 1 ranges voids SC2 only: SC2 voided gives None; with an SC1 miss it is still None
+    res = run(all_cells({'siglip2': {('SC1', 'style', 'clu'): NOT_WIN}}), st(ranges='siglip2'))
+    assert res['verdicts']['siglip2']['sc1_sc2_all_win'] is None
+    # gate iv voids neither SC1 nor SC2: the note stands
+    res = run(all_cells({'siglip2': {('SC2', 'style', 'ret'): NOT_WIN}}), st(iv='siglip2'))
+    assert res['verdicts']['siglip2']['sc1_sc2_all_win'] is False
 
 
 def test_two_voids_give_both_reasons():
@@ -475,8 +512,16 @@ def test_holds_sentence():
 
 
 def test_n_comes_from_the_argument_with_thousands_separator():
-    assert 'On 12,345 WikiArt' in run(n=12345)['verdicts']['qwen']['sentence']
+    assert 'On 12,345 WikiArt' in run(n=12345, smoke=True)['verdicts']['qwen']['sentence']
     assert run(n=16384)['n'] == 16384
+
+
+def test_n_must_be_the_protocol_test_count_outside_smoke_when_a_sentence_is_licensed():
+    with pytest.raises(AssertionError, match='N_TEST|16384|test.n'):
+        run(n=12345)
+    run(n=12345, smoke=True)
+    # no sentence licensed: n is not checked
+    run(status=st(i_nearcopy=True), cells=[], n=12345)
 
 
 def test_qualified_sentence_names_the_sc3_aspects_that_win():
@@ -521,6 +566,12 @@ def tree(tmp_path, monkeypatch):
     rec = tmp_path / 'records'
     rec.mkdir()
     monkeypatch.setattr(MP, 'record_path', lambda name: rec / name)
+    reads = []
+
+    def committed(name):
+        reads.append(name)
+        return json.loads((rec / name).read_text())
+    monkeypatch.setattr(MP, 'read_committed_record', committed)
 
     def put(cells=None, status=None, n=16384, split=True):
         cells = all_cells() if cells is None else cells
@@ -532,7 +583,7 @@ def tree(tmp_path, monkeypatch):
         if n is not None:
             (rec / 'cutsets.json').write_text(json.dumps({'test': {'n': n, 'sha256': 'x'}, 'far': {'n': 1, 'sha256': 'y'}}))
         return root
-    put.root, put.rec = root, rec
+    put.root, put.rec, put.reads = root, rec, reads
     return put
 
 
@@ -543,6 +594,24 @@ def test_cli_writes_outcomes_json(tree, capsys):
     assert len(res['cells']) == 60 and res['n'] == 16384
     assert {e: res['verdicts'][e]['verdict'] for e in ENCS} == {e: 'holds' for e in ENCS}
     assert 'holds' in capsys.readouterr().out
+
+
+def test_cli_reads_status_and_cutsets_through_the_committed_record_outside_smoke(tree, monkeypatch):
+    root = tree(status=ok_status())
+    O.main(['decide', '--root', str(root)])
+    assert sorted(tree.reads) == ['cutsets.json', 'status.json']
+    tree.reads.clear()
+    monkeypatch.setattr(MP, 'SMOKE', 1)                    # smoke reads the plain files
+    O.main(['decide', '--root', str(root)])
+    assert tree.reads == []
+
+
+def test_cli_refuses_a_cutsets_n_other_than_n_test_outside_smoke(tree, monkeypatch):
+    root = tree(status=ok_status(), n=12345)
+    with pytest.raises(AssertionError):
+        O.main(['decide', '--root', str(root)])
+    monkeypatch.setattr(MP, 'SMOKE', 1)
+    O.main(['decide', '--root', str(root)])
 
 
 def test_cli_out_option(tree, tmp_path):

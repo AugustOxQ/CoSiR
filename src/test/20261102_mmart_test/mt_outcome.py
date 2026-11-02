@@ -22,9 +22,14 @@ STATUS (ticket 07 writes it; every key must be present, values 'ok' | 'failed'):
    "stage1": {"ranges": {enc: str}, "picks": {enc: str}, "teacher_pick": str}}
   `stage1.ranges` may also be one string (then it holds for every encoder).
 
+SC4 cells of a voided encoder: `check_cell` refuses `r` null even when the cell is voided, so ticket 07 must write them with
+their range when it exists, or leave them out (a missing cell is excused by the void).
+
 D17 (cell status 'inconclusive' = the row is kept, no claim; verdict 'inconclusive' = never holds, qualified or fails):
   i_nearcopy, iii, i_default[qwen]       every cell and verdict of every encoder
-  i_default[X], ii[X], ranges[X], picks[X]   every cell and the verdict of X
+  i_default[X], ii[X]                    every cell and the verdict of X
+  ranges[X], picks[X]                    X's verdict, SC2 cells and SC4 cells (they use the ranges and the picks); X's SC1
+                                         and SC3 cells keep their outcomes
   i_teacher[a], v[a]                     the SC4 cells of aspect a, all encoders; verdicts stand
   iv[X]                                  X's verdict and X's SC3 cells; its SC1, SC2, SC4 rows and SC4 claims stand
   vi                                     every verdict; every SC2 cell and SC4 retrieval cell; SC4 clustering claims stand
@@ -202,13 +207,16 @@ class Voids:
         self.every = [f'gate {k} failed' for k in ('i_nearcopy', 'iii') if bad(g[k])]
         if bad(g['i_default']['qwen']):
             self.every.append('gate i_default failed for qwen (the cut set is undefined)')
-        self.enc = {e: [] for e in ENCODERS}
+        self.enc = {e: [] for e in ENCODERS}                   # voids every cell of X (gates i_default[X], ii[X])
+        self.stage1 = {e: [] for e in ENCODERS}                # voids X's SC2 and SC4 cells only (they use ranges, picks)
         for e in ENCODERS:
             if e != 'qwen' and bad(g['i_default'][e]):
                 self.enc[e].append(f'gate i_default failed for {e}')
-            for what, v in (('gate ii', g['ii'][e]), ('stage 1 ranges', ranges[e]), ('stage 1 picks', s1['picks'][e])):
+            if bad(g['ii'][e]):
+                self.enc[e].append(f'gate ii failed for {e}')
+            for what, v in (('ranges', ranges[e]), ('picks', s1['picks'][e])):
                 if bad(v):
-                    self.enc[e].append(f'{what} failed for {e}')
+                    self.stage1[e].append(f'stage 1 {what} failed for {e}')
         self.vi = ['gate vi failed'] if bad(g['vi']) else []
         self.iv = {e: ([f'gate iv failed for {e} (matched arm)'] if bad(g['iv'][e]) else []) for e in ENCODERS}
         self.aspect = {a: [f'gate {k} failed for {a}' for k in ('i_teacher', 'v') if bad(g[k][a])] for a in ASPECTS}
@@ -219,11 +227,13 @@ class Voids:
             self.teacher_pick.append("stage 1 ranges failed for qwen (the teacher pick uses Qwen's ranges, D12)")
 
     def verdict(self, enc):
-        return self.every + self.enc[enc] + self.vi + self.iv[enc]
+        return self.every + self.enc[enc] + self.stage1[enc] + self.vi + self.iv[enc]
 
     def cell(self, key):
         sc, enc, aspect, task, _ = key
         out = self.every + self.enc[enc]
+        if sc in ('SC2', 'SC4'):                               # read-outs: need the ranges, which the picks need
+            out = out + self.stage1[enc]
         if sc == 'SC2' or (sc == 'SC4' and task == 'ret'):
             out = out + self.vi
         if sc == 'SC3':
@@ -274,7 +284,9 @@ def decide(cells, status, n=None, smoke=False):
         why = voids.verdict(enc)
         o = {(sc, a): oc.get((sc, enc, a, TASK_OF_SC[sc][0], DATA)) for sc in ('SC1', 'SC2', 'SC3') for a in ASPECTS}
         if why:
-            sc12 = [o[(sc, a)] for sc in ('SC1', 'SC2') for a in ASPECTS]
+            # a cell voided by the same failure is no evidence: the note is None when any SC1 or SC2 cell is voided
+            sc12 = [None if voids.cell((sc, enc, a, TASK_OF_SC[sc][0], DATA)) else o[(sc, a)]
+                    for sc in ('SC1', 'SC2') for a in ASPECTS]
             res['verdicts'][enc] = dict(
                 verdict=INCONCLUSIVE, go=GO_OF[INCONCLUSIVE], reason=why, sentence=None, sc3_win_aspects=None,
                 sc1_sc2_all_win=(all(x == WIN for x in sc12) if None not in sc12 else None))
@@ -286,6 +298,7 @@ def decide(cells, status, n=None, smoke=False):
             if v in (HOLDS, QUALIFIED):
                 assert isinstance(n, int) and not isinstance(n, bool) and n > 0, \
                     f'{enc}: the licensed sentence needs <n> = test.n from records/cutsets.json, got {n!r}'
+                assert smoke or n == MP.N_TEST, f'{enc}: test.n {n} != N_TEST {MP.N_TEST} (smoke allows others)'
                 sentence = verdict_sentence(enc, v, n, wins)
             res['verdicts'][enc] = dict(verdict=v, go=GO_OF[v], reason=[], sentence=sentence, sc3_win_aspects=wins,
                                         sc1_sc2_all_win=None)
@@ -310,14 +323,14 @@ def decide(cells, status, n=None, smoke=False):
 
 
 # ------------------------------------------------------------------------------------------------ records and CLI
-def cutsets_test_n(path):
-    """`test.n` of records/cutsets.json (written by ticket 07), or None when the file is absent."""
-    path = Path(path)
-    if not path.exists():
+def cutsets_test_n(smoke=False):
+    """`test.n` of records/cutsets.json (written by ticket 07), or None when the file is absent. Outside smoke the
+    record is read through `mt_paths.read_committed_record` (must equal HEAD)."""
+    if not Path(MP.record_path('cutsets.json')).exists():
         return None
-    rec = json.loads(path.read_text())
+    rec = json.loads(Path(MP.record_path('cutsets.json')).read_text()) if smoke else MP.read_committed_record('cutsets.json')
     assert isinstance(rec, dict) and isinstance(rec.get('test'), dict) and 'n' in rec['test'], \
-        f'cutsets record {path}: needs {{"test": {{"n": ...}}}}'
+        f'cutsets record: needs {{"test": {{"n": ...}}}}'
     return rec['test']['n']
 
 
@@ -340,10 +353,11 @@ def main(argv=None):
     args = ap.parse_args(argv)
     stage2 = Path(args.root) / 'stage2'
     cells, files = load_cells(stage2)
+    smoke = bool(MP.SMOKE)
     status_path = MP.record_path('status.json')
     assert Path(status_path).exists(), f'{status_path} is absent: the runner writes status.json before the verdicts'
-    status = json.loads(Path(status_path).read_text())
-    res = decide(cells, status, cutsets_test_n(MP.record_path('cutsets.json')), smoke=bool(MP.SMOKE))
+    status = json.loads(Path(status_path).read_text()) if smoke else MP.read_committed_record('status.json')
+    res = decide(cells, status, cutsets_test_n(smoke), smoke=smoke)
     res = dict(cell_files=files, status=status, **res)
     out = Path(args.out) if args.out else stage2 / 'outcomes.json'
     out.write_text(json.dumps(res, indent=1, allow_nan=False) + '\n')
