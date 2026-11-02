@@ -82,7 +82,15 @@ the test design is grilled in r15 decide. Deadlines: abstract 2026-11-10, paper 
   was freeze and write); type confirmation, medium loop (user, after seeing the recommendation). The seven-view
   extraction starts now, 2026-11-02 18:01, on the local GPU, not after 19:00; the "r14 mmart run" chat is closed and
   r15 decide runs the extraction (user). Storage: all recommendations approved (user).
-- **Idea (B):** open: the MMArt test design, grilled next in r15 decide.
+- **Idea (B):** the MMArt test design (grill in r15 decide, one round, 2026-11-02 18:15 to 18:20): all four
+  encoders, "a more complete test" (user); the teacher bar per cell, a WIN bar ("better than") in the cells c* won on
+  ArtELingo and LEVEL or WIN ("level with or better than") in all cells (user, after seeing the recommendation; the
+  user had picked LEVEL or WIN only, as r14); ranges and read-outs picked on MMArt validation (the 5,769 ArtELingo
+  validation paintings with MMArt labels), as on Affection and EmoSet (user); the minor batch as recommended (test cut
+  at 0.85 against ArtELingo train and validation, r14's verdict structure, K = 20, PercepT frozen with ArtELingo
+  topics, a diagnostic on the shared held paintings with MMArt labels, local CPU) (user, after seeing the
+  recommendation). No plan page (user). Spec: [2026-11-02-mmart-test-design.md](specs/2026-11-02-mmart-test-design.md)
+  (draft; rule review running).
 - **Why:** the user wants c* tested on a second art source before the freeze; MMArt's data was already prepared.
 - **Links:** [report](../reports/auto/percept/2027-01-02_backbones_sweep.md) ·
   [user-read report](../user_read/2026-11-02_backbones_sweep.md) ·
