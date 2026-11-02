@@ -45,4 +45,18 @@ times here are Amsterdam.
 - 08:41 SigLIP 1 exports rc 0 (46 s, none missing).
 - 08:46 stage 1 SigLIP 2 rc 0 (640 s): ranges, ArtELingo retrieval pick, Affection ranges and pick; record committed
   (1493b87) before any held number. 08:46 stage 1 SigLIP 1 started.
+- 08:51 part a CLIP L/14 succeeded: 10 of 10 ok. **Part a: 30 of 30 units ok, each on its first attempt.** Pulled,
+  verified. 08:52 sync of 317ec92 (log), sweep worker 3: `20261102-075201-317ec92`, slot 1. 08:52
+  `exports-part-a --enc clip_l14`.
+- 08:53 CLIP L/14 exports rc 0 (44 s, none missing).
+- 08:59 stage 1 SigLIP 1 rc 0 (736 s), record committed (a6af0f4). 08:59 stage 1 CLIP L/14, then stage 2, in one
+  sequence (both commit records).
+- 09:10 stage 1 CLIP L/14 rc 0 (655 s), record committed. **Stage 1 records of all three encoders committed** before
+  any held number. Stage 2 started.
+- 09:12 sweeps: 26 photo-sweep units done of 45 (about 200 s each), all ok.
+- 09:02 C13: Codex job (gpt-6.1-sol, high) writes `bs_c13.py` (derive, compare) from the spec's rule and the frozen
+  protocol code of r10 to r13, without the round's scoring code (r13's `pf_rederive.py` as the model). The full derive
+  and compare run under this chat after stage 3. Brief: the run chat's scratchpad `c13_brief.txt`.
+- Note on the 11:00 rule: the scoring, C13 and part b steps run on the local CPU (8 threads of 32) during the day, as
+  the spec's budget plans (CPU about 4 h; report due 11-04 23:00). No heavy local GPU work runs in working hours.
 - `res/r14_bs -> /data/SSD2/cosir_r14/20261102_backbones_sweep/outputs` created (plan step 7).
