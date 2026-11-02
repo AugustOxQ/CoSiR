@@ -380,3 +380,23 @@ def test_arm_names_and_checkpoint_paths(tmp_path):
         [2048, 1152, 768]
     with pytest.raises(AssertionError):
         BP.arm_checkpoint('photo_dino', 0)
+
+
+# ------------------------------------------------------------------------------------ review fixes (t04 round 2)
+
+def _entries(keys):
+    return [['awe', k, k.replace('image/', 'annotation/').replace('.jpg', '.json')] for k in keys]
+
+
+def test_emoset_export_keys_come_from_the_split_files_not_store_position(monkeypatch):
+    val = [f'image/awe/awe_{i:05d}.jpg' for i in range(0, 12, 2)]
+    test = [f'image/fear/fear_{i:05d}.jpg' for i in range(9)]
+    store = [k for pair in zip(test[:6], val) for k in pair] + test[6:]            # val and test interleaved
+    assert store[:len(val)] != val and len(store) == len(val) + len(test)
+    monkeypatch.setattr(BP.bs_extract, 'read_split_entries', lambda root=None, zf=None: dict(val=_entries(val), test=_entries(test)))
+    monkeypatch.setattr(BP.bs_stores, 'folders', lambda dataset, view: ['store'])
+    monkeypatch.setattr(BP.bs_stores, 'folder_keys', lambda folder, dataset: store)
+    assert BP.export_keys('emoset', 'val') == val and BP.export_keys('emoset', 'test') == test
+    monkeypatch.setattr(BP.bs_stores, 'folder_keys', lambda folder, dataset: [k for k in store if k != val[2]])
+    with pytest.raises(AssertionError, match='store'):                            # a split key missing from the store
+        BP.export_keys('emoset', 'val')

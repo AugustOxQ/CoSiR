@@ -25,8 +25,8 @@ start X-c* seed s, training seed 100 + s. Sweep rows: `ROWS` (`ref` and 14 one-c
 Exports (`export_checkpoint`, any emotion checkpoint of the arms `photo_qwen` (r13's five), `cstar_<enc>`,
 `photo_<enc>`): `OUT/exports/<dataset>/<arm>/<split>__s<seed>.npz` with `keys` and `emb` (float16 [n, 2048]) and a
 `.json` sidecar (`sha256` of the npz file, `emb_sha256`, `keys_sha256`, the source checkpoint and its sha256, ...).
-Affection val/test keys are r13's (`pf_data.keys`, sorted); EmoSet keys are the store's own key list, val rows first
-and then test (ticket 01), whose evaluation order is ticket 02's job.
+Affection val/test keys are r13's (`pf_data.keys`, sorted); EmoSet keys are each split's, from the split
+files (the store's row order is not the split order; the store is read by key).
 
 CLI:  bs_photo.py train --encoder E [--rows ref ...] [--seeds ...] [--keep all|none] [--root DIR] [--device cuda]
       bs_photo.py export --arm ARM --dataset affection|emoset [--splits val test] [--seeds ...] [--root DIR]
@@ -68,6 +68,7 @@ import rb_student  # noqa: E402
 import rs_vh  # noqa: E402
 
 import bs_stores  # noqa: E402
+import bs_extract  # noqa: E402
 
 NonFiniteLoss = pf_train.NonFiniteLoss
 RECIPE = dict(pf_paths.RECIPE)                          # weight decay 0.05, batch 512 pairs, 200 epochs, patience 15
@@ -455,14 +456,17 @@ def export_checkpoint(dataset, arm, split, seed, ckpt, ckpt_sha, width, keys, x,
 
 
 def export_keys(dataset, split):
-    """Keys of an export: Affection val/test (r13's, sorted); EmoSet the store's key list, val rows then test rows."""
+    """Keys of an export: Affection val/test (r13's, sorted); EmoSet each split's keys from the split files
+    (`bs_extract.read_split_entries`, image paths in file order), every one asserted to be in the store, which is then
+    read by key (`images`), never by position."""
     assert dataset in SPLITS and split in SPLITS[dataset]
     if dataset == 'affection':
         return pf_data.keys(split)
-    keys = bs_stores.folder_keys(bs_stores.folders('emoset', 'qwen_default')[0], 'emoset')
-    n_val, n_test = P.EMOSET_SPLITS['val'], P.EMOSET_SPLITS['test']
-    assert len(keys) == n_val + n_test, len(keys)
-    return keys[:n_val] if split == 'val' else keys[n_val:]
+    keys = [e[1] for e in bs_extract.read_split_entries(root=P.EMOSET_ROOT)[split]]
+    in_store = set(bs_stores.folder_keys(bs_stores.folders('emoset', 'qwen_default')[0], 'emoset'))
+    missing = [k for k in keys if k not in in_store]
+    assert not missing, f'{len(missing)} {split} keys are not in the store, e.g. {missing[:3]}'
+    return keys
 
 
 def export_arm(dataset, arm, splits, seeds, *, root=None):
