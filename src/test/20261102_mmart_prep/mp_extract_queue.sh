@@ -15,7 +15,7 @@ fi
 ROOT=${MP_STORE_ROOT:-/data/SSD2/pre_extract/mmart}
 mkdir -p -- "$ROOT/logs"
 LOG="$ROOT/logs/queue_$(date +%Y%m%d_%H%M%S).log"
-STATUS="$HERE/mp_queue_status.json"
+STATUS="${MP_OUTPUTS:-$HERE}/mp_queue_status.json"
 START=$SECONDS
 STEP=setup
 finish() {
