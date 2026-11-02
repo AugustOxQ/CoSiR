@@ -21,10 +21,15 @@ CLUSTER=/root/.claude/skills/cluster-run/cluster          # (spelled out: the `c
      $CLUSTER launch --node node402 -- bash scripts/run_bs_node.sh part-a --encoder siglip1
      $CLUSTER launch --node node402 -- bash scripts/run_bs_node.sh part-a --encoder clip_l14
 5  sweeps, three workers on one claim queue (photo rows first, then knob rows):
+     FIRST wait for prep's done line (`$CLUSTER watch <prep tag>`): two first builds of the k80 graph race.
      $CLUSTER check --node node402 --sync-data -- bash scripts/run_bs_node.sh sweep --kind photo knob
      $CLUSTER launch --node node402 -- bash scripts/run_bs_node.sh sweep --kind photo knob     (x3; add --reset-claims to the first only after a lost job)
 6  after each job:   $CLUSTER watch <tag>    $CLUSTER pull --tag <tag>    then, for time left:
      python src/test/20261102_backbones_sweep/bs_node.py estimate
+   after each part a pull, the exports on the local CPU (the stage 1 and stage 3 inputs; stage 2 needs them too):
+     bash src/test/20261102_backbones_sweep/bs_run_cpu.sh exports-part-a --enc <enc>
+   (once, before stage 2: bash .../bs_run_cpu.sh exports-qwen). Run order after the node: exports-qwen, exports-part-a for all
+   three encoders, stage1, stage2, stage3 (cells), C13 (Codex re-derives; commit RECORDS/c13.json), decide, stage4, stage5.
 7  pulled results land in <worktree>/res/<name>/ (name = r14_bs, r14_bs_smoke, r14_bs_probe); the pull follows a symlink there
    (proved with the probe, verified 24 files). Before the first pull, from the worktree you pull in:
      mkdir -p res && ln -sfn /data/SSD2/cosir_r14/20261102_backbones_sweep/outputs res/r14_bs     (smoke: res/r14_bs_smoke -> .../smoke_pull)

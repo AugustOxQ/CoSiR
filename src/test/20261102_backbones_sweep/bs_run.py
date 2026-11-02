@@ -11,13 +11,30 @@ prints one line `BS_RUN <stage> <step> rc=<rc> seconds=<s>`.
         until it is resolved: CPU re-export from the weights (§3.2) or the node rerun (after part a), then
         `stage0 --resolve vii-sha=ok` (or `=failed`). `--close-pending` turns every pending gate into failed.
     python bs_run.py status [--close-pending]   assemble RECORDS/status.json (schema: bs_outcome.py STATUS SCHEMA)
+    python bs_run.py exports --set qwen         EmoSet exports (val, test; seeds 0 to 4) of photo_qwen (r13's five photo runs) and
+        cstar_qwen (the frozen c*), through bs_photo export. Before stage 2.
+    python bs_run.py exports --set part-a --enc E [E ...]    after the node's part a is pulled: the X-c* held export of E (bs_cstar
+        export --kind held --device cpu) and the photo_E exports on Affection and EmoSet (val, test), seeds 0 to 4. Skips the
+        arms that part_a_state(E) marks failed (and says so). Before stage 1 (Affection val) and stage 3 (held, Affection test)
+        and stage 2 (EmoSet). `--seeds` (default 0 to 4) is for a dry check. All exports run on the local CPU (every store is
+        local; gate 0(ix)'s c* part passed on CPU, max abs diff 6.1e-05). A job whose files exist with a matching sha256 is
+        skipped; a stage that needs a missing export refuses and names this step.
     python bs_run.py stage1 [--enc E ...]       per encoder still in part a: seed ranges and read-out picks (tickets 05 to 07)
-        -> RECORDS/stage1_<enc>.json, committed before any held number of that encoder.
-    python bs_run.py stage2                     r_E, read-out and wording picks -> RECORDS/stage2_emoset.json, committed.
-    python bs_run.py stage3 [--enc E ...] [--n-clu N --n-ret N --smoke]
+        -> RECORDS/stage1_<enc>.json, committed before any held number of that encoder. Needs the part-a exports.
+    python bs_run.py stage2                     r_E, read-out and wording picks -> RECORDS/stage2_emoset.json, committed. Runs AFTER
+        part a and the exports: refuses unless, for each encoder, OUT/node/part_a_<enc>.json exists and either its photo_<enc>
+        EmoSet exports exist or its photo runs failed, and the Qwen EmoSet exports exist (so the X photo models' rows are scored).
+    python bs_run.py stage3 [--enc E ...] [--n-clu N --n-ret N]
         status.json, then the cells of every encoder and path that is not failed (refuses without the committed stage 1
-        record, and the record must equal the stage 1 files the scorers read), part c (refuses without the committed
-        stage 2 record), then `bs_outcome decide` -> OUT/stage3/outcomes.json and RECORDS/verdicts.json (committed).
+        record, and the record must equal the stage 1 files the scorers read; refuses without the exports), part c (refuses
+        without the committed stage 2 record). Writes the CELLS ONLY (OUT/stage3/cells_*.json) and prints the sha256 of each
+        cells file and of the committed stage 1 and 2 records (also OUT/stage3/c13_sha256.json). No verdict.
+    python bs_run.py decide [--smoke]           after C13 (§3.4: Codex re-derives "before any verdict is written"). Refuses unless
+        RECORDS/c13.json is committed in git HEAD with "pass": true and "sha256": {"stage3/<cells file>": hex, ...,
+        "records/<stage 1 or 2 record>": hex, ...} equal to the current files. Then `bs_outcome decide` -> OUT/stage3/outcomes.json
+        and RECORDS/verdicts.json (committed). The re-derivation itself is the run chat's Codex job, not code.
+    Order: stage0 (cpu, gpu) -> node (viii, prep, part a, sweeps) -> exports qwen, exports part-a -> stage1 -> stage2 -> stage3
+    -> C13 -> decide -> stage4 -> stage5.
     python bs_run.py stage4                     the three part b sheets (bs_partb: knob, photo, ablation).
     python bs_run.py diag [--smoke]             bs_diag.run_all(smoke=...) (ticket 12b; imported here, lazily).
     python bs_run.py stage5 [--smoke]           the same call (stage 5 is the diagnostics, §3.5/§3.6).
@@ -32,6 +49,7 @@ Commit rule (§3.7): records are committed in the checkout that holds this code 
 is gitignored), scoped to the files named, with the attribution lines of the run chat's commit message in BS_RUN_TRAILER.
 """
 import argparse
+import hashlib
 import json
 import os
 import shutil
@@ -46,6 +64,7 @@ ROUND = BP.ROUND
 OUT = Path(BP.OUT)
 RECORDS = Path(os.environ.get('BS_RECORDS') or BP.RECORDS)
 ENCS = tuple(BP.NEW_ENCODERS)
+P_SEEDS = tuple(BP.SEEDS)
 PATHS = ('paintings', 'photos')
 NO_COMMIT = bool(os.environ.get('BS_RUN_NO_COMMIT'))
 STUB = bool(os.environ.get('BS_RUN_STUB'))
@@ -65,7 +84,8 @@ def py(module, *args):
 
 def step(stage, name, argv, extra_env=None):
     """Run one command; log, time and record it. Returns {step, argv, rc, seconds, log}."""
-    d = OUT / f'stage{stage}'
+    stage = f'stage{stage}' if isinstance(stage, int) else stage            # 'exports' has its own folder
+    d = OUT / stage
     (d / 'logs').mkdir(parents=True, exist_ok=True)
     log = d / 'logs' / f'{name}.log'
     t0 = time.time()
@@ -79,7 +99,7 @@ def step(stage, name, argv, extra_env=None):
     rec = dict(step=name, argv=[str(a) for a in argv], rc=rc, seconds=round(time.time() - t0, 1), log=str(log), at=now())
     with open(d / 'steps.jsonl', 'a') as fh:
         fh.write(json.dumps(rec) + '\n')
-    print(f'BS_RUN stage{stage} {name} rc={rc} seconds={rec["seconds"]}', flush=True)
+    print(f'BS_RUN {stage} {name} rc={rc} seconds={rec["seconds"]}', flush=True)
     return rec
 
 
@@ -172,7 +192,8 @@ def gate_table():
 # Gates whose failure stops a path of every encoder, or part c. (viii) has no gate. (i) and (ii) are per store, below.
 EFFECT = {'iii': ['part_c'], 'x': ['part_c'], 'xi': ['part_c'],
           'iv': ['paintings', 'photos'],                 # the trainer both paths use (X photo starts from X-c*)
-          'v': ['photos'], 'vi:affection': ['photos'], 'ix:photo': ['photos'], 'ix:cstar': ['paintings']}
+          'v': ['photos'], 'vi:affection': ['photos', 'part_c'],      # part c: its exports are bs_photo.export_arm's, and it
+          'ix:photo': ['photos', 'part_c'], 'ix:cstar': ['paintings']}  # reuses the Affection scoring code (final review F4)
 for _g in ('vi:artclu', 'vi:artret', 'vi:artret-ranges', 'vi:artret-pick', 'vii-matched', 'vii-sha', 'vii-removals',
            'xii:f', 'xii:k', 'xii:artret', 'xii:artret-pick'):
     EFFECT[_g] = ['paintings']
@@ -221,8 +242,7 @@ def expand(effects):
 
 def failed_items(gate_id):
     """Failing item names of a replay gate, from its replay file (empty when unreadable)."""
-    mod = gate_id.split(':')[0]
-    f = OUT / 'replays' / f'replay_{mod}.json'
+    f = OUT / 'replays' / f'replay_{gate_id.replace(":", "-")}.json'      # xii:f -> replay_xii-f.json (bs_artclu.py:619)
     try:
         items = jload(f)['items']
     except (OSError, KeyError, ValueError):
@@ -311,7 +331,8 @@ def gate_state(gates):
 
 
 def part_a_state(enc):
-    """(cstar_runs, photo_runs) from the node's OUT/node/part_a_<enc>.json: ok only with all five runs done."""
+    """(cstar_runs, photo_runs) from the node's OUT/node/part_a_<enc>.json: ok only with all five runs done. The two kinds
+    are reported apart (a failed X photo run leaves cstar_runs ok, §6 / D18); failed X-c* runs make photo_runs failed too."""
     f = OUT / f'node/part_a_{enc}.json'
     if not f.exists():
         return None
@@ -382,6 +403,99 @@ def part_alive(enc, status=None):
     return dict(paintings=cs == 'ok' and f'{enc}:paintings' not in bad, photos=ph == 'ok' and f'{enc}:photos' not in bad)
 
 
+# ============================================================================================== exports (final review F1)
+STAR_ARM = 'k11=40'                                  # c*'s arm name (bs_cstar.STAR_ARM): the held exports' folder
+SPLITS = ('val', 'test')
+EXPORT_HINT = 'run the exports step: `bash bs_run_cpu.sh exports-qwen` / `bash bs_run_cpu.sh exports-part-a --enc <enc>`'
+
+
+def held_files(enc, seeds=P_SEEDS):
+    return [OUT / 'cstar' / enc / 'held' / STAR_ARM / f'{a}__s{sd}.npz' for sd in seeds for a in BP.ASPECTS]
+
+
+def photo_files(dataset, arm, splits=SPLITS, seeds=P_SEEDS):
+    return [OUT / 'exports' / dataset / arm / f'{sp}__s{sd}.npz' for sp in splits for sd in seeds]
+
+
+def lacking(files):
+    """The files (or their sidecars) that do not exist."""
+    return [f for f in files if not (f.is_file() and f.with_suffix('.json').is_file())]
+
+
+def export_valid(npz, kind):
+    """The export file and its sidecar exist and agree: photo/EmoSet exports (bs_photo): sidecar `sha256` is the file's sha256;
+    held exports (bs_cstar, rb_student.write_outputs): each array's sha256 in the sidecar equals the stored array's."""
+    npz = Path(npz)
+    side = npz.with_suffix('.json')
+    if not (npz.is_file() and side.is_file()):
+        return False
+    try:
+        info = jload(side)
+        if kind == 'photo':
+            return info.get('sha256') == hashlib.sha256(npz.read_bytes()).hexdigest()
+        import numpy as np
+        with np.load(npz, allow_pickle=False) as z:
+            return sorted(z.files) == sorted(info['arrays']) and all(
+                hashlib.sha256(np.ascontiguousarray(z[k]).tobytes()).hexdigest() == v['sha256'] for k, v in info['arrays'].items())
+    except (OSError, ValueError, KeyError):             # a broken file or sidecar is re-exported (the CLI asserts on other content)
+        return False
+
+
+def export_job(item, seeds):
+    """(step name, argv, files written, kind) of one export item: ('held', enc) or ('photo', dataset, arm)."""
+    if item[0] == 'held':
+        enc = item[1]
+        return (f'held_{enc}', py('bs_cstar', 'export', '--encoder', enc, '--kind', 'held', '--seeds', *seeds, '--device', 'cpu'),
+                held_files(enc, seeds), 'held')
+    _, dataset, arm = item          # bs_photo export runs on CPU only (bs_photo.infer), so it has no --device
+    return (f'{dataset}_{arm}', py('bs_photo', 'export', '--arm', arm, '--dataset', dataset, '--splits', *SPLITS, '--seeds', *seeds),
+            photo_files(dataset, arm, SPLITS, seeds), 'photo')
+
+
+def run_exports(a):
+    """Local CPU export steps (final review F1): `--set qwen` (EmoSet exports of photo_qwen and cstar_qwen) or `--set part-a
+    --enc E ...` (X-c* held export, X photo exports on Affection and EmoSet). Idempotent: a job whose files all exist with a
+    matching sha256 is skipped; the CLIs also refuse other content under an existing name."""
+    seeds = tuple(a.seeds or P_SEEDS)
+    items, notes = [], []
+    if a.set == 'qwen':
+        assert not a.enc, '--enc belongs to --set part-a'
+        items = [('photo', 'emoset', 'photo_qwen'), ('photo', 'emoset', 'cstar_qwen')]
+    else:
+        assert a.enc, '--set part-a needs --enc E [E ...]'
+        for enc in a.enc:
+            st = part_a_state(enc)
+            if st is None:
+                raise SystemExit(f'REFUSED: no part a result OUT/node/part_a_{enc}.json: pull the node run first')
+            if st[0] == 'ok':
+                items.append(('held', enc))
+            else:
+                notes.append(f'{enc}: X-c* runs failed: no held export (paintings path failed, D18)')
+            if st[1] == 'ok':
+                items += [('photo', 'affection', f'photo_{enc}'), ('photo', 'emoset', f'photo_{enc}')]
+            else:
+                notes.append(f'{enc}: X photo runs failed: no photo_{enc} exports (photos path failed, D18)')
+    for n in notes:
+        print(f'BS_RUN exports SKIPPED {n}', flush=True)
+    bad, left = 0, 0
+    for item in items:
+        name, argv, files, kind = export_job(item, seeds)
+        if all(export_valid(f, kind) for f in files):
+            print(f'BS_RUN exports {name}: {len(files)} files present with matching sha256, skipped', flush=True)
+            continue
+        bad += step('exports', name, argv)['rc'] != 0
+        left += 0 if STUB else len(lacking(files))
+    print(f'BS_RUN exports {a.set}: {f"{bad} step(s) FAILED" if bad else "done"}; files still missing: {left}'
+          + (f'; skipped arms: {len(notes)}' if notes else ''), flush=True)
+    return 1 if bad or left else 0
+
+
+def require_exports(files, what):
+    miss = lacking(files)
+    if miss:
+        raise SystemExit(f'REFUSED: {what}: {len(miss)} export file(s) missing, e.g. {miss[0]}; {EXPORT_HINT}')
+
+
 # ============================================================================================== stage 1 and 2
 def stage1_record_path(enc):
     return RECORDS / f'stage1_{enc}.json'
@@ -400,6 +514,8 @@ def run_stage1(a):
         if not (alive['paintings'] or alive['photos']):
             print(f'BS_RUN stage1 {enc}: both paths failed or runs missing, skipped (no verdict, D18)', flush=True)
             continue
+        if alive['photos']:
+            require_exports(photo_files('affection', f'photo_{enc}', ('val',)), f'stage 1 {enc}: Affection validation exports')
         ok = True
         if alive['paintings']:
             for nm, argv in (('artclu_ranges', py('bs_artclu', 'ranges', '--enc', enc)),
@@ -442,7 +558,24 @@ def check_stage1_record(enc, paths):
             raise SystemExit(f'REFUSED: {src[key]} differs from {f}[{key}]')
 
 
+def check_stage2_ready():
+    """Stage 2 runs after part a and its exports (final review F3): `descriptive_available` must see the X photo models'
+    EmoSet exports, and the record is frozen once written. For each encoder the part a result exists and either its
+    photo_<enc> EmoSet exports exist or its photo runs failed; the Qwen EmoSet exports (photo_qwen, cstar_qwen) exist."""
+    for enc in ENCS:
+        st = part_a_state(enc)
+        if st is None:
+            raise SystemExit(f'REFUSED: stage 2 runs after part a: no OUT/node/part_a_{enc}.json (pull the node run first)')
+        if st[1] != 'failed':
+            require_exports(photo_files('emoset', f'photo_{enc}'), f'stage 2: photo_{enc} EmoSet exports')
+    for arm in ('photo_qwen', 'cstar_qwen'):
+        require_exports(photo_files('emoset', arm), f'stage 2: {arm} EmoSet exports')
+
+
 def run_stage2(a):
+    for enc in ENCS:                                    # also when part c is stopped: the status needs every part a result
+        if part_a_state(enc) is None:
+            raise SystemExit(f'REFUSED: stage 2 runs after part a: no OUT/node/part_a_{enc}.json (pull the node run first)')
     if load_gates().get('xi') is None:
         print('BS_RUN stage2: gate 0(xi) not run yet', flush=True)
     bad = gate_state(load_gates())[0]
@@ -451,6 +584,7 @@ def run_stage2(a):
         jdump(st, dict(status='failed', why=f'stage 0 gates failed: {bad["part_c"]}', at=now()))
         print('BS_RUN stage2: part c stopped by stage 0 (no verdict, §6)', flush=True)
         return build_status(strict=False)
+    check_stage2_ready()
     r = step(2, 'stage2', py('bs_emoset_score', 'stage2'))
     src, dst = OUT / 'stage2/stage2_emoset.json', RECORDS / 'stage2_emoset.json'
     if r['rc'] or not src.exists():
@@ -482,10 +616,14 @@ def run_stage3(a):
             continue
         check_stage1_record(enc, alive)
         if 'paintings' in alive:
+            require_exports(held_files(enc), f'stage 3 {enc}: X-c* held exports')
+        if 'photos' in alive:
+            require_exports(photo_files('affection', f'photo_{enc}'), f'stage 3 {enc}: Affection exports')
+        if 'paintings' in alive:
             bad += step(3, f'artclu_score_{enc}', py('bs_artclu', *draws_clu, 'score', '--enc', enc, '--loader', 'bs_stores'))['rc'] != 0
             bad += step(3, f'artret_score_{enc}', py('bs_artret', *draws_ret, 'score', '--enc', enc))['rc'] != 0
         if 'photos' in alive:
-            bad += step(3, f'affection_score_{enc}', py('bs_affection', 'score', '--enc', enc, *extra['n_clu'], *extra['n_ret']))['rc'] != 0
+            bad += step(3, f'affection_score_{enc}', py('bs_affection', *extra['n_clu'], *extra['n_ret'], 'score', '--enc', enc))['rc'] != 0
     pc = status['part_c']
     if pc['stage0'] == 'ok' and pc['stage2'] == 'ok':
         require(RECORDS / 'stage2_emoset.json', 'stage 3 part c: stage 2 record')
@@ -493,15 +631,51 @@ def run_stage3(a):
     else:
         print(f'BS_RUN stage3 part c skipped: {pc} (inconclusive, D18)', flush=True)
     if bad:
-        print(f'BS_RUN stage3: {bad} scoring step(s) failed; outcomes not decided', flush=True)
+        print(f'BS_RUN stage3: {bad} scoring step(s) failed; cells incomplete', flush=True)
         return 1
+    sha = c13_hashes()
+    jdump(OUT / 'stage3/c13_sha256.json', sha)
+    for k, v in sha.items():
+        print(f'BS_RUN stage3 sha256 {k} {v}', flush=True)
+    print(f'BS_RUN stage3: cells written ({len([k for k in sha if k.startswith("stage3/")])} files); NO verdict yet (C13: Codex re-derives, '
+          f'then RECORDS/c13.json is committed, then `bs_run.py decide`)', flush=True)
+    return 0
+
+
+def c13_hashes():
+    """{'stage3/<cells file>': sha256, 'records/<stage 1 or 2 record>': sha256}: the files C13's re-derivation covers (§3.4:
+    the cells of OUT/stage3 and the committed stage 1 and stage 2 records)."""
+    out = {f'stage3/{f.name}': hashlib.sha256(f.read_bytes()).hexdigest() for f in sorted((OUT / 'stage3').glob('cells_*.json'))}
+    for f in sorted(RECORDS.glob('stage1_*.json')) + [x for x in (RECORDS / 'stage2_emoset.json',) if x.exists()]:
+        require(f, 'decide: stage 1 / stage 2 record')
+        out[f'records/{f.name}'] = hashlib.sha256(f.read_bytes()).hexdigest()
+    return out
+
+
+def run_decide(a):
+    """Verdicts, after C13 (§3.4: Codex re-derives the cells "before any verdict is written"). Refuses unless RECORDS/c13.json
+    is committed in git HEAD with "pass": true and a "sha256" map equal to c13_hashes() (the current cells files and the
+    committed stage 1 and stage 2 records). Format of RECORDS/c13.json, written by the run chat after Codex's re-derivation:
+        {"pass": true, "sha256": {"stage3/cells_affection.json": "<hex>", ..., "records/stage1_siglip2.json": "<hex>", ...},
+         "by": "...", "at": "...", "notes": "..."}
+    (`stage3` prints the map and writes it to OUT/stage3/c13_sha256.json.) Then bs_outcome decide -> OUT/stage3/outcomes.json
+    and RECORDS/verdicts.json (committed)."""
+    f = RECORDS / 'c13.json'
+    require(f, 'decide: C13 re-derivation record (the run chat commits it after Codex re-derived the cells)')
+    rec = jload(f)
+    if rec.get('pass') is not True:
+        raise SystemExit(f'REFUSED: {f}: "pass" is not true: C13 did not pass; no verdict')
+    want, have = rec.get('sha256'), c13_hashes()
+    if want != have:
+        diff = sorted(k for k in set(want or {}) | set(have) if (want or {}).get(k) != have.get(k))
+        raise SystemExit(f'REFUSED: {f}: "sha256" differs from the current files: {diff}; C13 covered other content')
     dec = ['decide', '--status', RECORDS / 'status.json', '--nearcopy', RECORDS / 'nearcopy_emoset.json'] + (['--smoke'] if a.smoke else [])
     r = step(3, 'decide', py('bs_outcome', *dec))
     out = OUT / 'stage3/outcomes.json'
     if r['rc'] or not out.exists():
         return 1
     shutil.copyfile(out, RECORDS / 'verdicts.json')
-    commit([RECORDS / 'verdicts.json'], 'r14 stage 3: verdicts (bs_outcome decide)')
+    commit([RECORDS / 'verdicts.json'], 'r14 stage 3: verdicts (bs_outcome decide, after C13)')
     return 0
 
 
@@ -561,11 +735,16 @@ def main(argv=None):
     s1 = sub.add_parser('stage1')
     s1.add_argument('--enc', nargs='+', choices=ENCS)
     sub.add_parser('stage2')
+    ex = sub.add_parser('exports')
+    ex.add_argument('--set', required=True, choices=('qwen', 'part-a'))
+    ex.add_argument('--enc', nargs='+', choices=ENCS)
+    ex.add_argument('--seeds', type=int, nargs='+', choices=P_SEEDS, help='default: 0 to 4 (fewer only for a dry check)')
     s3 = sub.add_parser('stage3')
     s3.add_argument('--enc', nargs='+', choices=ENCS)
     s3.add_argument('--n-clu', type=int)
     s3.add_argument('--n-ret', type=int)
-    s3.add_argument('--smoke', action='store_true', help='draw counts other than the protocol\'s (outcome code allows them)')
+    dc = sub.add_parser('decide')
+    dc.add_argument('--smoke', action='store_true', help='draw counts other than the protocol\'s (outcome code allows them)')
     s4 = sub.add_parser('stage4')
     s4.add_argument('--n-clu', type=int)
     s4.add_argument('--n-ret', type=int)
@@ -578,7 +757,7 @@ def main(argv=None):
         NO_COMMIT = True
     t0 = time.time()
     fn = {'stage0': run_stage0, 'status': lambda a: build_status(a.close_pending), 'stage1': run_stage1, 'stage2': run_stage2,
-          'stage3': run_stage3, 'stage4': run_stage4, 'diag': lambda a: run_diag(a, 5), 'stage5': lambda a: run_diag(a, 5),
+          'exports': run_exports, 'stage3': run_stage3, 'decide': run_decide, 'stage4': run_stage4, 'diag': lambda a: run_diag(a, 5), 'stage5': lambda a: run_diag(a, 5),
           'standin': run_standin}[a.cmd]
     rc = fn(a) or 0
     print(f'BS_RUN {a.cmd} done rc={rc} seconds={time.time() - t0:.1f}', flush=True)
