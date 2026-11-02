@@ -48,6 +48,28 @@ fallback; the large sweep moves to r14, after the freeze; PolyArt waits for the 
 - Align and contrast the three aspect heads of one image (shared part aligned, aspect parts pushed apart) (never tried;
   not chosen by the user, 2026-10-20: the aspects may not be separable; proposed in the r10 decide 12 chat)
 
+## 2026-11-02 · Photo fine-tune read: the photo model above the plain Qwen image and above its teacher on Affection (holds); the CRL claim passes; next, open (step 2 in r14 decide)
+
+- **Read:** Affection test (8,501 photos, emotion, 5 seeds; c* fine-tuned on 69,927 unlabeled train photos, settings
+  picked on validation). Photo model minus the plain Qwen image: AMI +0.0797 [+0.0741, +0.0857] WIN, mAP +0.0720
+  [+0.0699, +0.0742] WIN. Minus the teacher (instructed Qwen image): AMI 0.1838 against 0.1666, +0.0172 [+0.0121,
+  +0.0225] WIN; mAP 0.3172 against 0.2945, +0.0227 [+0.0210, +0.0244] WIN. CRL claim: mAP +0.0433 [+0.0411,
+  +0.0455] WIN. Verdict: holds; C13 equal on all 378 items. The photo model keeps 127.5% (AMI) and 145.9% (mAP) of the
+  teacher's gain over the plain image, against frozen c*'s 54.9% and 61.5%. Sweep pick: 80 graph neighbours, ahead of
+  the next row by 0.0032 AMI, under half the photo model's AMI seed range (0.00707); all five final runs stopped at
+  best epoch 1. The bar against the teacher was LEVEL or WIN, so the licensed text is "level with or better than".
+- **Meaning (C):** "Thats a big improvement, so there's already a clear win against the teacher right? But only on a
+  single arm (emotion + artelingo + qwen). I would expect more robust and wider test." (user, before seeing ours).
+  Ours: photo training reverses the teacher gap in both tasks, across sources and without tied labels; high
+  confidence; the exact sweep pick is close to noise. Where they differ: the arm is Affection photos, not ArtELingo;
+  the numbers are a WIN, but the bar set before the run was LEVEL or WIN, so a "better than the teacher" claim needs a
+  new test with a WIN bar, best on data that did not shape the method; ours recommended freeze and write, the user
+  wants wider tests (the large sweep, more aspects, more backbones).
+- **Decided (A):** open, step 2 in the r14 decide chat.
+- **Links:** [report](../reports/auto/percept/2027-01-01_photo_finetune.md) ·
+  [user-read report](../user_read/2026-11-01_photo_finetune.md) ·
+  [spec](specs/2026-10-31-photo-finetune-design.md) · [handoff](handoffs/2026-11-01-r13-run-2-handoff.md)
+
 ## 2026-10-31 · Affection confirmation read: frozen c* above the plain Qwen image, below its teacher (fails); the ArtELingo CRL bars pass; next, c* trained on photos too, before the 11-10 freeze
 
 - **Read:** Affection test (8,501 photos, emotion, 5 seeds; c* frozen, heads trained on paintings only). c* minus the
