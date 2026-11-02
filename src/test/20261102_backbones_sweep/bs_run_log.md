@@ -143,3 +143,11 @@ times here are Amsterdam.
 - 15:15 Codex job (gpt-6.1-sol, high): the part b spot re-derivation, `bs_c13_partb.py` (derive, compare), separate code
   from the rule and frozen r10 to r13 code, without the round's sheet and scoring code (5h window 97% left at 15:06).
 - 15:28 `bs_run_cpu.sh stage4` (the three sheets; log `OUT/stage4_run3.log`).
+- 15:27 Codex back (12 min; 5h window 12 points, weekly about 2): `bs_c13_partb.py`, `test_bs_c13_partb.py` (12 tests),
+  imports only frozen r10 to r13 code and `bs_paths`; committed c7c90ea. 15:29 to 15:49 full derive, the five rows
+  (knob about 1 min each, ablation 722 s and 466 s).
+- 15:50 early compare (knob sheet not yet rewritten): 313 items, 26 mismatches, all the ablation rows' validation mAP
+  under the read-out (centering + k = 10). The sheet uses r11's cross-fit mAP (`rt_readout.crossfit_all`) for that
+  point value; the derive scored it in-sample. A definition, not a numeric slip: the frozen r11 protocol is the
+  cross-fit. Every other item matches (AMI both splits, R0 mAP, held read-out mAP, the photo row). One Codex fix round
+  by resume (15:52).
