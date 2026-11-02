@@ -86,8 +86,12 @@ times here are Amsterdam.
   untouched; change log `.claude/20261102_log.md`); 30 C13 tests pass.
 - 10:59 compare again: **items 2,676, mismatches 0, max abs diff 1.1e-16** (bar 1e-6). All ten hashes equal the stage 3
   map. `records/c13.json` written (pass true).
-- 11:03 `decide` rc 0: `records/verdicts.json` committed (3e6ff30). Compare again: 45 mismatches, all adapter layout of
+- 11:00 `decide` rc 0: `records/verdicts.json` committed (3e6ff30). Compare again: 45 mismatches, all adapter layout of
   `outcomes.json` (verdicts under `paintings`/`photos.<enc>`, SC6 claims as `sc6.<enc>` rows, the two cell names), none
   numeric. Fixed in `compare_outcomes` only; 30 C13 tests pass.
-- 11:04 compare: **items 2,768, mismatches 0** (61 written outcomes, 24 SC6 claims, 6 encoder verdicts, part c).
+- 11:01 compare: **items 2,768, mismatches 0** (61 written outcomes, 24 SC6 claims, 6 encoder verdicts, part c).
   `c13.json` gets an `outcomes_compare` note (its hash map is unchanged).
+- 11:01 early checks while the sweeps run (the runner's stage 4 and stage 5 run everything again later):
+  `bs_partb.py ablation` (local r10 data only) and ten of the twelve diagnostics (all but `knob_curves` and
+  `photo_length`, which need the sweeps); logs `OUT/stage4/logs/partb_ablation_early.log`, `diag_early_<item>.log`.
+- Codex ledger row of the C13 job updated (claude-config 444d7d4).
