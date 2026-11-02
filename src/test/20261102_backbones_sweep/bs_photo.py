@@ -20,7 +20,9 @@ do) and used by call, with these differences and only these:
     memory (`PhotoRun.state`) for the caller's scoring (D15: no weights, no exports).
 
 Photo model of encoder `enc`, seed s: `OUT/photo/<enc>/s<s>/{emotion.pt, run.json}` (as r13's `runs/final/s<s>/`),
-start X-c* seed s, training seed 100 + s. Sweep rows: `ROWS` (`ref` and 14 one-change rows, names `<setting>=<value>`).
+start X-c* seed s, training seed 100 + s. Sweep rows: `ROWS` (`ref` and 14 one-change rows, names `<setting>=<value>`),
+run with `--sweep` (Qwen) into `OUT/sweeps/photo/<row>/s<s>/` (the sweep's `ref` too; run.json only, D15). 0(v)'s run
+has its own root, `OUT/stage0/photo_regress_v`.
 
 Exports (`export_checkpoint`, any emotion checkpoint of the arms `photo_qwen` (r13's five), `cstar_<enc>`,
 `photo_<enc>`): `OUT/exports/<dataset>/<arm>/<split>__s<seed>.npz` with `keys` and `emb` (float16 [n, 2048]) and a
@@ -29,7 +31,7 @@ Affection val/test keys are r13's (`pf_data.keys`, sorted); EmoSet keys are each
 files (the store's row order is not the split order; the store is read by key).
 
 CLI:  bs_photo.py train --encoder E [--rows ref ...] [--seeds ...] [--keep all|none] [--root DIR] [--cstar-root DIR]
-                        [--device cuda]      (X-c* root default OUT/cstar/<E>, ticket 03's, whatever --root is)
+                        [--sweep] [--device cuda]      (X-c* root default OUT/cstar/<E>, ticket 03's, whatever --root is)
       bs_photo.py export --arm ARM --dataset affection|emoset [--splits val test] [--seeds ...] [--root DIR]
                          [--cstar-root DIR]
       bs_photo.py regress-v [--root DIR]        0(v): Qwen, r13's final settings, seed 0 against r13's sidecar
@@ -345,15 +347,23 @@ def start_root(enc, cstar_root=None):
     return Path(default_cstar_root(enc) if cstar_root is None else cstar_root) / 'weights' / 'k11=40'
 
 
-def run_dir(enc, row, seed, root=None):
-    base = Path(P.OUT if root is None else root) / 'photo' / enc
-    return base / f's{seed}' if row == REF else base / 'rows' / row / f's{seed}'
+def run_dir(enc, row, seed, root=None, sweep=False):
+    """Part a's photo model: `<root>/photo/<enc>/s<seed>` (`ref` only). The photo sweep (Qwen's; `ref` and the 14 rows):
+    `<root>/sweeps/photo/<row>/s<seed>`, the index's layout, kept apart from part a's `ref`."""
+    root = Path(P.OUT if root is None else root)
+    if sweep:
+        assert enc == 'qwen', 'the photo sweep is Qwen\'s (the index path has no encoder)'
+        assert row in ROWS, row
+        return root / 'sweeps' / 'photo' / row / f's{seed}'
+    assert row == REF, f'{row}: a sweep row (--sweep)'
+    return root / 'photo' / enc / f's{seed}'
 
 
 def train(enc, rows, seeds, device, *, keep=None, root=None, max_epochs=None, data=None, graphs=None,
-          cstar_root=None):
+          cstar_root=None, sweep=False):
     """The CLI's loop: each (row, seed) through `train_run`; a finished run (its run.json) is not retrained. `keep`
-    defaults to 'all' for `ref` (the photo model) and 'none' for sweep rows. Returns {(row, seed): PhotoRun}."""
+    defaults to 'all' for part a's `ref` (the photo model) and 'none' for the sweep (`sweep=True`, D15: `ref` too).
+    Returns {(row, seed): PhotoRun}."""
     assert enc in VIEW and all(r in ROWS for r in rows) and all(s in P.SEEDS for s in seeds)
     fit, val, fit_q, val_q = data if data is not None else load_data(enc)
     graphs = graphs if graphs is not None else Graphs(fit_q, val_q, root)
@@ -361,8 +371,8 @@ def train(enc, rows, seeds, device, *, keep=None, root=None, max_epochs=None, da
     out = {}
     for row in rows:
         for seed in seeds:
-            k = keep or ('all' if row == REF else 'none')
-            folder = run_dir(enc, row, seed, root)
+            k = keep or ('none' if sweep else 'all')
+            folder = run_dir(enc, row, seed, root, sweep)
             if (folder / 'run.json').is_file():
                 rec = json.loads((folder / 'run.json').read_text())
                 assert rec['settings'] == ROWS[row] and rec['train_seed'] == train_seed(seed) and \
@@ -494,9 +504,16 @@ def export_arm(dataset, arm, splits, seeds, *, root=None, cstar_root=None):
 
 
 # --------------------------------------------------------------------------------------------- stage 0 checks
+def regress_v_root():
+    return P.OUT / 'stage0' / 'photo_regress_v'
+
+
 def regress_v(root=None, device='cuda'):
     """0(v): Qwen, r13's final settings, seed 0 (c* seed 0, training seed 100), on the local GPU, through this module's
-    trainer: best epoch and best development loss against r13's final seed-0 run.json within 1e-4."""
+    trainer: best epoch and best development loss against r13's final seed-0 run.json within 1e-4. The run goes to its
+    own root (default `regress_v_root()`, `OUT/stage0/photo_regress_v`; its record beside it as `<root>.json`), never
+    to part a's `OUT/photo/qwen/s0`, whose run.json would make a later node `ref` run skip."""
+    root = regress_v_root() if root is None else Path(root)
     ref = json.loads((P.R13_OUT / 'runs/final/s0/run.json').read_text())
     run = train('qwen', [REF], [0], device, keep='all', root=root)[(REF, 0)].record
     ok = (run['best_epoch'] == ref['best_epoch'] and abs(run['best_dev_loss'] - ref['best_dev_loss']) <= TOL_TRAIN)
@@ -505,7 +522,7 @@ def regress_v(root=None, device='cuda'):
                abs_diff=abs(run['best_dev_loss'] - ref['best_dev_loss']), tol=TOL_TRAIN,
                weights_sha256=run['weights_sha256'], weights_sha256_r13=ref['weights_sha256'],
                device=run['device'], host=run['host'], seconds=run['seconds'])
-    _atomic_json(Path(P.OUT if root is None else root) / 'stage0/photo_regress_v.json', doc)
+    _atomic_json(root.with_name(root.name + '.json'), doc)
     print(json.dumps(doc, indent=1))
     return 0 if ok else 1
 
@@ -547,9 +564,10 @@ def main(argv=None):
     sub = parser.add_subparsers(dest='cmd', required=True)
     t = sub.add_parser('train')
     t.add_argument('--encoder', required=True, choices=sorted(P.ENCODERS))
-    t.add_argument('--rows', nargs='+', default=[REF], choices=list(ROWS))
+    t.add_argument('--rows', nargs='+', default=None, choices=list(ROWS), help='default: ref; with --sweep all 15')
     t.add_argument('--seeds', type=int, nargs='+', default=list(P.SEEDS), choices=P.SEEDS)
-    t.add_argument('--keep', choices=KEEP, default=None, help="default: 'all' for ref, 'none' for sweep rows")
+    t.add_argument('--keep', choices=KEEP, default=None, help="default: 'all' (part a), 'none' with --sweep")
+    t.add_argument('--sweep', action='store_true', help="photo sweep (Qwen): OUT/sweeps/photo/<row>/s<seed>")
     t.add_argument('--device', default='cuda')
     t.add_argument('--max-epochs', type=int, default=None, help='smoke only; not with a fixed-epoch row')
     t.add_argument('--root', type=Path, default=None, help='default: bs_paths.OUT')
@@ -563,13 +581,14 @@ def main(argv=None):
     e.add_argument('--cstar-root', type=Path, default=None, help='cstar_<enc> arms: default OUT/cstar/<enc>')
     for name in ('regress-v', 'check-export'):
         p = sub.add_parser(name)
-        p.add_argument('--root', type=Path, default=None)
+        p.add_argument('--root', type=Path, default=None,
+                       help='regress-v: default OUT/stage0/photo_regress_v' if name == 'regress-v' else None)
         if name == 'regress-v':
             p.add_argument('--device', default='cuda')
     a = parser.parse_args(argv)
     if a.cmd == 'train':
-        train(a.encoder, a.rows, a.seeds, a.device, keep=a.keep, root=a.root, max_epochs=a.max_epochs,
-              cstar_root=a.cstar_root)
+        train(a.encoder, a.rows or (list(ROWS) if a.sweep else [REF]), a.seeds, a.device, keep=a.keep, root=a.root, max_epochs=a.max_epochs,
+              cstar_root=a.cstar_root, sweep=a.sweep)
         return 0
     if a.cmd == 'export':
         for path in export_arm(a.dataset, a.arm, a.splits, a.seeds, root=a.root, cstar_root=a.cstar_root):

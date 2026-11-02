@@ -430,3 +430,47 @@ def test_start_checkpoint_default_is_tickets_03_root_whatever_the_photo_root(tmp
     out = BP.train('siglip2', [BP.REF], [0], 'cpu', keep='none', root=tmp_path / 'third', max_epochs=1, data=data,
                    graphs=_OneGraph(graph), cstar_root=tmp_path / 'c2')
     assert out[(BP.REF, 0)].record['cstar_weights_sha256'] == rs_vh.file_sha(explicit)
+
+
+def test_default_run_folders_are_distinct_and_the_indexs(monkeypatch, tmp_path):
+    monkeypatch.setattr(P, 'OUT', tmp_path / 'out')
+    out = tmp_path / 'out'
+    part_a = BP.run_dir('qwen', BP.REF, 0)
+    sweep_ref = BP.run_dir('qwen', BP.REF, 0, sweep=True)
+    v = BP.run_dir('qwen', BP.REF, 0, root=BP.regress_v_root())
+    assert part_a == out / 'photo/qwen/s0'
+    assert sweep_ref == out / 'sweeps/photo/ref/s0'
+    assert BP.run_dir('qwen', 'k=20', 2, sweep=True) == out / 'sweeps/photo/k=20/s2'
+    assert v == out / 'stage0/photo_regress_v/photo/qwen/s0'
+    assert len({part_a, sweep_ref, v}) == 3
+    with pytest.raises(AssertionError):                                       # a sweep row has no part-a folder
+        BP.run_dir('qwen', 'k=20', 0)
+    with pytest.raises(AssertionError):                                       # the sweep is Qwen's (index: no encoder)
+        BP.run_dir('siglip2', BP.REF, 0, sweep=True)
+
+
+def test_regress_v_uses_its_own_root(monkeypatch, tmp_path):
+    monkeypatch.setattr(P, 'OUT', tmp_path / 'out')
+    ref = json.loads((P.R13_OUT / 'runs/final/s0/run.json').read_text())
+    seen = {}
+
+    def fake_train(enc, rows, seeds, device, **kw):
+        seen.update(kw, enc=enc, rows=rows, seeds=seeds)
+        return {(BP.REF, 0): BP.PhotoRun(dict(best_epoch=ref['best_epoch'], best_dev_loss=ref['best_dev_loss'],
+                                              weights_sha256=ref['weights_sha256'], device='cuda', host='h', seconds=1.),
+                                         None)}
+    monkeypatch.setattr(BP, 'train', fake_train)
+    assert BP.regress_v(device='cuda') == 0
+    assert seen['root'] == tmp_path / 'out/stage0/photo_regress_v' and seen['keep'] == 'all' and seen['seeds'] == [0]
+    assert json.loads((tmp_path / 'out/stage0/photo_regress_v.json').read_text())['ok'] is True
+
+
+def test_sweep_train_writes_the_sweep_folder_and_keeps_no_weights(monkeypatch, tmp_path, data):
+    monkeypatch.setattr(P, 'OUT', tmp_path / 'out')
+    fit, val, graph = data
+    out = BP.train('qwen', ['start=random'], [0], 'cpu', root=None, max_epochs=1, data=(fit, val, fit, val),
+                   graphs=_OneGraph(graph), sweep=True)
+    folder = tmp_path / 'out/sweeps/photo/start=random/s0'
+    assert sorted(p.name for p in folder.iterdir()) == ['run.json']          # D15: sweep rows keep no weights
+    assert json.loads((folder / 'run.json').read_text())['row'] == 'start=random'
+    assert out[('start=random', 0)].state is not None
