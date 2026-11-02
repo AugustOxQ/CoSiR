@@ -28,8 +28,10 @@ Exports (`export_checkpoint`, any emotion checkpoint of the arms `photo_qwen` (r
 Affection val/test keys are r13's (`pf_data.keys`, sorted); EmoSet keys are each split's, from the split
 files (the store's row order is not the split order; the store is read by key).
 
-CLI:  bs_photo.py train --encoder E [--rows ref ...] [--seeds ...] [--keep all|none] [--root DIR] [--device cuda]
+CLI:  bs_photo.py train --encoder E [--rows ref ...] [--seeds ...] [--keep all|none] [--root DIR] [--cstar-root DIR]
+                        [--device cuda]      (X-c* root default OUT/cstar/<E>, ticket 03's, whatever --root is)
       bs_photo.py export --arm ARM --dataset affection|emoset [--splits val test] [--seeds ...] [--root DIR]
+                         [--cstar-root DIR]
       bs_photo.py regress-v [--root DIR]        0(v): Qwen, r13's final settings, seed 0 against r13's sidecar
       bs_photo.py check-export [--root DIR]     0(ix): r13's five photo models and the frozen c* on Affection val/test
 """
@@ -330,11 +332,17 @@ class Graphs:
         return self.cache[key]
 
 
-def start_root(enc, root=None):
-    """The folder that holds X-c*'s `emotion__s<seed>.pt` (+ sidecar): r10's frozen c* for Qwen, ticket 03's else."""
+def default_cstar_root(enc):
+    """Ticket 03's default root of X-c* (`bs_cstar.default_root`), independent of the photo root."""
+    return P.OUT / 'cstar' / enc
+
+
+def start_root(enc, cstar_root=None):
+    """The folder that holds X-c*'s `emotion__s<seed>.pt` (+ sidecar): r10's frozen c* for Qwen, else ticket 03's
+    `<cstar_root>/weights/k11=40` (`cstar_root` default `default_cstar_root(enc)`)."""
     if enc == 'qwen':
         return Path(pf_paths.CSTAR_WEIGHTS)
-    return Path(P.OUT if root is None else root) / 'cstar' / enc / 'weights' / 'k11=40'
+    return Path(default_cstar_root(enc) if cstar_root is None else cstar_root) / 'weights' / 'k11=40'
 
 
 def run_dir(enc, row, seed, root=None):
@@ -342,7 +350,8 @@ def run_dir(enc, row, seed, root=None):
     return base / f's{seed}' if row == REF else base / 'rows' / row / f's{seed}'
 
 
-def train(enc, rows, seeds, device, *, keep=None, root=None, max_epochs=None, data=None, graphs=None):
+def train(enc, rows, seeds, device, *, keep=None, root=None, max_epochs=None, data=None, graphs=None,
+          cstar_root=None):
     """The CLI's loop: each (row, seed) through `train_run`; a finished run (its run.json) is not retrained. `keep`
     defaults to 'all' for `ref` (the photo model) and 'none' for sweep rows. Returns {(row, seed): PhotoRun}."""
     assert enc in VIEW and all(r in ROWS for r in rows) and all(s in P.SEEDS for s in seeds)
@@ -364,7 +373,7 @@ def train(enc, rows, seeds, device, *, keep=None, root=None, max_epochs=None, da
             s = ROWS[row]
             out[(row, seed)] = train_run(f'{enc}/{row}/s{seed}', s, width, seed, train_seed(seed), fit, val,
                                          graphs.get(s['k'], s['correction']), device, keep=k, out_dir=folder,
-                                         max_epochs=max_epochs, cstar_root=start_root(enc, root), encoder=enc, row=row)
+                                         max_epochs=max_epochs, cstar_root=start_root(enc, cstar_root), encoder=enc, row=row)
             r = out[(row, seed)].record
             print(f'{enc} {row} s{seed}: best_epoch={r["best_epoch"]} best_dev_loss={r["best_dev_loss"]:.6f} '
                   f'seconds={r["seconds"]:.1f} host={r["host"]} device={r["device"]}', flush=True)
@@ -394,7 +403,7 @@ def infer(state, x, width):
     return out
 
 
-def arm_checkpoint(arm, seed, root=None):
+def arm_checkpoint(arm, seed, root=None, cstar_root=None):
     """(checkpoint path, image width) of an emotion arm: `photo_qwen` (r13's five), `cstar_qwen` (frozen c*),
     `photo_<enc>`, `cstar_<enc>`."""
     kind, _, enc = arm.partition('_')
@@ -404,13 +413,13 @@ def arm_checkpoint(arm, seed, root=None):
     if kind == 'photo':
         return (P.R13_OUT / f'runs/final/s{seed}/emotion.pt' if enc == 'qwen' else base / f'photo/{enc}/s{seed}/emotion.pt',
                 width)
-    return start_root(enc, root) / f'emotion__s{seed}.pt', width
+    return start_root(enc, cstar_root) / f'emotion__s{seed}.pt', width
 
 
-def checkpoint_sha(arm, seed, root=None):
+def checkpoint_sha(arm, seed, root=None, cstar_root=None):
     """The checkpoint's sha256, verified against its own record (run.json `weights_sha256` of a photo run; the
     sidecar `weights_sha256` of a c* checkpoint)."""
-    path, _ = arm_checkpoint(arm, seed, root)
+    path, _ = arm_checkpoint(arm, seed, root, cstar_root)
     sha = rs_vh.file_sha(path)
     if arm.startswith('photo'):
         run = json.loads((path.parent / 'run.json').read_text())
@@ -469,7 +478,7 @@ def export_keys(dataset, split):
     return keys
 
 
-def export_arm(dataset, arm, splits, seeds, *, root=None):
+def export_arm(dataset, arm, splits, seeds, *, root=None, cstar_root=None):
     """The export of arm `arm`'s checkpoints of `seeds` on the dataset's splits; returns the written paths."""
     enc = arm.partition('_')[2]
     written = []
@@ -477,8 +486,9 @@ def export_arm(dataset, arm, splits, seeds, *, root=None):
         keys = export_keys(dataset, split)
         x = images(dataset, enc, keys)
         for seed in seeds:
-            ckpt, width = arm_checkpoint(arm, seed, root)
-            written.append(export_checkpoint(dataset, arm, split, seed, ckpt, checkpoint_sha(arm, seed, root), width,
+            ckpt, width = arm_checkpoint(arm, seed, root, cstar_root)
+            written.append(export_checkpoint(dataset, arm, split, seed, ckpt,
+                                             checkpoint_sha(arm, seed, root, cstar_root), width,
                                              keys, x, root=root))
     return written
 
@@ -543,12 +553,14 @@ def main(argv=None):
     t.add_argument('--device', default='cuda')
     t.add_argument('--max-epochs', type=int, default=None, help='smoke only; not with a fixed-epoch row')
     t.add_argument('--root', type=Path, default=None, help='default: bs_paths.OUT')
+    t.add_argument('--cstar-root', type=Path, default=None, help="X-c* root, default: OUT/cstar/<encoder> (ticket 03's)")
     e = sub.add_parser('export')
     e.add_argument('--arm', required=True)
     e.add_argument('--dataset', required=True, choices=sorted(SPLITS))
     e.add_argument('--splits', nargs='+', default=['val', 'test'], choices=['val', 'test'])
     e.add_argument('--seeds', type=int, nargs='+', default=list(P.SEEDS), choices=P.SEEDS)
     e.add_argument('--root', type=Path, default=None)
+    e.add_argument('--cstar-root', type=Path, default=None, help='cstar_<enc> arms: default OUT/cstar/<enc>')
     for name in ('regress-v', 'check-export'):
         p = sub.add_parser(name)
         p.add_argument('--root', type=Path, default=None)
@@ -556,10 +568,11 @@ def main(argv=None):
             p.add_argument('--device', default='cuda')
     a = parser.parse_args(argv)
     if a.cmd == 'train':
-        train(a.encoder, a.rows, a.seeds, a.device, keep=a.keep, root=a.root, max_epochs=a.max_epochs)
+        train(a.encoder, a.rows, a.seeds, a.device, keep=a.keep, root=a.root, max_epochs=a.max_epochs,
+              cstar_root=a.cstar_root)
         return 0
     if a.cmd == 'export':
-        for path in export_arm(a.dataset, a.arm, a.splits, a.seeds, root=a.root):
+        for path in export_arm(a.dataset, a.arm, a.splits, a.seeds, root=a.root, cstar_root=a.cstar_root):
             print(path)
         return 0
     return regress_v(a.root, a.device) if a.cmd == 'regress-v' else check_export(a.root)

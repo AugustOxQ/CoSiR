@@ -374,8 +374,10 @@ def test_arm_names_and_checkpoint_paths(tmp_path):
     assert BP.arm_checkpoint('photo_qwen', 2)[0] == P.R13_OUT / 'runs/final/s2/emotion.pt'
     assert BP.arm_checkpoint('cstar_qwen', 2)[0] == pf_paths.CSTAR_WEIGHTS / 'emotion__s2.pt'
     assert BP.arm_checkpoint('photo_siglip1', 1, root=tmp_path)[0] == tmp_path / 'photo/siglip1/s1/emotion.pt'
+    assert BP.arm_checkpoint('cstar_clip_l14', 1, cstar_root=tmp_path / 'c')[0] == \
+        tmp_path / 'c/weights/k11=40/emotion__s1.pt'
     assert BP.arm_checkpoint('cstar_clip_l14', 1, root=tmp_path)[0] == \
-        tmp_path / 'cstar/clip_l14/weights/k11=40/emotion__s1.pt'
+        P.OUT / 'cstar/clip_l14/weights/k11=40/emotion__s1.pt'                # the photo root does not move c*
     assert [BP.arm_checkpoint(a, 0, root=tmp_path)[1] for a in ('photo_qwen', 'photo_siglip2', 'cstar_clip_l14')] == \
         [2048, 1152, 768]
     with pytest.raises(AssertionError):
@@ -400,3 +402,31 @@ def test_emoset_export_keys_come_from_the_split_files_not_store_position(monkeyp
     monkeypatch.setattr(BP.bs_stores, 'folder_keys', lambda folder, dataset: [k for k in store if k != val[2]])
     with pytest.raises(AssertionError, match='store'):                            # a split key missing from the store
         BP.export_keys('emoset', 'val')
+
+
+class _OneGraph:
+    def __init__(self, graph):
+        self.graph = graph
+
+    def get(self, k, correction):
+        return self.graph
+
+
+def test_start_checkpoint_default_is_tickets_03_root_whatever_the_photo_root(tmp_path, monkeypatch):
+    import bs_cstar
+    monkeypatch.setattr(P, 'OUT', tmp_path / 'out')
+    assert BP.start_root('siglip2') == bs_cstar.default_root('siglip2') / 'weights/k11=40' == \
+        tmp_path / 'out/cstar/siglip2/weights/k11=40'
+    assert BP.start_root('siglip2', cstar_root=tmp_path / 'c') == tmp_path / 'c/weights/k11=40'
+    assert BP.start_root('qwen', cstar_root=tmp_path / 'c') == Path(pf_paths.CSTAR_WEIGHTS)
+    fit, val, graph = _data(1152)
+    data = (fit, val, fit, val)
+    path = _fake_cstar(tmp_path / 'out/cstar/siglip2/weights/k11=40', 1152)
+    other_photo_root = tmp_path / 'elsewhere'                                 # a photo root with no c* under it
+    out = BP.train('siglip2', [BP.REF], [0], 'cpu', keep='none', root=other_photo_root, max_epochs=1, data=data,
+                   graphs=_OneGraph(graph))
+    assert out[(BP.REF, 0)].record['cstar_weights_sha256'] == rs_vh.file_sha(path)
+    explicit = _fake_cstar(tmp_path / 'c2/weights/k11=40', 1152)
+    out = BP.train('siglip2', [BP.REF], [0], 'cpu', keep='none', root=tmp_path / 'third', max_epochs=1, data=data,
+                   graphs=_OneGraph(graph), cstar_root=tmp_path / 'c2')
+    assert out[(BP.REF, 0)].record['cstar_weights_sha256'] == rs_vh.file_sha(explicit)
