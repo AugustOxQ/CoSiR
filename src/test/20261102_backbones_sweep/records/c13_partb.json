@@ -1,0 +1,26 @@
+{
+ "kind": "part b spot re-derivation (spec \u00a73.4, C13)",
+ "items": 429,
+ "mismatches": 0,
+ "max_abs_diff": 5.051514762044462e-14,
+ "tolerance": 1e-06,
+ "smoke": false,
+ "rows": [
+  "knob k2=16",
+  "knob k11=80",
+  "photo lr=0.003",
+  "ablation content_correction",
+  "ablation relational"
+ ],
+ "drawn": "default_rng(14), 11:55, before any sheet",
+ "code": "bs_c13_partb.py (Codex, gpt-6.1-sol high; one fix round; adapter fix by the run chat)",
+ "sheets_sha256": {
+  "knob": "ae39f6e6359784c08c02f04b2f66b4d91ac51155cbaa4f2cd7303fecfdc46009",
+  "photo": "0888c69642a4399d0946a51ced0633108aa9aa9f1a8d0925115e9fdf86e7f6fa",
+  "ablation": "4b615fd0de95fba20f81bd95eaac4654763441e02a0acaa47bc7931de997de84"
+ },
+ "derived_sha256": "7c7f6fb1ed40bcfab16d19403ba41a21d25788245ddfa948aa45db6fadc24fb3",
+ "compare_sha256": "a22fd10ec9a53c80de5f28f6528c5b5f98e1276684a7b23e882c0a67682f6bfc",
+ "at": "2026-11-02 16:43",
+ "pass": true
+}

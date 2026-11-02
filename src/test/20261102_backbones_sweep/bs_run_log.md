@@ -151,3 +151,13 @@ times here are Amsterdam.
   point value; the derive scored it in-sample. A definition, not a numeric slip: the frozen r11 protocol is the
   cross-fit. Every other item matches (AMI both splits, R0 mAP, held read-out mAP, the photo row). One Codex fix round
   by resume (15:52).
+- 15:52 Codex fix round (resume): validation read-out mAP by r11's `rt_readout.crossfit_all`; 12 tests; committed
+  3c3c7e4. 15:53 to 16:14 full derive again (1,301 s).
+- 16:07 stage 4 knob sheet rc 0 (2,448 s): **39 of 39 rows done**, k11=20 included. 16:11 photo sheet rc 0 (209 s).
+- 16:15 compare: 0 numeric mismatches, but the adapter did not know the knob sheet's layout (written after Codex's
+  job), so the knob cells were unpaired. Fixed in `adapt_sheet` only (change log); 72b499b.
+- 16:42 stage 4 rc 0 (4,534 s; ablation 1,877 s): `stage4_status.json` ok, three sheets, none missing. Held relational
+  term, genre AMI −0.0440 [−0.0512, −0.0372], as report 12-28.
+- 16:43 final compare against the three final sheets: **items 429, mismatches 0, max abs diff 5.1e-14, nothing
+  unpaired**. Record `records/c13_partb.json` (sheet and derive hashes).
+- Node402: no r14 work left; nothing runs there (3 GPUs free at 16:17).
