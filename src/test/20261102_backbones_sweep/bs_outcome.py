@@ -5,7 +5,7 @@ LEVEL"; D3, D4, D18. Rule review Q4 lists the patterns the tests cover.
 
 CLI (no GPU, reads files only):
   python bs_outcome.py decide [--smoke] [--root OUT] [--status FILE] [--nearcopy FILE] [--out FILE]
-    reads  OUT/stage3/cells_*.json   every file found (tickets 05 to 08; the parts are not listed here, the required
+    reads  OUT/stage3/cells_*.json   every file found (not *.pending.json) (tickets 05 to 08; the parts are not listed here, the required
                                      cells are: a missing cell raises unless status excuses it)
            RECORDS/status.json       see STATUS SCHEMA
            RECORDS/nearcopy_emoset.json  only for <n> of part c's sentence (splits.test.n_kept)
@@ -13,7 +13,10 @@ CLI (no GPU, reads files only):
   --smoke lets `n_draws` differ from the protocol's (2,000 clustering; 10,000 retrieval). Nothing else changes.
 
 CELL OUTCOME (§3.4): WIN when lo > 0; LEVEL when not WIN and lo > -r; BELOW otherwise (strict, unrounded r).
-A cell without `r` (a WIN-only bar: SC1 to SC5, SC7, SC8) is recorded 'WIN' or 'not WIN': LEVEL and BELOW need a unit.
+A cell without `r` (a WIN-only bar: SC1 to SC5, SC7, SC8) is recorded 'WIN' or 'not WIN' only: LEVEL and BELOW need a
+unit, and the writers leave `r` null for these bars (controller decision; the report gives d and the interval).
+Part c cells (SC7 to SC10) must be aspect 'emotion', encoder 'qwen'. `load_cells` skips the writers' temporary
+`cells_<part>.pending.json` files.
 SC6, SC9 and SC10 must carry `r` (SC6 is a LEVEL-or-WIN claim; SC9 and SC10 decide `qualified`): a cell without it raises.
 
 STATUS SCHEMA (ticket 12 writes `RECORDS/status.json` exactly so; values 'ok' | 'failed'; 'failed' for runs means
@@ -51,6 +54,7 @@ TASK_OF_SC = {'SC1': 'clu', 'SC2': 'ret', 'SC3': 'clu', 'SC4': 'clu', 'SC5': 're
 DATA_OF_SC = {'SC1': 'artelingo_held', 'SC2': 'artelingo_held', 'SC3': 'artelingo_held', 'SC4': 'affection_test',
               'SC5': 'affection_test', 'SC7': 'emoset_test', 'SC8': 'emoset_test', 'SC9': 'emoset_test',
               'SC10': 'emoset_test'}                        # SC6: artelingo_held or affection_test
+PART_C_DATA, PART_C_ASPECT, PART_C_ENCODER = 'emoset_test', 'emotion', 'qwen'
 SC6_DATA = ('artelingo_held', 'affection_test')
 NEEDS_R = ('SC6', 'SC9', 'SC10')
 WIN, LEVEL, BELOW, NOT_WIN = 'WIN', 'LEVEL', 'BELOW', 'not WIN'
@@ -124,7 +128,7 @@ def part_c_sentence(verdict, n, win_task=None):
         return _fill(PARTC_HEAD + PARTC_HOLDS_BODY + PARTC_TAIL, n=n_txt)
     assert verdict == QUALIFIED and win_task in TASK_WORD
     other = 'ret' if win_task == 'clu' else 'clu'
-    body = PARTC_PLAIN + ', and ' + PARTC_QUAL_BODY
+    body = PARTC_PLAIN + ' and ' + PARTC_QUAL_BODY
     return _fill(PARTC_HEAD + body + PARTC_TAIL, n=n_txt, task=TASK_WORD[win_task], **{'other task': TASK_WORD[other]})
 
 
@@ -139,6 +143,13 @@ def cell_outcome(cell):
     return LEVEL if lo > -r else BELOW
 
 
+def check_part_c_cell(cell):
+    """Part c (SC7 to SC10, data 'emoset_test') is the emotion aspect on the Qwen encoder."""
+    where = (cell['sc'], cell['encoder'], cell['aspect'], cell['task'], cell['data'])
+    assert cell['aspect'] == PART_C_ASPECT, f'part c cell must have aspect {PART_C_ASPECT!r}: {where}'
+    assert cell['encoder'] == PART_C_ENCODER, f'part c cell must have encoder {PART_C_ENCODER!r}: {where}'
+
+
 def check_cell(cell, smoke=False):
     """Cheap asserts at the file boundary: fields, finite numbers, the SC's task and data, the protocol's draws."""
     missing = [k for k in CELL_KEYS if k not in cell]
@@ -151,6 +162,8 @@ def check_cell(cell, smoke=False):
         assert data in SC6_DATA, f'SC6 data {where}'
     else:
         assert task == TASK_OF_SC[sc] and data == DATA_OF_SC[sc], f'task or data wrong for {where}'
+    if data == PART_C_DATA:
+        check_part_c_cell(cell)
     for k in ('candidate_value', 'comparator_value', 'd', 'lo', 'hi'):
         assert isinstance(cell[k], (int, float)) and math.isfinite(cell[k]), f'{k} not finite {where}'
     assert cell['lo'] <= cell['hi'], f'lo > hi {where}'
@@ -171,7 +184,7 @@ def cell_key(cell):
 def load_cells(stage3, smoke=False):
     """Every `cells_*.json` in `stage3`: a list of cells each; returns (cells, part names). Duplicates raise."""
     stage3 = Path(stage3)
-    files = sorted(stage3.glob('cells_*.json'))
+    files = sorted(f for f in stage3.glob('cells_*.json') if not f.name.endswith('.pending.json'))
     cells, seen = [], {}
     for f in files:
         part = json.loads(f.read_text())
@@ -322,6 +335,7 @@ def decide(cells, status, nearcopy_n=None):
         assert not absent, f'part c: cells missing {absent}'
     assert set(pc_cells) <= pk, f'unknown EmoSet cells {sorted(set(pc_cells) - pk)}'
     for c in pc_cells.values():
+        check_part_c_cell(c)
         rows.append(row(c, bool(why_c)))
     if why_c:
         out['part_c'] = dict(verdict=INCONCLUSIVE, go=GO_OF[INCONCLUSIVE], sentence=None, reason=why_c)

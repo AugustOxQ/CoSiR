@@ -376,6 +376,26 @@ def test_load_cells_reads_every_file_and_flags_duplicates(tmp_path):
         O.load_cells(tmp_path)
 
 
+def test_load_cells_skips_pending_files(tmp_path):
+    a = enc_cells('siglip2')[:3]
+    (tmp_path / 'cells_one.json').write_text(json.dumps(a))
+    (tmp_path / 'cells_one.pending.json').write_text(json.dumps(a))      # a writer's temporary file: same cells
+    cells, files = O.load_cells(tmp_path)
+    assert len(cells) == 3 and files == ['cells_one.json']
+
+
+@pytest.mark.parametrize('field,bad', [('aspect', 'style'), ('encoder', 'siglip2')])
+@pytest.mark.parametrize('sc,task', [('SC7', 'clu'), ('SC8', 'ret'), ('SC9', 'clu'), ('SC10', 'ret')])
+def test_part_c_cells_need_emotion_and_qwen(sc, task, field, bad):
+    good = cell(sc, 'qwen', 'emotion', task, 'emoset_test')
+    O.check_cell(good)
+    with pytest.raises(AssertionError, match='part c'):
+        O.check_cell(dict(good, **{field: bad}))
+    cs = [dict(c, **{field: bad}) if c['sc'] == sc else c for c in partc_cells()]
+    with pytest.raises(AssertionError, match='part c'):
+        O.decide(sum((enc_cells(e) for e in ENCS), []) + cs, ok_status(), 17000)
+
+
 # ------------------------------------------------------------------------------------------ licensed sentences
 def spec_text():
     return re.sub(r'\s+', ' ', SPEC.read_text())
@@ -422,7 +442,7 @@ def test_other_sentences_filled():
     c = O.part_c_sentence(O.HOLDS, 17716)
     assert c.startswith('On 17,716 EmoSet-118K test photos (photos with a near-copy') and '<' not in c
     q = O.part_c_sentence(O.QUALIFIED, 17716, 'ret')
-    assert ('better than the plain Qwen3-VL-Embedding-2B image, and better than the instructed image in retrieval '
+    assert ('better than the plain Qwen3-VL-Embedding-2B image and better than the instructed image in retrieval '
             'and level with it in clustering') in q and '<' not in q
 
 
