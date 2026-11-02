@@ -11,8 +11,8 @@ Near-copy cut (D9, D20): an EmoSet validation or test photo leaves its set when 
 image and that of any of the 72,255 Affection train photos is >= NEAR_COPY_CUT (inclusive). The computation is r13's
 (`pf_nearcopy`): float32 unit rows of the default store joined by key, blockwise CPU products, the float32 cosine
 against the cut in float64, the first maximum on ties. Images only; labels are never read. `keys(split)` returns the
-cut set (needs the record), `keys(split, cut=False)` the uncut set. The same `nearest`/`removed_mask` code replays
-r13's cut (queried = Affection train, reference = Affection val and test) as gate 0(x): `replay_r13`.
+cut set (needs the record), `keys(split, cut=False)` the uncut set. `replay_r13` replays r13's cut
+(queried = Affection train, reference = Affection val and test) through `near_copy_record` and `bs_stores.load` as gate 0(x).
 
 CLI (run by the controller; CPU, several minutes):
   python bs_emoset.py nearcopy [--out FILE]   # the real cut -> RECORDS/nearcopy_emoset.json (+ run evidence in OUT/stage0)
@@ -34,6 +34,7 @@ COUNTS = BP.EMOSET_SPLITS
 SPLITS = ('val', 'test')
 HIST_EDGES = [round(0.80 + 0.01 * i, 2) for i in range(21)]     # 0.80, 0.81, ..., 1.00 (spec §3.3)
 BLOCK = 2048                             # queried rows per block: 2048 x 72,255 float32 = 0.6 GB at most
+AFFECTION_TRAIN_N = 72255                 # D20: the reference of the real cut
 _ENTRIES = {}
 
 
@@ -92,6 +93,8 @@ def keys(split, cut=True, record=None):
     assert path.exists(), f'near-copy record missing: {path} (run `bs_emoset.py nearcopy`)'
     rec = json.loads(path.read_text())
     assert rec['cut'] == BP.NEAR_COPY_CUT, f"record cut {rec['cut']} != {BP.NEAR_COPY_CUT}"
+    ref = rec['reference']
+    assert ref['n'] == AFFECTION_TRAIN_N and ref['view'] == 'qwen_default', f'record reference block: {ref}'
     part = rec['splits'][split]
     removed = set(part['removed_keys'])
     assert part['n'] == len(every) and len(removed) == part['n_removed'] == len(part['removed_keys']), 'record counts'
@@ -171,7 +174,7 @@ def real_record(block=BLOCK):
     """The real record: queried EmoSet val and test, reference all 72,255 Affection train photos (default Qwen)."""
     import bs_stores
     train_keys = _affection_train_keys()
-    assert len(train_keys) == 72255, f'{len(train_keys)} Affection train keys, expected 72,255 (D20)'
+    assert len(train_keys) == AFFECTION_TRAIN_N, f'{len(train_keys)} Affection train keys, expected 72,255 (D20)'
     return near_copy_record(
         train_keys, lambda ks: bs_stores.load('affection', 'qwen_default', ks),
         {s: _split_keys(s) for s in SPLITS}, lambda ks: bs_stores.load('emoset', 'qwen_default', ks), block=block)
@@ -191,22 +194,23 @@ def _r13_on_path():
 
 
 def replay_r13(block=BLOCK):
-    """Gate 0(x): the same `nearest`/`removed_mask`/`histogram` on r13's inputs (queried = Affection train, reference =
-    Affection val then test, default Qwen images from r13's reader) against r13's committed record. Returns a dict
-    with `match` (removed keys identical), counts and seconds."""
+    """Gate 0(x): r13's cut replayed through the code that makes the real EmoSet cut: `near_copy_record` with
+    `bs_stores.load('affection', 'qwen_default', keys)` as both loaders (so `bs_stores.load` and `unit` run too).
+    Roles as r13's: reference = Affection val then test, queried = Affection train. Compares the removed set and the
+    histogram with r13's committed record. Returns a dict with `match` (removed keys identical), counts and seconds."""
+    import bs_stores
     started = time.time()
     _r13_on_path()
     import pf_data
     train_keys = pf_data.keys('train')
     held_keys = pf_data.keys('val') + pf_data.keys('test')
-    train, held = pf_data.default_images(train_keys), pf_data.default_images(held_keys)
-    best, _ = nearest(np.asarray(train), np.asarray(held), block)
-    gone = removed_mask(best)
-    mine = sorted(k for k, g in zip(train_keys, gone) if g)
+    load = lambda ks: bs_stores.load('affection', 'qwen_default', ks)
+    rec = near_copy_record(held_keys, load, {'train': train_keys}, load, block=block)
+    part = rec['splits']['train']
     theirs = json.loads((BP.R13_ROUND / 'stage0a_nearcopy.json').read_text())
-    h = histogram(best)
-    return dict(match=mine == theirs['removed_keys'], n_removed=len(mine), r13_n_removed=theirs['n_removed'],
-                n_train=len(train_keys), hist_match=h['counts'] == theirs['hist']['counts'],
+    mine = part['removed_keys']
+    return dict(match=mine == theirs['removed_keys'], n_removed=part['n_removed'], r13_n_removed=theirs['n_removed'],
+                n_train=len(train_keys), hist_match=part['hist']['counts'] == theirs['hist']['counts'],
                 missing_from_mine=sorted(set(theirs['removed_keys']) - set(mine))[:5],
                 extra_in_mine=sorted(set(mine) - set(theirs['removed_keys']))[:5],
                 seconds=round(time.time() - started, 1))
