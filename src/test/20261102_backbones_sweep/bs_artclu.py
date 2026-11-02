@@ -436,9 +436,11 @@ def replay_0vii_matched(encs=('siglip2', 'siglip1', 'clip_l14')):
     return _result(items)
 
 
-def replay_0xii_f(encs=('siglip2', 'clip_l14', 'siglip1'), recompute_cache=None, loader=legacy_loader):
+def replay_0xii_f(encs=('siglip2', 'clip_l14', 'siglip1'), recompute_cache=None, loader=legacy_loader,
+                  n_resamples=N_DRAWS, workers=8):
     """0(xii), F part: the F2, F7, F8 20-cluster held AMIs on emotion (0.0569, 0.0659, 0.0672), style and genre against
-    the `c_frozen` entries of `reported_stage4`, from the stored frozen partitions. With `recompute_cache` X's default
+    the `c_frozen` entries of `reported_stage4`, from the stored frozen partitions; and `frozen_margin` (SC1) of the
+    stored K and F partitions, its d and interval against the same entry (`{K}/{aspect}/frozen_{d,lo,hi}`). With `recompute_cache` X's default
     image is clustered again by `frozen_fixed` (the path SC1 uses) and its partitions must equal the stored ones."""
     n = rs_paths.N_HELD
     names, sha, labels = held_setup()
@@ -453,7 +455,14 @@ def replay_0xii_f(encs=('siglip2', 'clip_l14', 'siglip1'), recompute_cache=None,
             items[f'{spec["frozen"]}/partitions'] = dict(ours=float(same), theirs=1.0, abs_diff=0.0 if same else 1.0, ok=same)
         for aspect in ASPECTS:
             ours = arm_means(fz, labels[aspect])['r20']
-            items[f'{spec["frozen"]}/{aspect}'] = _item(ours, rep[aspect]['margins']['c_frozen']['A_e'][f'{spec["frozen"]}-r20'])
+            v = rep[aspect]['margins']['c_frozen']
+            items[f'{spec["frozen"]}/{aspect}'] = _item(ours, v['A_e'][f'{spec["frozen"]}-r20'])
+            res = frozen_margin(stored_k(spec['root'], spec['cand'], aspect, n), fz, labels[aspect], n_resamples, workers,
+                                spec['cand'], spec['frozen'])
+            tag = f'{spec["cand"]}/{aspect}'
+            items.update({f'{tag}/frozen_d': _item(res['d'], v['d']),
+                          f'{tag}/frozen_lo': _item(res['interval'][0], v['interval'][0]),
+                          f'{tag}/frozen_hi': _item(res['interval'][1], v['interval'][1])})
     return _result(items)
 
 
@@ -603,7 +612,8 @@ def main(argv=None):
         res = replay_0vii_removals(args.n_draws, args.workers, args.removals)
     elif g == 'xii-f':
         res = replay_0xii_f(*([tuple(args.encs)] if args.encs else []), recompute_cache=cache,
-                            loader=store_loader if args.loader == 'bs_stores' else legacy_loader)
+                            loader=store_loader if args.loader == 'bs_stores' else legacy_loader,
+                            n_resamples=args.n_draws, workers=args.workers)
     else:
         res = replay_0xii_k(n_resamples=args.n_draws, workers=args.workers)
     path = out / f'replays/replay_{g}.json'
