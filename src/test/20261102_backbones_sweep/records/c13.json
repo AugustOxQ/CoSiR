@@ -1,0 +1,18 @@
+{
+ "pass": true,
+ "sha256": {
+  "stage3/cells_affection.json": "8aa2e648dcbaf5930889c4ef0cbd6391897c8736777f91d10de1909d80ddd3b3",
+  "stage3/cells_artelingo_clu.json": "82bf6695460f83bbf03f60a712b2658c821116d92dc02cf7f7974cab1fe240cd",
+  "stage3/cells_artelingo_ret.json": "5fd441dd2b2cbaafff71273a3f8b5d0991af9d854b78dc6baf9402473af7d7ea",
+  "stage3/cells_emoset.json": "6e420f6e88df7714a40a332c7aa09802695a8d9514fb305db1421d46c7db828f",
+  "records/stage1_clip_l14.json": "0ebe541f11004984f1edaf7b07b5c71060086ac5afed9be44d931372374d7665",
+  "records/stage1_siglip1.json": "90284375498bf6568677cf23860eac1fe9dffcfc448d0cd6cb59f91952c4b307",
+  "records/stage1_siglip2.json": "482ee3f0f67dcf9e37fb246f30d8bd1f198f43fec503da7f07eef53c0400d097",
+  "records/stage2_emoset.json": "aae283634d0417ad358654f9065e1241cd90ef7fb4ffefb78369849ab3382c1a",
+  "records/status.json": "be530002fdc5fc77a3bce90e94cc9be2ecd219feef8e6dc4cb2dc2d5f7d0de09",
+  "records/nearcopy_emoset.json": "7a03dc09bf9c769464783e2feb78cf0539a774bf01ef8facc5ed45c1606f65b9"
+ },
+ "by": "C13 code by Codex (gpt-6.1-sol, high; bs_c13.py, 79410bb), separate from the round's scoring code; full derive and compare run by the run chat 'r14 run 2'",
+ "at": "2026-11-02 10:59",
+ "notes": "bs_c13.py derive: 61 cells, partial=False, 5,334 s on the local CPU (8 threads). compare: items=2676, mismatches=0, max abs diff 1.11e-16 (bar 1e-6). First compare: 598 mismatches, all naming or layout in the compare adapter, max diff 1.1e-16: the round names SC3's comparator 'matched_M2' (C13 'M2') and Affection SC6's teacher 'teacher_artwork' (C13 'teacher_emotion_focus', the same r12 artwork-wording view); the stage 2 record keeps the descriptive arms under 'descriptive' and the wording scores under 'teacher'. Fixed in compare only (recorded_identity, compare_stage2); derive untouched; 30 C13 tests pass. Outcomes and verdicts are compared after decide."
+}

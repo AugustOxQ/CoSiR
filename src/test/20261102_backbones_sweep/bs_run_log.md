@@ -68,3 +68,21 @@ times here are Amsterdam.
 - 09:26 sweeps: 32 photo units of 45 done, none failed; the knob sweep has not started.
 - 09:27 the chat cut at the context meter (200k); stage 3 and the C13 derive start in the next run chat.
 - `res/r14_bs -> /data/SSD2/cosir_r14/20261102_backbones_sweep/outputs` created (plan step 7).
+
+## Run chat 2 ("r14 run 2", from 09:27)
+
+- 09:28 load 2.8 (15-min mean 20). Started in the background: `bs_run_cpu.sh stage3` (log
+  `OUT/stage3_run2.log`) and the full `bs_c13.py derive` (CPU, 8 threads; log `OUT/c13_derive.log`).
+- 09:29 node402: the three sweep workers running (slots 0 to 2); watchers started (`--stall-minutes 60`).
+- 10:19 stage 3 rc 0 (3,060 s): the runner committed `records/status.json` (60c35d0), then the cells of all three
+  encoders (ArtELingo clustering 390 to 520 s each, retrieval about 120 s, Affection about 90 s) and part c (EmoSet,
+  1,098 s). Four cells files; hash map in `OUT/stage3/c13_sha256.json`. No verdict yet.
+- 10:19 C13 derive: SigLIP 2 and SigLIP 1 sections done, CLIP L/14 started (75 clustering partitions so far).
+- 10:57 C13 derive rc 0: 61 cells, partial=False, 5,334 s (CPU, 8 threads).
+- 10:58 first full compare: 598 mismatches, max abs diff 1.1e-16. All in the compare adapter, none numeric: the round
+  names SC3's comparator `matched_M2` (C13 `M2`) and Affection SC6's teacher `teacher_artwork` (C13
+  `teacher_emotion_focus`, the same r12 artwork-wording view; `bs_affection.py` docstring); the stage 2 record keeps the
+  descriptive arms under `descriptive` and the wording scores under `teacher`. Fixed in `compare` only (derive
+  untouched; change log `.claude/20261102_log.md`); 30 C13 tests pass.
+- 10:59 compare again: **items 2,676, mismatches 0, max abs diff 1.1e-16** (bar 1e-6). All ten hashes equal the stage 3
+  map. `records/c13.json` written (pass true).

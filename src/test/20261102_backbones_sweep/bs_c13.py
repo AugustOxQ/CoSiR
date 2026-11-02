@@ -678,7 +678,7 @@ def compare(derived=None, points_only=False, report=None):
     for path in sorted((P.OUT / 'stage3').glob('cells_*.json')):
         if not path.name.endswith('.pending.json'):
             recorded.extend(read_json(path))
-    ours, theirs = index_cells(doc['cells']), index_cells(recorded)
+    ours, theirs = index_cells(doc['cells']), index_cells([recorded_identity(c) for c in recorded])
     for key, cell in ours.items():
         name = '/'.join(key)
         ref = theirs.get(key)
@@ -723,6 +723,18 @@ def compare(derived=None, points_only=False, report=None):
     mx = max((v for v in result.max_diff.values() if v is not None), default=0.)
     print(f'C13 compare items={len(result.items)} mismatches={len(result.mismatches)} max_diff={mx:.12g}')
     return payload
+
+
+def recorded_identity(cell):
+    """Compare-only name adapter (run chat, 2026-11-02): the round's cells name two comparators differently from C13.
+    SC3: 'matched_M2' is C13's 'M2'. Affection SC6: 'teacher_artwork' (r12's artwork-wording outputs, bs_affection) is
+    C13's 'teacher_emotion_focus' (the artwork wording's view; EmoSet cells already use that name). Values untouched."""
+    comp = cell['comparator']
+    if cell['sc'] == 'SC3' and comp.startswith('matched_'):
+        return {**cell, 'comparator': comp[len('matched_'):]}
+    if cell['data'] == 'affection_test' and comp == 'teacher_artwork':
+        return {**cell, 'comparator': 'teacher_emotion_focus'}
+    return cell
 
 
 def missing_path_excused(section, status):
@@ -847,6 +859,8 @@ def compare_stage2(result, derived, record):
         result.tree(f'stage2.ranges.{metric}', derived['ranges'][metric], expected)
     menus = named_node(record, ('readouts', 'readout', 'menus')) or {}
     menus = menus if isinstance(menus, dict) else {}
+    if isinstance(record.get('descriptive'), dict):    # the record keeps §3.4 step 4's rows apart (run chat, 2026-11-02)
+        menus = {**menus, **record['descriptive']}
     for arm, menu in derived['readouts'].items():
         target = menus.get(arm, {})
         if not isinstance(target, dict):
@@ -860,6 +874,9 @@ def compare_stage2(result, derived, record):
         target = scalar(node, ('pick', 'wording'))
         result.add(f'stage2.teacher_wording.{task}', pick, target)
     scores = named_node(record, ('wording_scores', 'teacher_scores', 'teacher_wording_scores')) or wordings
+    teacher = record.get('teacher')
+    if isinstance(teacher, dict) and 'ami' in teacher and 'map_at_own_pick' in teacher:   # the record's layout (run chat)
+        scores = {'clustering': teacher['ami'], 'retrieval': teacher['map_at_own_pick']}
     for task, values in derived['wording_scores'].items():
         aliases = (task, 'clu', 'ami') if task == 'clustering' else (task, 'ret', 'map', 'mAP')
         target = next((scores[k] for k in aliases if k in scores), {})
