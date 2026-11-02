@@ -202,7 +202,7 @@ Your next step: give your reading of these results, then choose the direction.
 The full report offers three options:
 
 1. Freeze and write. This needs no compute and fixes the claims for the abstract and the paper.
-2. Test on PolyArt, another art dataset, when you send its link. This needs data preparation and one scoring round.
+2. Test on PolyArt (MMArt), WikiArt paintings not in ArtELingo. Its data is ready, and a side chat extracts its features tonight. Then a test design and one scoring round.
 3. Test a fourth encoder that no earlier held test picked: about 10 runs on DAS6 and about 1 hour of CPU scoring. This shows whether the encoder pick shaped the result.
 
 ## Glossary

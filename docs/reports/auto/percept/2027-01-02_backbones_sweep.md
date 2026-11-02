@@ -27,7 +27,7 @@ Against the Qwen teacher, 18 of 24 encoder cells are WIN and 5 are LEVEL. One is
 **Options for next.**
 
 1. Freeze and write: no compute. The claims set the CVPR abstract (due 2026-11-10) and the paper (due 2026-11-16).
-2. PolyArt test, when the user's link comes: data preparation and one scoring round. It tests c* on another art source.
+2. PolyArt (MMArt) test: the data is prepared, and the side chat "r14 mmart run" extracts its features tonight (19:00 to about 21:00, local GPU); then a test design and one scoring round. It tests c* on another art source, WikiArt paintings not in ArtELingo.
 3. A fourth encoder that no held test picked: about one encoder of part a (10 runs on DAS6, about 1 h of CPU scoring). It tells whether the encoder pick shaped the result.
 
 **Your reading.** <left for the user>
