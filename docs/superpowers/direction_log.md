@@ -50,6 +50,13 @@ proposed. PolyArt waits for the user's link. Deadlines: abstract 2026-11-10, pap
 - A style or mood aspect on photos (Flickr Style, 20 labels; or the AVA style subset, 14 labels): needs a new aspect
   pathway and has access risk (never tried; deferred by the user (2026-11-02): discuss after r14's main experiments if
   time remains, else after the abstract; [proposed in](../reports/literature/2027-01-02_photo_aspect_datasets.md))
+- MMArt perspective retrieval: each MMArt perspective caption (emotional, formal, narrative, historical) as a text
+  query for its painting in the matching c* aspect space; needs Qwen text embeddings of the captions (never tried;
+  parked by the user, 2026-11-02, as a later experiment; proposed in the MMArt prep chat,
+  [log](../../src/test/20261102_mmart_prep/20261102_mmart_prep_log.md))
+- MMArt perspective names as new Qwen instructions (narrative, formal, historical): new aspects without a c* head,
+  so a new experiment, not a test of c* (never tried; parked by the user, 2026-11-02, as a later experiment;
+  proposed in the MMArt prep chat, [log](../../src/test/20261102_mmart_prep/20261102_mmart_prep_log.md))
 
 ## 2026-11-02 · Photo fine-tune read: the photo model above the plain Qwen image and above its teacher on Affection (holds); the CRL claim passes; next, open (step 2 in r14 decide)
 
