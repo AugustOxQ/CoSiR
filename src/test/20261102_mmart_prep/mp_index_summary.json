@@ -1,11 +1,17 @@
 {
  "n": 74234,
  "bytes_match": 74234,
- "index_sha256": "c2c9033b293f2d37f9bd26741d01fe3ab3bc7bace37500682078335d41c2ad05",
+ "index_sha256": "bcaa1b739dc94bba990de42f7dc3c23efc68acd7ab3df964917adf7da5815825",
  "artelingo": {
   "trainval": 45924,
   "none": 16782,
   "held": 11528
+ },
+ "split": {
+  "train": 40155,
+  "new": 16782,
+  "held": 11528,
+  "val": 5769
  },
  "artelingo_path_differs": 547,
  "none_exact_dup_of_trainval": 34,
