@@ -1508,3 +1508,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-02-r14-build-5-handoff.md
 - New chat: tab 'r14 build 5', session 5818807c-10c7-4ff3-bbd8-dc989cebd932
 
+[brief] CoSiR: r14 build 5 -> r14 run (2026-11-02 07:27 Amsterdam)
+- Done: the r14 build. The final review (Opus xhigh) found 1 blocker (no export step) and 4 should-fixes; one fix wave fixed them; the re-review approved; main is at 4519762, pushed. The node smoke passed.
+- State: node402 idle (3 A6000, until 11-04 18:06). The local extraction queue ends at about 08:00. Stage 0 has not run in production yet.
+- Next: sync and launch part a on node402 (plan steps 3 to 5); after the queue, stage 0 locally.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-02-r14-run-handoff.md
+- New chat: tab 'r14 run', session fa18b348-ef77-4a34-912c-cd50b1f347bf
+
