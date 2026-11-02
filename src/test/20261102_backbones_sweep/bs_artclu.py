@@ -472,7 +472,7 @@ ABLATION_ARMS = ('k11=40', 'k11=40-no_relational', 'k11=40-no_sharp_row', 'k11=4
 
 
 def replay_0vii_sha():
-    """0(vii), exports: every r10 ablation export (c* and the eight removals; held and validation, 3 aspects, 5 seeds)
+    """0(vii), exports: every r10 ablation export (c* and the eight removals; held, validation and weights, 3 aspects, 5 seeds)
     hashes to its sidecar. Held: the sidecar's array hash (`rg_held.load_held_output`, the check the ablation scorer used);
     validation: the sidecar's `output_sha256` against the file."""
     held_sha = rs_paths.HELD_SHA256
@@ -486,10 +486,20 @@ def replay_0vii_sha():
                     rg_held.load_held_output(f, arm, s, held_sha, aspect=aspect)
                 except AssertionError as err:
                     bad.append(f'held {aspect} s{s}: {err}')
-                v = R10_FULL / f'train/{arm}/R6-5/{aspect}__{GRAPHS[aspect]}__s{s}.npz'
+                # validation export: the graph row in its name differs by arm (removal arms), so glob it (exactly one)
+                found = sorted((R10_FULL / f'train/{arm}/R6-5').glob(f'{aspect}__*__s{s}.npz'))
+                assert len(found) == 1, f'{arm} {aspect} s{s}: {len(found)} validation exports'
+                v = found[0]
                 side = json.loads(v.with_suffix('.json').read_text())
                 if side['output_sha256'] != sha_file(v):
                     bad.append(f'validation {aspect} s{s}: hash differs')
+                # weights export: the weights sidecar names the weights file's hash and the validation output's hash
+                w = R10_FULL / f'weights/{arm}/{aspect}__s{s}.pt'
+                wside = json.loads(w.with_suffix('.json').read_text())
+                if wside['weights_sha256'] != sha_file(w):
+                    bad.append(f'weights {aspect} s{s}: hash differs')
+                if wside['output_sha256'] != side['output_sha256']:
+                    bad.append(f'weights {aspect} s{s}: output_sha256 differs from the validation sidecar')
         items[arm] = dict(ours=float(len(bad)), theirs=0.0, abs_diff=float(len(bad)), ok=not bad, bad=bad)
     return _result(items)
 
