@@ -1564,3 +1564,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-02-r15-decide-handoff.md
 - New chat: tab 'r15 decide', session 71dce129-cf72-4fd7-8392-f2706481a4a1
 
+[brief] CoSiR: r15 decide -> r15 build (2026-11-02 21:01 Amsterdam)
+- Done: r15 specced, rule-reviewed and approved (2026-11-02 18:37); MMArt's seven views extracted, all checks pass.
+- State: test cut moved to 0.95 by the user (spec D19): 16,384 test paintings; the 0.85 set (10,403) is a diagnostic.
+- Next: tickets and build on CPU (no GPU expected); final review; merge into main; then open the run chat.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-02-r15-build-handoff.md
+- New chat: tab 'r15 build', session 4a2a241b-447c-4748-91bb-93507e8ef7e4
+
