@@ -1532,3 +1532,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-02-r14-run3-handoff.md
 - New chat: tab 'r14 run 3', session 77c12d10-f22f-41f7-a44f-526d014fe576
 
+[brief] CoSiR: 12 -> r14 mmart run (2026-11-02 15:12 Amsterdam)
+- Done: MMArt (PolyArt) prepared: 74,234 WikiArt paintings indexed with ArtELingo's split; extractor built and smoke-tested (parity ≥ 0.9997 on 7 views).
+- State: test = 16,782 paintings not in ArtELingo; val = 5,769 ArtELingo val paintings with MMArt labels.
+- Next: at 19:00 run the 7-view extraction (about 2 h, local GPU), then parity, near-copy and store checks.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-02-r14-mmart-run-handoff.md
+- New chat: tab 'r14 mmart run', session 4facf96e-dd21-4ef8-b50f-8432f3ff9a71
+
