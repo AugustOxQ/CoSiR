@@ -178,3 +178,13 @@ times here are Amsterdam.
   `docs/user_read/2026-11-02_backbones_sweep.md`, 209 lines, committed as a draft. Its two checks (cold read, fidelity)
   and the fix wave go to the next run chat.
 - 17:30 the chat cuts at the context meter (200k).
+
+## Run chat 5 ("r14 run 5", from 17:30)
+
+- 17:31 the user-read report's two checks in parallel: cold read (Haiku worker) and fidelity check (Sonnet high
+  worker). Fidelity: about 55 numbers, none wrong; 0 must-fix, 6 minor (two readings stated as results, the summary's
+  part b line, the CLIP L/14 genre LEVEL cell below the teacher's point value, definitions not in the full report). It
+  also found a gap in both reports: on EmoSet the photo model is below the teacher on amusement (AP 0.3203 against
+  0.3471, a stage 5 diagnostic). Cold read: eight undefined terms, two dense paragraphs, the summary overstated part b.
+- 17:35 one fix wave by the run chat, then the humanizer pass (ae7f607). The full report gains a Terms line and the
+  amusement caveat in "What it does not show"; the user-read report adds the r12/r13 motivation to "How we got here".
