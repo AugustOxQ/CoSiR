@@ -614,6 +614,8 @@ def main(argv=None):
               f"({time.monotonic() - t0:.0f}s)")
         return 0
     if args.cmd == 'stage3':
+        assert (args.n_clu, args.n_ret) == (N_CLU, N_RET) or BP.SMOKE, \
+            f"production cells use r12's draw counts {(N_CLU, N_RET)}, not {(args.n_clu, args.n_ret)}"
         doc = run_stage3(RealSource(), out, args.workers, args.n_clu, args.n_ret)
         for c in doc['cells']:
             print(f"{c['sc']}: d {c['d']:.5f} [{c['lo']:.5f}, {c['hi']:.5f}] vs {c['comparator']}")

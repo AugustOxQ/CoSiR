@@ -232,6 +232,16 @@ def test_stage2_runs_r_e_before_the_picks_and_every_pick_uses_r_e_map(src, monke
     assert rec['wording']['retrieval'] in ('artwork', 'photo')
 
 
+def test_stage2_reads_no_test_label_and_no_test_feature():
+    fresh = FakeSource()
+    S.stage2_record(fresh, workers=WORKERS)
+    assert not [c for c in fresh.calls if c[0] == 'stored' and c[2] == 'test']          # no test export read
+    assert not [c for c in fresh.calls if c[0] == 'frozen' and c[2] == N_TEST]          # no frozen test rows (frozen logs the row count)
+    assert [c for c in fresh.calls if c[0] == 'labels'] == [('labels', N_VAL)] * sum(1 for c in fresh.calls if c[0] == 'labels')
+    assert [c for c in fresh.calls if c[0] == 'labels']                                 # labels were read, and only val-sized
+    assert ('keys', 'test') in fresh.calls                                              # the test key list alone is allowed
+
+
 def test_stage2_record_content_and_independent_checks(src, record):
     S.check_record(record)
     assert set(record['readout']) == set(S.BAR_ARMS) and set(record['descriptive']) == set(S.DESCRIPTIVE_ARMS)
@@ -298,6 +308,20 @@ def test_stage3_stops_before_reading_any_feature_when_the_record_is_not_committe
     with pytest.raises(SystemExit, match='REFUSED'):
         S.run_stage3(fresh, tmp_path / 'out', workers=WORKERS, n_clu=4, n_ret=8)
     assert fresh.calls == []                                           # no key, label or feature was read
+
+
+def test_stage3_cli_refuses_draw_counts_other_than_r12s_outside_a_smoke_run(monkeypatch):
+    got = []
+    monkeypatch.setattr(S, 'RealSource', lambda: None)
+    monkeypatch.setattr(S, 'run_stage3', lambda source, out, workers, n_clu, n_ret: got.append((n_clu, n_ret)) or dict(cells=[], sheet=[]))
+    monkeypatch.setattr(S.BP, 'SMOKE', 0)
+    for argv in (['stage3', '--n-clu', '5'], ['stage3', '--n-ret', '7'], ['stage3', '--n-clu', '5', '--n-ret', '7']):
+        with pytest.raises(AssertionError):
+            S.main(argv)
+    assert got == []                                                   # refused before anything ran
+    assert S.main(['stage3']) == 0 and got == [(S.N_CLU, S.N_RET)]     # r12's counts pass
+    monkeypatch.setattr(S.BP, 'SMOKE', 1)
+    assert S.main(['stage3', '--n-clu', '5', '--n-ret', '7']) == 0 and got[-1] == (5, 7)     # a smoke run may use small counts
 
 
 # ------------------------------------------------------------------------------------------------ test scoring
