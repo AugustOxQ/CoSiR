@@ -309,9 +309,9 @@ def photo_minus_cstar(smoke, workers):
     md = []
 
     def sec():
+        c = ctx(smoke, workers)             # first: its import puts r13's folder (and r12's ac_cluster) on sys.path
         import ac_cluster
         import rt_stats
-        c = ctx(smoke, workers)
         ph, cs = c.arm('photo_qwen'), c.arm('cstar_qwen')
         r_clu, r_map = c.rec['ranges']['clu']['r'], c.rec['ranges']['map']['r']
         b = ac_cluster.paired(ph['parts20'], cs['parts20'], c.labels, c.n_clu, c.workers, shared_seeds=True)
@@ -547,9 +547,9 @@ def emoset_uncut(smoke, workers):
         return dict(source=str(f), splits=out)
 
     def cells():
+        c = ctx(smoke, workers)             # first: its import puts r13's folder (and r12's ac_cluster) on sys.path
         import ac_cluster
         import rt_stats
-        c = ctx(smoke, workers)
         S = c.S
         uncut = c.source.keys_uncut('test') if hasattr(c.source, 'keys_uncut') else __import__('bs_emoset').keys('test', cut=False)
         S.check_order(uncut)

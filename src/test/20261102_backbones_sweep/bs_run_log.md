@@ -95,3 +95,6 @@ times here are Amsterdam.
   `bs_partb.py ablation` (local r10 data only) and ten of the twelve diagnostics (all but `knob_curves` and
   `photo_length`, which need the sweeps); logs `OUT/stage4/logs/partb_ablation_early.log`, `diag_early_<item>.log`.
 - Codex ledger row of the C13 job updated (claude-config 444d7d4).
+- 11:47 early diagnostics: eight of ten ok (r0_rows 959 s, emoset_per_class_ap 810 s, held_spreads 852 s,
+  r_e_vs_spread 126 s, the rest seconds). `photo_minus_cstar` and `emoset_uncut` failed alone (`ac_cluster` imported
+  before `ctx()` puts its folder on the path; an `all` run is not hit). Fixed (import order; change log), rerun.
