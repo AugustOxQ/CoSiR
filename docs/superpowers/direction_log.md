@@ -20,9 +20,10 @@ retrieval, and passes the CRL bars (reports 12-28, 12-29, 12-31). The photo mode
 unlabeled train photos) beats its teacher on Affection (report 2027-01-01) and on EmoSet, a test set that shaped
 nothing: AMI +0.0181, mAP +0.0320 (report 2027-01-02, holds). The recipe carries over to SigLIP 2, SigLIP 1 and CLIP
 L/14: a WIN over each plain image; against the Qwen teacher 18 WIN, 5 LEVEL and 1 BELOW of 24 cells. Next: r15
-(confirmation, medium loop): c* on MMArt (PolyArt), 16,782 WikiArt paintings not in ArtELingo; its seven views are
-extracted on the evening of 2026-11-02 ([round log](../../src/test/20261102_mmart_prep/20261102_mmart_prep_log.md));
-the test design is grilled in r15 decide. Deadlines: abstract 2026-11-10, paper 2026-11-16, supplementary
+(confirmation, medium loop): c* on MMArt (PolyArt), 16,384 WikiArt paintings not in ArtELingo after the near-copy
+cut at 0.95; the seven views were extracted on 2026-11-02 and pass their checks
+([round log](../../src/test/20261102_mmart_prep/20261102_mmart_prep_log.md)); the design is
+[approved](specs/2026-11-02-mmart-test-design.md) and the build runs on the night of 2026-11-02. Deadlines: abstract 2026-11-10, paper 2026-11-16, supplementary
 2026-11-23.
 
 ## Parked ideas
@@ -91,7 +92,9 @@ the test design is grilled in r15 decide. Deadlines: abstract 2026-11-10, paper 
   topics, a diagnostic on the shared held paintings with MMArt labels, local CPU) (user, after seeing the
   recommendation). No plan page (user). Spec: [2026-11-02-mmart-test-design.md](specs/2026-11-02-mmart-test-design.md)
   rule-reviewed (Opus `xhigh`, pass after fixes, all applied) and approved from the brief 2026-11-02 18:37 (user; no container
-  restart); build next.
+  restart); build next. After the near-copy check (19:55; 6,375 of 16,782 test paintings at cosine ≥ 0.85, mostly
+  other works by the same artist), the test cut moved to 0.95, 16,384 paintings, with the 0.85 set as a diagnostic
+  (spec D19; user, after seeing the recommendation, 2026-11-02 21:00).
 - **Why:** the user wants c* tested on a second art source before the freeze; MMArt's data was already prepared.
 - **Links:** [report](../reports/auto/percept/2027-01-02_backbones_sweep.md) ·
   [user-read report](../user_read/2026-11-02_backbones_sweep.md) ·
