@@ -134,3 +134,12 @@ times here are Amsterdam.
   worker, the three k11=20 units.
 - 15:09 early photo and knob sheets on the local CPU (`bs_partb.py photo`, `knob`; logs `OUT/stage4/logs/partb_*_early.log`),
   for timing and as the layout the spot re-derivation compares against; stage 4 writes all three again after the pull.
+- 15:12 early photo sheet rc 0 (174 s). The early knob sheet (15 of 39 rows in 15 min, about 40 min in all) was stopped
+  at 15:27, since it started before the k11=20 pull; stage 4 writes it again.
+- 15:25 `20261102-140830-91d79c3` succeeded: `retry-failed` moved the two items aside, then `knob__k11=20__s1` to `s3`
+  ok on the first attempt (282, 272, 263 s). 15:26 pulled, verified, marked, code copy removed. **Sweeps complete:
+  knob 120 of 120 units, photo 45 of 45; no `failed.json` left** (the row's first record is kept as
+  `failed_attempt1.json`).
+- 15:15 Codex job (gpt-6.1-sol, high): the part b spot re-derivation, `bs_c13_partb.py` (derive, compare), separate code
+  from the rule and frozen r10 to r13 code, without the round's sheet and scoring code (5h window 97% left at 15:06).
+- 15:28 `bs_run_cpu.sh stage4` (the three sheets; log `OUT/stage4_run3.log`).
