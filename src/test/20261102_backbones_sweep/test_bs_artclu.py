@@ -251,6 +251,7 @@ def test_clustering_ranges_are_max_minus_min_per_aspect(monkeypatch, tmp_path):
     seen = {}
 
     def fake_cstar(split, aspect, seed, names):
+        assert split == 'val'                                           # validation only, never the held data
         seen[(aspect, seed)] = str(A.rt_data.CSTAR_ROOT)
         return np.full((3, 4), seed, dtype=np.float16)
     monkeypatch.setattr(A.rt_data, '_cstar', fake_cstar)
