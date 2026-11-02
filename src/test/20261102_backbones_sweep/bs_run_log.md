@@ -174,3 +174,7 @@ times here are Amsterdam.
   high worker): about 235 numbers checked, none wrong; 4 must-fix (BELOW cell missing from title and brief, storage
   line, a reading too strong) and 10 minor; all applied by the run chat. Storage items listed on
   `.scratch/pending_deletions.md`.
+- 17:26 Codex job (gpt-6.1-sol, medium): the user-read report draft. 17:29 back (3 min; 5h window 49% to 47%):
+  `docs/user_read/2026-11-02_backbones_sweep.md`, 209 lines, committed as a draft. Its two checks (cold read, fidelity)
+  and the fix wave go to the next run chat.
+- 17:30 the chat cuts at the context meter (200k).
