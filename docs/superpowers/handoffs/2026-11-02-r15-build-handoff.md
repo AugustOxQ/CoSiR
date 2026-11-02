@@ -60,7 +60,7 @@ the run chat.
 
 - Round folder `src/test/20261102_mmart_test/` (it holds the facts brief and the review), module prefix `mt_`.
   Outputs under `/data/SSD2/cosir_r15/20261102_mmart_test/outputs/`.
-- **Branch:** start the integration branch from `main` (now 6e7c1a9). The r14 branch `r14-backbones-sweep` is on
+- **Branch:** start the integration branch from `main` (it holds this handoff). The r14 branch `r14-backbones-sweep` is on
   `.scratch/pending_deletions.md`, kept "until the r15 build branch starts"; leave it, and leave the row for the
   storage summary.
 - **Verdict code** gets unit tests and an Opus `high` ticket review: the test cut (both thresholds), the export and
