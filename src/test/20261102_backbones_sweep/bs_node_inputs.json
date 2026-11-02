@@ -1,0 +1,308 @@
+[
+ {
+  "key": "art_features_metadata_json",
+  "local": "/data/SSD2/pre_extract/artelingo/features/metadata.json",
+  "node": "/local/wding/Dataset/pre_extract/artelingo/features/metadata.json",
+  "groups": [
+   "aux_art"
+  ]
+ },
+ {
+  "key": "art_features_shards_shard_00000_sample_ids_npy",
+  "local": "/data/SSD2/pre_extract/artelingo/features/shards/shard_00000/sample_ids.npy",
+  "node": "/local/wding/Dataset/pre_extract/artelingo/features/shards/shard_00000/sample_ids.npy",
+  "groups": [
+   "aux_art"
+  ]
+ },
+ {
+  "key": "art_features_shards_shard_00001_sample_ids_npy",
+  "local": "/data/SSD2/pre_extract/artelingo/features/shards/shard_00001/sample_ids.npy",
+  "node": "/local/wding/Dataset/pre_extract/artelingo/features/shards/shard_00001/sample_ids.npy",
+  "groups": [
+   "aux_art"
+  ]
+ },
+ {
+  "key": "art_features_shards_shard_00002_sample_ids_npy",
+  "local": "/data/SSD2/pre_extract/artelingo/features/shards/shard_00002/sample_ids.npy",
+  "node": "/local/wding/Dataset/pre_extract/artelingo/features/shards/shard_00002/sample_ids.npy",
+  "groups": [
+   "aux_art"
+  ]
+ },
+ {
+  "key": "art_features_shards_shard_00003_sample_ids_npy",
+  "local": "/data/SSD2/pre_extract/artelingo/features/shards/shard_00003/sample_ids.npy",
+  "node": "/local/wding/Dataset/pre_extract/artelingo/features/shards/shard_00003/sample_ids.npy",
+  "groups": [
+   "aux_art"
+  ]
+ },
+ {
+  "key": "art_train_json",
+  "local": "/data/PDD/artelingo/artelingo_train.json",
+  "node": "/var/scratch/wding/Dataset/artelingo/artelingo_train.json",
+  "groups": [
+   "aux_art"
+  ]
+ },
+ {
+  "key": "wikiart_genre",
+  "local": "/data/SSD/wikiart_genre",
+  "node": "/local/wding/r14_in/wikiart_genre",
+  "groups": [
+   "aux_art"
+  ]
+ },
+ {
+  "key": "r10_gate_k11_full",
+  "local": "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/gates/k11_full.json",
+  "node": "/local/wding/r14_in/r10_gate_k11_full.json",
+  "groups": [
+   "aux_art"
+  ]
+ },
+ {
+  "key": "r10_graphs_aspect_k40",
+  "local": "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/graphs/full/aspect__k40",
+  "node": "/local/wding/r14_in/r10_graphs_aspect_k40",
+  "groups": [
+   "aux_art"
+  ]
+ },
+ {
+  "key": "art_qwen",
+  "local": "/data/SSD2/pre_extract/artelingo_full/qwen3vl_emb_2b",
+  "node": "/local/wding/Dataset/pre_extract/artelingo_full/qwen3vl_emb_2b",
+  "groups": [
+   "qwen_art"
+  ]
+ },
+ {
+  "key": "art_qwen_prompts_default",
+  "local": "/data/SSD2/pre_extract/artelingo_full/qwen3vl_emb_2b_aspect_prompts/default",
+  "node": "/local/wding/Dataset/pre_extract/artelingo_full/qwen3vl_emb_2b_aspect_prompts/default",
+  "groups": [
+   "qwen_art"
+  ]
+ },
+ {
+  "key": "art_qwen_prompts_emotion_focus",
+  "local": "/data/SSD2/pre_extract/artelingo_full/qwen3vl_emb_2b_aspect_prompts/emotion_focus",
+  "node": "/local/wding/Dataset/pre_extract/artelingo_full/qwen3vl_emb_2b_aspect_prompts/emotion_focus",
+  "groups": [
+   "qwen_art"
+  ]
+ },
+ {
+  "key": "art_qwen_prompts_emotion_focus_s2img",
+  "local": "/data/SSD2/pre_extract/artelingo_full/qwen3vl_emb_2b_aspect_prompts/emotion_focus_s2img",
+  "node": "/local/wding/Dataset/pre_extract/artelingo_full/qwen3vl_emb_2b_aspect_prompts/emotion_focus_s2img",
+  "groups": [
+   "qwen_art"
+  ]
+ },
+ {
+  "key": "art_qwen_prompts_emotion_focus_s2txt",
+  "local": "/data/SSD2/pre_extract/artelingo_full/qwen3vl_emb_2b_aspect_prompts/emotion_focus_s2txt",
+  "node": "/local/wding/Dataset/pre_extract/artelingo_full/qwen3vl_emb_2b_aspect_prompts/emotion_focus_s2txt",
+  "groups": [
+   "qwen_art"
+  ]
+ },
+ {
+  "key": "art_qwen_prompts_emotion_focus_trainimg",
+  "local": "/data/SSD2/pre_extract/artelingo_full/qwen3vl_emb_2b_aspect_prompts/emotion_focus_trainimg",
+  "node": "/local/wding/Dataset/pre_extract/artelingo_full/qwen3vl_emb_2b_aspect_prompts/emotion_focus_trainimg",
+  "groups": [
+   "qwen_art"
+  ]
+ },
+ {
+  "key": "art_qwen_prompts_genre_word",
+  "local": "/data/SSD2/pre_extract/artelingo_full/qwen3vl_emb_2b_aspect_prompts/genre_word",
+  "node": "/local/wding/Dataset/pre_extract/artelingo_full/qwen3vl_emb_2b_aspect_prompts/genre_word",
+  "groups": [
+   "qwen_art"
+  ]
+ },
+ {
+  "key": "art_qwen_prompts_genre_word_s2img",
+  "local": "/data/SSD2/pre_extract/artelingo_full/qwen3vl_emb_2b_aspect_prompts/genre_word_s2img",
+  "node": "/local/wding/Dataset/pre_extract/artelingo_full/qwen3vl_emb_2b_aspect_prompts/genre_word_s2img",
+  "groups": [
+   "qwen_art"
+  ]
+ },
+ {
+  "key": "art_qwen_prompts_genre_word_trainimg",
+  "local": "/data/SSD2/pre_extract/artelingo_full/qwen3vl_emb_2b_aspect_prompts/genre_word_trainimg",
+  "node": "/local/wding/Dataset/pre_extract/artelingo_full/qwen3vl_emb_2b_aspect_prompts/genre_word_trainimg",
+  "groups": [
+   "qwen_art"
+  ]
+ },
+ {
+  "key": "art_qwen_prompts_style_word",
+  "local": "/data/SSD2/pre_extract/artelingo_full/qwen3vl_emb_2b_aspect_prompts/style_word",
+  "node": "/local/wding/Dataset/pre_extract/artelingo_full/qwen3vl_emb_2b_aspect_prompts/style_word",
+  "groups": [
+   "qwen_art"
+  ]
+ },
+ {
+  "key": "art_qwen_prompts_style_word_s2img",
+  "local": "/data/SSD2/pre_extract/artelingo_full/qwen3vl_emb_2b_aspect_prompts/style_word_s2img",
+  "node": "/local/wding/Dataset/pre_extract/artelingo_full/qwen3vl_emb_2b_aspect_prompts/style_word_s2img",
+  "groups": [
+   "qwen_art"
+  ]
+ },
+ {
+  "key": "art_qwen_prompts_style_word_trainimg",
+  "local": "/data/SSD2/pre_extract/artelingo_full/qwen3vl_emb_2b_aspect_prompts/style_word_trainimg",
+  "node": "/local/wding/Dataset/pre_extract/artelingo_full/qwen3vl_emb_2b_aspect_prompts/style_word_trainimg",
+  "groups": [
+   "qwen_art"
+  ]
+ },
+ {
+  "key": "aff_language_v0",
+  "local": "/data/SSD/affection/language/version_0",
+  "node": "/local/wding/r14_in/affection_language_v0",
+  "groups": [
+   "aux_aff"
+  ]
+ },
+ {
+  "key": "r10_cstar_weights",
+  "local": "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/weights/k11=40",
+  "node": "/local/wding/r14_in/r10_cstar_weights",
+  "groups": [
+   "aux_aff"
+  ],
+  "map_local": "/data/SSD2/cosir_r14/20261102_backbones_sweep/node_inputs/r10_cstar_weights"
+ },
+ {
+  "key": "r13_graphs_k20_on",
+  "local": "/data/SSD2/cosir_r13/20261031_photo_finetune/outputs/graphs/k20__on",
+  "node": "/local/wding/r14_in/r13_graphs_k20__on",
+  "groups": [
+   "aux_aff"
+  ]
+ },
+ {
+  "key": "r13_graphs_k40_on",
+  "local": "/data/SSD2/cosir_r13/20261031_photo_finetune/outputs/graphs/k40__on",
+  "node": "/local/wding/r14_in/r13_graphs_k40__on",
+  "groups": [
+   "aux_aff"
+  ]
+ },
+ {
+  "key": "r13_graphs_k80_on",
+  "local": "/data/SSD2/cosir_r13/20261031_photo_finetune/outputs/graphs/k80__on",
+  "node": "/local/wding/r14_in/r13_graphs_k80__on",
+  "groups": [
+   "aux_aff"
+  ]
+ },
+ {
+  "key": "aff_qwen",
+  "local": "/data/SSD2/pre_extract/affection_local/qwen3vl_emb_2b",
+  "node": "/local/wding/Dataset/pre_extract/affection_local/qwen3vl_emb_2b",
+  "groups": [
+   "qwen_aff"
+  ]
+ },
+ {
+  "key": "aff_qwen_prompts_emotion_focus",
+  "local": "/data/SSD2/pre_extract/affection_local/qwen3vl_emb_2b_aspect_prompts/emotion_focus",
+  "node": "/local/wding/Dataset/pre_extract/affection_local/qwen3vl_emb_2b_aspect_prompts/emotion_focus",
+  "groups": [
+   "qwen_aff"
+  ]
+ },
+ {
+  "key": "aff_qwen_prompts_emotion_focus_train",
+  "local": "/data/SSD2/pre_extract/affection_local/qwen3vl_emb_2b_aspect_prompts/emotion_focus_train",
+  "node": "/local/wding/Dataset/pre_extract/affection_local/qwen3vl_emb_2b_aspect_prompts/emotion_focus_train",
+  "groups": [
+   "qwen_aff"
+  ]
+ },
+ {
+  "key": "aff_qwen_prompts_emotion_focus_txt",
+  "local": "/data/SSD2/pre_extract/affection_local/qwen3vl_emb_2b_aspect_prompts/emotion_focus_txt",
+  "node": "/local/wding/Dataset/pre_extract/affection_local/qwen3vl_emb_2b_aspect_prompts/emotion_focus_txt",
+  "groups": [
+   "qwen_aff"
+  ]
+ },
+ {
+  "key": "r10_val_R6_5",
+  "local": "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/train/k11=40/R6-5",
+  "node": "/local/wding/r14_in/r10_val_R6_5",
+  "groups": [
+   "viii"
+  ],
+  "map_local": "/data/SSD2/cosir_r14/20261102_backbones_sweep/node_inputs/r10_val_R6_5"
+ },
+ {
+  "key": "art_siglip2",
+  "local": "/data/SSD2/pre_extract/artelingo_full/siglip2_so400m",
+  "node": "/local/wding/Dataset/pre_extract/artelingo_full/siglip2_so400m",
+  "groups": [
+   "art_siglip2"
+  ]
+ },
+ {
+  "key": "aff_siglip2_so400m",
+  "local": "/data/SSD2/pre_extract/affection_local/siglip2_so400m",
+  "node": "/local/wding/Dataset/pre_extract/affection_local/siglip2_so400m",
+  "groups": [
+   "aff_siglip2"
+  ]
+ },
+ {
+  "key": "art_siglip1",
+  "local": "/data/SSD2/pre_extract/artelingo_full/siglip_so400m",
+  "node": "/local/wding/Dataset/pre_extract/artelingo_full/siglip_so400m",
+  "groups": [
+   "art_siglip1"
+  ]
+ },
+ {
+  "key": "aff_siglip_so400m",
+  "local": "/data/SSD2/pre_extract/affection_local/siglip_so400m",
+  "node": "/local/wding/Dataset/pre_extract/affection_local/siglip_so400m",
+  "groups": [
+   "aff_siglip1"
+  ]
+ },
+ {
+  "key": "art_clip_l14",
+  "local": "/data/SSD2/pre_extract/artelingo_full/clip_l14",
+  "node": "/local/wding/Dataset/pre_extract/artelingo_full/clip_l14",
+  "groups": [
+   "art_clip_l14"
+  ]
+ },
+ {
+  "key": "aff_clip_l14_valtest",
+  "local": "/data/SSD2/pre_extract/affection_local/clip_l14_valtest",
+  "node": "/local/wding/Dataset/pre_extract/affection_local/clip_l14_valtest",
+  "groups": [
+   "aff_clip_l14"
+  ]
+ },
+ {
+  "key": "aff_clip_l14_train",
+  "local": "/data/SSD2/pre_extract/affection_local/clip_l14_train",
+  "node": "/local/wding/Dataset/pre_extract/affection_local/clip_l14_train",
+  "groups": [
+   "aff_clip_l14"
+  ]
+ }
+]
