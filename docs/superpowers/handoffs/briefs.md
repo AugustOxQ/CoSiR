@@ -1452,3 +1452,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-01-r13-run-2-handoff.md
 - New chat: tab 'r14 decide', session 231885ae-9168-4719-bb17-fc882c65ec41
 
+[brief] CoSiR: r14 decide -> r14 decide 2 (2026-11-02 03:01 Amsterdam)
+- Done: r13 wrap-up (decision C recorded, 14.2 GB deleted, ledger, checks); decision A: r14 now, three parts on DAS6.
+- State: r13 holds (photo model above its teacher on Affection, AMI +0.0172, mAP +0.0227); facts brief for r14 done.
+- Next: the grill (step 5, short), at most three key questions per round, answer first; then the spec (step 6).
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-02-r14-decide-2-handoff.md
+- New chat: tab 'r14 decide 2', session 5b52ea76-3ce6-4528-ad0e-4ced2745caa1
+
