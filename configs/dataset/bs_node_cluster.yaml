@@ -1,0 +1,10 @@
+# @package _global_
+# r14 backbones sweep: node jobs (scripts/run_bs_node.sh). No dataset paths here on purpose: the jobs read their
+# stored inputs through `+bs_in.<key>_path=<node path>` overrides (bs_node_inputs.json), which `cluster check`
+# resolves and syncs through DATA_MAP. The results dir is set per job by the script's override.
+data:
+  dataset_type: "bs_node"
+
+experiment:
+  name: "r14_backbones_sweep"
+  results_dir: "/local/wding/res/r14_bs"
