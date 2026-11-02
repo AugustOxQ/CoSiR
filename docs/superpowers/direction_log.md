@@ -11,17 +11,17 @@ weekly and stage reports.
 
 The conditioned line's log (2026-09-28 to 2026-10-15, rounds 1 to 9, parked ideas) is archived: [direction log](../../archive/v2_conditioned/docs/superpowers/direction_log.md).
 
-## Now (2026-10-31)
+## Now (2026-11-02)
 
 The new line builds a condition-free model over PercepT: one Qwen3-VL-Embedding instruction per aspect, buddy graphs
 on each view, one shared trunk with emotion, style and genre heads, read once on the default image. On ArtELingo, c*
-(report 12-28) beats the instructed Qwen image (its teacher) in clustering on emotion and narrowly on style, is level
-with it in retrieval after read-outs picked on validation (report 12-29), and passes the CRL bars on all three aspects
-(report 12-31). On Affection photos, frozen c* is above the plain Qwen image but below its teacher (AMI −0.0282, mAP
-−0.0190; report 12-31, fails), and the user does not accept a student below its teacher. Next: r13 (incremental,
-medium loop), c* trained on Affection's train photos too, before the 2026-11-10 freeze; the current c* stays the
-fallback; the large sweep moves to r14, after the freeze; PolyArt waits for the user's link. Deadlines: abstract
-2026-11-10, paper 2026-11-16, supplementary 2026-11-23.
+beats the instructed Qwen image (its teacher) in clustering on emotion and narrowly on style, is level with it in
+retrieval, and passes the CRL bars (reports 12-28, 12-29, 12-31). On Affection photos, frozen c* is below its teacher
+(report 12-31), but c* fine-tuned on Affection's unlabeled train photos is above it, AMI +0.0172 and mAP +0.0227
+(report 2027-01-01, holds; licensed as "level with or better than"). Next: r14 (confirmation, medium loop, now, on
+DAS6): the frozen recipe on more backbones, and the large sweep; a second photo emotion test on EmoSet-118K is
+proposed. PolyArt waits for the user's link. Deadlines: abstract 2026-11-10, paper 2026-11-16, supplementary
+2026-11-23.
 
 ## Parked ideas
 
@@ -65,7 +65,12 @@ fallback; the large sweep moves to r14, after the freeze; PolyArt waits for the 
   the numbers are a WIN, but the bar set before the run was LEVEL or WIN, so a "better than the teacher" claim needs a
   new test with a WIN bar, best on data that did not shape the method; ours recommended freeze and write, the user
   wants wider tests (the large sweep, more aspects, more backbones).
-- **Decided (A):** open, step 2 in the r14 decide chat.
+- **Decided (A):** one r14 loop now, before the 2026-11-10 freeze; type confirmation, medium loop; two parts on
+  DAS6: c* and the photo fine-tune on more backbones with the frozen recipe, and the large sweep (user, after seeing
+  the recommendation). This moves the sweep, planned for after the freeze, to now; its role (analysis only, or able to
+  replace c*) is open until the user has seen the rerun cost. A dataset check for photo aspects ran as a side job
+  (user): [note 2027-01-02](../reports/literature/2027-01-02_photo_aspect_datasets.md). The user re-reserves a DAS6
+  node on 2026-11-04 and keeps one node (3 GPUs) until the main deadline. Storage: all recommendations approved (user).
 - **Links:** [report](../reports/auto/percept/2027-01-01_photo_finetune.md) ·
   [user-read report](../user_read/2026-11-01_photo_finetune.md) ·
   [spec](specs/2026-10-31-photo-finetune-design.md) · [handoff](handoffs/2026-11-01-r13-run-2-handoff.md)
