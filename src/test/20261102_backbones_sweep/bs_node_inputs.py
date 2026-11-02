@@ -143,7 +143,8 @@ def probe(groups):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    sub = ap.add_subparsers(dest='cmd', required=True)
+    sub = ap.add_subparsers(dest='cmd')
+    sub.required = True                                          # the node's system python is 3.6
     g = sub.add_parser('groups-for')
     g.add_argument('mode')
     g.add_argument('--encoder')
