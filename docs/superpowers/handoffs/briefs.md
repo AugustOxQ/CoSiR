@@ -1460,3 +1460,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-02-r14-decide-2-handoff.md
 - New chat: tab 'r14 decide 2', session 5b52ea76-3ce6-4528-ad0e-4ced2745caa1
 
+[brief] CoSiR: r14 decide 2 -> r14 decide 3 (2026-11-02 03:40 Amsterdam)
+- Done: the r14 grill (two rounds; every key answer and the minor batch confirmed); the spec draft with its inline rule; three glossary terms; the direction log's Idea (B).
+- State: spec draft written, not yet reviewed or approved.
+- Next: the rule review (C7), fixes, the user's approval from the brief, the approving commit, then the cut to r14 build.
+- Blocked: the user's approval.
+- Handoff: docs/superpowers/handoffs/2026-11-02-r14-decide-3-handoff.md
+- New chat: tab 'r14 decide 3', session 3b37edee-531f-453c-b86c-a4cc6113de3a
+
