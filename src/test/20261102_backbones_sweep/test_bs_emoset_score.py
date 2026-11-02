@@ -14,6 +14,7 @@ from sklearn.metrics import adjusted_mutual_info_score
 
 import bs_emoset as E
 import bs_emoset_score as S
+import bs_outcome as O
 import bs_paths as BP
 import ac_cluster
 import ac_select
@@ -433,6 +434,26 @@ def test_write_cells_is_atomic_and_complete(part_c, tmp_path):
     with pytest.raises(AssertionError):
         S.write_cells(f, part_c['cells'][:3])                      # the four cells of part c, all or nothing
 
+
+
+def test_cells_written_to_json_pass_ticket_09s_check_cell(part_c, tmp_path):
+    """Interface with `bs_outcome` (ticket 09): the four cells, after a round trip through the file, pass `check_cell`
+    (part c: encoder 'qwen', aspect 'emotion', data 'emoset_test'; SC9 and SC10 carry r), and `load_cells` reads the file."""
+    f = tmp_path / 'stage3' / 'cells_emoset.json'
+    S.write_cells(f, part_c['cells'])
+    cells = json.loads(f.read_text())
+    assert [c['sc'] for c in cells] == ['SC7', 'SC8', 'SC9', 'SC10']
+    for c in cells:
+        O.check_cell(c, smoke=True)                                # smoke: the fixture uses 6 and 30 draws, not 2,000 and 10,000
+        assert (c['encoder'], c['aspect'], c['data']) == ('qwen', 'emotion', 'emoset_test')
+    assert [c['r'] is not None for c in cells] == [False, False, True, True]
+    loaded, parts = O.load_cells(f.parent, smoke=True)
+    assert parts == ['cells_emoset.json'] and [O.cell_key(c) for c in loaded] == [O.cell_key(c) for c in cells]
+    with pytest.raises(AssertionError):                            # the protocol's draw counts are enforced without --smoke
+        O.check_cell(cells[0])
+    bad = dict(cells[0], aspect='color')
+    with pytest.raises(AssertionError):
+        O.check_cell(bad, smoke=True)
 
 # ------------------------------------------------------------------------------------------------ gate 0(xi)
 def _r12_docs():
