@@ -86,3 +86,8 @@ times here are Amsterdam.
   untouched; change log `.claude/20261102_log.md`); 30 C13 tests pass.
 - 10:59 compare again: **items 2,676, mismatches 0, max abs diff 1.1e-16** (bar 1e-6). All ten hashes equal the stage 3
   map. `records/c13.json` written (pass true).
+- 11:03 `decide` rc 0: `records/verdicts.json` committed (3e6ff30). Compare again: 45 mismatches, all adapter layout of
+  `outcomes.json` (verdicts under `paintings`/`photos.<enc>`, SC6 claims as `sc6.<enc>` rows, the two cell names), none
+  numeric. Fixed in `compare_outcomes` only; 30 C13 tests pass.
+- 11:04 compare: **items 2,768, mismatches 0** (61 written outcomes, 24 SC6 claims, 6 encoder verdicts, part c).
+  `c13.json` gets an `outcomes_compare` note (its hash map is unchanged).

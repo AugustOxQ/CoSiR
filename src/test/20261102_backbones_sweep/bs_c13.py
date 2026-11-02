@@ -893,11 +893,13 @@ def compare_outcomes(result, doc, record, status):
     expected = verdicts(doc['cells'], status, partial=doc['partial'])
     root = record.get('verdicts', record)
     encoders = named_node(root, ('encoders', 'part_a')) or root
+    by_part = all(isinstance(root.get(p), dict) for p in ('paintings', 'photos'))   # bs_outcome's layout (run chat)
     for enc, parts in expected['encoders'].items():
         target = encoders.get(enc, {})
         for part, value in parts.items():
             if value != 'pending':
-                result.add(f'verdicts.{enc}.{part}', value, scalar(target.get(part)))
+                node = root[part].get(enc) if by_part else target.get(part)
+                result.add(f'verdicts.{enc}.{part}', value, scalar(node))
     if expected['part_c'] != 'pending':
         result.add('verdicts.part_c', expected['part_c'], scalar(named_node(root, ('part_c',))))
     # Cell identity, outcome and SC6 claims are checked independently of sentences.
@@ -911,14 +913,18 @@ def compare_outcomes(result, doc, record, status):
         elif isinstance(node, list):
             for v in node:
                 yield from cell_rows(v)
-    recorded_cells = index_cells(list(cell_rows(record.get('cells', []))))
-    recorded_claims = index_cells(list(cell_rows(record.get('claims', []))))
+    recorded_cells = index_cells([recorded_identity(c) for c in cell_rows(record.get('cells', []))])
+    recorded_claims = index_cells([recorded_identity(c) for c in cell_rows(record.get('claims', []))])
+    # bs_outcome writes SC6 claims as sc6.<encoder> rows keyed by aspect, task and data only (run chat, 2026-11-02).
+    sc6_rows = {(enc, r['aspect'], r['task'], r['data']): r
+                for enc, rows in (record.get('sc6') or {}).items() for r in rows}
     for c in doc['cells']:
         other = recorded_cells.get(cell_id(c), {})
         outcome = c['outcome'] if c['r'] is not None else ('WIN' if c['lo'] > 0 else 'not WIN')
         result.add('/'.join(cell_id(c)) + '.written_outcome', outcome, other.get('outcome'))
     for c in expected['claims']:
-        other = recorded_claims.get(cell_id(c), recorded_cells.get(cell_id(c), {}))
+        other = recorded_claims.get(cell_id(c)) or sc6_rows.get((c['encoder'], c['aspect'], c['task'], c['data'])) \
+            or recorded_cells.get(cell_id(c), {})
         result.add('/'.join(cell_id(c)) + '.claim', c['claim'],
                    scalar(other, ('claim', 'licensed', 'pass')))
 
