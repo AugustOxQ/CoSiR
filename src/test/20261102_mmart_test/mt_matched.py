@@ -37,7 +37,7 @@ from threadpoolctl import threadpool_limits
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import mt_paths as P  # noqa: E402
 
-for _path in (P.BS_ROUND, P.MAIN / 'src/test/20261025_recipe_backbones'):   # older rounds' code, read only
+for _path in (P.BS_ROUND, P.MAIN / 'src/test/20261025_recipe_backbones', P.MAIN / 'src/test/20261025_encoders_genre'):   # older rounds' code, read only
     if str(_path) not in sys.path:
         sys.path.insert(0, str(_path))
 import bs_artclu  # noqa: E402  (r14: stored readers, `arm_means`, `held_setup`; puts r10 to r12 and older rounds on sys.path)
@@ -46,6 +46,7 @@ import rb_encoders  # noqa: E402  (the loader the mappers were trained with)
 import ct_held  # noqa: E402
 import ct_score  # noqa: E402  (the PercepT reading code)
 import ct_percept as base  # noqa: E402
+import eg_encoders  # noqa: E402  (10-26: adds SigLIP 1 and CLIP L/14 to `rb_encoders`' loader, as it did for those mappers)
 
 TOL_PROB = 1e-5          # 0(iv)(a): max absolute
 TOL_READING = 1e-9       # 0(iv)(b)
@@ -253,12 +254,14 @@ def gate_iv(enc, out_root=None, write=True):
     spec = _spec(enc)
     names, sha = ct_held.read_held_list(base_held_list())
     n = len(names)
+    eg_encoders.extend_rb_maps()                                    # idempotent; 10-26 trained M7 and M8 with it
     images = rb_encoders.full_images(spec['store'], names)          # the loader the mappers were trained with
     labels = bs_artclu.held_setup()[2]
     stored_prob, cpu_prob, a = {}, {}, {}
     for s in P.SEEDS:
         side = json.loads(held_prob_path(enc, s).with_suffix('.json').read_text())
-        assert side['list_sha256'] == sha, f'seed {s}: stored held list differs from the CT held list'
+        listed = side['list_sha256'] if 'list_sha256' in side else side['held_sha256']   # the CT's own sidecar: held_sha256
+        assert listed == sha, f'seed {s}: stored held list differs from the CT held list'
         with np.load(held_prob_path(enc, s), allow_pickle=False) as z:
             stored_prob[s] = z['prob']
         cpu_prob[s] = infer_cpu(mapper_path(enc, s), images)
