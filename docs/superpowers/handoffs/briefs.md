@@ -1500,3 +1500,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-02-r14-build-4-handoff.md
 - New chat: tab 'r14 build 4', session 2f7ee311-6067-45b8-9320-a89c11ad4d55
 
+[brief] CoSiR: r14 build 4 -> r14 build 5 (2026-11-02 06:33 Amsterdam)
+- Done: the c* trainer bug for non-2048 encoders is fixed (Codex, Opus review approved); tickets 10a, 10b, 11, 12a, 12b merged. Every ticket is merged.
+- State: integration branch at dda5225, pushed and synced to node402; the node smoke (tag 20261102-053122-dda5225) runs on GPU slot 0.
+- Next: watch and pull the node smoke; GPU checks 0(iv), 0(v) after the extraction queue (about 08:00); then the final review.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-02-r14-build-5-handoff.md
+- New chat: tab 'r14 build 5', session 5818807c-10c7-4ff3-bbd8-dc989cebd932
+
