@@ -519,12 +519,8 @@ def r_e_vs_spread(smoke, workers):
     return finish(doc), md
 
 
-def removed_classes(keys, smoke):
-    """Class name of each removed photo, from the split files (`bs_emoset.labels`, D17: no code reads the class from a key).
-    The smoke run reads `SmokeSource`'s table instead (its keys are in no split file)."""
-    if smoke:
-        src = SmokeSource()
-        return [BP.EMOSET_CLASSES[src.label[k]] for k in keys]
+def removed_classes(keys):
+    """Class name of each removed photo, from the split files (`bs_emoset.labels`, D17: no code reads the class from a key)."""
     import bs_emoset
     return list(bs_emoset.labels(keys))
 
@@ -543,7 +539,7 @@ def emoset_uncut(smoke, workers):
         out = {}
         for sp_, part in rec['splits'].items():
             cnt = {cl: 0 for cl in BP.EMOSET_CLASSES}
-            for cl in removed_classes(part['removed_keys'], smoke):
+            for cl in removed_classes(part['removed_keys']):
                 cnt[cl] += 1
             out[sp_] = dict(n=part['n'], n_removed=part['n_removed'], n_kept=part['n_kept'], removed_per_class=cnt)
         md.extend(['## Removed photos per class (near-copy record)', ''] + table(['split', 'n', 'removed'] + list(BP.EMOSET_CLASSES),
