@@ -125,8 +125,9 @@ def test_keys_uncut_is_the_split_file_keys_in_sha_order(fake_root):
     assert sorted(E.keys('val', cut=False)) == sorted(e[1] for e in val)
 
 
-def write_record(path, val, test, removed_val=(), removed_test=(), cut=None):
+def write_record(path, val, test, removed_val=(), removed_test=(), cut=None, reference=None):
     rec = dict(cut=BP.NEAR_COPY_CUT if cut is None else cut,
+               reference=reference or dict(dataset='affection', split='train', view='qwen_default', n=72255),
                splits={'val': dict(n=len(val), n_removed=len(removed_val), removed_keys=sorted(removed_val)),
                        'test': dict(n=len(test), n_removed=len(removed_test), removed_keys=sorted(removed_test))})
     path.write_text(json.dumps(rec))
@@ -151,6 +152,18 @@ def test_keys_cut_needs_the_record_and_drops_exactly_its_keys(fake_root, tmp_pat
     wrong_cut = write_record(tmp_path / 'cut.json', val, test, cut=0.9)
     with pytest.raises(AssertionError):
         E.keys('val', record=wrong_cut)
+
+
+@pytest.mark.parametrize('reference', [dict(dataset='affection', split='train', view='qwen_default', n=72254),
+                                       dict(dataset='affection', split='train', view='qwen_default', n=50000),
+                                       dict(dataset='affection', split='train', view='other_view', n=72255)])
+def test_keys_cut_refuses_a_record_with_another_reference(fake_root, tmp_path, reference):
+    val, test = fake_root
+    good = write_record(tmp_path / 'good.json', val, test)
+    assert E.keys('val', record=good)
+    bad = write_record(tmp_path / 'bad.json', val, test, reference=reference)
+    with pytest.raises(AssertionError):
+        E.keys('val', record=bad)
 
 
 # ------------------------------------------------------------------------------------------------ near-copy
