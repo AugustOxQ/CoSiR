@@ -12,10 +12,25 @@ best view), on CPU, on the encoder's default image rows `mt_data.features(view, 
                                         float16 rows in the order of `keys`, joined by key, every key present; refuses a file
                                         whose sidecar sha256 is not the file's, whose sidecar names another encoder, aspect,
                                         seed, keyset or view, or whose checkpoint (path, sha256) is not the current one
-    gate_ii(enc)                        stage 0 gate (ii): r14's own export path (`bs_cstar.export_held`, device cpu) on the
-                                        ArtELingo held paintings against the stored held exports of the checkpoints (r10's
-                                        for Qwen, r14's for the others), joined by painting name, all 5 seeds x 3 aspects,
-                                        max absolute difference at most 1e-3; writes OUT/stage0/gate_ii_<enc>.json
+    keyset_rows(enc, keyset)            (keys, float32 rows): what `export` feeds the heads; the gate's own-path items use it too
+    gate_ii(enc)                        stage 0 gate (ii), 21 items, each at most 1e-3 (inclusive), `pass` needs all 21:
+                                        `held_export_held` (15: 5 seeds x 3 aspects): r14's own export path
+                                          (`bs_cstar.export_held`, device cpu, images from `rb_encoders.full_images`) on the
+                                          12,281 ArtELingo held paintings against the stored held exports of the checkpoints
+                                          (r10's for Qwen, r14's for the others); this does not test `export`'s code;
+                                        `own_path_shared_held` (3: seed 0, 3 aspects): `keyset_rows` + `infer`, the code
+                                          `export` runs, on the 11,528 shared_held keys against the same stored held exports;
+                                        `own_path_val` (3: seed 0, 3 aspects): the same on the 5,769 val keys against the stored
+                                          validation exports (`img` side, r10's `train/<arm>` file of the checkpoint root).
+                                        MMArt keys are joined to the stored order by `mt_data.artelingo_name`. The stored files
+                                        carry no painting names: the held files' row order is the list whose sha256 their record
+                                        names, asserted equal to the held list's, so the join is positional under that assertion;
+                                        the validation files (the trainer's own, no list hash) are in the trainer's dev order
+                                        (`ct2_data.split2('full')`, 6,152 rows, asserted), which r14's validation export reuses;
+                                        their sidecar's `output_sha256` is checked against the file.
+                                        Each run writes its held export to a fresh `OUT/stage0/gate_ii/<enc>/<run>/` folder;
+                                        the JSON says per item whether the file was reused or recomputed.
+                                        Writes OUT/stage0/gate_ii_<enc>.json
 
 The sidecar `.json` holds `sha256` (of the npz itself; ticket 04's ranges file copies it), `checkpoint` and
 `checkpoint_sha256`, `view`, `n`, `width`, `encoder`, `aspect`, `seed`, `keyset`, `keys_sha256`, `device`, `code_sha256`.
@@ -46,7 +61,6 @@ import bs_cstar  # noqa: E402  (r14: the c* trainer's exports; puts r10 and the 
 
 KEYSETS = ('val', 'new', 'shared_held')
 TOL = bs_cstar.TOL_EXPORT                                      # 1e-3 (r12's bar, r14's 0(ix) and spec §3.5 0(ii))
-GATE_ITEMS = [f'{a}__s{s}' for s in P.SEEDS for a in P.ASPECTS]
 DEVICE = 'cpu'
 EMB_WIDTH = 2048
 
@@ -138,6 +152,16 @@ def infer(enc, aspect, seed, x):
     return emb, sha
 
 
+def keyset_rows(enc, keyset):
+    """(keys in `mt_data.order`, float32 [n, width]): the encoder's default image rows of one keyset, as `export` and the
+    gate's own-path items feed them to the heads."""
+    keys = mt_data.keys(keyset)
+    assert keys == mt_data.order(keys), f'{keyset}: keys are not in mt_data.order'
+    x = mt_data.features(P.DEFAULT_VIEW[enc], keys)
+    assert x.dtype == np.float32 and x.shape == (len(keys), P.WIDTH[enc]), (x.dtype, x.shape)
+    return keys, x
+
+
 def export(enc, keysets=KEYSETS, seeds=P.SEEDS, root=None, log=print):
     """Run the saved c* heads of `enc` on the default image of each keyset (`mt_data.features`), seeds x three aspects, and save
     them. Returns the written paths."""
@@ -145,10 +169,7 @@ def export(enc, keysets=KEYSETS, seeds=P.SEEDS, root=None, log=print):
     view = P.DEFAULT_VIEW[enc]
     paths = []
     for keyset in keysets:
-        keys = mt_data.keys(keyset)
-        assert keys == mt_data.order(keys), f'{keyset}: keys are not in mt_data.order'
-        x = mt_data.features(view, keys)
-        assert x.dtype == np.float32 and x.shape == (len(keys), P.WIDTH[enc]), (x.dtype, x.shape)
+        keys, x = keyset_rows(enc, keyset)
         for seed in seeds:
             for aspect in P.ASPECTS:
                 start = time.monotonic()
@@ -175,23 +196,48 @@ def compare_by_name(names_a, a, names_b, b, tol=TOL):
     return {'pass': bool(finite and biggest <= tol), 'max_abs_diff': biggest, 'rows': len(names_a)}
 
 
+def compare_to_stored(names, ours, stored_names, stored, tol=TOL):
+    """Like `compare_by_name`, for `names` (unique) a subset of `stored_names` (unique): row i of `ours` against the stored row
+    of painting `names[i]`."""
+    names, stored_names = [str(n) for n in names], [str(n) for n in stored_names]
+    assert len(set(names)) == len(names) and len(set(stored_names)) == len(stored_names), 'duplicate painting names'
+    where = {n: i for i, n in enumerate(stored_names)}
+    missing = [n for n in names if n not in where]
+    assert not missing, f'{len(missing)} paintings not in the stored export, e.g. {missing[:2]}'
+    assert stored.shape[0] == len(stored_names) and ours.shape == (len(names),) + stored.shape[1:], (ours.shape, stored.shape)
+    return compare_by_name(names, ours, names, stored[[where[n] for n in names]], tol)
+
+
+GATE_PATHS = {'held_export_held': P.SEEDS, 'own_path_shared_held': (0,), 'own_path_val': (0,)}   # path -> seeds
+GATE_ITEMS = [f'{path}/{a}__s{s}' for path, seeds in GATE_PATHS.items() for s in seeds for a in P.ASPECTS]
+
+
 def gate_result(enc, items, tol=TOL):
-    """The gate dict from per-item results `{'<aspect>__s<seed>': {'pass', 'max_abs_diff'}}`; all 15 items (5 seeds x 3
-    aspects) must be present; pass only if every item passes."""
-    assert sorted(items) == sorted(GATE_ITEMS), f'gate (ii) needs the 15 items (5 seeds x 3 aspects), got {sorted(items)}'
+    """The gate dict from per-item results `{'<path>/<aspect>__s<seed>': {'pass', 'max_abs_diff'}}`; all 21 items (`GATE_ITEMS`:
+    15 held_export_held, 3 own_path_shared_held, 3 own_path_val) must be present; pass only if every item passes."""
+    assert sorted(items) == sorted(GATE_ITEMS), f'gate (ii) needs the {len(GATE_ITEMS)} items {sorted(GATE_ITEMS)}, got {sorted(items)}'
     diffs = [items[k]['max_abs_diff'] for k in GATE_ITEMS]
     failed = [k for k in GATE_ITEMS if not items[k]['pass']]
     return dict(encoder=enc, tol=tol, passed=not failed, max_abs_diff=None if None in diffs else max(diffs),
                 failed=failed, items={k: items[k] for k in GATE_ITEMS}, **{'pass': not failed})
 
 
-def gate_ii(enc, out_root=None, write=True):
-    """Stage 0 gate (ii) for `enc`: r14's export path on the ArtELingo held paintings, on CPU, from the stored checkpoints,
-    against the checkpoints' stored held exports (r10's for Qwen, r14's for the others), joined by painting name."""
+def gate_ii(enc, out_root=None, write=True, run=None):
+    """Stage 0 gate (ii) for `enc`, 21 items (see the module doc): r14's export path on the ArtELingo held paintings
+    (`held_export_held`) and `export`'s own path (`keyset_rows` + `infer`) on shared_held and val (`own_path_*`), all on CPU
+    from the stored checkpoints, against the stored held (r10's for Qwen, r14's for the others) and validation exports.
+    The stored files carry no names, so the join to stored rows is positional: under the asserted `list_sha256` for the held
+    files, and by the trainer's dev order (6,152 rows asserted, `output_sha256` checked) for the validation files; MMArt keys
+    reach it through `mt_data.artelingo_name`. The held export goes to a fresh folder `<run>` (default a timestamp) under
+    OUT/stage0/gate_ii/<enc>/; each `held_export_held` item records `held_export_reused` (True: `bs_cstar._export` found its
+    file there, checked its metadata and did not run inference)."""
     out_root = Path(P.OUT if out_root is None else out_root)
     root = Path(P.CSTAR_ROOT[enc])
     names, names_sha = bs_cstar.rb_student.held_names()
-    work = out_root / 'stage0' / 'gate_ii' / enc
+    run = run or time.strftime('run_%Y%m%d_%H%M%S')
+    work = out_root / 'stage0' / 'gate_ii' / enc / run
+    held_file = lambda aspect, seed: work / 'held' / P.CSTAR_ARM / f'{aspect}__s{seed}.npz'
+    reused = {(a, s): held_file(a, s).exists() for s in P.SEEDS for a in P.ASPECTS}
     with threadpool_limits(limits=8):
         got = bs_cstar.export_held(enc, bs_cstar.REF, list(P.SEEDS), root, device=DEVICE, out_root=work)
     items = {}
@@ -200,17 +246,44 @@ def gate_ii(enc, out_root=None, write=True):
             stored_path = root / 'held' / P.CSTAR_ARM / f'{aspect}__s{seed}.npz'
             stored, info = bs_cstar.rb_student.read_outputs(stored_path)
             assert info['list_sha256'] == names_sha, f'{stored_path}: stored list differs from the held list'
-            ours_info = json.loads((work / 'held' / P.CSTAR_ARM / f'{aspect}__s{seed}.json').read_text())
-            res = compare_by_name(names, got[aspect, seed]['img'], names, stored['img'])
+            ours_info = json.loads(held_file(aspect, seed).with_suffix('.json').read_text())
+            res = compare_by_name(names, got[aspect, seed]['img'], names, stored['img'])   # positional under the sha assert
             res['weights_sha256_equal'] = bool(ours_info['weights_sha256'] == info['weights_sha256'])
             res['weights_sha256'] = ours_info['weights_sha256']
             res['export_device'] = ours_info['export_device']
             res['stored_device'] = info.get('export_device', info.get('device'))
-            items[f'{aspect}__s{seed}'] = res
+            res['held_export_reused'] = reused[aspect, seed]
+            items[f'held_export_held/{aspect}__s{seed}'] = res
+    # export's own path: keyset_rows (mt_data.features rows, key order) + infer, MMArt key -> painting by artelingo_name
+    split = bs_cstar.ct2_data.split2('full')
+    dev_names = [str(n) for n in split['all_painting_ids'][split['dev']]]
+    for path, keyset, ref_names, ref_sha in (('own_path_shared_held', 'shared_held', names, names_sha),
+                                              ('own_path_val', 'val', dev_names, None)):
+        keys, x = keyset_rows(enc, keyset)
+        painting = [mt_data.artelingo_name(k) for k in keys]
+        for seed in GATE_PATHS[path]:
+            for aspect in P.ASPECTS:
+                stored_path = (root / 'held' / P.CSTAR_ARM / f'{aspect}__s{seed}.npz' if keyset == 'shared_held'
+                               else bs_cstar.paths_of(root, P.CSTAR_ARM, aspect, seed)[1])
+                if keyset == 'shared_held':
+                    stored, info = bs_cstar.rb_student.read_outputs(stored_path)
+                    assert info['list_sha256'] == ref_sha, f'{stored_path}: stored list differs from the list used'
+                else:       # the trainer's own file (ms_train.save_output): no list hash; its sidecar has the file's sha256
+                    info = json.loads(stored_path.with_suffix('.json').read_text())
+                    assert info['output_sha256'] == sha_file(stored_path), f'{stored_path}: file differs from its sidecar'
+                    with np.load(stored_path, allow_pickle=False) as z:
+                        stored = {k: z[k] for k in z.files}
+                    assert sorted(stored) == ['cap', 'img'] and stored['img'].shape == (len(ref_names), EMB_WIDTH), stored_path
+                emb, sha = infer(enc, aspect, seed, x)
+                res = compare_to_stored(painting, emb, ref_names, stored['img'])
+                res['checkpoint_sha256'] = sha
+                res['stored_file'] = str(stored_path)
+                items[f'{path}/{aspect}__s{seed}'] = res
     result = gate_result(enc, items)
-    result.update(held_rows=len(names), held_list_sha256=names_sha, checkpoint_root=str(root),
+    result.update(held_rows=len(names), held_list_sha256=names_sha, checkpoint_root=str(root), run_folder=str(work),
                   stored_source='r10 full held' if enc == 'qwen' else 'r14 X-c* held', export_device=DEVICE,
-                  weights_all_equal=all(v['weights_sha256_equal'] for v in items.values()))
+                  weights_all_equal=all(v['weights_sha256_equal'] for k, v in items.items() if k.startswith('held_export_held/')),
+                  item_paths={path: [k for k in items if k.startswith(path + '/')] for path in GATE_PATHS})
     if write:
         path = out_root / 'stage0' / f'gate_ii_{enc}.json'
         path.parent.mkdir(parents=True, exist_ok=True)

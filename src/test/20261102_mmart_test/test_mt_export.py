@@ -190,23 +190,59 @@ def test_compare_refuses_other_name_sets_and_shapes():
         E.compare_by_name(['a', 'a', 'c'], x, ['a', 'a', 'c'], x)
 
 
+def all_pass(diff=0.0):
+    return {k: {'pass': True, 'max_abs_diff': diff} for k in E.GATE_ITEMS}
+
+
 def test_gate_result_fails_when_one_item_fails():
-    items = {k: {'pass': True, 'max_abs_diff': 0.0} for k in E.GATE_ITEMS}
-    items.update({'emotion__s0': {'pass': True, 'max_abs_diff': 1e-4}, 'style__s0': {'pass': False, 'max_abs_diff': 5e-3}})
+    items = all_pass()
+    items.update({'held_export_held/emotion__s0': {'pass': True, 'max_abs_diff': 1e-4},
+                  'own_path_val/style__s0': {'pass': False, 'max_abs_diff': 5e-3}})
     res = E.gate_result('siglip2', items, tol=1e-3)
-    assert res['pass'] is False and res['max_abs_diff'] == pytest.approx(5e-3) and res['failed'] == ['style__s0']
-    items['style__s0'] = {'pass': True, 'max_abs_diff': 2e-4}
+    assert res['pass'] is False and res['max_abs_diff'] == pytest.approx(5e-3) and res['failed'] == ['own_path_val/style__s0']
+    items['own_path_val/style__s0'] = {'pass': True, 'max_abs_diff': 2e-4}
     res = E.gate_result('siglip2', items, tol=1e-3)
     assert res['pass'] is True and res['max_abs_diff'] == pytest.approx(2e-4) and res['failed'] == []
     with pytest.raises(AssertionError):
         E.gate_result('siglip2', {}, tol=1e-3)                        # no items is not a pass
 
 
-def test_gate_covers_all_five_seeds_and_three_aspects():
-    assert sorted(E.GATE_ITEMS) == sorted(f'{a}__s{s}' for s in range(5) for a in P.ASPECTS)
-    items = {k: {'pass': True, 'max_abs_diff': 0.0} for k in E.GATE_ITEMS[:-1]}
-    with pytest.raises(AssertionError, match='15'):
-        E.gate_result('qwen', items, tol=1e-3)
+def test_gate_covers_all_five_seeds_and_three_aspects_and_both_own_path_keysets():
+    assert sorted(E.GATE_ITEMS) == sorted(
+        [f'held_export_held/{a}__s{s}' for s in range(5) for a in P.ASPECTS]
+        + [f'own_path_shared_held/{a}__s0' for a in P.ASPECTS] + [f'own_path_val/{a}__s0' for a in P.ASPECTS])
+    assert len(E.GATE_ITEMS) == 21
+    for drop in ('held_export_held/genre__s4', 'own_path_shared_held/style__s0', 'own_path_val/emotion__s0'):
+        items = all_pass()
+        del items[drop]
+        with pytest.raises(AssertionError, match='21'):
+            E.gate_result('qwen', items, tol=1e-3)
+
+
+def test_own_path_item_fails_when_the_export_path_is_wrong_not_only_the_held_path():
+    """An own-path failure alone fails the gate (the 15 held-export items passing does not rescue it)."""
+    items = all_pass()
+    items['own_path_shared_held/genre__s0'] = {'pass': False, 'max_abs_diff': 0.2}
+    res = E.gate_result('qwen', items)
+    assert res['pass'] is False and res['failed'] == ['own_path_shared_held/genre__s0'] and res['max_abs_diff'] == 0.2
+
+
+def test_compare_to_stored_joins_the_wanted_paintings_by_name_out_of_a_larger_stored_list():
+    stored_names = ['a', 'b', 'c', 'd', 'e']
+    stored = np.arange(5, dtype=np.float16)[:, None] * np.ones((1, 4), np.float16)
+    names = ['d', 'b', 'e']                                           # a subset, in another order
+    ours = stored[[3, 1, 4]].copy()
+    res = E.compare_to_stored(names, ours, stored_names, stored)
+    assert res['pass'] and res['max_abs_diff'] == 0 and res['rows'] == 3
+    wrong = ours[[1, 0, 2]]                                           # rows in the stored order instead of names' order
+    assert not E.compare_to_stored(names, wrong, stored_names, stored)['pass']
+    ours2 = ours.copy()
+    ours2[2, 0] += np.float16(2 ** -7)                                # 0.0078 > 1e-3 (float16 spacing at 4 is 0.0039)
+    assert not E.compare_to_stored(names, ours2, stored_names, stored)['pass']
+    with pytest.raises(AssertionError):
+        E.compare_to_stored(['d', 'zz'], ours[:2], stored_names, stored)   # a painting the stored export lacks
+    with pytest.raises(AssertionError):
+        E.compare_to_stored(['d', 'd'], ours[:2], stored_names, stored)    # duplicate names
 
 
 # ---- the export loop's wiring ---------------------------------------------------------------------------------
@@ -222,7 +258,7 @@ def test_export_runs_the_default_view_on_each_keyset_and_writes_every_seed_and_a
 
     def fake_infer(enc, aspect, seed, x):
         assert enc == ENC and x.dtype == np.float32
-        emb = np.full((len(x), 2048), seed + 1, np.float16)
+        emb = np.full((len(x), 2048), 10 * P.ASPECTS.index(aspect) + seed + 1, np.float16)   # depends on the head
         return emb, E.sha_file(E.checkpoint_path(enc, aspect, seed))
 
     for a in P.ASPECTS:
@@ -236,5 +272,8 @@ def test_export_runs_the_default_view_on_each_keyset_and_writes_every_seed_and_a
     paths = E.export(ENC, keysets=('val', 'new'), seeds=(0, 1), root=out)
     assert seen['views'] == {P.DEFAULT_VIEW[ENC]}
     assert len(paths) == 2 * 2 * 3 and all(p.exists() for p in paths)
-    got = E.load('new', ENC, 'genre', 1, keysets['new'], root=out)
-    assert got.shape == (9, 2048) and (got == 2).all()
+    for ks in ('val', 'new'):
+        for a in P.ASPECTS:
+            for sd in (0, 1):
+                got = E.load(ks, ENC, a, sd, keysets[ks], root=out)
+                assert got.shape == (len(keysets[ks]), 2048) and (got == 10 * P.ASPECTS.index(a) + sd + 1).all(), (ks, a, sd)
