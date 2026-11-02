@@ -59,4 +59,12 @@ times here are Amsterdam.
   and compare run under this chat after stage 3. Brief: the run chat's scratchpad `c13_brief.txt`.
 - Note on the 11:00 rule: the scoring, C13 and part b steps run on the local CPU (8 threads of 32) during the day, as
   the spec's budget plans (CPU about 4 h; report due 11-04 23:00). No heavy local GPU work runs in working hours.
+- 09:23 C13 code back from Codex (23 min; 5h window 18 points, weekly about 3): `bs_c13.py` and `test_bs_c13.py`, 30
+  tests pass; smoke compares of the near-copy sets (99 items) and the Affection validation ranges and picks (175
+  items) match, 0 mismatches. Its compare also checks the full set of cell identities. Committed 79410bb.
+  Codex's estimate for the full derive: 2 to 4 h on the CPU; compare 5 to 15 s.
+- 09:26 stage 2 rc 0 (945 s); `records/stage2_emoset.json` committed (8cca6f1) before any EmoSet test number.
+  `status.json` written: every encoder's c* and photo runs ok, stage 0 ok on both paths; part c stage 0 and stage 2 ok.
+- 09:26 sweeps: 32 photo units of 45 done, none failed; the knob sweep has not started.
+- 09:27 the chat cut at the context meter (200k); stage 3 and the C13 derive start in the next run chat.
 - `res/r14_bs -> /data/SSD2/cosir_r14/20261102_backbones_sweep/outputs` created (plan step 7).
