@@ -1572,3 +1572,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-02-r15-build-handoff.md
 - New chat: tab 'r15 build', session 4a2a241b-447c-4748-91bb-93507e8ef7e4
 
+[brief] CoSiR: r15 build -> r15 build 2 (2026-11-02 21:46 Amsterdam)
+- Done: tickets 01 (MMArt data, cut sets), 03 (matched arms), 04 (clustering scorer) and 06 (outcome code) built, reviewed and merged; 05 (retrieval and picks) built, not reviewed.
+- State: cut 16,384 / 10,403 as the spec; gates (i), (iv), (v) pass on real data; replay 0(iii) clustering equals r14 exactly (difference 0).
+- Next: Opus review of 05 and its full replays; then tickets 02, 07, 08; the final review; merge; open the run chat.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-02-r15-build2-handoff.md
+- New chat: tab 'r15 build 2', session 877af933-b98a-4928-b297-dab9007ed6b9
+
