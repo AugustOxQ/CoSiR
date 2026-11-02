@@ -51,7 +51,8 @@ SOURCES = {
     'ablation_ami': 'rs_ablation.held_effect on validation and held; 2000 draws',
     'validation_partitions': "ct_score.output_partitions(x, 'k1') on saved float16 exports",
     'held_partitions': 'r10 ablation/cache/held, hash-checked read only',
-    'retrieval': 'rt_metrics.retrieval; rt_readout.stage5_apply fitted on own full validation export (both splits)',
+    'retrieval': 'rt_metrics.retrieval; validation center+k10 via rt_readout.crossfit_all; '
+                 'held via stage5_apply fitted on own full validation export',
     'retrieval_interval': 'rt_stats.paired (5 seeds); same I-then-S transcript generalized to 3 seeds for sweeps',
     'photo_map_point': 'r13 cross-fit: metrics.json map, checked against mean of parity-half AP means',
     'M': 'rs_sweep.mean_gain for AMI, identical mean(effect/r) arithmetic for mAP; photo mean of two units',
@@ -379,15 +380,21 @@ def ablation_ap(inputs, raw_val, raw, y, split, readout):
 
     def compute():
         xval, x = unit(raw_val), unit(raw)
-        # The ablation read-out form is frozen: fit on this run's entire val
-        # export, then apply to the requested split. Cross-fit is photo-only.
+        if split == 'val' and readout == 'center+k10':
+            # r11 stage 4: fit each parity half's map on the opposite half;
+            # average the two half mAPs. Each call scores one aspect and seed.
+            point = rt_readout.crossfit_all(
+                {('emotion', None): xval}, {'emotion': y}, [ro], workers=8)[ro]['emotion']
+            return dict(point=np.asarray(point))
+        # Held read-outs fit on the entire run-specific validation export.
         mapped = x if readout == 'R0' else rt_readout.stage5_apply(ro, xval, x)
         scored = rt_metrics.retrieval(mapped, y, qe_k=ro.k, workers=8)
         assert np.array_equal(scored['rows'], expected_queries(y))
         return dict(ap=scored['ap'], rows=scored['rows'], point=np.asarray(scored['ap'].mean()))
 
     return inputs.cached('retrieval', {'val': raw_val, 'export': raw, 'labels': y},
-                         dict(split=split, readout=readout), compute)
+                         dict(split=split, readout=readout,
+                              validation_center_score='r11_crossfit_all'), compute)
 
 
 def derive_ablation(inputs, removal, nclu, nret):
@@ -452,7 +459,7 @@ def derive(rows=None, draws_smoke=None):
                                    ('bs_partb', 'bs_sweepscore', 'bs_artclu', 'bs_artret', 'bs_diag')],
                   resolutions={
                       'ablation_validation': 'five seeds; cluster validation exports, not r10 dev.json P partitions',
-                      'ablation_readout_fit': 'entire own validation export, applied to validation and held',
+                      'ablation_readout_fit': 'validation center+k10 cross-fit; held fits entire own validation export',
                       'photo_M': 'mean of the one-aspect AMI and mAP effects in r13 ranges',
                       'three_seed_retrieval': 'r11 RNG/draw order with seed count three, no duplicated pseudo-seeds'},
                   rows=[])

@@ -141,8 +141,8 @@ def test_compare_cannot_certify_smoke_or_completely_absent_rows(monkeypatch, cap
                                                   'ablation:content_correction', 'ablation:relational']
 
 
-def test_ablation_center_fits_own_entire_validation_for_each_split(monkeypatch):
-    calls = []
+def test_ablation_validation_center_crossfits_and_held_fits_entire_validation(monkeypatch):
+    calls, crossfit_calls = [], []
 
     class NoDisk:
         def cached(self, operation, arrays, params, compute):
@@ -155,15 +155,28 @@ def test_ablation_center_fits_own_entire_validation_for_each_split(monkeypatch):
     def retrieval(x, y, qe_k, workers):
         return dict(ap=np.full(len(y), 0.5), rows=np.arange(len(y)))
 
+    def crossfit_all(xs, labels, ros, workers):
+        crossfit_calls.append((xs, labels, ros, workers))
+        return {ros[0]: {'emotion': 0.25}}
+
     monkeypatch.setattr(C.rt_readout, 'stage5_apply', stage5)
+    monkeypatch.setattr(C.rt_readout, 'crossfit_all', crossfit_all)
     monkeypatch.setattr(C.rt_metrics, 'retrieval', retrieval)
     val = np.array([[1, 2], [2, 1], [-1, -2], [-2, -1]], np.float16)
     held = val * 2
     y = np.array([0, 0, 1, 1])
-    for split, raw in [('val', val), ('held', held)]:
+    for split, raw, expected in [('val', val, 0.25), ('held', held, 0.5)]:
         got = C.ablation_ap(NoDisk(), val, raw, y, split, 'center+k10')
-        assert float(got['point']) == 0.5
-    assert len(calls) == 2
+        assert float(got['point']) == expected
+        if split == 'val':
+            assert set(got) == {'point'}
+    assert len(crossfit_calls) == len(calls) == 1
+    xs, labels, ros, workers = crossfit_calls[0]
+    np.testing.assert_array_equal(xs[('emotion', None)], C.unit(val))
+    np.testing.assert_array_equal(labels['emotion'], y)
+    assert ros == [C.rt_readout.ReadOut('center', None, 10)] and workers == 8
     np.testing.assert_array_equal(calls[0][1], C.unit(val))
-    np.testing.assert_array_equal(calls[1][1], C.unit(val))
-    np.testing.assert_array_equal(calls[1][2], C.unit(held))
+    np.testing.assert_array_equal(calls[0][2], C.unit(held))
+    # R0 validation retains whole-split cosine scoring.
+    got = C.ablation_ap(NoDisk(), val, val, y, 'val', 'R0')
+    assert float(got['point']) == 0.5 and len(crossfit_calls) == 1
