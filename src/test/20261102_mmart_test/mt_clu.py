@@ -230,9 +230,12 @@ def write_ranges(enc, result):
     return path
 
 
-def record_ranges(rec):
-    """{aspect: r} from a stage 1 record (`clu_ranges` is the ranges file's content; a plain aspect map also passes)."""
+def record_ranges(rec, enc=None):
+    """{aspect: r} from a stage 1 record (`clu_ranges` is the ranges file's content; a plain aspect map also passes).
+    With `enc`, the record (and the block, when it names one) must belong to that encoder."""
     block = rec['clu_ranges']
+    if enc is not None:
+        assert rec.get('encoder', enc) == enc and block.get('encoder', enc) == enc, (enc, rec.get('encoder'))
     ranges = block['ranges'] if 'ranges' in block else block
     assert set(ranges) == set(ASPECTS), sorted(ranges)
     out = {a: float(ranges[a]) for a in ASPECTS}
@@ -245,13 +248,15 @@ def score_encoder(enc, keyset='test', scs=SCS, n_draws=None, workers=8, write=Tr
     """SC1, SC3, SC4 (AMI) cells of X-c* on MMArt `keyset` (test: the cut set; diagnostics: far, unseen_artist,
     shared_held), three aspects, every row of the set in `mt_data.order`. c* rows: the exports (ticket 02); frozen image
     and teacher: `mt_data.features`; matched arm: `mt_matched.partitions` on exactly these rows; labels: `mt_data.labels`.
-    SC4's r: the committed `records/stage1_<enc>.json`. Cells go to `cells_path(keyset)`; returned in aspect order."""
+    Stage 1 record `records/stage1_<enc>.json`: read (committed in HEAD) before any row, for every set and SC; SC4 uses its r. Cells go to `cells_path(keyset)`; returned in aspect order."""
     assert enc in mt_paths.ENCODERS and keyset in DATA_NAME and set(scs) <= set(SCS)
     assert 'SC3' not in scs or keyset in MATCHED_SETS, f'no matched arm on {keyset}'
     n_draws = n_draws or (mt_paths.SMOKE_DRAWS['clu'] if mt_paths.SMOKE else FULL_DRAWS)
     md, ex = _data(), importlib.import_module('mt_export')
     keys = _ordered_keys(keyset)
-    ranges = record_ranges(mt_paths.read_committed_record(f'stage1_{enc}.json')) if 'SC4' in scs else {}
+    rec = mt_paths.read_committed_record(f'stage1_{enc}.json')          # §3.5: before any test row, whatever SCs are asked
+    ranges = record_ranges(rec, enc) if 'SC4' in scs else {}
+    assert rec.get('encoder', enc) == enc, (enc, rec.get('encoder'))
     frozen = single_fixed(md.features(mt_paths.DEFAULT_VIEW[enc], keys)) if 'SC1' in scs else None
     matched = matched_fixed(importlib.import_module('mt_matched').partitions(enc, keys)) if 'SC3' in scs else None
     cells = []

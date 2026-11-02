@@ -435,14 +435,39 @@ def test_score_encoder_refuses_keys_not_in_the_sha256_order(stub, monkeypatch):
         M.score_encoder('qwen', keyset='test', scs=('SC1',), n_draws=8, workers=1)
 
 
-def test_stage2_scoring_reads_the_committed_record_only(stub, monkeypatch):
+def test_stage2_scoring_reads_the_committed_record_for_every_set_and_every_sc(stub, monkeypatch):
     asked = []
     monkeypatch.setattr(mt_paths, 'read_committed_record', lambda name: asked.append(name) or
                         {'clu_ranges': {'ranges': {a: 0.01 for a in mt_paths.ASPECTS}}})
     M.score_encoder('clip_l14', keyset='test', scs=('SC4',), n_draws=8, workers=1)
     assert asked == ['stage1_clip_l14.json']
     M.score_encoder('clip_l14', keyset='test', scs=('SC1',), n_draws=8, workers=1)
-    assert asked == ['stage1_clip_l14.json']                           # SC1 needs no range, so no record is read
+    assert asked == ['stage1_clip_l14.json'] * 2                       # SC1 needs no range, but stage 1 must be committed
+    M.score_encoder('clip_l14', keyset='far', scs=('SC1', 'SC3'), n_draws=8, workers=1)
+    assert asked == ['stage1_clip_l14.json'] * 3
+
+
+def test_sc1_on_test_refuses_without_the_committed_record_before_any_row_is_read(stub, monkeypatch):
+    def refuse(name):
+        raise RuntimeError(f'record {name} is not committed unchanged in HEAD')
+    monkeypatch.setattr(mt_paths, 'read_committed_record', refuse)
+    stub.calls.clear()
+    for scs in (('SC1',), ('SC1', 'SC3'), ('SC3',)):
+        with pytest.raises(RuntimeError):
+            M.score_encoder('siglip2', keyset='test', scs=scs, n_draws=8, workers=1)
+    assert stub.calls == []                                            # no export, feature or label was read
+
+
+def test_record_of_another_encoder_is_refused(stub, monkeypatch):
+    other = {'encoder': 'qwen', 'clu_ranges': {'encoder': 'qwen', 'ranges': {a: 0.01 for a in mt_paths.ASPECTS}}}
+    monkeypatch.setattr(mt_paths, 'read_committed_record', lambda name: other)
+    with pytest.raises(AssertionError):
+        M.score_encoder('siglip2', keyset='test', scs=('SC4',), n_draws=8, workers=1)
+    with pytest.raises(AssertionError):
+        M.score_encoder('siglip2', keyset='test', scs=('SC1',), n_draws=8, workers=1)
+    with pytest.raises(AssertionError):
+        M.record_ranges({'clu_ranges': {'encoder': 'qwen', 'ranges': {a: 0.1 for a in mt_paths.ASPECTS}}}, 'siglip2')
+    assert M.record_ranges({'encoder': 'qwen', 'clu_ranges': {'ranges': {a: 0.1 for a in mt_paths.ASPECTS}}}, 'qwen')
 
 
 def test_range_of_a_record_must_be_finite_and_positive():
