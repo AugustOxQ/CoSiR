@@ -17,6 +17,14 @@ own `rb_matched.infer`); `infer_cpu` is that function with the device check rela
                                         (exactly) and `reported_stage4` (1e-9), (c) readings of the CPU probabilities
                                         recorded, no gate; writes OUT/stage0/gate_iv_<enc>.json
 
+D11 fallback (spec §3.5 0(iv)). If (a) fails for a mapper, retrain it from the arm's saved Stage 1 topics with the
+recorded settings of the arm's trainer, on the local GPU: `flock -o -w <s> /tmp/gpu0.lock <command>`. Trainer entry
+points (not run here): SigLIP 2 M2: `20261025_recipe_backbones/rb_matched.py --scale full --arm M2 --seeds <s>`; SigLIP 1
+M8 and CLIP L/14 M7: `20261025_encoders_genre/eg_matched.py --scale full --arm M8|M7 --seeds <s>`; Qwen P3: the CT's
+`20261020_claim_test/ct_percept.py --stage 2 --settings core --cut k40 --version qwen_qwen --arm P3 --seeds <s>`
+(driver `ct2_run.py core`). Then the check: the retrained mapper's held readings (own and 20-cluster, each aspect) must
+lie within the stored arm's maximum minus minimum over seeds 0 to 4 of that reading; the report flags the mapper.
+
 CLI (CPU only; run with CUBLAS_WORKSPACE_CONFIG=:4096:8 or let this module set it):
     python mt_matched.py export  --enc E|all [--out DIR]
     python mt_matched.py gate-iv --enc E|all [--out DIR]
@@ -191,10 +199,16 @@ def write_export(root, enc, seed, keys, probs, *, mapper, mapper_sha256, view):
 
 def load_probs(enc, seed, keys, root=None):
     """The exported probabilities of one seed, rows in the order of `keys` (joined by key; every key must be present;
-    the sidecar's sha256 must equal the file's)."""
+    the sidecar's sha256 must equal the file's, and the sidecar must name this encoder, seed and default view and the
+    weights hash of the current saved mapper of (enc, seed))."""
     path = export_path(P.OUT if root is None else root, enc, seed)
     meta = json.loads(path.with_suffix('.json').read_text())
     assert meta['sha256'] == sha_file(path), f'{path}: sha256 differs from its sidecar'
+    assert meta['encoder'] == enc, f"{path}: sidecar encoder {meta['encoder']!r}, wanted {enc!r}"
+    assert meta['seed'] == seed, f"{path}: sidecar seed {meta['seed']!r}, wanted {seed!r}"
+    assert meta['view'] == P.DEFAULT_VIEW[enc], f"{path}: sidecar view {meta['view']!r}, wanted {P.DEFAULT_VIEW[enc]!r}"
+    current = json.loads(mapper_path(enc, seed).with_suffix('.json').read_text())['weights_sha256']
+    assert meta['mapper_sha256'] == current, f'{path}: sidecar mapper_sha256 is not the current mapper\'s weights_sha256'
     with np.load(path, allow_pickle=False) as z:
         assert sorted(z.files) == ['keys', 'probs']
         have, probs = z['keys'].tolist(), z['probs']
@@ -237,13 +251,18 @@ def export(enc, root=None):
 
 
 # ------------------------------------------------------------------------------------------------ gate (iv)
+def stored_partitions_name(enc):
+    """The arm folder of the stored partitions: the arm's own name, except Qwen's P3, whose partitions are 10-25's B1."""
+    return 'B1' if enc == 'qwen' else _spec(enc)['matched']
+
+
 def stored_partitions(enc, n_rows):
     """{seed: {'r20', 'own'}} stored partitions of the arm (10-25 and 10-26), each bound to the held probability file
     it came from by the sidecar's source sha256."""
     spec = _spec(enc)
     out = {}
     for s in P.SEEDS:
-        base_dir = spec['root'] / 'partitions/full' / ('B1' if enc == 'qwen' else spec['matched'])
+        base_dir = spec['root'] / 'partitions/full' / stored_partitions_name(enc)
         out[s] = {r: bs_artclu.read_stored_set(base_dir / f'percept__s{s}__{r}.npz', n_rows, 1 if r == 'own' else 3,
                                                held_prob_path(enc, s)) for r in READINGS}
     return out
@@ -256,7 +275,8 @@ def gate_iv(enc, out_root=None, write=True):
     n = len(names)
     eg_encoders.extend_rb_maps()                                    # idempotent; 10-26 trained M7 and M8 with it
     images = rb_encoders.full_images(spec['store'], names)          # the loader the mappers were trained with
-    labels = bs_artclu.held_setup()[2]
+    held_names, _, labels = bs_artclu.held_setup()
+    assert list(names) == list(held_names), 'the CT held list differs from r14\'s held_setup names (order included)'
     stored_prob, cpu_prob, a = {}, {}, {}
     for s in P.SEEDS:
         side = json.loads(held_prob_path(enc, s).with_suffix('.json').read_text())
@@ -282,7 +302,7 @@ def gate_iv(enc, out_root=None, write=True):
                   cpu_readings=cpu_means, stored_readings=stored_means,
                   max_abs_reading_diff=max(abs(cpu_means[a_][r] - stored_means[a_][r])
                                            for a_ in P.ASPECTS for r in READINGS))
-    result = {'encoder': enc, 'matched_arm': spec['matched'], 'held_rows': n, 'held_list_sha256': sha,
+    result = {'encoder': enc, 'arm': 'P3' if enc == 'qwen' else spec['matched'], 'stored_partitions': stored_partitions_name(enc), 'held_rows': n, 'held_list_sha256': sha,
               'a': gate_a, 'b': gate_b_res, 'c': gate_c, 'pass': bool(gate_a['passed'] and gate_b_res['passed'])}
     if write:
         path = Path(P.OUT if out_root is None else out_root) / f'stage0/gate_iv_{enc}.json'

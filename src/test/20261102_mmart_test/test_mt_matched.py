@@ -88,6 +88,19 @@ def test_compare_probs_tolerance_is_1e5_max_absolute():
         M.compare_probs(stored[:-1], stored)
 
 
+# ---- readings -------------------------------------------------------------------------------------------------
+def test_readings_cluster_the_l2_normalised_probabilities_not_the_raw_ones():
+    """r20 is `ct_score.partitions(l2(p), 20)`, the route `output_partitions(p, 'percept')` takes; raw p differs."""
+    rng = np.random.default_rng(5)
+    scale = rng.uniform(.05, 1, size=(300, 1))                       # rows of very different length, similar direction
+    p = np.clip(scale * rng.uniform(.2, 1, size=(300, K)), 0, 1).astype(np.float32)
+    got = M.readings(p)['r20']
+    want = np.asarray(M.ct_score.partitions(M.ct_score.l2(p), 20))
+    raw = np.asarray(M.ct_score.partitions(p, 20))
+    assert np.array_equal(got, want) and np.array_equal(got, M.ct_score.output_partitions(p, 'percept')['r20'])
+    assert not np.array_equal(got, raw)
+
+
 # ---- gate (iv)(b) ---------------------------------------------------------------------------------------------
 def readings_fixture(n=240, seed=0):
     rng = np.random.default_rng(seed)
@@ -149,18 +162,24 @@ def test_reading_means_is_the_mean_over_seeds_and_states_of_masked_ami():
 
 
 # ---- exports and `partitions` ---------------------------------------------------------------------------------
-def fake_export(root, enc, n=90, seeds=(0, 1, 2, 3, 4)):
+def fake_export(root, enc, monkeypatch, n=90, seeds=(0, 1, 2, 3, 4)):
+    """Exports for `enc` with a fake current mapper sidecar per seed (`mapper_path` redirected under `root`)."""
+    mdir = Path(root) / 'mappers' / enc
+    mdir.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr(M, 'mapper_path', lambda e, s: Path(root) / 'mappers' / e / f'P3__s{s}.npz')
     rng = np.random.default_rng(7)
     keys = [f'Style/p{i:03d}.jpg' for i in range(n)]
     probs = {}
     for s in seeds:
         probs[s] = (1 / (1 + np.exp(-rng.normal(size=(n, K)) * 2))).astype(np.float32)
-        M.write_export(root, enc, s, keys, probs[s], mapper=Path('/x/P3__s0.npz'), mapper_sha256='ab', view='v')
+        mp = M.mapper_path(enc, s)
+        mp.with_suffix('.json').write_text(json.dumps({'weights_sha256': f'w-{enc}-{s}'}))
+        M.write_export(root, enc, s, keys, probs[s], mapper=mp, mapper_sha256=f'w-{enc}-{s}', view=P.DEFAULT_VIEW[enc])
     return keys, probs
 
 
-def test_partitions_row_order_follows_keys(tmp_path):
-    keys, probs = fake_export(tmp_path, 'siglip2')
+def test_partitions_row_order_follows_keys(tmp_path, monkeypatch):
+    keys, probs = fake_export(tmp_path, 'siglip2', monkeypatch)
     pick = [keys[i] for i in (17, 3, 60, 41, 2, 88, 9, 70, 31, 55, 12, 80, 25, 6, 47, 66, 1, 90 - 1)]
     pick = pick + [keys[i] for i in range(20, 60)]
     out = M.partitions('siglip2', pick, root=tmp_path)
@@ -176,8 +195,8 @@ def test_partitions_row_order_follows_keys(tmp_path):
     assert np.array_equal(rev[0]['own'], out[0]['own'][::-1])
 
 
-def test_partitions_refuses_missing_keys_and_changed_files(tmp_path):
-    keys, probs = fake_export(tmp_path, 'clip_l14')
+def test_partitions_refuses_missing_keys_and_changed_files(tmp_path, monkeypatch):
+    keys, probs = fake_export(tmp_path, 'clip_l14', monkeypatch)
     with pytest.raises(AssertionError):
         M.partitions('clip_l14', keys[:5] + ['Style/absent.jpg'], root=tmp_path)
     f = tmp_path / 'exports/new/clip_l14/matched/probs__s2.npz'
@@ -186,8 +205,33 @@ def test_partitions_refuses_missing_keys_and_changed_files(tmp_path):
         M.partitions('clip_l14', keys[:30], root=tmp_path)
 
 
-def test_export_sidecar_records_the_provenance(tmp_path):
-    keys, _ = fake_export(tmp_path, 'qwen', n=20, seeds=(0,))
+def rewrite_sidecar(root, enc, which, changes):
+    f = Path(root) / f'exports/new/{enc}/matched/probs__s{which}.json'
+    meta = json.loads(f.read_text())
+    meta.update(changes)
+    f.write_text(json.dumps(meta))
+
+
+@pytest.mark.parametrize('field, value', [('encoder', 'siglip1'), ('seed', 3), ('view', 'clip_l14'),
+                                          ('mapper_sha256', 'some-other-mapper')])
+def test_load_probs_refuses_an_export_from_another_mapper_seed_encoder_or_view(tmp_path, monkeypatch, field, value):
+    keys, _ = fake_export(tmp_path, 'siglip2', monkeypatch)
+    assert M.load_probs('siglip2', 2, keys[:10], root=tmp_path).shape == (10, K)          # untouched: loads
+    rewrite_sidecar(tmp_path, 'siglip2', 2, {field: value})
+    with pytest.raises(AssertionError, match=field):
+        M.load_probs('siglip2', 2, keys[:10], root=tmp_path)
+
+
+def test_load_probs_refuses_when_the_current_mapper_changed(tmp_path, monkeypatch):
+    keys, _ = fake_export(tmp_path, 'qwen', monkeypatch)
+    M.mapper_path('qwen', 1).with_suffix('.json').write_text(json.dumps({'weights_sha256': 'retrained'}))
+    with pytest.raises(AssertionError, match='mapper_sha256'):
+        M.load_probs('qwen', 1, keys[:10], root=tmp_path)
+    assert M.load_probs('qwen', 0, keys[:10], root=tmp_path).shape == (10, K)
+
+
+def test_export_sidecar_records_the_provenance(tmp_path, monkeypatch):
+    keys, _ = fake_export(tmp_path, 'qwen', monkeypatch, n=20, seeds=(0,))
     meta = json.loads((tmp_path / 'exports/new/qwen/matched/probs__s0.json').read_text())
     for k in ('sha256', 'mapper', 'mapper_sha256', 'view', 'n', 'seed', 'device'):
         assert k in meta
