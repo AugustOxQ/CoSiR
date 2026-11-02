@@ -16,11 +16,13 @@ The conditioned line's log (2026-09-28 to 2026-10-15, rounds 1 to 9, parked idea
 The new line builds a condition-free model over PercepT: one Qwen3-VL-Embedding instruction per aspect, buddy graphs
 on each view, one shared trunk with emotion, style and genre heads, read once on the default image. On ArtELingo, c*
 beats the instructed Qwen image (its teacher) in clustering on emotion and narrowly on style, is level with it in
-retrieval, and passes the CRL bars (reports 12-28, 12-29, 12-31). On Affection photos, frozen c* is below its teacher
-(report 12-31), but c* fine-tuned on Affection's unlabeled train photos is above it, AMI +0.0172 and mAP +0.0227
-(report 2027-01-01, holds; licensed as "level with or better than"). Next: r14 (confirmation, medium loop, now, on
-DAS6): the frozen recipe on more backbones, and the large sweep; a second photo emotion test on EmoSet-118K is
-proposed. PolyArt waits for the user's link. Deadlines: abstract 2026-11-10, paper 2026-11-16, supplementary
+retrieval, and passes the CRL bars (reports 12-28, 12-29, 12-31). The photo model (c* fine-tuned on Affection's
+unlabeled train photos) beats its teacher on Affection (report 2027-01-01) and on EmoSet, a test set that shaped
+nothing: AMI +0.0181, mAP +0.0320 (report 2027-01-02, holds). The recipe carries over to SigLIP 2, SigLIP 1 and CLIP
+L/14: a WIN over each plain image; against the Qwen teacher 18 WIN, 5 LEVEL and 1 BELOW of 24 cells. Next: r15
+(confirmation, medium loop): c* on MMArt (PolyArt), 16,782 WikiArt paintings not in ArtELingo; its seven views are
+extracted on the evening of 2026-11-02 ([round log](../../src/test/20261102_mmart_prep/20261102_mmart_prep_log.md));
+the test design is grilled in r15 decide. Deadlines: abstract 2026-11-10, paper 2026-11-16, supplementary
 2026-11-23.
 
 ## Parked ideas
@@ -57,6 +59,34 @@ proposed. PolyArt waits for the user's link. Deadlines: abstract 2026-11-10, pap
 - MMArt perspective names as new Qwen instructions (narrative, formal, historical): new aspects without a c* head,
   so a new experiment, not a test of c* (never tried; parked by the user, 2026-11-02, as a later experiment;
   proposed in the MMArt prep chat, [log](../../src/test/20261102_mmart_prep/20261102_mmart_prep_log.md))
+
+## 2026-11-02 · Backbones sweep read: c* holds on three more encoders and the photo model beats its teacher on EmoSet (GO); next, the MMArt (PolyArt) test (r15)
+
+- **Read:** both claim tests hold (GO). Part a: on SigLIP 2, SigLIP 1 and CLIP L/14, c* is a WIN over the plain image
+  in all six painting cells and over matched PercepT in clustering; each photo model is a WIN over its plain image on
+  Affection test. Against the Qwen teacher: 18 WIN, 5 LEVEL, 1 BELOW of 24 cells; the BELOW cell is CLIP L/14 emotion
+  retrieval on paintings, -0.0013 [-0.0023, -0.0003]; one LEVEL cell (CLIP L/14 genre AMI) is below the teacher's
+  point value, -0.0052 [-0.0103, -0.0000]. Part c, EmoSet test (17,348 photos, frozen Qwen photo model): against the
+  teacher AMI 0.4571 against 0.4390, +0.0181 [+0.0121, +0.0242] WIN; mAP 0.4838 against 0.4519, +0.0320 [+0.0295,
+  +0.0347] WIN; against plain Qwen AMI +0.0653 (+0.0390 with the 368 near-copies kept). Per emotion, the photo model
+  is below the teacher on amusement (AP 0.3203 against 0.3471; diagnostic). Part b (analysis) names no better
+  setting.
+- **Meaning (C):** "That's good result indeed" (user, before seeing ours). Ours: the recipe carries over to three
+  encoders of two families, within the limit of the encoder pick (the three passed an earlier held emotion test on
+  the same paintings); EmoSet is the strongest evidence so far for the photo claim, since it shaped nothing; the BELOW
+  cell is small (point value inside one seed range, 0.00169; interval not). Where they differ: both read r14 as a
+  good result; ours names two limits (the encoder pick, the BELOW cell); ours recommended freeze and write, with the
+  part b sheets as the paper's ablation.
+- **Decided (A):** the MMArt (PolyArt) test of c*: 16,782 WikiArt paintings not in ArtELingo, ArtELingo's split, its
+  own emotion label set, the ArtELingo aspects and teacher instructions (user, before seeing the recommendation, which
+  was freeze and write); type confirmation, medium loop (user, after seeing the recommendation). The seven-view
+  extraction starts now, 2026-11-02 18:01, on the local GPU, not after 19:00; the "r14 mmart run" chat is closed and
+  r15 decide runs the extraction (user). Storage: all recommendations approved (user).
+- **Idea (B):** open: the MMArt test design, grilled next in r15 decide.
+- **Why:** the user wants c* tested on a second art source before the freeze; MMArt's data was already prepared.
+- **Links:** [report](../reports/auto/percept/2027-01-02_backbones_sweep.md) ·
+  [user-read report](../user_read/2026-11-02_backbones_sweep.md) ·
+  [spec](specs/2026-11-02-backbones-sweep-design.md) · [handoff](handoffs/2026-11-02-r15-decide-handoff.md)
 
 ## 2026-11-02 · Photo fine-tune read: the photo model above the plain Qwen image and above its teacher on Affection (holds); the CRL claim passes; next, open (step 2 in r14 decide)
 

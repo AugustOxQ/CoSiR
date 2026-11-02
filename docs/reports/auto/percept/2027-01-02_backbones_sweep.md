@@ -30,7 +30,7 @@ Against the Qwen teacher, 18 of 24 encoder cells are WIN and 5 are LEVEL. One is
 2. PolyArt (MMArt) test: the data is prepared, and the side chat "r14 mmart run" extracts its features tonight (19:00 to about 21:00, local GPU); then a test design and one scoring round. It tests c* on another art source, WikiArt paintings not in ArtELingo.
 3. A fourth encoder that no held test picked: about one encoder of part a (10 runs on DAS6, about 1 h of CPU scoring). It tells whether the encoder pick shaped the result.
 
-**Your reading.** <left for the user>
+**Your reading.** "That's good result indeed" (user, 2026-11-02, before seeing ours; next: the MMArt test, [direction log](../../../superpowers/direction_log.md)).
 
 <details>
 <summary>Our reading and recommendation (open after writing yours)</summary>
