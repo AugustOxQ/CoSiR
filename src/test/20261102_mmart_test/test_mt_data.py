@@ -144,6 +144,21 @@ def test_labels_missing_is_minus_one_and_class_order_follows_paths():
     assert D.labels(keys, 'genre', index=idx).tolist() == [9, -1, 4]
     idx.loc[1, 'genre'] = -3
     assert D.labels(keys, 'genre', index=idx).tolist() == [9, -1, 4]
+
+
+def test_labels_genre_name_must_agree_with_the_class_list():
+    idx = label_frame()
+    idx['genre_name'] = [P.CLASSES['genre'][4], 'whatever', P.CLASSES['genre'][9]]      # row 1 has genre -1: not checked
+    keys = ['Cubism/b_1.jpg', 'Baroque/a_2.jpg', 'Baroque/a_1.jpg']
+    assert D.labels(keys, 'genre', index=idx).tolist() == [9, -1, 4]
+    idx.loc[0, 'genre_name'] = P.CLASSES['genre'][5]
+    with pytest.raises(AssertionError):
+        D.labels(keys, 'genre', index=idx)
+
+
+def test_labels_rest():
+    idx = label_frame()
+    keys = ['Cubism/b_1.jpg', 'Baroque/a_2.jpg', 'Baroque/a_1.jpg']
     s = D.labels(keys, 'style', index=idx)
     assert s.tolist() == [19, P.CLASSES['style'].index('baroque'), P.CLASSES['style'].index('cubism')]
 
@@ -296,12 +311,45 @@ def test_parity_check_needs_every_view_at_0999():
     assert D.check_parity(parity_doc(siglip1=0.999))['pass']                    # the bar is inclusive
 
 
-def test_store_check_needs_14_of_14():
-    good = dict(view='v', set='new', n=1, ok=True)
-    assert D.check_stores(dict(ok=True, stores=[good] * 14))['pass']
-    assert not D.check_stores(dict(ok=True, stores=[good] * 13))['pass']
-    assert not D.check_stores(dict(ok=True, stores=[good] * 13 + [dict(view='w', ok=False)]))['pass']
-    assert not D.check_stores(dict(ok=False, stores=[good] * 14))['pass']
+def stores_doc(**bad):
+    return dict(ok=True, stores=[dict(view=v, set=k, n=16782 if k == 'new' else 200, ok=bad.get(f'{v}/{k}', True))
+                                 for v in P.VIEWS for k in ('new', 'parity')])
+
+
+def test_store_check_needs_14_of_14_exactly_views_times_sets_with_n():
+    ok = D.check_stores(stores_doc())
+    assert ok['pass'] and ok['exact_entries'] and all(ok['views'].values())
+    doc = stores_doc()
+    assert not D.check_stores(dict(doc, stores=doc['stores'][:13]))['pass']
+    assert not D.check_stores(dict(doc, ok=False))['pass']
+    bad = D.check_stores(stores_doc(**{'siglip1/parity': False}))
+    assert not bad['pass'] and bad['views']['siglip1'] is False and bad['views']['siglip2'] is True
+    dup = stores_doc()
+    dup['stores'][1] = dict(dup['stores'][0])                                    # 14 entries, one set twice
+    assert not D.check_stores(dup)['pass'] and not D.check_stores(dup)['exact_entries']
+    wrong_n = stores_doc()
+    wrong_n['stores'][0]['n'] = 16781
+    r = D.check_stores(wrong_n)
+    assert not r['pass'] and r['views'][wrong_n['stores'][0]['view']] is False
+    wrong_n = stores_doc()
+    wrong_n['stores'][1]['n'] = 199
+    assert not D.check_stores(wrong_n)['pass']
+
+
+def test_parity_check_reports_per_view():
+    r = D.check_parity(parity_doc(siglip1=0.9985))
+    assert r['views']['siglip1'] is False and r['views']['qwen_default'] is True
+
+
+def test_cut_returns_a_copy_of_the_cached_dict(monkeypatch):
+    idx, near = frame([('S/a_1.jpg', 'm1', 0.5, False, 'new')])
+    monkeypatch.setattr(D, '_index', lambda index=None: idx if index is None else index)
+    monkeypatch.setattr(D, '_nearcopy_cached', lambda: near)
+    D._cut_default.cache_clear()
+    first = D.cut(0.95)
+    first['kept'].clear()
+    assert D.cut(0.95)['kept'] == ['S/a_1.jpg']
+    D._cut_default.cache_clear()
 
 
 def test_nearcopy_check_counts_and_reference():
@@ -330,3 +378,12 @@ def test_real_cut_counts():
     assert len(D.cut(P.CUT_TEST)['kept']) == P.N_TEST == 16384
     assert len(D.cut(P.CUT_FAR)['kept']) == P.N_FAR == 10403
     assert len(D.cut(P.CUT_TEST)['exact']) == P.N_EXACT == 34
+
+
+def test_real_gate_parts_are_per_part():
+    gi, gv = D.gate_i(), D.gate_v()
+    assert gi['pass'] and gv['pass']
+    assert set(gi['parts']) == {'i_nearcopy', 'i_default', 'i_teacher'}
+    assert set(gi['parts']['i_default']) == set(P.DEFAULT_VIEW) and set(gi['parts']['i_teacher']) == set(P.TEACHER_VIEW)
+    assert gi['parts']['i_nearcopy'] is True and all(gi['parts']['i_default'].values()) and all(gi['parts']['i_teacher'].values())
+    assert set(gv['parts']) == set(P.TEACHER_VIEW) and all(gv['parts'].values())

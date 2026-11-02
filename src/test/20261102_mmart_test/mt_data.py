@@ -14,6 +14,7 @@ Every other r15 module reads MMArt keys, order, labels, cut sets and feature row
 The index and the near-copy file are read lazily and cached. Feature rows are normalised as r11's `rb_encoders.
 full_images` does (float32, divided by max(norm, 1e-12)); `mp_stores.load` alone does not normalise.
 """
+import copy
 import functools
 import hashlib
 import json
@@ -97,7 +98,7 @@ def cut(threshold, *, index=None, nearcopy=None):
     row per `new` key (joined by key)."""
     default = index is None and nearcopy is None
     if default:
-        return _cut_default(float(threshold))
+        return copy.deepcopy(_cut_default(float(threshold)))     # the cached dict is never handed out
     return _cut(float(threshold), _index(index), _nearcopy_cached() if nearcopy is None else nearcopy)
 
 
@@ -209,6 +210,10 @@ def labels(keys, aspect, *, index=None):
     if aspect == 'genre':
         g = rows.genre.to_numpy().astype(np.int64)
         assert g.max(initial=-1) < len(P.CLASSES['genre'])
+        if 'genre_name' in rows.columns:                          # the real index carries the name beside the integer
+            named = g >= 0
+            want = np.asarray(P.CLASSES['genre'], dtype=object)[g[named]]
+            assert (rows.genre_name.to_numpy()[named] == want).all(), 'genre: genre_name disagrees with mt_paths.CLASSES'
         return np.where(g < 0, -1, g)
     classes = {c: i for i, c in enumerate(P.CLASSES[aspect])}
     values = rows[aspect].tolist()
@@ -260,16 +265,23 @@ def check_parity(doc):
     for v in P.VIEWS:
         e = doc.get(v)
         evidence[v] = None if e is None else float(e['min_cosine'])
-    ok = all(m is not None and m >= PARITY_BAR for m in evidence.values())
-    ok = ok and all(doc[v]['n'] == N_PARITY for v in P.VIEWS if v in doc)
-    return dict(min_cosine=evidence, bar=PARITY_BAR, **{'pass': bool(ok)})
+    per_view = {v: bool(m is not None and m >= PARITY_BAR and doc[v]['n'] == N_PARITY) for v, m in evidence.items()}
+    return dict(min_cosine=evidence, bar=PARITY_BAR, views=per_view, **{'pass': all(per_view.values())})
 
 
 def check_stores(doc):
-    """Gate (i), store check: 14 of 14 stores (seven views, new and parity sets) pass."""
+    """Gate (i), store check: 14 of 14 stores pass; the 14 entries are exactly the seven views times {new, parity},
+    with n = 16,782 on `new` and 200 on `parity`. `views` says, per view, whether both its stores are fine."""
     stores = doc.get('stores', [])
+    want = {(v, s) for v in P.VIEWS for s in ('new', 'parity')}
+    got = [(s.get('view'), s.get('set')) for s in stores]
+    exact = len(got) == N_STORE_CHECKS and set(got) == want
+    n_want = dict(new=P.SPLIT_COUNTS['new'], parity=N_PARITY)
+    good = [bool(s.get('ok')) and s.get('n') == n_want.get(s.get('set')) for s in stores]
+    per_view = {v: exact and all(g for g, k in zip(good, got) if k[0] == v) for v in P.VIEWS}
     n_ok = sum(bool(s.get('ok')) for s in stores)
-    return dict(n=len(stores), n_ok=n_ok, **{'pass': bool(doc.get('ok')) and len(stores) == N_STORE_CHECKS == n_ok})
+    return dict(n=len(stores), n_ok=n_ok, exact_entries=bool(exact), views=per_view,
+                **{'pass': bool(doc.get('ok')) and exact and all(good)})
 
 
 def check_nearcopy(index, near, reference, expect_reference):
@@ -317,8 +329,13 @@ def gate_i():
         c = cut(thr)
         cuts[name] = dict(threshold=thr, n=len(c['kept']), expect=expect, exact=len(c['exact']), near=len(c['near']),
                           md5=len(c['md5']), **{'pass': len(c['kept']) == expect and len(c['exact']) == P.N_EXACT})
-    return dict(parity=parity, stores=stores, nearcopy=nc, cut=cuts,
-                **{'pass': bool(parity['pass'] and stores['pass'] and nc['pass'] and all(c['pass'] for c in cuts.values()))})
+    i_nearcopy = bool(nc['pass'] and all(c['pass'] for c in cuts.values()))
+    ok = lambda view: bool(parity['views'][view] and stores['views'][view])      # noqa: E731
+    parts = dict(i_nearcopy=i_nearcopy,
+                 i_default={enc: bool(ok(v) and (i_nearcopy if enc == 'qwen' else True)) for enc, v in P.DEFAULT_VIEW.items()},
+                 i_teacher={a: ok(v) for a, v in P.TEACHER_VIEW.items()})
+    overall = bool(parity['pass'] and stores['pass'] and i_nearcopy)
+    return dict(parity=parity, stores=stores, nearcopy=nc, cut=cuts, parts=parts, **{'pass': overall})
 
 
 def gate_v():
@@ -337,4 +354,5 @@ def gate_v():
         manifest = bool(done['parity_gate']['passed']) and not done['smoke']
         views[view] = dict(aspect=aspect, n_found=int(len(x)), manifest_parity_gate=manifest, **unit)
         views[view]['pass'] = bool(unit['pass'] and len(x) == N_VAL and manifest)
-    return dict(views=views, n_val=N_VAL, **{'pass': all(v['pass'] for v in views.values())})
+    parts = {v['aspect']: bool(v['pass']) for v in views.values()}
+    return dict(views=views, n_val=N_VAL, parts=parts, **{'pass': all(parts.values())})
