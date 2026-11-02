@@ -1516,3 +1516,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-02-r14-run-handoff.md
 - New chat: tab 'r14 run', session fa18b348-ef77-4a34-912c-cd50b1f347bf
 
+[brief] CoSiR: r14 run -> r14 run 2 (2026-11-02 09:27 Amsterdam)
+- Done: stage 0 (26 of 26 gates pass), part a on node402 (30 of 30 runs ok), all exports, stage 1 for the three encoders and stage 2 (records committed). C13 code written by Codex (smoke 0 mismatches).
+- State: the sweeps run on node402 (3 workers; photo sweep 32 of 45 done, knob sweep next; end about 15:30 today).
+- Next: start stage 3 (cells) and the full C13 derive (2 to 4 h CPU) in parallel; re-watch the three sweep jobs.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-02-r14-run2-handoff.md
+- New chat: tab 'r14 run 2', session 5b342cfb-243a-4b2e-b78b-21c498c9f997
+
