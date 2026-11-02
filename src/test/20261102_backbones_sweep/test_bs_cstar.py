@@ -446,3 +446,54 @@ def test_a_knob_rows_arm_carries_the_rows_lambda_and_teacher_temperature():
     with C.training_context('qwen', 'k4=0.035'):
         assert V.switches(C.row_arm('k4=0.035'))['tau_t'] == 0.035 and V.switches(C.row_arm('k4=0.035'))['lam'] == base['lam']
     assert V.switches(rs_knobs.rs_paths.G_ARM) == base and 'k3=4' not in V.ARMS
+
+
+def test_the_run_record_names_its_keep_mode_and_a_record_of_the_other_mode_is_not_skipped(monkeypatch, tmp_path):
+    calls = []
+    fake_cohort(monkeypatch, calls)
+    assert C.train('qwen', 'ref', [1], 'cpu', tmp_path, keep='all')[1].record['keep'] == 'all'
+    assert C.train('qwen', 'ref', [1], 'cpu', tmp_path, keep='none')[1].record['keep'] == 'none'
+    assert json.loads(C.record_path(tmp_path, 'k11=40', 1).read_text())['keep'] == 'none'     # (it overwrote: the CLI refuses this root)
+    with pytest.raises(AssertionError, match='another run'):                                    # keep-all finds the keep-none record
+        C.train('qwen', 'ref', [1], 'cpu', tmp_path, keep='all')
+
+
+def test_the_command_line_needs_a_root_for_keep_none_and_refuses_the_default_roots(monkeypatch, tmp_path):
+    seen = []
+    monkeypatch.setattr(C, 'train', lambda enc, row, seeds, device, root, **kw: seen.append((enc, row, root, kw['keep'])) or {})
+    argv = lambda *a: ['train', '--encoder', 'qwen', *a]
+    with pytest.raises(AssertionError, match='--root'):
+        C.main(argv('--keep', 'none'))
+    for enc in P.ENCODERS:                                                   # the default keep-all root of any encoder
+        for root in (C.default_root(enc), C.default_root(enc) / '.' / 'x' / '..'):
+            with pytest.raises(AssertionError, match='keep-all root'):
+                C.main(argv('--keep', 'none', '--root', str(root)))
+    assert not seen
+    assert C.main(argv('--keep', 'none', '--root', str(tmp_path / 'sweep'))) == 0 and seen[-1][2] == tmp_path / 'sweep'
+    assert C.main(argv('--keep', 'all')) == 0 and seen[-1] == ('qwen', 'ref', C.default_root('qwen'), 'all')   # keep-all: default root
+    assert C.main(argv('--row', 'k6=0.0005', '--keep', 'none', '--root', str(tmp_path / 'sweep'))) == 0
+
+
+def test_the_code_state_is_read_before_training_and_is_the_one_in_the_record(monkeypatch, tmp_path):
+    calls = []
+    fake_cohort(monkeypatch, calls)
+    def broken():
+        raise RuntimeError('git failed')
+    monkeypatch.setattr(C, 'code_state', broken)
+    with pytest.raises(RuntimeError, match='git failed'):
+        C.train('qwen', 'ref', [0], 'cpu', tmp_path)
+    assert not calls and not list(tmp_path.rglob('*'))                          # nothing trained, nothing to clean up after
+    states = iter([('c0ffee', True), ('other', False)])
+    monkeypatch.setattr(C, 'code_state', lambda: next(states))
+    record = C.train('qwen', 'ref', [0, 1], 'cpu', tmp_path)
+    assert (record[0].record['code_commit'], record[0].record['code_dirty']) == ('c0ffee', True)
+    assert record[1].record['code_commit'] == 'c0ffee'                          # read once for the call, not per seed
+
+
+def test_train_checks_the_imports_as_r10s_trainer_does(monkeypatch, tmp_path):
+    fake_cohort(monkeypatch, [])
+    def refused():
+        raise AssertionError('rs_x: imported from another folder')
+    monkeypatch.setattr(C.rs_paths, 'check_imports', refused)
+    with pytest.raises(AssertionError, match='imported from another folder'):
+        C.train('siglip2', 'ref', [0], 'cpu', tmp_path)

@@ -226,9 +226,9 @@ def _dev_outputs(folder, aspect, seed):
         return {side: z[side] for side in z.files}
 
 
-def _record(enc, row, ctx, seed, device, smoke, max_epochs, root, seconds):
-    commit, dirty = code_state()
-    record = dict(encoder=enc, backbone=ctx.backbone, width=ctx.width, row=row, name=ctx.arm, seed=seed,
+def _record(enc, row, ctx, seed, device, keep, smoke, max_epochs, root, seconds, state):
+    commit, dirty = state
+    record = dict(encoder=enc, backbone=ctx.backbone, width=ctx.width, row=row, name=ctx.arm, seed=seed, keep=keep,
                   config=rs_full.jsonable(ctx.cfg), smoke=smoke, max_epochs=max_epochs, device=str(device),
                   status='ok', cause=None, knobs=ctx.knobs, graphs=rs_full.graph_choice(ctx.cfg),
                   code_commit=commit, code_dirty=dirty, code_sha256=rs_full.code_sha256(),
@@ -255,7 +255,9 @@ def train(enc, row, seeds, device, root, *, keep='all', smoke=False, max_epochs=
     assert keep in KEEP and seeds and len(set(seeds)) == len(seeds) and all(s in SEEDS for s in seeds), (keep, seeds)
     assert not smoke or (max_epochs or 2) <= 2, '--smoke: at most 2 epochs'
     assert max_epochs is None or smoke, 'a full run trains to the CT\'s 200 epochs and its patience'
+    rs_paths.check_imports()
     root, device = check_root(root, smoke), torch.device(device)
+    code = code_state()                              # before any training: a git failure must not cost a trained cohort
     if device.type == 'cuda':
         assert os.environ.get('CUBLAS_WORKSPACE_CONFIG') == ':4096:8', 'set CUBLAS_WORKSPACE_CONFIG=:4096:8 (CT queue)'
     torch.set_num_threads(8)
@@ -273,8 +275,9 @@ def train(enc, row, seeds, device, root, *, keep='all', smoke=False, max_epochs=
                     path = record_path(root, arm, seed)
                     assert path.is_file(), f'{path}: weights without a run record; move them aside'
                     record = json.loads(path.read_text())
-                    assert (record['encoder'], record['row'], record['seed'], record['config'], record['smoke']) == (
-                        enc, row, seed, rs_full.jsonable(ctx.cfg), smoke), f'{path}: another run'
+                    assert (record.get('encoder'), record.get('row'), record.get('seed'), record.get('config'),
+                            record.get('smoke'), record.get('keep')) == (
+                        enc, row, seed, rs_full.jsonable(ctx.cfg), smoke, keep), f'{path}: another run'
                     print(f'{arm} s{seed}: verified weights; skip', flush=True)
                     result[seed] = Run(record, None, None)
                     continue
@@ -294,7 +297,7 @@ def train(enc, row, seeds, device, root, *, keep='all', smoke=False, max_epochs=
                 seconds = time.monotonic() - start
                 if outcome.get('status') == 'failed':
                     raise CstarNonFiniteLoss(f'{arm} s{seed}: {outcome["cause"]}')
-                record = _record(enc, row, ctx, seed, device, smoke, max_epochs, folder, seconds)
+                record = _record(enc, row, ctx, seed, device, keep, smoke, max_epochs, folder, seconds, code)
                 dev = {a: _dev_outputs(folder / 'train' / arm, a, seed) for a in ASPECTS} if keep == 'none' else None
             finally:
                 if cleanup is not None:
@@ -444,6 +447,19 @@ def default_root(enc):
     return P.OUT / 'cstar' / enc
 
 
+def cli_root(row, keep, root):
+    """The root of a `train` command. A knob row and `--keep none` need `--root`: the run record of a `--keep none` run
+    (a knob row, seeds 1 to 3) sits at the keep-all path of the same arm, so it must not share the keep-all root of any
+    encoder (`<OUT>/cstar/<enc>`)."""
+    assert row == REF or root is not None, 'a knob row needs --root (the sweep\'s own folder)'
+    assert keep == 'all' or root is not None, '--keep none needs --root (the sweep\'s own folder)'
+    if keep == 'none':
+        taken = {default_root(e).resolve(): e for e in P.ENCODERS} | {(P.DEFAULT_OUT / 'cstar' / e).resolve(): e for e in P.ENCODERS}
+        assert Path(root).resolve() not in taken, \
+            f'--keep none: {root} is the keep-all root of {taken[Path(root).resolve()]}; its run records would overwrite c*\'s'
+    return root
+
+
 def main(argv=None):
     os.environ.setdefault('CUBLAS_WORKSPACE_CONFIG', ':4096:8')    # the CT queue's setting, before any CUDA work
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -499,9 +515,8 @@ def main(argv=None):
         print(f'0(ix): pass={record["pass"]}; failing: {[k for k, v in record["items"].items() if not v["pass"]]}',
               flush=True)
         return 0 if record['pass'] else 1
-    assert args.row == REF or args.root is not None, 'a knob row needs --root (the sweep\'s own folder)'
-    root = args.root or default_root(args.encoder)
     if args.command == 'train':
+        root = cli_root(args.row, args.keep, args.root) or default_root(args.encoder)
         runs = train(args.encoder, args.row, args.seeds, args.device, root, keep=args.keep, smoke=args.smoke,
                      max_epochs=args.max_epochs)
         for seed, run in runs.items():
@@ -509,6 +524,8 @@ def main(argv=None):
             print(f'BS_CSTAR train {args.encoder} {args.row} s{seed} {r["status"]} seconds={r["seconds"]:.1f} '
                   f'best_epoch={r["best_epoch"]} best_dev_loss={r["best_dev_loss"]}', flush=True)
         return 0
+    assert args.row == REF or args.root is not None, 'a knob row needs --root (the sweep\'s own folder)'
+    root = args.root or default_root(args.encoder)
     for kind in args.kind:
         (export_held if kind == 'held' else export_validation)(
             args.encoder, args.row, args.seeds, root, device=args.device, out_root=args.out_root, smoke=args.smoke)
