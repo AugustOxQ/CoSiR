@@ -77,6 +77,16 @@ proposed. PolyArt waits for the user's link. Deadlines: abstract 2026-11-10, pap
   dataset check for photo aspects ran as a side job (user):
   [note 2027-01-02](../reports/literature/2027-01-02_photo_aspect_datasets.md). The user re-reserves a DAS6
   node on 2026-11-04 and keeps one node (3 GPUs) until the main deadline. Storage: all recommendations approved (user).
+- **Idea (B):** r14 in three parts (grill in r14 decide 2, 2026-11-02, two rounds). (a) c* and the photo fine-tune
+  on SigLIP 2, SigLIP 1 and CLIP L/14 with the frozen recipe, on ArtELingo and Affection, clustering and retrieval
+  (user); each encoder judged against its own frozen image and matched arm, each comparison with the Qwen teacher its
+  own claim (user, after seeing the recommendation). (c) The frozen photo model on EmoSet-118K test: holds with a WIN
+  over the teacher in AMI and mAP, qualified with a WIN and a LEVEL, the verdict stands after a failure; r12's rule
+  makes the evaluation choices on EmoSet validation, K = 20 (user). (b) The full analysis: c*'s knob sensitivity at
+  full scale, the ablation table with retrieval, the photo fine-tune sensitivity; the sweeps read validation only
+  (user). One spec, build and run; the extraction first, on the local GPU in the day (user).
+- **Why:** the user wants wider tests than one arm before the freeze (decision C); EmoSet is the only test that can
+  license "better than the teacher".
 - **Links:** [report](../reports/auto/percept/2027-01-01_photo_finetune.md) ·
   [user-read report](../user_read/2026-11-01_photo_finetune.md) ·
   [spec](specs/2026-10-31-photo-finetune-design.md) · [handoff](handoffs/2026-11-01-r13-run-2-handoff.md)
