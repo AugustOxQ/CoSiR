@@ -435,3 +435,14 @@ def test_0ix_fails_on_another_shape_or_dtype_and_does_not_broadcast(tmp_path, ou
         np.savez(val_ours, img=ref, cap=mine)
     record = C.compare_exports(tmp_path / 'ours', tmp_path / 'ref', seeds=[0])
     assert not record['pass'] and not record['items']['val/style__s0/cap']['pass'] and record['items']['val/style__s0/img']['pass']
+
+
+# ------------------------------------------------------------------------------------ review fixes
+def test_a_knob_rows_arm_carries_the_rows_lambda_and_teacher_temperature():
+    """`rs_full.arm_alias` copies G's arm: entered before the knob patches it would give the row G's lam and tau_t."""
+    base = V.switches(rs_knobs.rs_paths.G_ARM)
+    with C.training_context('qwen', 'k3=4'):
+        assert V.switches(C.row_arm('k3=4'))['lam'] == 4 and V.switches(C.row_arm('k3=4'))['tau_t'] == base['tau_t']
+    with C.training_context('qwen', 'k4=0.035'):
+        assert V.switches(C.row_arm('k4=0.035'))['tau_t'] == 0.035 and V.switches(C.row_arm('k4=0.035'))['lam'] == base['lam']
+    assert V.switches(rs_knobs.rs_paths.G_ARM) == base and 'k3=4' not in V.ARMS
