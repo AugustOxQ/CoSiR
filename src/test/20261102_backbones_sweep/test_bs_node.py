@@ -65,3 +65,31 @@ def test_estimate_says_when_it_uses_smoke_units(tmp_path, capsys):
     assert any('smoke units' in n for n in out['notes'])
     units.write_text(json.dumps(dict(kind='cstar', status='ok', seconds=10.0, smoke=False)) + '\n')
     assert not any('smoke units' in n for n in N.estimate(units_path=units, print_out=False)['notes'])
+
+
+def test_retry_failed_moves_aside_and_is_idempotent(tmp_path, monkeypatch):
+    """r14 k11=20: failed.json and the stale claim move aside (nothing deleted); a pulled identical copy is accepted."""
+    monkeypatch.setattr(P, 'OUT', tmp_path)
+    monkeypatch.setattr(N, 'sweep_rows', lambda kind: ['ref', 'k11=20'])
+    row = tmp_path / 'sweeps/knob/k11=20'
+    row.mkdir(parents=True)
+    rec = '{"kind": "knob", "row": "k11=20", "seed": 1}\n'
+    (row / 'failed.json').write_text(rec)
+    (tmp_path / 'sweeps/.claims/knob__k11=20__s1').mkdir(parents=True)
+    (tmp_path / 'sweeps/.claims/knob__k11=20__s1/owner.json').write_text('{}')
+    (tmp_path / 'sweeps/.claims/knob__ref__s1').mkdir()                      # a done unit's claim stays
+    (tmp_path / 'sweeps/knob/ref/s1').mkdir(parents=True)
+    (tmp_path / 'sweeps/knob/ref/s1/metrics.json').write_text('{}')
+    moved = N.retry_failed(['knob'])
+    assert moved == ['.claims/knob__k11=20__s1', 'knob/k11=20/failed.json']
+    assert not N.row_failed('knob', 'k11=20') and (row / 'failed_attempt1.json').read_text() == rec
+    assert (tmp_path / 'sweeps/.claims_retired/knob__k11=20__s1__attempt1/owner.json').is_file()
+    assert (tmp_path / 'sweeps/.claims/knob__ref__s1').is_dir()
+    assert N.claim('knob', 'k11=20', 1)                                       # the unit can be claimed again
+    (row / 's1').mkdir()
+    (row / 's1/metrics.json').write_text('{}')                                # the rerun's unit is done
+    (row / 'failed.json').write_text(rec)                                     # a pull brings the identical record back
+    assert N.retry_failed(['knob']) == ['knob/k11=20/failed.json'] and not N.row_failed('knob', 'k11=20')
+    (row / 'failed.json').write_text('{"other": 1}\n')                        # a different record is refused
+    with pytest.raises(AssertionError):
+        N.retry_failed(['knob'])

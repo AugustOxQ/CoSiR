@@ -47,7 +47,7 @@ def groups_for(mode, encoder=None, kinds=(), extra=()):
         if 'photo' in kinds:
             out += ['aux_aff', 'qwen_aff']
         if 'knob' in kinds:
-            out += ['aux_art', 'qwen_art']
+            out += ['aux_art', 'qwen_art', 'knob_base']           # knob_base: the CT's k = 20 graphs (row k11=20)
         return out
     raise SystemExit(f'unknown mode {mode}')
 

@@ -5,22 +5,23 @@
 #   cluster launch --node node402 -- bash scripts/run_bs_node.sh viii
 #   cluster launch --node node402 -- bash scripts/run_bs_node.sh prep
 #   cluster launch --node node402 -- bash scripts/run_bs_node.sh part-a --encoder siglip2     (also siglip1, clip_l14)
-#   cluster launch --node node402 -- bash scripts/run_bs_node.sh sweep --kind photo knob [--reset-claims]
+#   cluster launch --node node402 -- bash scripts/run_bs_node.sh sweep --kind photo knob [--reset-claims] [--retry-failed]
 # All modes except probe call src/test/20261102_backbones_sweep/bs_node.py <mode> ... --device cuda in the job's chroot.
 # `probe GROUPS` (groups of bs_node_inputs.json) checks every bound input reads, the packages and the GPU, then stops.
 # Inputs: DATA_MAP puts each input at its node path (`bs_node_inputs.py overrides`); the chroot binds it at its local path.
 # Results: node /local/wding/res/r14_bs (probe: r14_bs_probe, smoke: r14_bs_smoke), bound at the local OUT folder.
 # Dry: CLUSTER_DRY_RUN=1 prints the `python main_cosir.py ...` line the cluster check resolves; --plan (last) prints the plan.
 set -euo pipefail
-usage='usage: bash scripts/run_bs_node.sh smoke|viii|prep | part-a --encoder siglip2|siglip1|clip_l14 | sweep --kind photo|knob... [--reset-claims] | probe GROUP... [--plan]'
+usage='usage: bash scripts/run_bs_node.sh smoke|viii|prep | part-a --encoder siglip2|siglip1|clip_l14 | sweep --kind photo|knob... [--reset-claims] [--retry-failed] | probe GROUP... [--plan]'
 mode=${1:-}
 case "$mode" in smoke|viii|prep|part-a|sweep|probe) shift ;; *) echo "$usage" >&2; exit 2 ;; esac
-encoder= kinds=() groups=() reset=0 plan=0 field=
+encoder= kinds=() groups=() reset=0 retry=0 plan=0 field=
 for arg in "$@"; do
     case "$arg" in
         --encoder) field=encoder ;;
         --kind) field=kind ;;
         --reset-claims) reset=1; field= ;;
+        --retry-failed) retry=1; field= ;;
         --plan) plan=1; field= ;;
         --*) echo "unknown option $arg; $usage" >&2; exit 2 ;;
         *) case "$field" in
@@ -35,7 +36,7 @@ done
 [[ "$mode" == sweep ]] && { [[ ${#kinds[@]} -gt 0 ]] || { echo '--kind is required for sweep' >&2; exit 2; }; }
 [[ "$mode" == probe ]] && { [[ ${#groups[@]} -gt 0 ]] || { echo 'probe needs one or more groups' >&2; exit 2; }; }
 [[ "$mode" != part-a && -n "$encoder" ]] && { echo '--encoder goes with part-a only' >&2; exit 2; }
-[[ "$mode" != sweep && ( ${#kinds[@]} -gt 0 || "$reset" == 1 ) ]] && { echo '--kind and --reset-claims go with sweep only' >&2; exit 2; }
+[[ "$mode" != sweep && ( ${#kinds[@]} -gt 0 || "$reset" == 1 || "$retry" == 1 ) ]] && { echo '--kind, --reset-claims and --retry-failed go with sweep only' >&2; exit 2; }
 CODE=$(pwd -P)
 JOB=$(dirname -- "$CODE")
 HELPER=src/test/20261102_backbones_sweep/bs_node_inputs.py
@@ -60,7 +61,7 @@ mapfile -t binds < <(helper binds "${GROUPS_NEEDED[@]}")
 [[ ${#binds[@]} -gt 0 ]] || { echo "no binds resolved for mode $mode" >&2; exit 1; }
 if [[ "$plan" == 1 ]]; then
     echo "PLAN $mode: code=$CODE; groups=${GROUPS_NEEDED[*]}; outputs=$NODE_RES -> $LOCAL_OUT; job-local root/tmp/home/cache under $JOB"
-    echo "PLAN encoder=${encoder:-} kinds=${kinds[*]:-} reset_claims=$reset CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-unset} (needs a single GPU index)"
+    echo "PLAN encoder=${encoder:-} kinds=${kinds[*]:-} reset_claims=$reset retry_failed=$retry CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-unset} (needs a single GPU index)"
     echo "bind $CODE -> /project/CoSiR"
     echo "bind $NODE_RES -> $LOCAL_OUT"
     for pair in "${binds[@]}"; do echo "bind ${pair%%$'\t'*} -> ${pair##*$'\t'}"; done
@@ -85,7 +86,7 @@ export TMPDIR="$JOB/bs-tmp" MPLCONFIGDIR="$JOB/bs-mpl" HOME="$JOB/bs-home" XDG_C
 export PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 CUBLAS_WORKSPACE_CONFIG=:4096:8
 export WANDB_MODE=disabled HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
 export BS_PYTHON=/var/scratch/wding/conda-envs/CoSiR/bin/python
-export BS_ENCODER="$encoder" BS_KINDS="${kinds[*]:-}" BS_RESET="$reset" BS_GROUPS="${GROUPS_NEEDED[*]}"
+export BS_ENCODER="$encoder" BS_KINDS="${kinds[*]:-}" BS_RESET="$reset" BS_RETRY="$retry" BS_GROUPS="${GROUPS_NEEDED[*]}"
 # CUDA_VISIBLE_DEVICES is deliberately inherited from the allocation.
 unshare --user --map-root-user --mount bash -s -- "$mode" "${binds[@]}" <<'NS'
 set -euo pipefail
@@ -127,7 +128,7 @@ part-a)
     BS_OUTPUTS="$LOCAL_OUT" "$BS_PYTHON" "$round/bs_node.py" part-a --encoder "$BS_ENCODER" --device cuda
     ;;
 sweep)
-    extra=(); [[ "$BS_RESET" == 1 ]] && extra=(--reset-claims)
+    extra=(); [[ "$BS_RESET" == 1 ]] && extra+=(--reset-claims); [[ "$BS_RETRY" == 1 ]] && extra+=(--retry-failed)
     BS_OUTPUTS="$LOCAL_OUT" "$BS_PYTHON" "$round/bs_node.py" sweep --kind $BS_KINDS "${extra[@]}" --device cuda
     ;;
 esac

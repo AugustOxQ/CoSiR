@@ -17,6 +17,8 @@ the smoke, the time estimate). Run from the repo root, on the node inside `scrip
     sweep --kind photo knob    a worker of the shared queue over `OUT/sweeps/<kind>/<row>/s<seed>`: units in row-major
                                order (the `ref` row first), kinds in the order given. Three workers = three launches.
                                `--reset-claims` first removes the claims of units without `metrics.json` (a restart).
+                               `--retry-failed` first moves each row's `failed.json` and stale claims aside.
+    retry-failed --kind K      only that move (`retry_failed`); for the local copy after a pull. Runs on the CPU.
     estimate                   node time left from `OUT/node/units.jsonl`: rows that cannot finish by `bs_paths.NODE_END`.
 
 Rerun rule (spec §3.4): a unit that raises (a non-finite loss included) is run once more with the same seed; a second
@@ -270,6 +272,37 @@ def reset_claims(kinds):
     return removed
 
 
+def retry_failed(kinds):
+    """Unblock rows whose `failed.json` came from a cause fixed since (r14: knob `k11=20`, a missing node input).
+
+    Deletes nothing: `failed.json` moves to `failed_attempt1.json` beside it (refused when that name holds another
+    record; an identical one, as after a pull, is replaced by the same bytes), and the claims of the row's unfinished
+    units move to `OUT/sweeps/.claims_retired/<label>__attempt1`. A new failure writes a new `failed.json`. Run it on
+    the node before the rerun (`sweep --retry-failed`) and on the local copy after the pull of the failed worker, so
+    `bs_partb` does not read the row as "not run". Not for use while workers run.
+    """
+    moved = []
+    for kind in kinds:
+        for row in sweep_rows(kind):
+            f = P.OUT / 'sweeps' / kind / row / 'failed.json'
+            if not f.is_file():
+                continue
+            dst = f.with_name('failed_attempt1.json')
+            assert not dst.exists() or dst.read_bytes() == f.read_bytes(), f'{dst} holds another record'
+            for seed in sweep_seeds(kind):
+                c = claims_dir() / label_of(kind, row, seed)
+                if c.is_dir() and not done(kind, row, seed):
+                    r = claims_dir().parent / '.claims_retired' / f'{c.name}__attempt1'
+                    assert not r.exists(), f'{r} exists'
+                    r.parent.mkdir(parents=True, exist_ok=True)
+                    os.rename(c, r)
+                    moved.append(f'.claims/{c.name}')
+            os.replace(f, dst)
+            moved.append(f'{kind}/{row}/failed.json')
+    print(f'BS_NODE retry-failed: moved aside {len(moved)}: {moved}', flush=True)
+    return moved
+
+
 def claim(kind, row, seed):
     claims_dir().mkdir(parents=True, exist_ok=True)
     c = claims_dir() / label_of(kind, row, seed)
@@ -333,8 +366,10 @@ def unit_photo(row, seed, device, pdata):
     return attempt(label_of('photo', row, seed), fn, dict(kind='photo', row=row, seed=seed))
 
 
-def sweep(kinds, device, reset=False):
+def sweep(kinds, device, reset=False, retry=False):
     assert all(k in KINDS for k in kinds), kinds
+    if retry:
+        retry_failed(kinds)
     if reset:
         reset_claims(kinds)
     pdata, n_done, n_failed = PhotoData(), 0, 0
@@ -542,10 +577,11 @@ def smoke(device):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('mode', choices=['smoke', 'part-a', 'viii', 'prep', 'sweep', 'estimate'])
+    parser.add_argument('mode', choices=['smoke', 'part-a', 'viii', 'prep', 'sweep', 'retry-failed', 'estimate'])
     parser.add_argument('--encoder', choices=list(P.NEW_ENCODERS))
     parser.add_argument('--kind', nargs='+', choices=list(KINDS), default=None)
     parser.add_argument('--reset-claims', action='store_true')
+    parser.add_argument('--retry-failed', action='store_true')
     parser.add_argument('--device', default='cuda', choices=['cuda', 'cpu'])
     a = parser.parse_args(argv)
     if a.mode == 'part-a':
@@ -553,7 +589,11 @@ def main(argv=None):
         return part_a(a.encoder, a.device)
     if a.mode == 'sweep':
         assert a.kind, 'sweep needs --kind photo and/or knob'
-        return sweep(a.kind, a.device, a.reset_claims)
+        return sweep(a.kind, a.device, a.reset_claims, a.retry_failed)
+    if a.mode == 'retry-failed':
+        assert a.kind, 'retry-failed needs --kind photo and/or knob'
+        retry_failed(a.kind)
+        return 0
     if a.mode == 'smoke':
         return smoke(a.device)
     if a.mode == 'viii':
