@@ -523,3 +523,26 @@ def test_verified_weights_are_skipped_only_with_this_runs_record(monkeypatch, tm
     with pytest.raises(AssertionError, match='without a run record'):
         C.train('qwen', 'ref', [0], 'cpu', tmp_path)
     assert len(calls) == 1
+
+
+def test_the_image_reader_gets_each_encoders_own_store(monkeypatch):
+    """`load_data` is patched out elsewhere: here the CT's loader is replaced and the encoder's image reader is spied on."""
+    s, inputs, _ = synthetic(2048)
+    reads = []
+    def full_images(backbone, names):
+        reads.append((backbone, list(names)))
+        if backbone == 'qwen3vl_emb_2b':
+            return inputs['emotion']['img']
+        return unit(np.random.default_rng(len(reads)), len(names), rb_encoders.WIDTH[backbone])      # a store of its own per call
+    monkeypatch.setattr(rb_encoders, 'full_images', full_images)
+    monkeypatch.setattr(C, 'graph_data', lambda *a: (s, {a_: dict(inputs['emotion']) for a_ in C.ASPECTS}, {}, {}))
+    got = {}
+    for enc in ('qwen', 'siglip2', 'siglip1', 'clip_l14'):
+        with C.training_context(enc, 'ref') as ctx:
+            s_, inputs_, graphs, manifests, images = C.load_data(ctx)
+        assert reads[-1] == (P.ENCODERS[enc]['art'], list(s['all_painting_ids'])), enc          # the encoder's ArtELingo folder
+        assert images.shape == (len(s['all_painting_ids']), P.ENCODERS[enc]['width']), enc
+        got[enc] = images
+    assert [r[0] for r in reads] == ['qwen3vl_emb_2b', 'siglip2_so400m', 'siglip_so400m', 'clip_l14']
+    assert not np.array_equal(got['siglip1'], got['siglip2'])                                 # SigLIP 1 and 2: different stores
+    assert P.ENCODERS['siglip1']['art'] != P.ENCODERS['siglip2']['art'] and got['siglip1'].shape == got['siglip2'].shape
