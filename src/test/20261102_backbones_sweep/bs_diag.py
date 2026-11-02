@@ -3,7 +3,7 @@ a pick or a record. Every number is a function of tickets 04 to 11 or an older r
 shares and spreads. Each item writes `OUT/diag/<item>.{json,md}`; the knob curves also `OUT/diag/knob_curves.png`.
 
 Items (one function each, source function in its docstring): r0_rows, emoset_k8, emoset_per_class_ap, photo_minus_cstar,
-teacher_gain_share, held_spreads, r_e_vs_spread, emoset_uncut, node_vs_3090, knob_curves, photo_length.
+teacher_gain_share, held_spreads, r_e_vs_spread, emoset_uncut, node_vs_3090, knob_curves, photo_length, percept_strongest.
 
 A missing input gives the item (or the section of it) status "not run" with the missing path; the other items go on.
 Status of an item: "ok" (all sections ran), "partial" (some did not), "not run" (none did).
@@ -24,7 +24,7 @@ sys.path.insert(0, str(HERE))
 import bs_paths as BP  # noqa: E402
 
 ITEMS = ('r0_rows', 'emoset_k8', 'emoset_per_class_ap', 'photo_minus_cstar', 'teacher_gain_share', 'held_spreads',
-         'r_e_vs_spread', 'emoset_uncut', 'node_vs_3090', 'knob_curves', 'photo_length')
+         'r_e_vs_spread', 'emoset_uncut', 'node_vs_3090', 'knob_curves', 'photo_length', 'percept_strongest')
 N_CLU, N_RET = 2000, 10000          # the draw counts of r12 (stage 3)
 SMOKE_DRAWS = (40, 100)
 
@@ -519,6 +519,12 @@ def r_e_vs_spread(smoke, workers):
     return finish(doc), md
 
 
+def removed_classes(keys):
+    """Class name of each removed photo, from the split files (`bs_emoset.labels`, D17: no code reads the class from a key)."""
+    import bs_emoset
+    return list(bs_emoset.labels(keys))
+
+
 def emoset_uncut(smoke, workers):
     """SC7 to SC10 on the uncut EmoSet test set: the same calls as `bs_emoset_score.stage3` (`score_arm`, `ac_cluster.paired`,
     `rt_stats.paired`, `make_cell`) with the test keys of `bs_emoset.keys('test', cut=False)`; read-outs, wordings and r_E from the
@@ -533,8 +539,8 @@ def emoset_uncut(smoke, workers):
         out = {}
         for sp_, part in rec['splits'].items():
             cnt = {cl: 0 for cl in BP.EMOSET_CLASSES}
-            for k in part['removed_keys']:
-                cnt[k.split('/')[1]] += 1
+            for cl in removed_classes(part['removed_keys']):
+                cnt[cl] += 1
             out[sp_] = dict(n=part['n'], n_removed=part['n_removed'], n_kept=part['n_kept'], removed_per_class=cnt)
         md.extend(['## Removed photos per class (near-copy record)', ''] + table(['split', 'n', 'removed'] + list(BP.EMOSET_CLASSES),
                   [[s, v['n'], v['n_removed']] + [v['removed_per_class'][cl] for cl in BP.EMOSET_CLASSES] for s, v in out.items()]) + [''])
@@ -699,9 +705,86 @@ def photo_length(smoke, workers):
     return finish(doc), md
 
 
+# The PercepT entries of the 10-25 and 10-26 rounds and the encoder each one reads (10-25 spec :117 to :118, DECISION_RULE.md
+# table of arms; 10-26 DECISION_RULE.md :64 to :66): B1 core P3 (Qwen image), B4 and B5 the paper's P1 and P4 at K = 40 (CLIP B/32 +
+# RoBERTa), B6 core P2 (CLIP B/32), and the matched arms (core P3 with Qwen's topics, Stage 2 on the encoder's image).
+# B2 and B3 are not eligible (empty seed lists in the stored blocks) and have no stored held reading.
+PERCEPT_ENTRY = {'B1': 'core P3, Qwen image (Qwen)', 'B4': 'paper P1, K = 40 (CLIP B/32 + RoBERTa)',
+                 'B5': 'paper P4, K = 40 (CLIP B/32 + RoBERTa)', 'B6': 'core P2 (CLIP B/32)',
+                 'M2': 'matched arm (SigLIP 2)', 'M3': 'matched arm (CLIP B/32)', 'M6': 'matched arm (CLIP B/16)',
+                 'M7': 'matched arm (CLIP L/14)', 'M8': 'matched arm (SigLIP 1)'}
+PERCEPT_ROUNDS = (('10-25', 'RB_ROUND'), ('10-26', 'EG_ROUND'))
+PERCEPT_READINGS = ('r20', 'own')      # 20 clusters (the one SC3's statistic uses, D16); the entry's own number of topics
+
+
+def percept_entries(aspect):
+    """Every eligible PercepT entry's held AMI for one aspect, five-seed mean, from `reported_stage4.json` of the 10-25 and 10-26
+    rounds (`outputs/part2`, full scale; `blocks/<candidate>/aspects/<aspect>/point_spread/<entry>/<reading>/mean`). An entry
+    that two blocks both carry (B1, B4 to B6) must have the same value in both; a difference stops the item."""
+    rows, seen = [], {}
+    for rnd, attr in PERCEPT_ROUNDS:
+        f = Path(getattr(BP, attr)) / 'outputs/part2/reported_stage4.json'
+        for cand, blk in read_json(f)['blocks'].items():
+            if 'aspects' not in blk:
+                continue                                            # K1 with K4's entry set: no new entry
+            elig = blk['eligible_seeds']
+            for arm, rd in blk['aspects'][aspect]['point_spread'].items():
+                if arm == cand or not elig.get(arm):
+                    continue                                        # the candidate itself, or an ineligible entry
+                for reading in PERCEPT_READINGS:
+                    if reading not in rd:
+                        rows.append(dict(entry=arm, reading=reading, value=None, why='not stored', round=rnd, source=str(f)))
+                        continue
+                    v = float(rd[reading]['mean'])
+                    key = (arm, reading)
+                    if key in seen:
+                        assert abs(seen[key]['value'] - v) < 1e-9, f'{arm} {reading} differs between blocks: {seen[key]["value"]} vs {v}'
+                        continue
+                    seen[key] = dict(entry=arm, reading=reading, value=v, round=rnd, source=str(f),
+                                     path=f'blocks/{cand}/aspects/{aspect}/point_spread/{arm}/{reading}/mean')
+                    rows.append(seen[key])
+    for r in rows:
+        r['encoder'] = PERCEPT_ENTRY.get(r['entry'], '?')
+    assert all(r['encoder'] != '?' for r in rows), 'an entry without a recorded encoder'
+    return rows
+
+
+def percept_strongest(smoke, workers):
+    """The strongest PercepT entry of any encoder, per aspect (D16, C1): the eligible entry with the highest held AMI (five-seed
+    mean, 20-cluster reading; the entry's own-topics reading beside it) among the 10-25 and 10-26 rounds' entries, from their stored
+    `outputs/part2/reported_stage4.json`. Clustering only: those rounds stored no per-aspect PercepT retrieval result."""
+    doc = new_doc('percept_strongest', 'strongest eligible PercepT entry of any encoder per aspect, held AMI, five-seed mean; '
+                  'clustering only (no per-aspect PercepT retrieval result is stored by the 10-25 and 10-26 rounds); descriptive')
+    md = ['Retrieval mAP: not given. The 10-25 and 10-26 rounds stored held clustering (AMI) per aspect for their PercepT entries and '
+          'no per-aspect retrieval result for them (their stage 5 is ArtELingo-28 clustering on 746 paintings).', '']
+
+    def make(aspect):
+        def sec():
+            rows = percept_entries(aspect)
+            best = {}
+            for reading in PERCEPT_READINGS:
+                ok = [r for r in rows if r['reading'] == reading and r['value'] is not None]
+                if not ok:
+                    raise NotRun(f'no stored {reading} reading for {aspect}')
+                best[reading] = max(ok, key=lambda r: r['value'])
+            md.extend([f'## {aspect}', ''] + table(['reading', 'strongest entry', 'encoder', 'AMI', 'round', 'source (key path)'],
+                      [[rd, b['entry'], b['encoder'], f4(b['value']), b['round'], f'`{b["source"]}` : {b["path"]}']
+                       for rd, b in best.items()]) + [''] +
+                      table(['entry', 'encoder', '20-cluster AMI', 'own-topics AMI'],
+                            [[e, PERCEPT_ENTRY[e]] + [f4(next((r['value'] for r in rows if r['entry'] == e and r['reading'] == rd), None))
+                                                      for rd in PERCEPT_READINGS]
+                             for e in sorted({r['entry'] for r in rows})]) + [''])
+            return dict(strongest=best, entries=rows, retrieval='not stored (clustering only)')
+        return sec
+    for a in BP.ASPECTS:
+        section(doc, a, make(a))
+    return finish(doc), md
+
+
 FUNCS = dict(r0_rows=r0_rows, emoset_k8=emoset_k8, emoset_per_class_ap=emoset_per_class_ap, photo_minus_cstar=photo_minus_cstar,
              teacher_gain_share=teacher_gain_share, held_spreads=held_spreads, r_e_vs_spread=r_e_vs_spread,
-             emoset_uncut=emoset_uncut, node_vs_3090=node_vs_3090, knob_curves=knob_curves, photo_length=photo_length)
+             emoset_uncut=emoset_uncut, node_vs_3090=node_vs_3090, knob_curves=knob_curves, photo_length=photo_length,
+             percept_strongest=percept_strongest)
 assert tuple(FUNCS) == ITEMS
 
 

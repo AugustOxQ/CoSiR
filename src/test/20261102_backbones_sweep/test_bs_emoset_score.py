@@ -204,6 +204,63 @@ def test_wording_uses_r_clu_for_clustering_and_r_map_for_retrieval():
     assert (b['clustering'], b['retrieval']) == ('artwork', 'photo')
 
 
+class WordingSource(FakeSource):
+    """FakeSource whose photo wording is much cleaner than the artwork wording, so both of the photo wording's gains (AMI and
+    cross-fit mAP at its own pick) are clearly positive and only the range they are divided by decides the wording."""
+    NOISE = {**FakeSource.NOISE, 'teacher_emotion_focus': 1.5, 'teacher_emotion_focus_photo': 0.7}
+
+
+def test_stage2_hands_r_clu_to_the_clustering_wording_and_r_map_to_the_retrieval_wording(monkeypatch):
+    """The call inside `stage2_record` (not `wording_picks` alone): with r_E,clu small and r_E,mAP huge the photo wording wins
+    clustering (its AMI gain is many r_E,clu) and loses retrieval (its mAP gain is far below 0.001 r_E,mAP). The two ranges are
+    set by hand (per-seed values with exactly that range), so swapping them in the call flips both wordings."""
+    R_SMALL, R_HUGE = 0.01, 1e4
+    real = S.seed_ranges
+
+    def fixed_ranges(stored, labels, workers=8):
+        real(stored, labels, workers=workers)                                       # still reads the five runs
+        return dict(clu=S.range_entry([0.3, 0.3 + R_SMALL, 0.3, 0.3, 0.3]), map=S.range_entry([0.3, 0.3, 0.3, 0.3, 0.3 + R_HUGE]))
+
+    monkeypatch.setattr(S, 'seed_ranges', fixed_ranges)
+    rec = S.stage2_record(WordingSource(), workers=WORKERS)                         # check_record re-derives the wordings inside
+    r_clu, r_map = rec['ranges']['clu']['r'], rec['ranges']['map']['r']
+    assert (r_clu, r_map) == (pytest.approx(R_SMALL), pytest.approx(R_HUGE))
+    gain_ami = rec['teacher']['ami']['photo'] - rec['teacher']['ami']['artwork']
+    gain_map = rec['teacher']['map_at_own_pick']['photo'] - rec['teacher']['map_at_own_pick']['artwork']
+    assert gain_ami > 0.001 * R_SMALL * 10 and 0 < gain_map < 0.001 * R_HUGE        # the data: photo better, in both tasks
+    assert rec['wording'] == dict(clustering='photo', retrieval='artwork')
+    swapped = S.wording_picks(rec['teacher']['ami'], {w: rec['readout'][S.TEACHER_ARM[w]] for w in ('artwork', 'photo')}, r_map, r_clu)
+    assert (swapped['clustering'], swapped['retrieval']) == ('artwork', 'photo')     # the other order would give the other wordings
+
+
+def _tie_rows(scores, r):
+    """crossfit_all stand-in: every read-out at R0's mAP (score 0) except those in `scores` {name: score in units of r}."""
+    base = 0.30
+
+    def fake(xs, labels, ros, workers=8):
+        return {ro: {'emotion': base + scores.get(rt_readout.name(ro), 0.0) * r} for ro in ros}
+    return fake
+
+
+def test_stage2_readout_within_0_001_r_of_the_best_goes_to_the_first_in_the_tie_order(monkeypatch):
+    """Stage 2's read-out pick (`readout_doc` -> `ac_select.pick_readout`): scores in units of r_E,mAP. whiten16+k10 is the best;
+    center+k3 is 0.0005 r below it (tied) and comes first in the tie order (no expansion < expansion, none < center < whiten);
+    none+k1 is 0.002 r below (not tied, although it would come first). The pick is center+k3: not the best, not the first
+    candidate. Without the 0.001 r tolerance the pick is the best, whiten16+k10; with a wider one it is none+k1."""
+    r = 0.5
+    monkeypatch.setattr(rt_readout, 'crossfit_all',
+                        _tie_rows({'whiten16+k10': 0.4, 'center+k3': 0.3995, 'none+k1': 0.398}, r))
+    x = _unit(np.random.default_rng(0).standard_normal((40, D)))
+    doc = S.readout_doc({None: x}, np.arange(40) % 8, r, workers=WORKERS)
+    assert doc['pick'] == 'center+k3'
+    assert doc['scores']['whiten16+k10']['score'] > doc['scores']['center+k3']['score'] > doc['scores']['none+k1']['score']
+    # exactly 0.001 r below the best is still tied (r12's boundary); just beyond it is not
+    monkeypatch.setattr(rt_readout, 'crossfit_all', _tie_rows({'whiten16+k10': 0.4, 'center+k3': 0.399}, r))
+    assert S.readout_doc({None: x}, np.arange(40) % 8, r, workers=WORKERS)['pick'] == 'center+k3'
+    monkeypatch.setattr(rt_readout, 'crossfit_all', _tie_rows({'whiten16+k10': 0.4, 'center+k3': 0.3989}, r))
+    assert S.readout_doc({None: x}, np.arange(40) % 8, r, workers=WORKERS)['pick'] == 'whiten16+k10'
+
+
 # ------------------------------------------------------------------------------------------------ stage 2 as a whole
 def test_stage2_runs_r_e_before_the_picks_and_every_pick_uses_r_e_map(src, monkeypatch):
     seen = []
