@@ -1556,3 +1556,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-02-r14-run5-handoff.md
 - New chat: tab 'r14 run 5', session 6228dd74-d9ca-4c45-a8e9-7e030229e31d
 
+[brief] CoSiR: r14 run 5 -> r15 decide (2026-11-02 17:38 Amsterdam)
+- Done: the r14 run finished. Both claim tests hold (GO). The auto report and the user-read report are checked and committed; main is pushed.
+- State: EmoSet, photo model against the teacher: AMI 0.4571 against 0.4390, mAP 0.4838 against 0.4519 (both WIN). Teacher cells: 18 WIN, 5 LEVEL, 1 BELOW.
+- Next: r15 decide: step 1 (the user's reading), the r14 wrap-up, then step 2.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-02-r15-decide-handoff.md
+- New chat: tab 'r15 decide', session 71dce129-cf72-4fd7-8392-f2706481a4a1
+
