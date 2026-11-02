@@ -32,9 +32,9 @@ import numpy as np
 
 import bs_paths as P
 
-for _name in ('20261027_recipe_sweep', '20261029_retrieval', '20261031_photo_finetune'):
-    if str(P.TEST / _name) not in sys.path:
-        sys.path.insert(0, str(P.TEST / _name))
+for _round in (P.R10_ROUND, P.R11_ROUND, P.R13_ROUND):      # the main checkout's copies, as bs_cstar and bs_photo use
+    if str(_round) not in sys.path:
+        sys.path.insert(0, str(_round))
 import rs_paths  # noqa: E402,F401  (puts r10's and the older rounds' folders on sys.path)
 import pf_paths  # noqa: E402,F401
 import ct_score  # noqa: E402
@@ -64,6 +64,16 @@ def validation_names():
     return rt_data.names('val')
 
 
+def ami_states(x32, y):
+    """r10's k = 20 k-means partitions (states 0, 1, 2; `ct_score.output_partitions`, `bs_artclu.validation_ami`'s path)
+    of float32 rows `x32` and the AMI of each state against labels `y` (labels < 0 masked). Returns (int partitions
+    [3, n], [AMI per state]). Also used by 0(viii) on r10's stored 3090 validation export."""
+    parts = np.asarray(ct_score.output_partitions(x32, 'k1')['r20'])
+    assert parts.shape == (3, len(y)), parts.shape
+    mask = y >= 0
+    return parts, [float(rb_score.ami(y[mask], p[mask])) for p in parts]
+
+
 def score_knob(dev, dev_names, workers=8):
     """Score one knob run from its in-memory validation outputs `dev` {aspect: {'img': f16 [n, 2048], ...}} whose rows
     are `dev_names` (the trainer's dev order). Returns (metrics, partitions, perquery): see the module doc."""
@@ -73,12 +83,8 @@ def score_knob(dev, dev_names, workers=8):
     for aspect in ASPECTS:
         x16 = dev[aspect]['img']
         assert x16.shape == (len(names), 2048), (aspect, x16.shape)
-        x = x16.astype(np.float32)
-        parts = np.asarray(ct_score.output_partitions(x, 'k1')['r20'])
         y = labels[aspect]
-        assert parts.shape == (3, len(names)) and len(y) == len(names)
-        mask = y >= 0
-        states = [float(rb_score.ami(y[mask], p[mask])) for p in parts]
+        parts, states = ami_states(x16.astype(np.float32), y)
         res = rt_metrics.retrieval(_unit32(x16), y, workers=workers)
         partitions[aspect] = parts.astype(np.int32)
         perquery[f'{aspect}__ap'], perquery[f'{aspect}__rows'] = res['ap'], res['rows']
