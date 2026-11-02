@@ -295,7 +295,7 @@ def stage1_status(steps=None):
     st = lambda b: OK if b else FAILED                                            # noqa: E731
 
     def good(step, filename):
-        rec = steps.get(step) if steps is not None else last_step('stage1', step)
+        rec = (steps or {}).get(step) or last_step('stage1', step)            # a step not run now: its last record
         return rec is not None and rec['rc'] == 0 and not rec.get('failed', False) and _load(s1 / filename) is not None
 
     ranges = {e: st(good(f'clu_ranges_{e}', f'clu_ranges_{e}.json') and
