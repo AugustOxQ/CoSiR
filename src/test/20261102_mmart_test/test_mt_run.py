@@ -14,6 +14,7 @@ C13_FILES = ('stage2/outcomes.json', 'stage2/cells_clu.json', 'stage2/cells_ret.
 @pytest.fixture
 def c13(tmp_path, monkeypatch):
     monkeypatch.setattr(R, 'OUT', tmp_path)
+    monkeypatch.setattr(R, 'SMOKE', True)
     monkeypatch.setattr(MP, 'OUT', tmp_path)
     monkeypatch.setattr(MP, 'SMOKE', 1)
     record = {'pass': True, 'sha256': {}}
@@ -58,9 +59,28 @@ def test_c13_refuses_changed_output(c13, name):
 
 
 def test_c13_refuses_missing_record(tmp_path, monkeypatch):
+    monkeypatch.setattr(R, 'SMOKE', False)
+    monkeypatch.setattr(MP, 'RECORDS', tmp_path / 'records')
+    monkeypatch.setattr(MP, 'SMOKE', 0)
+    assert 'c13.json does not exist' in R.c13_ok()
+
+
+def test_c13_smoke_without_record_allows_verdicts(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(R, 'OUT', tmp_path)
+    monkeypatch.setattr(R, 'SMOKE', True)
     monkeypatch.setattr(MP, 'OUT', tmp_path)
     monkeypatch.setattr(MP, 'SMOKE', 1)
-    assert 'c13.json does not exist' in R.c13_ok()
+    monkeypatch.setenv('MT_OUTPUTS', str(tmp_path))
+    R.jdump(tmp_path / 'stage2/outcomes.json', {'smoke': True})
+    assert R.c13_ok() == ''
+    assert R.run_verdicts(None) == 0
+    assert MP.record_path('verdicts.json').read_bytes() == (tmp_path / 'stage2/outcomes.json').read_bytes()
+    assert capsys.readouterr().out.rstrip().endswith(' (smoke: C13 not required)')
+
+
+def test_c13_smoke_with_record_refuses_changed_output(c13):
+    (R.OUT / 'stage2/outcomes.json').write_text('{"changed_after_c13": true}')
+    assert 'sha256 mismatch for stage2/outcomes.json' in R.c13_ok()
 
 
 def test_c13_refuses_unreadable_output(c13, monkeypatch):

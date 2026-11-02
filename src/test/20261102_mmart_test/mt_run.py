@@ -21,8 +21,9 @@ No GPU anywhere. Steps run at most 3 at a time (8 threads each). The runner neve
         HEAD (smoke: present); scorers per encoder (mt_clu score, mt_ret score; encoders in parallel, at most 3), then
         mt_outcome decide -> OUT/stage2/outcomes.json. An encoder fully voided by status (D17) is skipped, logged.
     python mt_run.py verdicts
-        copies OUT/stage2/outcomes.json to records/verdicts.json, only if records/c13.json has "pass": true and the current
-        hashes below (outside smoke also committed unchanged in HEAD). C13 is the run chat's Codex job.
+        copies OUT/stage2/outcomes.json to records/verdicts.json after checking records/c13.json's pass flag and hashes
+        below (outside smoke also committed unchanged in HEAD). Smoke without c13.json copies with a note.
+        C13 is the run chat's Codex job.
     python mt_run.py stage3 [--workers N]
         refuses without records/verdicts.json; runs `mt_diag.py all`.
     python mt_run.py status        reassemble records/status.json from the files on disk
@@ -34,7 +35,7 @@ C13 record schema (records/c13.json; sha256 paths relative to OUT, digests of th
     {"pass": true, "sha256": {"stage2/outcomes.json": "<hex digest>",
                              "stage2/cells_clu.json": "<hex digest>",
                              "stage2/cells_ret.json": "<hex digest>"}}
-All three entries must match before verdicts can be copied, including in smoke.
+When c13.json exists, all three entries must match, including in smoke. Smoke without c13.json does not require C13.
 """
 import argparse
 import fcntl
@@ -487,9 +488,11 @@ def run_stage2(args):
 
 
 def c13_ok():
-    """'' when verdicts may be written, else the reason (§3.4: C13 passes before any verdict is written)."""
+    """'' when verdicts may be written, else the reason (§3.4; smoke without a C13 record is exempt)."""
     p = MP.record_path('c13.json')
     if not p.is_file():
+        if SMOKE:
+            return ''                                                          # smoke: copy with a note
         return f'{p} does not exist: the run chat (Codex) writes it after C13 and the controller commits it'
     try:
         rec = MP.read_committed_record('c13.json')
@@ -523,7 +526,8 @@ def run_verdicts(args):
     dst = MP.record_path('verdicts.json')
     dst.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(src, dst)
-    print(f'MT_RUN verdicts copy rc=0 seconds=0.0 -> {dst}')
+    note = ' (smoke: C13 not required)' if SMOKE and not MP.record_path('c13.json').is_file() else ''
+    print(f'MT_RUN verdicts copy rc=0 seconds=0.0 -> {dst}{note}')
     if not SMOKE:
         print(f'COMMIT: git -C {MP.REPO} add -f {dst.resolve().relative_to(MP.REPO.resolve())} && git -C {MP.REPO} commit -m "r15 verdicts" -- {dst.resolve().relative_to(MP.REPO.resolve())}')
     return 0

@@ -15,6 +15,7 @@ import mt_paths as MP  # noqa: E402
 import mt_ret  # noqa: E402
 import rt_metrics  # noqa: E402
 import rt_readout  # noqa: E402
+import rt_stats  # noqa: E402
 
 ASPECTS = ('emotion', 'style', 'genre')
 D = 16
@@ -311,6 +312,24 @@ def test_arm_ap_seeded_gives_five_rows_and_checks_the_seed_set(world):
 
 
 # ============================================================================================ cells
+def test_aspect_cells_intervals_match_inherited_paired_bootstrap():
+    """Asymmetric query APs expose unpaired rows in the interval even when the point difference stays the same."""
+    cand_ap = np.array([0.12, 0.29, 0.37, 0.54, 0.63, 0.82, 0.91])[None, :] + \
+        np.array([-0.03, -0.01, 0.0, 0.02, 0.04])[:, None]
+    frozen_ap = np.array([0.05, 0.22, 0.31, 0.50, 0.61, 0.68, 0.87])
+    teacher_ap = np.array([0.08, 0.18, 0.30, 0.42, 0.58, 0.71, 0.89])
+    rows = np.array([2, 3, 5, 7, 11, 13, 17])
+    draws = 400
+    cells = mt_ret.aspect_cells('siglip2', 'style', dict(ap=cand_ap, rows=rows), dict(ap=frozen_ap, rows=rows),
+                                dict(ap=teacher_ap, rows=rows), r=0.02, n_draws=draws,
+                                readouts=dict(cstar='center+k3', frozen='none+k0', teacher='center+k10'), n_rows=20)
+    assert [cell['sc'] for cell in cells] == ['SC2', 'SC4']
+    for cell, comp_ap in zip(cells, (frozen_ap, teacher_ap)):
+        # paired starts a fresh default_rng(0) for each cell, just as aspect_cells does.
+        expected = rt_stats.paired(cand_ap, comp_ap, draws)
+        assert [cell['lo'], cell['hi']] == expected['interval']
+
+
 def _record_docs(enc='siglip2'):
     ranges = {'emotion': 0.011, 'style': 0.022, 'genre': 0.033}
     picks = dict(encoder=enc, arms={'cstar': dict(pick='center+k3'), 'frozen': dict(pick='none+k0')})
