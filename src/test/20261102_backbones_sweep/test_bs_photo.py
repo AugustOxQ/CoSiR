@@ -15,6 +15,7 @@ import bs_photo as BP
 import pf_export
 import pf_paths
 import pf_train
+import ms_train
 import rs_vh
 
 N_FIT, N_VAL = 300, 80
@@ -133,7 +134,8 @@ def test_input_width_must_match_the_model(data):
 
 # ------------------------------------------------------------------------ training: the Qwen path is r13's
 
-@pytest.mark.parametrize('settings', [dict(start='random'), dict(start='cstar', teacher_weight=1.0)])
+@pytest.mark.parametrize('settings', [dict(start='random'), dict(start='cstar', teacher_weight=1.0),
+                                      dict(start='random', lr=0.0003, teacher_weight=0.5)])
 def test_qwen_path_reproduces_r13s_trainer(tmp_path, data, settings):
     fit, val, graph = data
     cstar = _fake_cstar(tmp_path / 'cstar', 2048)
@@ -209,6 +211,26 @@ def test_standard_row_still_stops_by_patience_and_keeps_best(monkeypatch, data):
     assert len(calls) == 16 and run.record['best_epoch'] == 1 and run.record['fixed_epochs'] is None
 
 
+def test_standard_row_needs_strict_improvement(monkeypatch, data):
+    fit, val, graph = data
+    calls = []
+    monkeypatch.setattr(pf_train, 'dev_loss', lambda *a, **k: calls.append(1) or 1.0)       # never improves after epoch 1
+    run = BP.train_run('s', _ref(start='random'), 2048, 0, 100, fit, val, graph, 'cpu', keep='none')
+    assert len(calls) == 16 and run.record['best_epoch'] == 1
+
+
+def test_teacher_weight_zero_has_no_teacher_term(monkeypatch, data):
+    fit, val, graph = data
+    seen = []
+    original = ms_train.distill_loss
+    monkeypatch.setattr(ms_train, 'distill_loss', lambda *a, **k: seen.append(1) or original(*a, **k))
+    BP.train_run('z', _ref(start='random', teacher_weight=0.0), 2048, 0, 100, fit, val, graph, 'cpu', max_epochs=1,
+                 keep='none')
+    assert not seen
+    BP.train_run('z', _ref(start='random'), 2048, 0, 100, fit, val, graph, 'cpu', max_epochs=1, keep='none')
+    assert seen
+
+
 def test_epochs_setting_and_max_epochs_are_exclusive(data):
     fit, val, graph = data
     with pytest.raises(AssertionError):
@@ -221,11 +243,11 @@ def test_nonfinite_train_and_validation_loss_raise(data):
     fit, val, graph = data
     bad = dict(fit, I=fit['I'].copy())
     bad['I'][3] = np.nan
-    with pytest.raises(BP.NonFiniteLoss):
+    with pytest.raises(BP.NonFiniteLoss, match='train'):
         BP.train_run('n', _ref(start='random'), 2048, 0, 100, bad, val, graph, 'cpu', max_epochs=2, keep='none')
     badv = dict(val, I=val['I'].copy())
     badv['I'][3] = np.nan
-    with pytest.raises(BP.NonFiniteLoss):
+    with pytest.raises(BP.NonFiniteLoss, match='validation'):
         BP.train_run('n', _ref(start='random'), 2048, 0, 100, fit, badv, graph, 'cpu', max_epochs=2, keep='none')
 
 
