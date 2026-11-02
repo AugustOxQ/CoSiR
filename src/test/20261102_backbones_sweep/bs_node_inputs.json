@@ -304,5 +304,13 @@
   "groups": [
    "aff_clip_l14"
   ]
+ },
+ {
+  "key": "ct_full_d2_graphs",
+  "local": "/project/CoSiR/src/test/20261020_claim_test/outputs/stage2/full/d2/graphs",
+  "node": "/local/wding/r14_in/ct_full_d2_graphs",
+  "groups": [
+   "knob_base"
+  ]
  }
 ]
