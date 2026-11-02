@@ -166,3 +166,5 @@ times here are Amsterdam.
 
 - 16:46 load 1.6, 52 GB free memory. 16:47 `bs_run_cpu.sh stage5` in the background (all twelve diagnostics; log
   `OUT/stage5_run4.log`). Codex 5h window 76% left (report job needs 14%).
+- 17:11 stage 5 rc 0 (1,499 s): **all twelve diagnostics ok** (knob_curves and photo_length now too); `OUT/diag/`,
+  figure `OUT/diag/knob_curves.png`. 17:13 Codex job (gpt-6.1-sol, medium): the auto report draft.
