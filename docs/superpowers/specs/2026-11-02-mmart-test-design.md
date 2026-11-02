@@ -10,7 +10,7 @@
 > arms (§3.2), clustering, SC3 statistic, retrieval, outcomes and C13 (§3.4), stage 0 replays (§3.5) and D16, D18, D19;
 > the MMArt preparation ([round log](../../../src/test/20261102_mmart_prep/20261102_mmart_prep_log.md)) · Facts: the
 > [facts brief](../../../src/test/20261102_mmart_test/mt_facts_brief.md) (Codex, 2026-11-02 18:11)
-> Reviewer: a fresh Opus `xhigh` worker, 2026-11-02 18:45 (pass after fixes: four must-fix, eight should-fix and
+> Reviewer: a fresh Opus `xhigh` worker, 2026-11-02 18:35 (pass after fixes: four must-fix, eight should-fix and
 > nine nit items, all applied; [review](../../../src/test/20261102_mmart_test/mt_rule_review.md))
 
 ## Brief (for the user; agents read and decide from §1 onward)
@@ -234,9 +234,9 @@ Grill rows: the r15 decide chat, 2026-11-02 (decision A about 18:00; round 1 abo
 | D13 | Folders | round folder `src/test/20261102_mmart_test/`, prefix `mt_`; outputs `/data/SSD2/cosir_r15/20261102_mmart_test/outputs/` | the project's layout | agent default | 2026-11-02 18:30 |
 | D14 | Artist overlap | no artist split; an unseen-artist diagnostic | the user fixed ArtELingo's split (an artist-disjoint test set) | agent default | 2026-11-02 18:30 |
 | D15 | Extraction time | the seven-view extraction from 18:01 on the local GPU, run by r15 decide; the "r14 mmart run" chat closed | "the extraction can start now" (after 19:00) | user | 2026-11-02 18:00 |
-| D16 | Populations and read-out rule | clustering on all rows, unlabelled masked at AMI; retrieval on labelled rows; one read-out pick per arm by r11's rule | inherited unchanged from r10, r11 and r14, so the replays hold (drop rows before k-means; a pick per aspect) | agent default (rule review) | 2026-11-02 18:45 |
-| D17 | Gate scope | the table under §3.5 | a failure voids only the cells that use the failed part (an encoder's whole verdict for any gate) | agent default (rule review) | 2026-11-02 18:45 |
-| D18 | Mapper replay tolerance | CPU probabilities within 1e-5; readings within 1e-9 only from stored probabilities | the mappers ran on CUDA; a 1e-6 change can flip an argmax (readings within 1e-9 from CPU probabilities) | agent default (rule review) | 2026-11-02 18:45 |
+| D16 | Populations and read-out rule | clustering on all rows, unlabelled masked at AMI; retrieval on labelled rows; one read-out pick per arm by r11's rule | inherited unchanged from r10, r11 and r14, so the replays hold (drop rows before k-means; a pick per aspect) | agent default (rule review) | 2026-11-02 18:35 |
+| D17 | Gate scope | the table under §3.5 | a failure voids only the cells that use the failed part (an encoder's whole verdict for any gate) | agent default (rule review) | 2026-11-02 18:35 |
+| D18 | Mapper replay tolerance | CPU probabilities within 1e-5; readings within 1e-9 only from stored probabilities | the mappers ran on CUDA; a 1e-6 change can flip an argmax (readings within 1e-9 from CPU probabilities) | agent default (rule review) | 2026-11-02 18:35 |
 
 **Amendments**: none.
 
