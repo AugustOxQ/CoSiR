@@ -297,6 +297,10 @@ def test_stage1_record_roundtrip_and_freeze(tmp_path, val):
         A.read_record(path, 'siglip2')
 
 
-def test_score_needs_the_stage1_file_before_any_test_photo(tmp_path):
+def test_score_needs_the_stage1_file_before_any_test_photo(tmp_path, monkeypatch):
+    def touched(*a, **k):
+        raise RuntimeError('test data were read before the stage 1 file')
+    for obj, name in ((pf_stage3, 'load_comparators'), (ac_data, 'labels'), (ac_data, 'keys'), (A, 'frozen_comparator')):
+        monkeypatch.setattr(obj, name, touched)
     with pytest.raises(FileNotFoundError):
         A.score('siglip2', root=tmp_path)
