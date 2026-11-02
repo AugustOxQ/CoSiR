@@ -1492,3 +1492,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-02-r14-build-3-handoff.md
 - New chat: tab 'r14 build 3', session 1b6ad64e-1837-4f79-ba96-fb40cc313d4e
 
+[brief] CoSiR: r14 build 3 -> r14 build 4 (2026-11-02 06:12 Amsterdam)
+- Done: tickets 07, 08, 09 merged after Opus reviews and fixes; 10 (driver and node plumbing) and 11 built; 0(iii), 0(xi) and 0(xii) pass.
+- State: blocker in merged ticket 03: the c* trainer fails for every encoder whose image is not 2048 wide (`rg_loss.py:88`), so part a cannot train yet.
+- Next: fix that bug (verdict code, with review); merge 10a, 10b and 11; build 12; GPU checks after the queue (about 08:00).
+- Blocked: nothing. Codex has room after 07:50.
+- Handoff: docs/superpowers/handoffs/2026-11-02-r14-build-4-handoff.md
+- New chat: tab 'r14 build 4', session 2f7ee311-6067-45b8-9320-a89c11ad4d55
+
