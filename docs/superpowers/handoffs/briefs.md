@@ -1775,3 +1775,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-04-r18-build-3-handoff.md
 - New chat: tab 'r18 build 3', session 07584f99-6245-4d34-ae35-880507dd3358
 
+[brief] CoSiR: r19 build 4 -> r19 build 5 (2026-11-04 00:47 Amsterdam)
+- Done: tickets 12 and 13 merged (integration tip d2e87d7); node402 probe (59 inputs, 0 failures) and node smoke pass.
+- State: tickets 01 to 13 are merged; ticket 14 is unblocked because r17's code is now on main.
+- Next: merge main into the branch, ticket 14, final review on Opus `xhigh`, one fix wave, merge into main, run chat.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-04-r19-build5-handoff.md
+- New chat: tab 'r19 build 5', session bade26c5-7a42-4fc8-81cd-8d7cd60d4e18
+
