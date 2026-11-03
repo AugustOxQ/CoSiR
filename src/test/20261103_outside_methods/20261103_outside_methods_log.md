@@ -102,3 +102,26 @@ Tickets in `.scratch/r18-outside-methods/` (outside git); the list goes into the
   reference cannot see centring, angle scaling or singular-vector order in `subspace`. Set B's truncated path (rank 50
   of about 99) has no official reference; it rests on the unit test and a float32 cross-check. On MMArt test and
   ArtELingo held, float32 and our float64 math differ by at most 9.15e-7, with identical k-means partitions.
+
+## Build 3 (2026-11-04, unattended)
+
+- **Codex** had no room at 00:33 (64% left, 80% needed, reset 04:35): Claude workers again.
+- **Ticket 02 review (Opus `high`): CHANGES NEEDED, then fixed.** `fit`'s math and order were right, but a gate at 100
+  steps on 2,000 rows cannot see batch draws (the batch is a permutation of all rows), and `batch_indices` was a twin
+  of `fit`'s draw, not the same code. Three sabotages survived the 12 tests. Fix: one generator `_batch_draws`, an
+  oracle test on real subsets (n 12,281), and a code hash in each part of `gate_ii.json`. `fit`'s numbers did not move
+  (old against new difference 0.0); Sonnet `high` re-review approved. Gate (ii) CPU part: 2.54e-7 against 1e-5.
+- **Text set B generated** (frozen, 00:40, 5.8 min): emotion 80 values (`short`, the reply loops on "Skepticism"),
+  style 100, genre 100; all `capped`; no header lines kept. Rank 50 for each. **43 of the 100 style values are
+  "gothic X" drift** from the greedy reply. D5 keeps them (first 100 after dedup; no fallback at 2 or more values), so
+  set B on style is weaker than its count says. Ticket 08's dev-split pick decides between sets A and B.
+- **D20 settled: batch 1.** Probe on 48 images, 3 factors, length-sorted: batch 1 46 s, batch 4 39 s, batch 8 41 s.
+  Against batch 1, the lowest row cosine is 0.9981 and 15 to 23 of 48 rows fall below gate (iv)'s 0.999 per factor.
+  Batches are 15% faster and fail the gate.
+- **TPIPS timing is not settled.** The probe set is lighter than the real sets (mean 436 visual tokens against 723).
+  The node's gate probe gives the node's time on the same 48 images.
+- **Node route (agent default):** no new env. The job runs the node's CoSiR env with tpips 0.1.2 and peft 0.19.1 from
+  `node_inputs/tpips_pylibs` on PYTHONPATH (pure Python; nothing installed). A second CLI profile cannot build an env:
+  `load_profiles` refuses a shared `REPO_URL`. The node's versions differ from the local ones (torch 2.14 against
+  2.11, transformers 5.16.1 against 5.6.2 when last read); gate (iv) compares its vectors with the local batch-1 run.
+  Two `DATA_MAP` pairs added to `cluster.conf`. The dry-run line must give node paths, not local ones.
