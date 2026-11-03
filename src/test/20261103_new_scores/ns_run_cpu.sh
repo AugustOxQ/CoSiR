@@ -65,8 +65,8 @@ stage2-clu)      # ~ 165 s per paired_cell call (4 metrics, 2,000 draws) plus k-
   for e in $ENCS; do q cells_clu_affection_$e 12m -- $RUN cells --task clu --set affection --enc $e; done
   q cells_clu_emoset_qwen 12m -- $RUN cells --task clu --set emoset --enc qwen
   ;;
-stage2-ret)      # ~ 12 min per (set, encoder) at 10,000 draws (guess from gate (ii) 576 s); about 1.6 h
-  for s in artelingo mmart; do for e in $ENCS; do q cells_ret_${s}_$e 12m -- $RUN cells --task ret --set $s --enc $e; done; done
+stage2-ret)      # ~ 25 min per (set, encoder) at 10,000 draws (guess; correct from first run); about 3.3 h
+  for s in artelingo mmart; do for e in $ENCS; do q cells_ret_${s}_$e 25m -- $RUN cells --task ret --set $s --enc $e; done; done
   ;;
 results)         # needs stage 2 done and records/status.json committed unchanged
   q outcomes 2m --short -- $RUN outcomes
