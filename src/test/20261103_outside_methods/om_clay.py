@@ -120,7 +120,7 @@ def gate_i(out_dir=None):
     res = {'pass': bool(same_text and ok_shapes and all(v < op.TOL_CLAY for v in max_abs.values())),
            'tol': op.TOL_CLAY, 'max_abs': max_abs, 'shapes': {k: list(ours[k].shape) for k in ours},
            'ref_shapes': {k: list(ref[k].shape) for k in ours}, 'text_equals_set_a': same_text,
-           'rank': op.clay_rank(text.shape[0]), 'dtype': 'float32', 'device': 'cpu'}
+           'rank': op.clay_rank(text.shape[0]), 'dtype': 'float64 math, float32 outputs', 'device': 'cpu'}
     op.write_json(out_dir / 'stage0' / 'gate_i.json', res)
     return res
 
