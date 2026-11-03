@@ -420,6 +420,8 @@ def main(argv=None):
     t = sub.add_parser('tables')
     t.add_argument('--set', required=True, choices=sorted(P.HELD_SPLIT))
     args = ap.parse_args(argv)
+    if not P.SMOKE:
+        assert P.record_path('verdicts.json').exists(), 'stage 3 requires records/verdicts.json'
     t0 = time.monotonic()
     if args.cmd == 'sweep':
         if args.counts:

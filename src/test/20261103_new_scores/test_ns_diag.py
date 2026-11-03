@@ -77,3 +77,34 @@ def test_r0_rows_scores_held_arms_and_keeps_validation_fields(outputs, monkeypat
             assert got_seeds == seeds
             assert all(np.array_equal(x, want) for x, want in zip(xs, expected))
     assert json.loads((outputs / 'stage3/r0_rows.json').read_text()) == doc
+
+
+@pytest.mark.parametrize('command, argv', [
+    ('sweep', ['sweep', '--set', 'mmart', '--enc', 'qwen']),
+    ('figure', ['figure', '--set', 'mmart']),
+    ('per_class', ['per-class', '--set', 'mmart', '--enc', 'qwen']),
+    ('told_untold', ['told-untold', '--set', 'mmart', '--enc', 'qwen']),
+    ('qwen_crl', ['qwen-crl']), ('r0_rows', ['r0']), ('tables', ['tables', '--set', 'mmart']),
+])
+@pytest.mark.parametrize('smoke, verdicts_exist', [(False, False), (False, True), (True, False)])
+def test_main_requires_verdicts_before_stage3(outputs, monkeypatch, command, argv, smoke, verdicts_exist):
+    monkeypatch.setattr(P, 'SMOKE', smoke)
+    monkeypatch.setattr(P, 'RECORDS', outputs / 'committed')
+    verdicts = P.record_path('verdicts.json')
+    if verdicts_exist:
+        P.write_json(verdicts, {})
+    calls = []
+
+    def run(*args, **kwargs):
+        calls.append((args, kwargs))
+        return dict(kmeans_runs=0, seconds=0, classes=[], rows=[], missing=[],
+                    class_count_beside_ami20=[], seed_spreads=[])
+
+    monkeypatch.setattr(ns_diag, command, run)
+    if not smoke and not verdicts_exist:
+        with pytest.raises(AssertionError, match='verdicts.json'):
+            ns_diag.main(argv)
+        assert not calls
+    else:
+        ns_diag.main(argv)
+        assert len(calls) == 1
