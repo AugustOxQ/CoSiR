@@ -174,7 +174,11 @@ def score_cells(set_name, enc, scs, ranges=None, draws=P.N_DRAWS['clu'], cache=N
         ck = ('cand', set_name, enc, aspect, k)
         if ck not in cache:
             cache[ck] = _cand_parts(set_name, split, enc, aspect, k)
-        mk = ('comp', set_name, enc, None if comparator == 'plain' else aspect, comparator, k)
+        # plain rows are per encoder, not per aspect; the teacher's rows are encoder-free on every set (painting sets: the
+        # Qwen image instructed per aspect; photo sets: the Qwen "artwork" image), so one cache shared across encoders
+        # fits a teacher partition once; matched PercepT and CRL keep the encoder
+        mk = ('comp', set_name, None if comparator == 'teacher' else enc, None if comparator == 'plain' else aspect,
+              comparator, k)
         if mk not in cache:
             cache[mk] = _comp_parts(set_name, split, enc, aspect, comparator, k)
         metrics = tuple(c['metric'] for c in group)
