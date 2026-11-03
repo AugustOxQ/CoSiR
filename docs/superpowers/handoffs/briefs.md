@@ -1629,3 +1629,27 @@
 - Handoff: docs/superpowers/handoffs/2026-11-03-r16-report-3-handoff.md
 - New chat: tab 'r16 report 3', session 71d571af-3bc6-4f7e-89a8-b6b862b1257b
 
+[brief] CoSiR: r16 report 3 -> r17 decide (2026-11-03 18:33 Amsterdam)
+- Done: decision A (user): six loops r17 to r22 from the experiment overview; r17, r18, r19 decided tonight, in parallel.
+- State: r17 rescores saved embeddings only (CPU, no training); its scoring module is used by r18 and r19.
+- Next: a short grill, a short spec, the user's approval, then the build tonight (unattended).
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-03-r17-decide-handoff.md
+- New chat: tab 'r17 decide', session 69115cdf-3e7c-4072-8462-aae0453f54bf
+
+[brief] CoSiR: r16 report 3 -> r18 decide (2026-11-03 18:33 Amsterdam)
+- Done: decision A (user): six loops r17 to r22; r17, r18, r19 decided tonight, in parallel.
+- State: r18 runs the outside methods: the TPIPS probe then its run, CLAY, and TEMI or TURTLE on the plain image.
+- Next: start the 16.5 GB TPIPS download at once, then a short grill and spec; the probe's time goes in the spec.
+- Blocked: the DAS6 node's three GPUs each hold 9.65 GB of a process that is not a cluster job (told to the user).
+- Handoff: docs/superpowers/handoffs/2026-11-03-r18-decide-handoff.md
+- New chat: tab 'r18 decide', session 464d9764-195d-4a64-8fb3-30e7f62c6db2
+
+[brief] CoSiR: r16 report 3 -> r19 decide (2026-11-03 18:33 Amsterdam)
+- Done: decision A (user): six loops r17 to r22; r17, r18, r19 decided tonight, in parallel.
+- State: r19 tests whether c* holds outside the encoders and artists we picked, and times c* against the teacher.
+- Next: a short grill (bars set before looking), a short spec, the user's approval, then the build.
+- Blocked: the DAS6 node's three GPUs each hold 9.65 GB of a process that is not a cluster job (told to the user).
+- Handoff: docs/superpowers/handoffs/2026-11-03-r19-decide-handoff.md
+- New chat: tab 'r19 decide', session b0d51244-7493-41ed-a5d8-102b37487f30
+
