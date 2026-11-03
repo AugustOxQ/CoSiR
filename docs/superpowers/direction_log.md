@@ -64,6 +64,9 @@ then r16. Deadlines: abstract 2026-11-10, paper 2026-11-16, supplementary 2026-1
   artists, Web Gallery of Art; type labels only; the 0.95 cut misses copies across the two sources there) (never
   tried; deferred by the user (2026-11-03) until after the report to the collaborator and the supervisor;
   [proposed in](../../src/test/20261103_semart_check/20261103_semart_check_log.md))
+- TPIPS (arXiv 2607.18237, Qwen3-VL-Embedding-8B tuned on human odd-one-out votes) as c*'s teacher in place of the
+  instructed Qwen image: a retrain (never tried; deferred by the user (2026-11-03): good, but no time before the
+  deadline; proposed in the r16 report chat, [handoff](handoffs/2026-11-03-r16-report-2-handoff.md))
 
 ## 2026-11-03 · MMArt test read: c* holds on four encoders (GO); experiments paused for the report to the collaborator and the supervisor (r16)
 
@@ -94,6 +97,11 @@ then r16. Deadlines: abstract 2026-11-10, paper 2026-11-16, supplementary 2026-1
   with each aspect's labels, against the plain image (also untold); CPU, the saved held embeddings. Marked doable by
   the user; it runs only after the report to the collaborator and the supervisor. The told form (aspect name picks
   the head) is r11 to r15's protocol; the wrong-head form is r11's aspect-switch table.
+- **TPIPS (arXiv 2607.18237, NeurIPS 2026; the other authors' feedback), user, 2026-11-03:** cite it in the paper
+  (definitely); as a comparator, TPIPS late fusion (only the 8B model is released) with the aspect name as its factor
+  on ArtELingo held and MMArt is doable, given a run-time estimate (r16 report chat: about 7.5 to 11 GPU hours on
+  the 3090 for three aspects, a guess from Qwen 2B's 86 to 95 ms per image, not measured); as a teacher, parked (no
+  time before the deadline).
 - **Idea (B):** none yet.
 - **Why:** the user wants the collaborator's and the supervisor's view before more experiments, with the abstract on
   2026-11-10.
