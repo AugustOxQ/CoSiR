@@ -65,7 +65,7 @@ HUB=/var/scratch/wding/cache/hub
 IMG_MAP='/data/PDD/wikiart_proj/wikiart=/var/scratch/wding/Dataset/wikiart_proj/wikiart'
 if [[ -n "${CLUSTER_DRY_RUN:-}" ]]; then
     # The line `cluster check` composes with Hydra: the +om_in.* value is an input it must find or sync on the node.
-    echo "python main_cosir.py dataset=om_node_cluster ++experiment.results_dir=$NODE_RES +om_in.tpips_inputs_path=$LOCAL_IN +om_in.tpips_pylibs_path=$LOCAL_LIBS"
+    echo "python main_cosir.py dataset=om_node_cluster ++experiment.results_dir=$NODE_RES +om_in.tpips_inputs_path=$NODE_IN +om_in.tpips_pylibs_path=$NODE_LIBS"
     exit 0
 fi
 if [[ "$plan" == 1 ]]; then
