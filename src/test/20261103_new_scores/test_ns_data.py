@@ -172,57 +172,42 @@ def test_percept_held_and_test_stored():
         assert np.array_equal(q[i], probs[where[keys[i]]])
 
 
-def fake_val_file(root, enc, seed, perm_seed=0, mutate=None):
-    """A ticket-05 style file for ArtELingo validation: rows in a shuffled order, names saying which row is which."""
-    names = np.asarray(rt_data.names('val'))
-    order = np.random.default_rng(perm_seed).permutation(len(names))
-    probs = np.random.default_rng(1).random((len(names), 40)).astype(np.float32)
-    by_name = dict(zip(names.tolist(), probs))                  # the truth, by name
-    arm = ns_paths.MATCHED[enc]
-    path = Path(root) / 'percept_val' / enc / f'{arm}__s{seed}.npz'
-    path.parent.mkdir(parents=True, exist_ok=True)
-    stored_names, stored = names[order], probs[order]
-    if mutate:
-        stored_names, stored = mutate(stored_names, stored)
-    np.savez(path, names=stored_names, probs=stored)
-    import hashlib
-    side = dict(mapper=str(path), mapper_sha256='0' * 64, input_store='fake', n=len(stored_names),
-                sha256=hashlib.sha256(path.read_bytes()).hexdigest())
-    path.with_suffix('.json').write_text(json.dumps(side))
-    return by_name
+SMOKE_T05 = Path('/project/CoSiR/.scratch/r17-new-scores/smoke/t05')       # ticket 05's real files (all four encoders)
 
 
-def test_percept_val_joined_by_painting_name(tmp_path, monkeypatch):
-    monkeypatch.setattr(ns_paths, 'OUT', tmp_path)
-    by_name = fake_val_file(tmp_path, 'siglip2', 3)
-    p = ns_data.percept_probs('artelingo', 'val', 'siglip2', 3)
-    keys = ns_data.keys('artelingo', 'val')
-    assert p.dtype == np.float32 and p.shape == (6152, 40)
-    assert np.array_equal(p, np.stack([by_name[k] for k in keys]))      # rows follow keys, not the file's order
-    q = ns_data.percept_probs('mmart', 'val', 'siglip2', 3)             # MMArt validation: 5,769 of the 6,152, by name
-    mk = ns_data.keys('mmart', 'val')
-    assert q.shape == (5769, 40)
-    for i in (0, 10, 5768):
-        assert np.array_equal(q[i], by_name[mt_data.artelingo_name(mk[i])])
+def test_percept_val_joined_by_painting_name(monkeypatch):
+    monkeypatch.setattr(ns_paths, 'OUT', SMOKE_T05)
+    for enc in ('siglip2', 'qwen'):
+        p = ns_data.percept_probs('artelingo', 'val', enc, 3)
+        keys = ns_data.keys('artelingo', 'val')
+        assert p.dtype == np.float32 and p.shape == (6152, 40)
+        with np.load(SMOKE_T05 / f'percept_val/{enc}/matched__s3.npz') as z:
+            where = {n: i for i, n in enumerate(z['names'].tolist())}
+            probs = z['probs']
+        for i in (0, 1, 3000, 6151):
+            assert np.array_equal(p[i], probs[where[keys[i]]])
+        q = ns_data.percept_probs('mmart', 'val', enc, 3)            # MMArt validation: 5,769 of the 6,152, by name
+        mk = ns_data.keys('mmart', 'val')
+        assert q.shape == (5769, 40)
+        for i in (0, 10, 2500, 5768):
+            assert np.array_equal(q[i], probs[where[mt_data.artelingo_name(mk[i])]])
 
 
-def test_percept_val_refuses_bad_files(tmp_path, monkeypatch):
-    monkeypatch.setattr(ns_paths, 'OUT', tmp_path)
-    with pytest.raises(FileNotFoundError):
-        ns_data.percept_probs('artelingo', 'val', 'siglip1', 0)           # no file yet
-    fake_val_file(tmp_path, 'siglip1', 0, mutate=lambda n, p: (n[:-1], p[:-1]))     # a name missing
+def test_percept_val_refuses_rows_in_another_order(monkeypatch):
+    monkeypatch.setattr(ns_paths, 'OUT', SMOKE_T05)
+
+    def wrong_order(out, enc, seed, names=None):
+        return ns_data.ns_mappers.__dict__['_real_read_val'](out, enc, seed)    # the file's own order, not the names asked
+    monkeypatch.setattr(ns_data.ns_mappers, '_real_read_val', ns_data.ns_mappers.read_val, raising=False)
+    monkeypatch.setattr(ns_data.ns_mappers, 'read_val', wrong_order)
     with pytest.raises(AssertionError):
+        ns_data.percept_probs('mmart', 'val', 'clip_l14', 0)         # 6,152 sorted names returned for 5,769 asked
+
+
+def test_percept_val_missing_file_is_an_error(tmp_path, monkeypatch):
+    monkeypatch.setattr(ns_paths, 'OUT', tmp_path)
+    with pytest.raises(Exception):
         ns_data.percept_probs('artelingo', 'val', 'siglip1', 0)
-    fake_val_file(tmp_path, 'clip_l14', 0, mutate=lambda n, p: (n, p * 2 + 1))       # probabilities outside [0, 1]
-    with pytest.raises(AssertionError):
-        ns_data.percept_probs('artelingo', 'val', 'clip_l14', 0)
-    fake_val_file(tmp_path, 'qwen', 0)
-    side = tmp_path / 'percept_val/qwen/P3__s0.json'
-    doc = json.loads(side.read_text())
-    doc['sha256'] = '1' * 64                                              # sidecar no longer names the npz
-    side.write_text(json.dumps(doc))
-    with pytest.raises(AssertionError):
-        ns_data.percept_probs('artelingo', 'val', 'qwen', 0)
 
 
 # ------------------------------------------------------------------------------------------------ untold

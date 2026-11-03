@@ -21,8 +21,8 @@ position across stores. The older loaders do the reading, so the numbers are the
     percept_probs(set, split, enc, seed)
                                       float32 [n, 40], the RAW probabilities of X's matched PercepT arm. held (ArtELingo): the
                                       stored `prob` files (key `prob`); test (MMArt): r15's CPU exports (`mt_matched.
-                                      load_probs`, key `probs`); val: ticket 05's files `OUT/percept_val/<enc>/<arm>__s<seed>.npz`
-                                      (`names`, `probs`), joined by painting name (MMArt validation = 5,769 of the 6,152).
+                                      load_probs`, key `probs`); val: ticket 05's files `OUT/percept_val/<enc>/matched__s<seed>.npz`
+                                      `ns_mappers.read_val` (`names`, `probs`), joined by painting name (MMArt validation = 5,769 of the 6,152).
                                       Retrieval divides by the float32 row norm (r11's form); clustering normalises itself.
     crl(set, split, aspect, raw=False)
                                       r11's CRL vector: `ac_crl.vectors(unit CLIP L/14 rows, rt_crl.text_array(aspect))`,
@@ -35,7 +35,6 @@ position across stores. The older loaders do the reading, so the numbers are the
 Splits: the 'held' split of ArtELingo and the 'test' split of MMArt are the held sets of `ns_paths.HELD_SPLIT`.
 """
 import contextlib
-import hashlib
 import json
 import math
 import sys
@@ -56,6 +55,7 @@ import bs_artret  # noqa: E402  (r14: frozen_embed, cstar_root)
 import mt_data  # noqa: E402  (r15: MMArt keys, labels, rows)
 import mt_export  # noqa: E402  (r15: MMArt c* exports)
 import mt_matched  # noqa: E402  (r15: MMArt matched probabilities)
+import ns_mappers  # noqa: E402  (r17 ticket 05: validation PercepT probabilities)
 
 SPLITS = {'artelingo': ('held', 'val'), 'mmart': ('test', 'val')}
 SQRT3 = math.sqrt(3.0)
@@ -174,38 +174,10 @@ def _names_sha(names):
     return rs_vh.names_sha(names)
 
 
-def _sha_file(path):
-    h = hashlib.sha256()
-    with Path(path).open('rb') as f:
-        for block in iter(lambda: f.read(1 << 20), b''):
-            h.update(block)
-    return h.hexdigest()
-
-
 def _check_probs(p, n, what):
     assert p.shape == (n, ns_paths.N_TOPICS) and p.dtype == np.float32 and np.isfinite(p).all(), (what, p.shape, p.dtype)
     assert ((p >= 0) & (p <= 1)).all(), f'{what}: probabilities outside [0, 1]'
     return p
-
-
-def percept_val_path(enc, seed):
-    return ns_paths.OUT / 'percept_val' / enc / f'{ns_paths.MATCHED[enc]}__s{seed}.npz'
-
-
-def _percept_val_by_name(enc, seed):
-    """Ticket 05's validation file as (names list, probs): sidecar names the npz hash; names unique."""
-    path = percept_val_path(enc, seed)
-    side_path = path.with_suffix('.json')
-    if not path.is_file() or not side_path.is_file():
-        raise FileNotFoundError(f'validation PercepT probabilities missing: {path} (ticket 05 writes them)')
-    side = json.loads(side_path.read_text())
-    assert _sha_file(path) in {v for v in side.values() if isinstance(v, str)}, f'{side_path}: no entry equal to the sha256 of {path.name}'
-    with np.load(path, allow_pickle=False) as z:
-        assert sorted(z.files) == ['names', 'probs'], (path, z.files)
-        names, probs = z['names'].tolist(), z['probs']
-    assert len(names) == len(set(names)) == len(probs), f'{path}: names must be unique and match the rows'
-    assert 'n' not in side or side['n'] == len(names), f'{side_path}: n {side["n"]} vs {len(names)} rows'
-    return names, _check_probs(probs, len(names), str(path))
 
 
 def percept_probs(set_, split, enc, seed):
@@ -213,26 +185,24 @@ def percept_probs(set_, split, enc, seed):
     _check_args(set_, split, enc, seed=seed)
     n = ns_paths.N_ROWS[(set_, split)]
     if split == 'val':
-        names, probs = _percept_val_by_name(enc, seed)
         if set_ == 'artelingo':
-            want = _keys(set_, split)
+            want = list(_keys(set_, split))
         else:
             want = [mt_data.artelingo_name(k) for k in _keys(set_, split)]
-        where = {nm: i for i, nm in enumerate(names)}
-        missing = [w for w in want if w not in where]
-        assert not missing, f'{len(missing)} validation paintings not in the PercepT file, e.g. {missing[:2]}'
-        p = probs[[where[w] for w in want]]
+        got, p = ns_mappers.read_val(ns_paths.OUT, enc, seed, names=want)    # ticket 05: checked sidecar, joined by name
+        assert list(got) == want, 'ns_mappers.read_val returned rows in another order than the names asked for'
     elif set_ == 'artelingo':
         path = mt_matched.held_prob_path(enc, seed)
         ns = rt_data.names('held')
         side = json.loads(path.with_suffix('.json').read_text())
-        if 'sha256' in side:
-            assert side['sha256'] == _sha_file(path), f'{path}: sidecar sha256 differs from the file'
         list_hash = side.get('list_sha256', side.get('held_sha256'))
         assert list_hash == _names_sha(ns), f'{path}: sidecar list hash is not the held list'
         with np.load(path, allow_pickle=False) as z:
             assert z.files == ['prob'], (path, z.files)
             p = z['prob']
+        # the sidecar's array hash: `sha256` (M-arms) or `array_sha256s['prob']` (Qwen's P3), of the array
+        want_hash = side['sha256'] if 'sha256' in side else side['array_sha256s']['prob']
+        assert want_hash == rs_vh.array_sha(p), f'{path}: sidecar array hash differs from the array'
     else:
         p = mt_matched.load_probs(enc, seed, list(_keys(set_, split)), root=ns_paths.R15_OUT)
     return _check_probs(np.ascontiguousarray(p), n, f'percept {set_}/{split}/{enc}/s{seed}')
