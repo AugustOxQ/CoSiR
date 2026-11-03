@@ -1743,3 +1743,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-03-r17-build3-handoff.md
 - New chat: tab 'r17 build 3', session 705bc8f1-cdf9-45fc-8840-a1bbf082633a
 
+[brief] CoSiR: r17 build 3 -> r17 build 4 (2026-11-04 00:02 Amsterdam)
+- Done: the final whole-branch review ran. It found no blocker and re-derived the key numbers. The stage 3 smoke passes.
+- State: three should-fix items and small notes are open; the code is on `r17-new-scores` (c615e8d), not yet on main.
+- Next: fix wave (Codex has room), scoped re-review, merge into main, write the run handoff, open "r17 run".
+- Blocked: nothing. The run should start by about 01:30; stage 3 will likely end after 11:00.
+- Handoff: docs/superpowers/handoffs/2026-11-04-r17-build4-handoff.md
+- New chat: tab 'r17 build 4', session abc1ece9-9498-4cad-9419-08c05f07e9a7
+
