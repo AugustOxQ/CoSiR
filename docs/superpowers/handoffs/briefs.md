@@ -1719,3 +1719,67 @@
 - Handoff: docs/superpowers/handoffs/2026-11-03-r17-build2-handoff.md
 - New chat: tab 'r17 build 2', session f7e96eb3-1553-403a-adb0-583ba6ff67a9
 
+[brief] CoSiR: r19 build -> r19 build 2 (2026-11-03 21:26 Amsterdam)
+- Done: code maps of the reused code, the shared paths module (committed), 14 tickets with shared interfaces.
+- State: integration branch r19-past-picks pushed; no ticket started; r17 not merged yet (ticket 14 waits).
+- Next: dispatch tickets 01, 03 and 11 (Codex has room again after 23:34), then the frontier per the index.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-03-r19-build2-handoff.md
+- New chat: tab 'r19 build 2', session 5dffc27d-c94f-4137-9d05-bfebeec91b0e
+
+[brief] CoSiR: r19 build 2 -> r19 build 3 (2026-11-03 23:13 Amsterdam)
+- Done: tickets 01, 02, 03, 05, 06, 07, 09, 11 built, reviewed (Opus high), fixed and merged (integration tip 3ae28fe).
+- State: gates (iv) and (vii), r14 parts, replay r14 exactly (max difference 0.0; 414 and 920 items).
+- Next: Opus high review of ticket 08 (built, not reviewed); then 04 and 10, then 12 and 13. Codex has room after 23:34.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-03-r19-build3-handoff.md
+- New chat: tab 'r19 build 3', session 8ed85e38-0792-46e4-b566-1bfe2941a14b
+
+[brief] CoSiR: r17 build 2 -> r17 build 3 (2026-11-03 23:19 Amsterdam)
+- Done: all 11 tickets built, reviewed and merged into `r17-new-scores` (624b980); full replays pass.
+- State: gates (i) a to d, (ii) and (vi) match stored values exactly (diff 0.0): 209 and 150 items.
+- Next: smoke stage 3 and the runner's gate wrappers, then the Opus `xhigh` final review, fixes, merge, run handoff.
+- Blocked: nothing. Codex has room from now (5h window resets 23:34). The run should start by about 01:00.
+- Handoff: docs/superpowers/handoffs/2026-11-03-r17-build3-handoff.md
+- New chat: tab 'r17 build 3', session 705bc8f1-cdf9-45fc-8840-a1bbf082633a
+
+[brief] CoSiR: r17 build 3 -> r17 build 4 (2026-11-04 00:02 Amsterdam)
+- Done: the final whole-branch review ran. It found no blocker and re-derived the key numbers. The stage 3 smoke passes.
+- State: three should-fix items and small notes are open; the code is on `r17-new-scores` (c615e8d), not yet on main.
+- Next: fix wave (Codex has room), scoped re-review, merge into main, write the run handoff, open "r17 run".
+- Blocked: nothing. The run should start by about 01:30; stage 3 will likely end after 11:00.
+- Handoff: docs/superpowers/handoffs/2026-11-04-r17-build4-handoff.md
+- New chat: tab 'r17 build 4', session abc1ece9-9498-4cad-9419-08c05f07e9a7
+
+[brief] CoSiR: r19 build 3 -> r19 build 4 (2026-11-04 00:19 Amsterdam)
+- Done: tickets 04, 08, 10 built, reviewed, fixed and merged; tickets 01 to 11 are all merged (integration tip 001d3d1).
+- State: gates (iv) and (vii) r15 parts and gate (iv) SemArt part replay at 0.0; all three Affection stores written.
+- Next: node402 probe and smoke; ticket 12 (Codex), ticket 13 (Claude); final review; merge; run chat.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-04-r19-build4-handoff.md
+- New chat: tab 'r19 build 4', session f230deb2-5b4b-4531-9369-0d454a9ed956
+
+[brief] CoSiR: r17 build 4 -> r17 run (2026-11-04 00:21 Amsterdam)
+- Done: the fix wave closed all 9 review items; the re-review passed; 524 tests pass; the code is on main (8cf743b2).
+- State: nothing has run on the real output folder yet; it is empty. CPU idle at 00:20, GPU check passes.
+- Next: open the round log, run stage 0, then stages 1 and 2 in three chains, with C13 code written beside them.
+- Blocked: nothing. Stages 0 to 2 end about 06:30; stage 3 likely ends about 13:30, past 11:00.
+- Handoff: docs/superpowers/handoffs/2026-11-04-r17-run-handoff.md
+- New chat: tab 'r17 run', session 798d271f-5359-4d24-a39c-67752de65187
+
+[brief] CoSiR: r18 build 2 -> r18 build 3 (2026-11-04 00:33 Amsterdam)
+- Done: build 2 wrote all 12 tickets after r17's merge. Tickets 01, 03 and 05 are merged; gate (i) passes at 6.6e-7 against 1e-5.
+- State: ticket 02 is built, gate (ii) CPU part 2.5e-7 against 1e-5, not reviewed. No GPU job has run yet.
+- Next: Opus review of 02, the short GPU jobs, then tickets 04 and 06.
+- Blocked: nothing. GPU check passes.
+- Handoff: docs/superpowers/handoffs/2026-11-04-r18-build-3-handoff.md
+- New chat: tab 'r18 build 3', session 07584f99-6245-4d34-ae35-880507dd3358
+
+[brief] CoSiR: r19 build 4 -> r19 build 5 (2026-11-04 00:47 Amsterdam)
+- Done: tickets 12 and 13 merged (integration tip d2e87d7); node402 probe (59 inputs, 0 failures) and node smoke pass.
+- State: tickets 01 to 13 are merged; ticket 14 is unblocked because r17's code is now on main.
+- Next: merge main into the branch, ticket 14, final review on Opus `xhigh`, one fix wave, merge into main, run chat.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-04-r19-build5-handoff.md
+- New chat: tab 'r19 build 5', session bade26c5-7a42-4fc8-81cd-8d7cd60d4e18
+
