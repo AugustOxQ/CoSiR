@@ -183,14 +183,15 @@ def _gather(folders, dataset, keys, width, what):
 @functools.lru_cache(maxsize=2)
 def _read_index(path, stamp):
     import pandas as pd
-    return pd.read_parquet(path, columns=['key', 'painting', 'artelingo'])
+    return pd.read_parquet(path, columns=['key', 'painting', 'split', 'artelingo'])
 
 
 def mmart_index(index=None):
-    """MMArt index with columns key, painting, artelingo; unique keys and paintings, artelingo in none/held/trainval."""
+    """MMArt index with columns key, painting, split, artelingo; unique keys and paintings, artelingo in
+    none/held/trainval."""
     if index is None:
         index = _read_index(str(MMART_INDEX), Path(MMART_INDEX).stat().st_mtime_ns)
-    missing = [c for c in ('key', 'painting', 'artelingo') if c not in index.columns]
+    missing = [c for c in ('key', 'painting', 'split', 'artelingo') if c not in index.columns]
     assert not missing, f'MMArt index lacks columns {missing}'
     assert index.key.is_unique and index.painting.is_unique, 'duplicate MMArt key or painting'
     assert set(index.artelingo) <= {'none', 'held', 'trainval'}, set(index.artelingo)
@@ -220,6 +221,8 @@ def _mmart_rows(view, keys, index):
     unknown = [k for k in keys if k not in table.index]
     assert not unknown, f'{len(unknown)} keys are not in the MMArt index, e.g. {unknown[:2]}'
     rows = table.loc[keys]
+    split = set(rows.split)      # r15 reads only new, val and held keys (mt_data.py:240, mp_stores.py:91)
+    assert split <= {'new', 'val', 'held'}, f'MMArt: only new, val and held keys, got {split - {"new", "val", "held"}}'
     group = rows.artelingo.to_numpy()
     out = np.empty((len(keys), WIDTH[view]), dtype=np.float32)
     mm = np.flatnonzero(group == 'none')
