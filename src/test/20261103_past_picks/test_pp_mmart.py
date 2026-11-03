@@ -24,6 +24,7 @@ import ct_score
 import mt_data
 import mt_export
 import mt_paths
+import mt_ret
 
 ENC = 'clip_b32'
 DIM = 16
@@ -284,3 +285,261 @@ def test_a_record_of_another_encoder_is_refused(world, matched, block, teacher):
     wrong = dict(block, clu_ranges=ranges_doc('clip_b16', 0.01))
     with pytest.raises(AssertionError):
         score_clu(block=wrong)
+
+
+# ------------------------------------------------------------------------------------------------ SC8, SC10 (mAP)
+import pp_outcome  # noqa: E402
+
+import rt_metrics  # noqa: E402
+
+
+def unit(x):
+    x = np.asarray(x).astype(np.float32)
+    return x / np.linalg.norm(x, axis=1, keepdims=True)
+
+
+@pytest.fixture
+def ret_block(block):
+    """Picks 'none+k0' (the identity map, no expansion) so a cell's values can be computed straight from the rows."""
+    return dict(block, picks=picks_doc(ENC, 'none+k0'))
+
+
+def test_retrieval_cells_carry_r19_labels_and_the_mAP_range(world, ret_block, teacher):
+    cells = M.score_ret(ENC, block=ret_block, teacher=teacher, n_draws=DRAWS['ret'], expect_n=None)
+    assert [(c['sc'], c['aspect']) for c in cells] == [(sc, a) for a in PP.ASPECTS for sc in ('SC8', 'SC10')]
+    for c in cells:
+        pp_outcome.check_cell(c, smoke=True)                          # ticket 11 reads cells strictly
+        assert c['data'] == 'mmart_test' and c['task'] == 'ret' and c['n_rows'] == N_TEST
+        assert c['n_draws'] == DRAWS['ret']
+    assert all(c['r'] == 0.002 for c in cells if c['sc'] == 'SC10'), 'the mAP range, not the AMI range'
+    assert {c['comparator'] for c in cells if c['sc'] == 'SC8'} == {f'frozen_{ENC}'}
+
+
+def test_retrieval_values_are_the_test_rows_alone(world, ret_block, teacher):
+    """With the identity map and no expansion each arm's mAP is retrieval on the test rows alone (queries and gallery =
+    the labelled test rows); the validation rows only fit a map that is the identity here."""
+    cells = M.score_ret(ENC, block=ret_block, teacher=teacher, n_draws=DRAWS['ret'], expect_n=None)
+    for a in PP.ASPECTS:
+        y = np.asarray([world.label[a][k] for k in world.test], dtype=np.int64)
+        frozen = rt_metrics.retrieval(unit(world.view(ENC, world.test)), y)['ap'].mean()
+        tview = {'emotion': 'emotion_focus', 'style': 'style_word', 'genre': 'genre_word'}[a]
+        teach = rt_metrics.retrieval(unit(world.view(tview, world.test)), y)['ap'].mean()
+        cstar = np.mean([rt_metrics.retrieval(unit(mt_export.load('new', ENC, a, s, world.test)), y)['ap'].mean()
+                         for s in PP.SEEDS])
+        sc8 = next(c for c in cells if c['sc'] == 'SC8' and c['aspect'] == a)
+        sc10 = next(c for c in cells if c['sc'] == 'SC10' and c['aspect'] == a)
+        assert sc8['comparator_value'] == pytest.approx(frozen, abs=1e-6)
+        assert sc10['comparator_value'] == pytest.approx(teach, abs=1e-6)
+        assert sc8['candidate_value'] == pytest.approx(cstar, abs=1e-6)
+
+
+def test_the_teacher_must_be_picked_with_qwens_ranges(world, ret_block, teacher):
+    with pytest.raises(AssertionError):
+        M.score_ret(ENC, block=ret_block, teacher=dict(teacher, ranges_encoder=ENC), n_draws=10, expect_n=None)
+
+
+def test_clustering_cells_pass_ticket_11s_cell_check(world, matched, block):
+    for c in score_clu(block=block):
+        pp_outcome.check_cell(c, smoke=True)
+
+
+def test_the_test_set_size_is_asserted(world, matched, block):
+    with pytest.raises(AssertionError):
+        M.score_clu(ENC, block=block, n_draws=10)                     # default expect_n = 16,384
+
+
+# ------------------------------------------------------------------------------------------------ stage 1
+@pytest.fixture
+def spy(world, monkeypatch):
+    seen = {'keysets': set(), 'keys': set()}
+    real_load, real_features, real_labels = mt_export.load, mt_data.features, mt_data.labels
+
+    def load(keyset, *a, **k):
+        seen['keysets'].add(keyset)
+        return real_load(keyset, *a, **k)
+
+    def features(view, keys):
+        seen['keys'] |= set(keys)
+        return real_features(view, keys)
+
+    def labels(keys, a):
+        seen['keys'] |= set(keys)
+        return real_labels(keys, a)
+    monkeypatch.setattr(mt_export, 'load', load)
+    monkeypatch.setattr(mt_data, 'features', features)
+    monkeypatch.setattr(mt_data, 'labels', labels)
+    return seen
+
+
+def test_stage1_reads_validation_only_and_has_r15s_record_form(world, spy, monkeypatch, tmp_path):
+    monkeypatch.setattr(PP, 'OUT', tmp_path / 'out')
+    block = M.stage1_block(ENC, expect_n=None)
+    assert spy['keysets'] == {'val'}, 'stage 1 may read the validation exports only'
+    assert spy['keys'] <= set(world.val), 'stage 1 touched a key outside MMArt validation'
+    assert set(block) == {'encoder', 'clu_ranges', 'ret_ranges', 'picks'} and block['encoder'] == ENC
+    assert block['clu_ranges']['kind'] == 'mmart_clustering_validation_ranges'
+    assert block['ret_ranges']['kind'] == 'mmart_retrieval_validation_ranges'
+    assert set(block['picks']['arms']) == {'cstar', 'frozen'}
+    for part in ('clu_ranges', 'ret_ranges'):
+        doc = block[part]
+        for a in PP.ASPECTS:                                         # range = max - min over the five seeds, unrounded
+            per = [doc['per_seed'][a][str(s)] for s in PP.SEEDS]
+            assert doc['ranges'][a] == pytest.approx(max(per) - min(per), abs=1e-12) and doc['ranges'][a] > 0
+    for arm in ('cstar', 'frozen'):                                  # the retrieval ranges feed both picks (D12, D21)
+        assert block['picks']['arms'][arm]['ranges'] == block['ret_ranges']['ranges']
+        assert mt_ret.readout_of(block['picks']['arms'][arm]['pick'], DIM)
+    assert M.jsonable(block) == block
+    path = M.write_stage1(ENC, block)
+    assert path == tmp_path / 'out' / 'stage1' / f'mmart_{ENC}.json' and json.loads(path.read_text()) == block
+
+
+def test_stage1_files_are_written_for_the_new_three_only(world, monkeypatch, tmp_path):
+    monkeypatch.setattr(PP, 'OUT', tmp_path / 'out')
+    with pytest.raises(AssertionError):
+        M.write_stage1('clip_l14', {'encoder': 'clip_l14'})
+
+
+_STAGE1 = {}
+
+
+@pytest.fixture
+def cached_stage1(world, monkeypatch):
+    """`stage1_block` is deterministic on the fake world and slow: compute it once per session (the test above runs it
+    for real, under a spy) and hand copies to the tests that only consume it."""
+    real = M.stage1_block
+
+    def cached(enc, workers=8, expect_n=None):
+        if enc not in _STAGE1:
+            _STAGE1[enc] = real(enc, workers, None)
+        return json.loads(json.dumps(_STAGE1[enc]))
+    monkeypatch.setattr(M, 'stage1_block', cached)
+
+
+def test_a_stage1_block_scores_straight_away(world, matched, cached_stage1, teacher):
+    block = M.stage1_block(ENC, expect_n=None)
+    assert len(score_clu(block=block)) == 9
+    assert len(M.score_ret(ENC, block=block, teacher=teacher, n_draws=DRAWS['ret'], expect_n=None)) == 6
+
+
+def test_cells_merge_by_cell_identity(world, matched, block, monkeypatch, tmp_path):
+    monkeypatch.setattr(PP, 'OUT', tmp_path / 'out')
+    cells = score_clu(block=block)
+    M.write_cells('clu', cells)
+    M.write_cells('clu', cells)
+    stored = json.loads(M.cells_path('clu').read_text())
+    assert len(stored) == 9 and M.cells_path('clu').name == 'cells_mmart_clu.json'
+    with pytest.raises(AssertionError):
+        M.write_cells('ret', cells)                                  # clustering cells do not go in the retrieval file
+
+
+# ------------------------------------------------------------------------------------------------ the comparison
+def test_compare_docs_holds_numbers_to_1e_9_and_the_rest_exactly():
+    import copy
+    base = {'a': 1.0, 'b': {'c': [1.0, 2.0], 'd': 'x', 'e': None, 'f': True}}
+
+    def bad(other):
+        return [i['name'] for i in M.compare_docs(other, base) if not i['ok']]
+    assert bad(copy.deepcopy(base)) == []
+    near = copy.deepcopy(base)
+    near['a'] += 5e-10
+    assert bad(near) == []
+    far = copy.deepcopy(base)
+    far['a'] += 2e-9
+    assert bad(far) == ['/a']
+    for mutate in (lambda d: d['b']['c'].append(3.0), lambda d: d['b'].update(d='y'), lambda d: d.update(z=1),
+                   lambda d: d['b'].update(f=1), lambda d: d['b'].update(e=0.0), lambda d: d.pop('a')):
+        other = copy.deepcopy(base)
+        mutate(other)
+        assert bad(other), mutate
+
+
+def r15_form(cells):
+    inverse = {v: k for k, v in M.SC_NEW.items()}
+    return [dict(c, sc=inverse[c['sc']]) for c in cells]
+
+
+def test_compare_cells_maps_labels_and_skips_intervals_on_reduced_draws(world, matched, block):
+    cells = score_clu(block=block)
+    stored = r15_form(cells)
+    assert not [i for i in M.compare_cells(cells, stored, 'x') if not i['ok']]
+    off = [dict(c) for c in stored]
+    off[0]['d'] += 2e-9
+    off[1]['lo'] += 1e-6
+    bad = {i['name'] for i in M.compare_cells(cells, off, 'x') if not i['ok']}
+    assert bad == {f'x/{cells[0]["sc"]}/emotion/clu/d', f'x/{cells[1]["sc"]}/emotion/clu/lo'}
+    assert {i['name'] for i in M.compare_cells(cells, off, 'x', intervals=False) if not i['ok']} == set()
+    with pytest.raises(AssertionError):
+        M.compare_cells(cells, stored[1:], 'x')                      # a replayed cell with no stored cell
+    with pytest.raises(AssertionError):
+        M.compare_cells(cells, stored[:-1] + [dict(stored[0])], 'x')  # or stored cells that repeat
+
+
+# ------------------------------------------------------------------------------------------------ gates (iv), (vii)
+@pytest.fixture
+def r15_files(world, matched, block, teacher, monkeypatch, tmp_path):
+    """r15's files in their layout, made by the same scorers: stored cells, records; the replay must reproduce them."""
+    monkeypatch.setattr(M, 'REPLAY_ENC', ENC)
+    monkeypatch.setattr(M, 'matched_r15', lambda enc, keys: M.check_matched(matched.partitions('r15', enc, keys), len(keys)))
+    monkeypatch.setattr(PP, 'R15_OUT', tmp_path / 'mmart')
+    monkeypatch.setattr(PP, 'N_DRAWS', dict(DRAWS))
+    ret_block = dict(block, picks=picks_doc(ENC, 'none+k0'))
+    stored = {'clu': r15_form(score_clu(block=ret_block)),
+              'ret': r15_form(M.score_ret(ENC, block=ret_block, teacher=teacher, n_draws=DRAWS['ret'], expect_n=None))}
+    for part, cells in stored.items():
+        path = tmp_path / 'mmart' / 'stage2' / f'cells_{part}.json'
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(cells))
+    records = {f'stage1_{ENC}.json': ret_block, 'stage1_teacher.json': teacher}
+    monkeypatch.setattr(mt_paths, 'read_committed_record', lambda name: json.loads(json.dumps(records[name])))
+    return dict(stored=stored, records=records, tmp=tmp_path)
+
+
+def rewrite(path, fn):
+    cells = json.loads(path.read_text())
+    fn(cells)
+    path.write_text(json.dumps(cells))
+
+
+def replay_iv(**kw):
+    kw.setdefault('n_draws_clu', DRAWS['clu'])
+    kw.setdefault('n_draws_ret', DRAWS['ret'])
+    return M.replay_iv(workers=2, expect_n=None, **kw)
+
+
+def test_gate_iv_passes_when_the_replay_equals_the_stored_cells(r15_files):
+    res = replay_iv()
+    assert res['passed'] and res['complete'] and res['n_not_ok'] == 0 and res['max_abs_diff'] <= 1e-9
+    assert res['n_items'] > 60
+
+
+def test_gate_iv_fails_on_one_value_off_by_1e_6(r15_files):
+    path = r15_files['tmp'] / 'mmart' / 'stage2' / 'cells_ret.json'
+    rewrite(path, lambda cells: cells[3].update(comparator_value=cells[3]['comparator_value'] + 1e-6))
+    res = replay_iv()
+    assert not res['passed'] and res['n_not_ok'] == 1
+
+
+def test_gate_iv_cannot_pass_a_reduced_run(r15_files):
+    res = replay_iv(parts=('clu',), aspects=('genre',))
+    assert res['values_ok'] and not res['complete'] and not res['passed']
+    res = replay_iv(n_draws_clu=DRAWS['clu'] // 2)                  # fewer draws than stored: no intervals compared
+    assert res['values_ok'] and not res['passed'] and not res['draws']['clu']['intervals_compared']
+
+
+def test_gate_vii_reproduces_the_stored_record_and_catches_a_changed_pick(world, cached_stage1, monkeypatch):
+    stored = M.stage1_block(ENC, expect_n=None)
+    monkeypatch.setattr(M, 'REPLAY_ENC', ENC)
+    monkeypatch.setattr(PP, 'R15_OUT', mt_paths.OUT)
+    box = {'rec': stored}
+    monkeypatch.setattr(mt_paths, 'read_committed_record', lambda name: json.loads(json.dumps(box['rec'])))
+    res = M.replay_vii(ENC, workers=2, expect_n=None)
+    assert res['passed'] and res['max_abs_diff'] <= 1e-9
+    wrong = json.loads(json.dumps(stored))
+    wrong['picks']['arms']['frozen']['pick'] = 'whiten64+k5'
+    box['rec'] = wrong
+    assert not M.replay_vii(ENC, workers=2, expect_n=None)['passed']
+    wrong = json.loads(json.dumps(stored))
+    wrong['clu_ranges']['ranges']['genre'] += 1e-6
+    box['rec'] = wrong
+    res = M.replay_vii(ENC, workers=2, expect_n=None)
+    assert not res['passed'] and res['n_not_ok'] == 1

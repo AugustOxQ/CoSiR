@@ -300,9 +300,9 @@ def compare_cells(got, stored, prefix, intervals=True):
     query counts, the readouts and the matched arm's reading. Every `got` cell needs its stored cell."""
     by = {(SC_NEW[c['sc']], c['aspect'], c['task'], c['data']): c for c in stored}
     assert len(by) == len(stored), 'stored cells repeat a (sc, aspect, task, data)'
-    fields = ['candidate_value', 'comparator_value', 'r', 'n_rows', 'n_draws', 'n_labelled', 'n_queries', 'candidate',
+    fields = ['candidate_value', 'comparator_value', 'r', 'n_rows', 'n_labelled', 'n_queries', 'candidate',
               'comparator', 'comparator_reading', 'candidate_readout', 'comparator_readout']
-    fields += ['d', 'lo', 'hi'] if intervals else []
+    fields += ['n_draws', 'd', 'lo', 'hi'] if intervals else []
     items = []
     for c in got:
         key = (c['sc'], c['aspect'], c['task'], c['data'])
@@ -327,7 +327,7 @@ def _stored_cells(part):
     return cells
 
 
-def replay_iv(parts=('clu', 'ret'), aspects=ASPECTS, n_draws_clu=None, n_draws_ret=None, workers=8):
+def replay_iv(parts=('clu', 'ret'), aspects=ASPECTS, n_draws_clu=None, n_draws_ret=None, workers=8, expect_n=N_TEST):
     """Gate (iv), r15 part: r15's CLIP L/14 SC1 to SC4 values and intervals (`stage2/cells_{clu,ret}.json`) within 1e-9,
     through `score_clu` and `score_ret` fed r15's stored exports (`r15_outputs`), r15's matched probabilities
     (`matched_r15`) and r15's committed records (`stage1_clip_l14.json`, `stage1_teacher.json`). Intervals are compared at
@@ -343,10 +343,10 @@ def replay_iv(parts=('clu', 'ret'), aspects=ASPECTS, n_draws_clu=None, n_draws_r
             stored = [c for c in stored if c['aspect'] in aspects]
             if part == 'clu':
                 got = score_clu(REPLAY_ENC, block=block, matched=matched_r15, n_draws=n_clu, workers=workers,
-                                aspects=tuple(aspects))
+                                aspects=tuple(aspects), expect_n=expect_n)
             else:
                 got = score_ret(REPLAY_ENC, block=block, teacher=read_teacher(), n_draws=n_ret, workers=workers,
-                                aspects=tuple(aspects))
+                                aspects=tuple(aspects), expect_n=expect_n)
             full = (n_clu if part == 'clu' else n_ret) == PP.N_DRAWS[part]
             drawn[part] = dict(n_draws=n_clu if part == 'clu' else n_ret, intervals_compared=full)
             stored_keys = {(SC_NEW[c['sc']], c['aspect']) for c in stored}
@@ -359,13 +359,13 @@ def replay_iv(parts=('clu', 'ret'), aspects=ASPECTS, n_draws_clu=None, n_draws_r
     return res
 
 
-def replay_vii(enc=REPLAY_ENC, workers=8):
+def replay_vii(enc=REPLAY_ENC, workers=8, expect_n=N_VAL):
     """Gate (vii), r15 part: r15's stored validation exports (`exports/val/<enc>/cstar`) through `stage1_block` give r15's
     stage 1 record of `enc` (`stage1_<enc>.json`: clu_ranges, ret_ranges, picks) within 1e-9, every leaf (ranges,
     per-seed values, export hashes, picks, read-out tables) compared."""
     with r15_outputs():
         stored = check_block(enc, mt_paths.read_committed_record(f'stage1_{enc}.json'))
-        ours = stage1_block(enc, workers)
+        ours = stage1_block(enc, workers, expect_n)
     items = compare_docs(ours, stored, enc)
     res = _result('vii_r15', items, encoder=enc, picks={arm: ours['picks']['arms'][arm]['pick'] for arm in ('cstar', 'frozen')})
     res['passed'] = res['n_not_ok'] == 0
