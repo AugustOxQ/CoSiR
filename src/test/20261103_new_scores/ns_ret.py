@@ -391,7 +391,7 @@ def gate_ii_scorer(draws=10000, workers=8, parts=('r15', 'r14', 'r11')):
         v = _json(R11_OUT / 'stage5/verdict.json')
         assert v['draws'] == 10000
         picks = _r11_picks()
-        want = _json(ns_paths.ROUNDS['r11'] / 'stage0a_ranges.json')['map']
+        want = {a: {'r': recorded_range('artelingo', 'qwen', a)[0]} for a in ASPECTS}   # the cells' own read
         rows = _Rows('artelingo', 'qwen')
         by = {}
 
