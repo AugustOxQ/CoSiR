@@ -28,6 +28,9 @@ exit code 1 at the end.
   percept_strongest  per set and aspect the largest matched-arm value of the cells SC3, SC9, SC13 (C1).
   cost_rows          the cost table's other rows from the probe's files (`OUT/stage3/cost_table.json`, `cells_cost.json`).
   node_time          node402 seconds per run from `OUT/node/units.jsonl`.
+  r17_metrics        ticket 14 (D13, context only): r17's NMI, ARI, ACC and cluster counts (`ns_metrics`, imported inside the kind)
+                     at K = 20 and K = the class count on the same arms and sets as clustering_kclass; held ArtELingo and Affection
+                     X-c* at K = 20.
 
 Output: `OUT/stage4/diag/<kind>.json` (with a `markdown` list) and `OUT/stage4/diag/tables.md` (built from every kind file
 present, in the order above). CLI: `python pp_diag.py run [--only KIND ...] [--workers N] [--draws N]`. Smoke: PP_OUTPUTS and
@@ -51,7 +54,7 @@ for _v in ('OMP_NUM_THREADS', 'MKL_NUM_THREADS'):
     os.environ.setdefault(_v, '8')
 
 KINDS = ('r0', 'clustering_kclass', 'semart_close', 'semart_ap_type', 'semart_inner', 'r6_5_held', 'gain_share',
-         'seed_spreads', 'percept_strongest', 'cost_rows', 'node_time')
+         'seed_spreads', 'percept_strongest', 'cost_rows', 'node_time', 'r17_metrics')
 ENCODERS, NEW, ASPECTS, SEEDS = tuple(PP.ENCODERS), tuple(PP.NEW_ENCODERS), tuple(PP.ASPECTS), tuple(PP.SEEDS)
 AE, AF, MM, SA = PP.DATA
 PLAIN_SC = {(AE, 'clu'): 'SC1', (AE, 'ret'): 'SC2', (AF, 'clu'): 'SC4', (AF, 'ret'): 'SC5', (MM, 'clu'): 'SC7',
@@ -452,6 +455,27 @@ def kind_clustering_kclass(ctx):
     return dict(sets=res), md
 
 
+class record_encoders:
+    """Context manager: `pp_semart_score.ENCODERS` = the encoders the committed SemArt stage 1 record holds (as `pp_run.py`
+    semart-score does for a partial record), restored on exit. `.have` is that tuple. A committed-record problem is raised
+    as `read_committed_record` raises it (the kind then skips or fails as before)."""
+
+    def __enter__(self):
+        import pp_semart_score as SS
+        self.SS, self.old = SS, SS.ENCODERS
+        self.have = tuple(PP.read_committed_record(SS.STAGE1_NAME))
+        SS.ENCODERS = self.have
+        return self
+
+    def __exit__(self, *exc):
+        self.SS.ENCODERS = self.old
+        return False
+
+
+def missing_encoder(have):
+    return {'skipped': f'no entry in the committed SemArt stage 1 record (it holds {", ".join(have)})'}
+
+
 def semart_outcomes(cells):
     """{sc: outcome} of SC11 to SC14 cells of one encoder and the SemArt verdict (`pp_outcome`)."""
     import pp_outcome as O
@@ -477,7 +501,13 @@ def kind_semart_close(ctx):
     except Skip:
         pass
     res, md_rows, changed = {}, [], []
+    guard = record_encoders()
+    guard.__enter__()
     for enc in ENCODERS:
+        if enc not in guard.have:
+            res[enc] = missing_encoder(guard.have)
+            continue
+
         def one(enc=enc):
             got = SS.score('semart_clu', enc, n_draws('clu'), ctx['workers'], subset=far) + \
                 SS.score('semart_ret', enc, n_draws('ret'), ctx['workers'], subset=far)
@@ -489,6 +519,7 @@ def kind_semart_close(ctx):
                         verdict_without_close=v_far, outcome_whole_set=o_full, verdict_whole_set=v_full,
                         outcome_changes=changes, verdict_changes=None if v_full is None else v_full != v_far)
         res[enc] = section(one)
+    guard.__exit__(None, None, None)
     for enc, r in res.items():
         if 'skipped' in r:
             md_rows.append([enc, 'skipped', r['skipped'][:70], '', '', ''])
@@ -527,13 +558,20 @@ def kind_semart_ap_type(ctx):
     keys = ds.keys()
     y = ds.labels('genre')
     res = {}
+    guard = record_encoders()
+    guard.__enter__()
     for enc in ENCODERS:
+        if enc not in guard.have:
+            res[enc] = missing_encoder(guard.have)
+            continue
+
         def one(enc=enc):
             units, picks = SS.stage1_for(enc)
             arms = SS.ret_arms(enc, SS.SemartInputs('ret'), keys, picks, ctx['workers'])
             return {arm: dict(point=float(arms[arm]['point']), per_type=per_type(arms[arm]['ap'], arms[arm]['rows'], y))
                     for arm in SS.ARMS}
         res[enc] = section(one)
+    guard.__exit__(None, None, None)
     if all('skipped' in r for r in res.values()):
         raise Skip('no encoder had its picks or rows: ' + json.dumps(res)[:300])
     md = ['Mean per-query AP per SemArt type at each arm\'s pick (c*: mean of seeds 0 to 4); queries are the paintings of the type.', '']
@@ -731,10 +769,115 @@ def kind_node_time(ctx):
     return dict(units=out, n_lines=len(units)), md
 
 
+R17_FOLDER = Path(PP.__file__).resolve().parents[1] / '20261103_new_scores'      # r17's `ns_*` files (read only)
+R17_METRICS = ('nmi', 'ari', 'acc')
+
+
+def r17():
+    """r17's `ns_metrics` imported read-only, inside the kind only (it asserts scikit-learn 1.6.1). Its folder goes at the END of
+    sys.path, so `pp_paths` and `pp_register` stay first. Importing writes nothing."""
+    if str(R17_FOLDER) not in sys.path:
+        sys.path.append(str(R17_FOLDER))
+    try:
+        import ns_metrics
+    except ImportError as e:
+        raise Skip(f'r17 module not importable: {e}')
+    return ns_metrics
+
+
+def r17_values(NM, y, parts):
+    """{metric: mean over the states, 'clusters': mean number of non-empty clusters}; labelled rows only (r17's array forms)."""
+    parts = np.asarray(parts)
+    assert parts.ndim == 2 and parts.shape[1] == len(y) and (parts >= 0).all(), 'partitions need ids >= 0 and one row per key'
+    out = {m: NM.score_partitions(m, np.asarray(y), parts) for m in R17_METRICS}
+    out['clusters'] = float(np.mean([len(np.unique(p)) for p in parts]))
+    return out
+
+
+def avg(rows):
+    return {m: float(np.mean([r[m] for r in rows])) for m in rows[0]}
+
+
+def r17_arm_values(NM, ds, enc, aspect):
+    """Per arm and K (20 and the class count) the mean over seeds (c*, matched) and k-means states of NMI, ARI, ACC, clusters; the
+    partitions are `arm_table`'s (`kmeans`; matched: k-means of the L2-normalised probabilities)."""
+    import mt_clu
+    y, k = ds.labels(aspect), ds.class_count(aspect)
+    out = {}
+    for kk in sorted({20, k}):
+        out[str(kk)] = dict(
+            cstar=avg([r17_values(NM, y, kmeans(ds.cstar(enc, aspect, s, 'clu'), kk)) for s in SEEDS]),
+            matched=avg([r17_values(NM, y, kmeans(mt_clu.ct_score.l2(ds.probs(enc, s).astype(np.float32)), kk)) for s in SEEDS]),
+            frozen=r17_values(NM, y, kmeans(ds.frozen(enc, 'clu'), kk)),
+            teacher=r17_values(NM, y, kmeans(ds.teacher(aspect, 'clu'), kk)))
+    return dict(k=k, values=out)
+
+
+def r17_held(ctx, NM):
+    """ArtELingo held X-c* and Affection test X-c* at 20 clusters, from the partitions r14's readers fix (cached under
+    `bs_diag.out_dir()`). The class-count K is not stored there, so the held sets give K = 20 only."""
+    def art(enc):
+        import bs_artclu
+        names, sha, labels = bs_artclu.held_setup()
+        held_dir = need(Path(PP.OUT) / 'cstar' / enc / 'held/k11=40')
+        res = {}
+        for a in ASPECTS:
+            fixed, _ = bs_artclu.cstar_fixed(held_dir, bs_diag.out_dir() / 'cache/artclu' / enc, a)
+            res[a] = avg([r17_values(NM, labels[a], np.asarray(fixed[s]['r20'])) for s in SEEDS])
+        return res
+
+    def aff(enc):
+        import ac_data
+        import bs_affection
+        import pf_stage3
+        rec_file = need(bs_affection.ranges_path(enc, Path(PP.OUT)))
+        need(bs_affection.export_path(f'photo_{enc}', 'test', 0, Path(PP.OUT)))
+        rec = bs_affection.read_record(rec_file, enc)
+        cand = bs_affection.PhotoArm(f'photo_{enc}', Path(PP.OUT)).candidate(rec['photo_readout']['pick'])
+        parts = pf_stage3.candidate_partitions(cand, bs_diag.out_dir() / 'cache/affection_partitions', ctx['workers'])
+        labels = np.asarray(ac_data.labels('test'))
+        return avg([r17_values(NM, labels, parts[s]) for s in range(5)])
+    return dict(artelingo_held=per_encoder(art), affection_test=per_encoder(aff))
+
+
+def kind_r17_metrics(ctx):
+    """D13: context rows only. No claim, no word of verdict; nothing here reaches `pp_outcome`."""
+    NM = r17()
+    try:
+        res = each_set(ctx, lambda ds, e, a: r17_arm_values(NM, ds, e, a))
+    except Skip as e:
+        res = {'skipped': str(e)}
+    held = r17_held(ctx, NM)
+    if 'skipped' in res and not held_ok(held):
+        raise Skip('no set had its inputs: ' + json.dumps([res, held])[:300])
+    res = {k: v for k, v in res.items() if k != 'skipped'}
+    md = ["r17's NMI, ARI, ACC and the number of non-empty clusters (`ns_metrics`, read only) on this round's clustering cells; mean over "
+          'seeds (c*, matched) and the three k-means states. Context only (D13): no claim and no bar.', '']
+    for sname, encs in res.items():
+        rows = []
+        for e, aspects in encs.items() if 'skipped' not in encs else ():
+            if 'skipped' in aspects:
+                rows.append([e, '-', '-', '-', 'skipped', aspects['skipped'][:60], '', ''])
+                continue
+            for a, t in aspects.items():
+                for kk, arms in t['values'].items():
+                    for arm, v in arms.items():
+                        rows.append([e, a, kk, arm, f4(v['nmi']), f4(v['ari']), f4(v['acc']), f'{v["clusters"]:.1f}'])
+        md += [f'### {sname}', '', *table(['encoder', 'aspect', 'K', 'arm', 'NMI', 'ARI', 'ACC', 'clusters'], rows), '']
+    rows = []
+    for e, v in held['artelingo_held'].items():
+        for a in ASPECTS if 'skipped' not in v else ():
+            rows.append([e, a, *(f4(v[a][m]) for m in R17_METRICS), f'{v[a]["clusters"]:.1f}'])
+    md += ['### artelingo_held (X-c*, K = 20)', '', *table(['encoder', 'aspect', 'NMI', 'ARI', 'ACC', 'clusters'], rows), '']
+    rows = [[e, *(f4(v[m]) for m in R17_METRICS), f'{v["clusters"]:.1f}'] for e, v in held['affection_test'].items() if 'skipped' not in v]
+    md += ['### affection_test (X photo model, K = 20)', '', *table(['encoder', 'NMI', 'ARI', 'ACC', 'clusters'], rows), '', *skip_lines(held), '']
+    return dict(sets=res, **held), md
+
+
 KIND_FN = {'r0': kind_r0, 'clustering_kclass': kind_clustering_kclass, 'semart_close': kind_semart_close,
            'semart_ap_type': kind_semart_ap_type, 'semart_inner': kind_semart_inner, 'r6_5_held': kind_r6_5_held,
            'gain_share': kind_gain_share, 'seed_spreads': kind_seed_spreads, 'percept_strongest': kind_percept_strongest,
-           'cost_rows': kind_cost_rows, 'node_time': kind_node_time}
+           'cost_rows': kind_cost_rows, 'node_time': kind_node_time, 'r17_metrics': kind_r17_metrics}
 assert tuple(KIND_FN) == KINDS
 
 
