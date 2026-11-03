@@ -153,8 +153,10 @@ def ranges_doc(enc, value):
     return {'encoder': enc, 'kind': 'x', 'ranges': {a: value for a in PP.ASPECTS}}
 
 
-def picks_doc(enc, pick='center+k10'):
-    arms = {arm: {'pick': pick, 'table': {}, 'ranges': {}, 'dropped': {}} for arm in ('cstar', 'frozen')}
+def picks_doc(enc):
+    # Different non-identity maps/expansions make arm swaps and fitting on test rows observable.
+    arms = {arm: {'pick': pick, 'table': {}, 'ranges': {}, 'dropped': {}}
+            for arm, pick in (('cstar', 'center+k10'), ('frozen', 'whiten16+k5'))}
     return {'encoder': enc, 'kind': 'mmart_retrieval_picks', 'n_val': N_VAL, 'arms': arms}
 
 
@@ -167,7 +169,7 @@ def block():
 
 @pytest.fixture
 def teacher():
-    arms = {'teacher': {'pick': 'none+k0', 'table': {}, 'ranges': {}, 'dropped': {}}}
+    arms = {'teacher': {'pick': 'center+k3', 'table': {}, 'ranges': {}, 'dropped': {}}}
     return {'kind': 'mmart_retrieval_picks_teacher', 'ranges_encoder': 'qwen', 'n_val': N_VAL, 'arms': arms}
 
 
@@ -193,15 +195,25 @@ def test_clustering_cells_carry_r19_labels(world, matched, block, teacher):
 
 
 def test_clustering_scores_mean_ami_of_the_test_rows(world, matched, block, teacher):
-    """The frozen image's value is the mean over k-means states of sklearn's AMI on the labelled test rows, rows in sha
-    order (an independent computation; r14's array-level statistics are replayed by the gate commands)."""
+    """Independently score every aspect and every c* seed, using sklearn AMI on labelled test rows."""
     cells = score_clu(block=block)
-    cell = next(c for c in cells if c['sc'] == 'SC7' and c['aspect'] == 'genre')
-    y = np.asarray([world.label['genre'][k] for k in world.test])
-    parts = ct_score.output_partitions(world.view(ENC, world.test), 'k1')['r20']
-    want = np.mean([adjusted_mutual_info_score(y[y >= 0], p[y >= 0]) for p in parts])
-    assert cell['comparator_value'] == pytest.approx(want, abs=1e-9)
-    assert cell['n_labelled'] == int((y >= 0).sum())
+    frozen = ct_score.output_partitions(world.view(ENC, world.test), 'k1')['r20']
+    for a in PP.ASPECTS:
+        y = np.asarray([world.label[a][k] for k in world.test])
+        ok = y >= 0
+
+        def mean_ami(parts):
+            return np.mean([adjusted_mutual_info_score(y[ok], p[ok]) for p in parts])
+
+        cstar = np.mean([mean_ami(ct_score.output_partitions(
+            mt_export.load('new', ENC, a, s, world.test).astype(np.float32), 'k1')['r20']) for s in PP.SEEDS])
+        teach = mean_ami(ct_score.output_partitions(world.view(PP.TEACHER_VIEW[a], world.test), 'k1')['r20'])
+        for cell in (c for c in cells if c['aspect'] == a):
+            assert cell['candidate_value'] == pytest.approx(cstar, rel=0, abs=1e-9)
+            assert cell['n_labelled'] == int(ok.sum())
+            if cell['sc'] in ('SC7', 'SC10'):
+                want = mean_ami(frozen) if cell['sc'] == 'SC7' else teach
+                assert cell['comparator_value'] == pytest.approx(want, rel=0, abs=1e-9)
 
 
 # ------------------------------------------------------------------------------------------------ the matched arm
@@ -290,8 +302,6 @@ def test_a_record_of_another_encoder_is_refused(world, matched, block, teacher):
 # ------------------------------------------------------------------------------------------------ SC8, SC10 (mAP)
 import pp_outcome  # noqa: E402
 
-import rt_metrics  # noqa: E402
-
 
 def unit(x):
     x = np.asarray(x).astype(np.float32)
@@ -300,8 +310,8 @@ def unit(x):
 
 @pytest.fixture
 def ret_block(block):
-    """Picks 'none+k0' (the identity map, no expansion) so a cell's values can be computed straight from the rows."""
-    return dict(block, picks=picks_doc(ENC, 'none+k0'))
+    """Each arm has its own non-identity pick; these are deliberately different from r15's common pick."""
+    return block
 
 
 def test_retrieval_cells_carry_r19_labels_and_the_mAP_range(world, ret_block, teacher):
@@ -316,21 +326,29 @@ def test_retrieval_cells_carry_r19_labels_and_the_mAP_range(world, ret_block, te
 
 
 def test_retrieval_values_are_the_test_rows_alone(world, ret_block, teacher):
-    """With the identity map and no expansion each arm's mAP is retrieval on the test rows alone (queries and gallery =
-    the labelled test rows); the validation rows only fit a map that is the identity here."""
+    """Each picked map fits all validation rows, then scores only the labelled test queries/gallery."""
     cells = M.score_ret(ENC, block=ret_block, teacher=teacher, n_draws=DRAWS['ret'], expect_n=None)
+    picks = {arm: doc['pick'] for arm, doc in ret_block['picks']['arms'].items()}
+    picks['teacher'] = teacher['arms']['teacher']['pick']
+    assert len(set(picks.values())) == 3 and all(not p.startswith('none+') for p in picks.values())
     for a in PP.ASPECTS:
         y = np.asarray([world.label[a][k] for k in world.test], dtype=np.int64)
-        frozen = rt_metrics.retrieval(unit(world.view(ENC, world.test)), y)['ap'].mean()
-        tview = {'emotion': 'emotion_focus', 'style': 'style_word', 'genre': 'genre_word'}[a]
-        teach = rt_metrics.retrieval(unit(world.view(tview, world.test)), y)['ap'].mean()
-        cstar = np.mean([rt_metrics.retrieval(unit(mt_export.load('new', ENC, a, s, world.test)), y)['ap'].mean()
-                         for s in PP.SEEDS])
+        frozen = mt_ret.arm_ap(lambda s: unit(world.view(ENC, world.val)),
+                               lambda s: unit(world.view(ENC, world.test)), picks['frozen'], y, False, 2)
+        tview = PP.TEACHER_VIEW[a]
+        teach = mt_ret.arm_ap(lambda s: unit(world.view(tview, world.val)),
+                              lambda s: unit(world.view(tview, world.test)), picks['teacher'], y, False, 2)
+        cstar = mt_ret.arm_ap(lambda s: unit(mt_export.load('val', ENC, a, s, world.val)),
+                              lambda s: unit(mt_export.load('new', ENC, a, s, world.test)),
+                              picks['cstar'], y, True, 2)
         sc8 = next(c for c in cells if c['sc'] == 'SC8' and c['aspect'] == a)
         sc10 = next(c for c in cells if c['sc'] == 'SC10' and c['aspect'] == a)
-        assert sc8['comparator_value'] == pytest.approx(frozen, abs=1e-6)
-        assert sc10['comparator_value'] == pytest.approx(teach, abs=1e-6)
-        assert sc8['candidate_value'] == pytest.approx(cstar, abs=1e-6)
+        for cell, comparator, arm in ((sc8, frozen, 'frozen'), (sc10, teach, 'teacher')):
+            assert cell['candidate_value'] == pytest.approx(cstar['point'], rel=0, abs=1e-9)
+            assert cell['comparator_value'] == pytest.approx(comparator['point'], rel=0, abs=1e-9)
+            assert cell['candidate_readout'] == picks['cstar']
+            assert cell['comparator_readout'] == picks[arm]
+            assert cell['n_queries'] == len(cstar['rows']) == len(comparator['rows'])
 
 
 def test_the_teacher_must_be_picked_with_qwens_ranges(world, ret_block, teacher):
@@ -482,7 +500,7 @@ def r15_files(world, matched, block, teacher, monkeypatch, tmp_path):
     monkeypatch.setattr(M, 'matched_r15', lambda enc, keys: M.check_matched(matched.partitions('r15', enc, keys), len(keys)))
     monkeypatch.setattr(PP, 'R15_OUT', tmp_path / 'mmart')
     monkeypatch.setattr(PP, 'N_DRAWS', dict(DRAWS))
-    ret_block = dict(block, picks=picks_doc(ENC, 'none+k0'))
+    ret_block = block
     stored = {'clu': r15_form(score_clu(block=ret_block)),
               'ret': r15_form(M.score_ret(ENC, block=ret_block, teacher=teacher, n_draws=DRAWS['ret'], expect_n=None))}
     for part, cells in stored.items():
