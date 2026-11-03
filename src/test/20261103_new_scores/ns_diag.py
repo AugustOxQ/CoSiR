@@ -308,8 +308,8 @@ def told_untold(set_, enc, workers=8, draws=None):
 
 # ================================================================================================ R0 rows
 def r0_rows(record=None):
-    """R0 (no map, no expansion: `none+k0`) validation mAP of each new retrieval arm per aspect, with the pick, its
-    cross-fit mAP and the unit, from the stage 1 picks record. A missing pick is listed, not skipped."""
+    """Held/test R0 (`none+k0`) mAP per aspect and seed of each new arm, beside its validation r0_map, pick,
+    cross-fit mAP and unit from stage 1. Missing picks are listed while the other keys run."""
     record = _picks_record() if record is None else record
     import ns_picks
     rows, missing = [], []
@@ -319,8 +319,13 @@ def r0_rows(record=None):
             missing.append(key)
             continue
         rec = record[key]
-        rows.append(dict(key=key, pick=rec['pick'], r0_map=rec['scores']['r0_map'], map_at_pick=rec['scores']['map'],
-                         unit=rec['unit']))
+        arm_rows, aspects = ns_ret._Rows(s, e), {}
+        for aspect in P.ASPECTS:
+            y = ns_data.labels(s, P.HELD_SPLIT[s], aspect)
+            ap = arm_rows.ap(arm, aspect, 'none+k0', y, workers=8)
+            aspects[aspect] = dict(mean=float(ap['ap'].mean()), per_seed=ap['per_seed'])
+        rows.append(dict(key=key, split=P.HELD_SPLIT[s], aspects=aspects, pick=rec['pick'],
+                         r0_map=rec['scores']['r0_map'], map_at_pick=rec['scores']['map'], unit=rec['unit']))
     doc = dict(rows=rows, missing=missing, smoke=bool(P.SMOKE))
     P.write_json(_out('r0_rows.json'), doc)
     return doc

@@ -88,7 +88,9 @@ stage3)          # ns_diag.py (ticket 11): sweep per (set, encoder), then figure
     q told_untold_${s}_$e 15m -- $DIAG told-untold --set $s --enc $e
   done; done
   q qwen_crl 20m -- $DIAG qwen-crl
-  q r0 1m --short -- $DIAG r0
+  # ~45 min guess: 16 keys x 3 aspects, 228 seed/aspect AP passes at none+k0 (15 seeded arms + CRL).
+  # Correct this estimate from the first run.
+  q r0 45m -- $DIAG r0
   for s in artelingo mmart affection emoset; do q tables_$s 2m --short -- $DIAG tables --set $s; done
   ;;
 *) echo "unknown stage $STAGE"; exit 2;;
