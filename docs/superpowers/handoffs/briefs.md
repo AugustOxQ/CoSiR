@@ -1588,3 +1588,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-02-r15-build3-handoff.md
 - New chat: tab 'r15 build 3', session 1814cb12-2f45-4cf8-9ff6-54679c366f39
 
+[brief] CoSiR: r15 build 3 -> r15 run (2026-11-03 01:13 Amsterdam)
+- Done: r15 build merged into main (main = bc27203): 8 tickets, the final review in 3 parts with its fix wave and re-review; 274 round tests pass; the end-to-end smoke ends `QUEUE smoke OK` (94.5 min).
+- State: on real data in the smoke, every stage 0 gate passes for all four encoders and stage 1 writes every range and pick (13 steps, none failed).
+- Next: `bash mt_run_cpu.sh first`, commit the printed records, then stage 2, C13 (Codex), verdicts, stage 3, reports.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-03-r15-run-handoff.md
+- New chat: tab 'r15 run', session 200b78f1-6fe5-4e9c-b303-555b8a776303
+
