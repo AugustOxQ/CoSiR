@@ -21,10 +21,12 @@ unlabeled train photos) beats its teacher on Affection (report 2027-01-01) and o
 nothing (report 2027-01-02). The recipe carries over to SigLIP 2, SigLIP 1 and CLIP L/14 (r14), and to MMArt, 16,384
 WikiArt paintings outside ArtELingo, on all four encoders (r15, report 2027-01-03, holds): every plain-image and
 PercepT cell is a WIN; against the teacher 18 WIN, 4 LEVEL, 2 BELOW (emotion retrieval, Qwen and CLIP L/14).
-Experiments are paused (user, 2026-11-03) while the user reports to the collaborator and the supervisor. Next: the r16
-report chat (the user's questions on r15 and r14), a stage note, then the direction (open; a SemArt genre test on
-11,162 paintings by artists outside ArtELingo is one option, [check](../../src/test/20261103_semart_check/20261103_semart_check_log.md)),
-then r16. Deadlines: abstract 2026-11-10, paper 2026-11-16, supplementary 2026-11-23.
+Experiments start again (user, 2026-11-03 18:30) from the experiment overview's plan: six loops, r17 to r22, several
+at the same time to use the local GPU and the DAS6 node fully. r17 (new scores from saved outputs: NMI, ARI, ACC,
+cluster counts, CRL, PercepT retrieval, untold retrieval), r18 (outside methods: TPIPS, CLAY, TEMI or TURTLE) and r19
+(c* on three more encoders, SemArt new artists, cost table) are decided on 11-03 evening; r20 (figure), r21 (head
+variants) and r22 (text queries) follow from 11-06. The stage note's form still waits for the user. Deadlines:
+abstract 2026-11-10, paper 2026-11-16, supplementary 2026-11-23.
 
 ## Parked ideas
 
@@ -129,6 +131,24 @@ then r16. Deadlines: abstract 2026-11-10, paper 2026-11-16, supplementary 2026-1
     stays as it is.
   - Still open: the stage note's line that the frozen encoder keeps its own retrieval; the stage note's form and
     readers (the user decides after other discussions).
+- **The user's reading of the experiment overview (r16 report 3, 2026-11-03 18:00):** about 90% of the clustering
+  work and 80% of the retrieval work is done; most cells WIN, some LEVEL, overall good. Missing: CRL and CLAY in
+  clustering; PercepT, CRL, CLAY and TPIPS in retrieval. Important: standard metrics, the cluster count (metrics with
+  a chance level that moves with K), a stronger clustering method on the plain image, a qualitative figure. Ours
+  agrees; the overview had rated PercepT retrieval on the other encoders as minor, and had no to-do for CRL
+  clustering on paintings.
+- **Decided (A), 2026-11-03 18:30 (user, after seeing the recommendation):** experiments start again now. Six loops,
+  listed in the overview's "The plan" ([overview](../user_read/2026-11-03_experiment_overview.md)): r17 new scores
+  from saved outputs (items 1, 2, 7, 8, 9, 11; CRL clustering on paintings; PercepT retrieval on SigLIP 2, SigLIP 1,
+  CLIP L/14 and MMArt); r18 outside methods (13 then 14 TPIPS, 15 CLAY, 3 TEMI or TURTLE); r19 c* past our picks (16
+  three more encoders, 6 SemArt new artists, 19 cost table); r20 qualitative figure (small); r21 head variants (4 DEC,
+  18 deeper heads); r22 text queries (10, then 12). Item 17 important, its priority later (user's own); items 5 and 21
+  cited only. Loops run at the same time to use the GPUs fully (user's own): r17, r18 and r19 decided tonight, each in
+  its own workspace; r21 and r22 moved forward to the weekend of 11-06 to 11-08. The TPIPS timing probe runs in r18's
+  decide chat. Cluster counts: the user's set 5, 8, 16, 20 for emotion (user's own), set per aspect in r17's spec
+  (agent recommendation). Shared code: earlier round folders stay frozen and are imported; r17's scoring module merges
+  first, and r18 and r19 import it read-only. Each loop's report states shortly how much it changes the current paper
+  writing: related work, method, experiments (user's own, 18:33).
 - **Idea (B):** none yet.
 - **Why:** the user wants the collaborator's and the supervisor's view before more experiments, with the abstract on
   2026-11-10.
