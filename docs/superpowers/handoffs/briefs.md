@@ -1621,3 +1621,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-03-r16-report-2-handoff.md
 - New chat: tab 'r16 report 2', session 8f9a6254-785b-4560-b56f-1bda07a81ec6
 
+[brief] CoSiR: r16 report 2 -> r16 report 3 (2026-11-03 17:40 Amsterdam)
+- Done: the experiment overview (user-read report): what exists and what is missing for clustering and retrieval, with 23 to-dos labelled by task and costed; the user's answers to the open items recorded.
+- State: the grid is full on four encoders and four test sets; the gaps are outside methods, NMI/ARI/ACC and a few checks.
+- Next: the user reads the overview and picks which to-dos run and when (decision A).
+- Blocked: waiting for the user; experiments stay paused.
+- Handoff: docs/superpowers/handoffs/2026-11-03-r16-report-3-handoff.md
+- New chat: tab 'r16 report 3', session 71d571af-3bc6-4f7e-89a8-b6b862b1257b
+
