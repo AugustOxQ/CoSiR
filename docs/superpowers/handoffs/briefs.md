@@ -1719,3 +1719,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-03-r17-build2-handoff.md
 - New chat: tab 'r17 build 2', session f7e96eb3-1553-403a-adb0-583ba6ff67a9
 
+[brief] CoSiR: r19 build -> r19 build 2 (2026-11-03 21:26 Amsterdam)
+- Done: code maps of the reused code, the shared paths module (committed), 14 tickets with shared interfaces.
+- State: integration branch r19-past-picks pushed; no ticket started; r17 not merged yet (ticket 14 waits).
+- Next: dispatch tickets 01, 03 and 11 (Codex has room again after 23:34), then the frontier per the index.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-03-r19-build2-handoff.md
+- New chat: tab 'r19 build 2', session 5dffc27d-c94f-4137-9d05-bfebeec91b0e
+
