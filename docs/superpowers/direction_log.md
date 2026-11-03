@@ -102,6 +102,23 @@ then r16. Deadlines: abstract 2026-11-10, paper 2026-11-16, supplementary 2026-1
   on ArtELingo held and MMArt is doable, given a run-time estimate (r16 report chat: about 7.5 to 11 GPU hours on
   the 3090 for three aspects, a guess from Qwen 2B's 86 to 95 ms per image, not measured); as a teacher, parked (no
   time before the deadline).
+- **Open items of the r16 report chats, answered 2026-11-03 16:59 (user, after seeing the recommendation, unless
+  marked):**
+  - Stage note: the CRL comparison on the same encoder as point values (CLIP L/14, ArtELingo held emotion mAP: c*
+    0.2671, CRL 0.2554); a short CPU bootstrap later, with a bar set before looking.
+  - Paper framing: a "training images from the domain" column; CRL, CLAY and TPIPS as context rows; the teacher,
+    matched PercepT and the frozen MMArt and EmoSet tests carry the fair comparison.
+  - Decision A list: text queries by aspect through c*'s caption side, a small exploration first (emotion, ArtELingo
+    validation, a hit is an image with the caption's own emotion label, against plain Qwen text and the teacher's
+    text); CRL on MMArt (CPU, features exist); CLAY (code public, link from the user: `github.com/kaist-ami/CLAY`,
+    CVPR 2026; training-free, on CLIP and SigLIP base, Stanford40 only, no license file; checked by us 2026-11-03).
+  - TPIPS: a timing probe runs before decision A (user). Model size open: the user asked to probe a 2B model, but
+    only 8B TPIPS models are released (three, HuggingFace `sywang/`, checked 2026-11-03).
+  - Correction to r11 D1: its reason for no text queries, "c* has no text side", is not exact. c* has a caption side
+    (trunk and three heads on the Qwen caption mean), trained by the buddy terms and never scored. The r11 spec
+    stays as it is.
+  - Still open: the stage note's line that the frozen encoder keeps its own retrieval; the stage note's form and
+    readers (the user decides after other discussions).
 - **Idea (B):** none yet.
 - **Why:** the user wants the collaborator's and the supervisor's view before more experiments, with the abstract on
   2026-11-10.
