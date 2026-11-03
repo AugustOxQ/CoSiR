@@ -1,0 +1,10 @@
+# @package _global_
+# r18 TPIPS on node402 (scripts/run_om_tpips_node.sh). No dataset paths here on purpose: the script's dry run adds
+# `+om_in.tpips_inputs_path=<local path>` (the manifests), which `cluster check` resolves and syncs through DATA_MAP.
+# The results dir is set per job by the script's override.
+data:
+  dataset_type: "om_node"
+
+experiment:
+  name: "r18_tpips"
+  results_dir: "/local/wding/res/r18_tpips"
