@@ -1767,3 +1767,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-04-r17-run-handoff.md
 - New chat: tab 'r17 run', session 798d271f-5359-4d24-a39c-67752de65187
 
+[brief] CoSiR: r18 build 2 -> r18 build 3 (2026-11-04 00:33 Amsterdam)
+- Done: build 2 wrote all 12 tickets after r17's merge. Tickets 01, 03 and 05 are merged; gate (i) passes at 6.6e-7 against 1e-5.
+- State: ticket 02 is built, gate (ii) CPU part 2.5e-7 against 1e-5, not reviewed. No GPU job has run yet.
+- Next: Opus review of 02, the short GPU jobs, then tickets 04 and 06.
+- Blocked: nothing. GPU check passes.
+- Handoff: docs/superpowers/handoffs/2026-11-04-r18-build-3-handoff.md
+- New chat: tab 'r18 build 3', session 07584f99-6245-4d34-ae35-880507dd3358
+
