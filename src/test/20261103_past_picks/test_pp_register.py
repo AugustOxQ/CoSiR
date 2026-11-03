@@ -115,6 +115,8 @@ def test_artelingo_code_paths_return_the_rows_of_pp_stores(enc, art_names):
     got = bs_artret.frozen_embed(enc, 'val')                                          # r14's retrieval route, patched
     assert got.shape == (len(val), WIDTH[enc])
     assert np.array_equal(got[:100], S.load('artelingo', enc, val[:100]))
+    held = rt_data.names('held')                                                      # the split is honoured
+    assert np.array_equal(bs_artret.frozen_embed(enc, 'held'), S.load('artelingo', enc, held))
 
 
 @pytest.mark.parametrize('enc', NEW)
