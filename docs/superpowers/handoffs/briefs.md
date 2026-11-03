@@ -1596,3 +1596,12 @@
 - Handoff: docs/superpowers/handoffs/2026-11-03-r15-run-handoff.md
 - New chat: tab 'r15 run', session 200b78f1-6fe5-4e9c-b303-555b8a776303
 
+[brief] CoSiR: r15 run -> r16 decide (2026-11-03 05:05 Amsterdam)
+- Done: r15 ran overnight: the MMArt test on four encoders, the C13 re-derivation, ten diagnostics, both reports.
+- State: holds, GO on all four encoders; C13 matched all 6,697 items (max difference 0). Teacher: 18 WIN, 4 LEVEL,
+  2 BELOW (emotion retrieval, Qwen and CLIP L/14).
+- Next: show the user the results brief without our block and ask for their reading (decision C).
+- Blocked: nothing; storage decisions wait for the user.
+- Handoff: docs/superpowers/handoffs/2026-11-03-r16-decide-handoff.md
+- New chat: tab 'r16 decide', session 40207643-b3e1-4269-a702-8e58f729b6fd
+
