@@ -1653,3 +1653,20 @@
 - Handoff: docs/superpowers/handoffs/2026-11-03-r19-decide-handoff.md
 - New chat: tab 'r19 decide', session b0d51244-7493-41ed-a5d8-102b37487f30
 
+[brief] CoSiR: r17 decide -> r17 decide 2 (2026-11-03 19:22 Amsterdam)
+- Done: the r17 grill. Cluster counts per aspect; four metrics with intervals at the class count; a WIN bar against CRL on the same encoder.
+- State: every input is saved; CPU only, about 10 CPU hours (our estimate). Two small CPU exports are needed: the CRL vectors and PercepT's validation probabilities.
+- Next: write the spec from the grill (no new questions), get the rule reviewed by Opus, then the user approves the brief.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-03-r17-decide-2-handoff.md
+- New chat: tab 'r17 decide 2', session 2aa937ea-98bb-41f9-97d6-a497d6ce49a9
+
+[brief] CoSiR: r18 decide -> r18 spec (2026-11-03 19:22 Amsterdam)
+- Done: TPIPS downloaded (32 GB) and probed: 219 ms per image per factor on the 3090, about 6.4 GPU h for r18. Grill
+  done: TURTLE then TEMI; CLAY with both text sets, picked on validation.
+- State: every grill answer recorded (direction log, round log). No spec yet.
+- Next: write the r18 spec straight from the grill, ask only the open points below, get the brief approved, cut to build.
+- Blocked: auto mode refused running cloned TURTLE code; the spec asks the user how the build runs outside code.
+- Handoff: docs/superpowers/handoffs/2026-11-03-r18-spec-handoff.md
+- New chat: tab 'r18 spec', session 014c0b3a-5fff-40cf-862d-4db7578df65c
+
