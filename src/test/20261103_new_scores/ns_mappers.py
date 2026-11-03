@@ -162,6 +162,11 @@ def export(out=None, encoders=NP.ENCODERS, seeds=NP.SEEDS):
     paths = []
     for enc in encoders:
         x, store = val_images(enc, names)
+        import rb_encoders
+        import eg_encoders
+        eg_encoders.extend_rb_maps()
+        # the rows the mappers saw in training (r15's loader), bit for bit (review of ticket 05, note 1)
+        assert np.array_equal(x, rb_encoders.full_images(mm._spec(enc)['store'], names)), enc
         for seed in seeds:
             mpath = mm.mapper_path(enc, seed)
             sha = json.loads(mpath.with_suffix('.json').read_text())['weights_sha256']
