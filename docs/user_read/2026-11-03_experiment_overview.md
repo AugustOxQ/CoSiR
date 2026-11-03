@@ -246,10 +246,54 @@ slower than Qwen.
 
 ## Next
 
-- Yours to decide: which items run, and in what order. Experiments stay paused until you say so.
+- Decided 2026-11-03: which items run and in which loop. See "The plan" below.
 - Yours to decide: the form of the note for the collaborator and the supervisor, after your other discussions, and
   item 22.
-- After your choice, we write one plan for the chosen items. The small items can share one loop.
+
+## The plan (decided 2026-11-03)
+
+You read this overview on 2026-11-03 and approved this plan (decision A, after seeing our recommendation). Six loops
+run the chosen items. The label is the name of the loop's chats.
+
+**Your reading, in short:** about 90% of the clustering work and 80% of the retrieval work is done. Most cells are
+WIN, some are LEVEL. Missing: CRL and CLAY in clustering; PercepT, CRL, CLAY and TPIPS in retrieval.
+
+| Loop | Label | Size | Items | Machine | When (our estimate) |
+|---|---|---|---|---|---|
+| 1. New scores from saved outputs | r17 | medium | 1, 2, 7, 8, 9, 11; CRL clustering on paintings; PercepT retrieval on SigLIP 2, SigLIP 1, CLIP L/14 and MMArt | local CPU, one night | results 11-05 |
+| 2. Outside methods | r18 | medium | 13 then 14 (TPIPS), 15 (CLAY), 3 (TEMI or TURTLE) | DAS6 node, separate envs | results about 11-08 |
+| 3. c* past our own picks | r19 | medium | 16 (three more encoders), 6 (new artists), 19 (cost table) | local GPU at night, or DAS6 | results about 11-10 |
+| 4. Qualitative figure | r20 | small | 20 | CPU minutes, design work with you | after loop 1 sets the cluster counts, by 11-12 |
+| 5. Head variants | r21 | medium | 4 (DEC), 18 (deeper heads) | GPU about 2 h | 11-17 to 11-20 |
+| 6. Text queries | r22 | small, then medium if it works | 10, then 12 | GPU under 1 h | 11-17 to 11-22 |
+
+Not run: 17 (important; its priority is decided later), 5 and 21 (we cite and explain them). Items 22 and 23 are
+paper text only.
+
+**Why these groups:**
+
+- **Loop 1** only reads saved embeddings: one scoring script, no training. It is medium, not small, because its
+  numbers go into the main tables, and the CRL bar is set before we look. Loops 2 and 3 also use its script. Not
+  checked: whether the PercepT outputs for the three other encoders are saved; if not, those short GPU runs repeat.
+- **Loop 2** holds the outside methods. Each is a thin adapter on released code, in its own env. Its grill decides
+  CLAY's aspect prompts and the clustering method. It is the tightest loop: TPIPS needs a 16.5 GB download, its own
+  env and its data on the DAS6 node.
+- **Loop 3** asks one question: does c* hold outside the encoders and artists we picked?
+- **Loops 5 and 6** are for the supplementary.
+
+**Changes against the advice above:**
+
+- Loop 1 gets two gaps you found: CRL clustering on paintings, and PercepT retrieval on the other three encoders and
+  MMArt. The overview rated the PercepT gap as minor.
+- Cluster counts: your set was 5, 8, 16 and 20 for emotion. The class count differs by aspect (emotion 9 on ArtELingo
+  and MMArt, 8 on EmoSet), so loop 1's spec sets the counts per aspect: below the class count, at it, and up to 20.
+  AMI and ARI subtract the chance level, so the cluster-count sweep uses them. NMI rises with the cluster count, and ACC
+  falls when it is above the class count, so NMI and ACC are given at the class count only.
+- A stronger clustering method (item 3) replaces only the k-means step on the plain image. It also runs on c*'s heads,
+  so the table shows whether c*'s gain holds with it.
+- Item 6 (new artists) moved from the supplementary to loop 3.
+- Item 17: important; its priority is decided later (yours). As written it is a comparator only, with no c* training,
+  so it needs no re-tuning.
 
 ## Glossary
 
