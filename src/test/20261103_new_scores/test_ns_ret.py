@@ -371,15 +371,52 @@ def test_score_cells_sc6_only_on_clip_l14_and_unknown_sc_refused(fake):
         ns_ret.score_cells('affection', 'clip_l14', ('SC7',), None, 20, workers=1)
 
 
-def test_score_cells_missing_new_pick_raises_and_explicit_picks_need_smoke(fake, monkeypatch):
-    monkeypatch.setattr(ns_paths, 'read_committed_record', lambda name: {})
-    with pytest.raises(KeyError):
-        ns_ret.score_cells('mmart', 'clip_l14', ('SC8',), None, 20, workers=1)
+def test_score_cells_explicit_picks_need_smoke(fake, monkeypatch):
     with pytest.raises(AssertionError):                       # a given record is for smoke runs and tests only
         ns_ret.score_cells('mmart', 'clip_l14', ('SC8',), {'matched/mmart/clip_l14': {'pick': 'none+k0'}}, 20, workers=1)
     monkeypatch.setattr(ns_paths, 'SMOKE', 1)
     cells = ns_ret.score_cells('mmart', 'clip_l14', ('SC8',), {'matched/mmart/clip_l14': {'pick': 'none+k0'}}, 20, workers=1)
     assert len(cells) == 3 and {c['comparator_readout'] for c in cells} == {'none+k0'}
+
+
+@pytest.mark.parametrize('arm, sc', [('untold', 'SC7'), ('matched', 'SC8'), ('crl', 'SC6')])
+def test_score_cells_missing_pick_skips_only_its_sc(fake, monkeypatch, capsys, arm, sc):
+    scs = ('SC6', 'SC7', 'SC8')
+    full = ns_ret.score_cells('mmart', 'clip_l14', scs, None, 20, workers=1)
+    record = fake.record('stage1_picks.json')
+    key = f'{arm}/mmart/clip_l14'
+    del record[key]
+    monkeypatch.setattr(ns_paths, 'read_committed_record', lambda name: record)
+    calls = []
+    original = ns_ret._Rows.ap
+
+    def spy(self, arm, aspect, *args):
+        calls.append((arm, aspect))
+        return original(self, arm, aspect, *args)
+
+    monkeypatch.setattr(ns_ret._Rows, 'ap', spy)
+    got = ns_ret.score_cells('mmart', 'clip_l14', scs, None, 20, workers=1)
+    assert got == [c for c in full if c['sc'] != sc]
+    assert len(calls) == len(set(calls))               # a cached arm survives a missing comparator
+    lines = capsys.readouterr().out.splitlines()
+    assert len(lines) == 1 and sc in lines[0] and key in lines[0]
+
+
+@pytest.mark.parametrize('source', ['reused_pick', 'arm_ap', 'record', 'file'])
+def test_score_cells_other_errors_still_raise(fake, monkeypatch, source):
+    def fail(*args, **kwargs):
+        raise FileNotFoundError('stage1_picks.json') if source == 'file' else KeyError('other source')
+
+    if source == 'reused_pick':
+        monkeypatch.setattr(ns_ret, 'reused_pick', fail)
+    elif source == 'arm_ap':
+        monkeypatch.setattr(ns_ret, 'arm_ap', fail)
+    elif source == 'record':
+        monkeypatch.setattr(ns_paths, 'read_committed_record', lambda name: {'untold/mmart/clip_l14': {}})
+    else:
+        monkeypatch.setattr(ns_paths, 'read_committed_record', fail)
+    with pytest.raises(FileNotFoundError if source == 'file' else KeyError):
+        ns_ret.score_cells('mmart', 'clip_l14', ('SC7',), None, 20, workers=1)
 
 
 def test_score_cells_qwen_artelingo_sc8_keeps_r11_probabilities(fake, monkeypatch):

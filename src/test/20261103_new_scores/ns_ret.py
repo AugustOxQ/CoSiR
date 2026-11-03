@@ -198,10 +198,14 @@ def recorded_range(set_, enc, aspect):
     return float(r), src
 
 
+class MissingPick(KeyError):
+    """A new arm has no entry in the stage 1 picks record."""
+
+
 def new_pick(record, arm, set_, enc):
     key = f'{arm}/{set_}/{enc}'
     if key not in record:
-        raise KeyError(f'no stage 1 pick {key!r} in the picks record')
+        raise MissingPick(f'no stage 1 pick {key!r} in the picks record')
     return record[key]['pick']
 
 
@@ -290,20 +294,29 @@ def score_cells(set, enc, scs, picks, draws, workers=8):
     box = [picks]
     claim = {(c['sc'], c['set'], c['encoder'], c['aspect']): c for c in ns_outcome.claim_cells() if c['task'] == 'ret'}
     rows = _Rows(set, enc)
-    cells = []
+    cells, skipped = [], []
     for aspect in ASPECTS:
         y = data.labels(set, ns_paths.HELD_SPLIT[set], aspect)
         r, r_source = recorded_range(set, enc, aspect)
         done = {}
         for sc in scs:
+            if sc in skipped:
+                continue
             cand_arm, comp_arm, mode = SC_ARMS[sc]
             res, picked = [], []
             for arm in (cand_arm, comp_arm):
                 if (arm, aspect) not in done:
-                    pk = _pick(arm, set, enc, box)
+                    try:
+                        pk = _pick(arm, set, enc, box)
+                    except MissingPick as e:
+                        print(f'skip {sc} {set}/{enc}: {e}')
+                        skipped.append(sc)
+                        break
                     done[(arm, aspect)] = (rows.ap(arm, aspect, pk, y, workers), pk)
                 res.append(done[(arm, aspect)][0])
                 picked.append(done[(arm, aspect)][1])
+            if sc in skipped:
+                continue
             cand, comp = res
             assert np.array_equal(cand['rows'], comp['rows']), (sc, set, enc, aspect, 'the arms were scored on other queries')
             p = paired_ret(cand['ap'], comp['ap'], r, draws, comp_seeds=mode)
