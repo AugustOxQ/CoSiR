@@ -1695,3 +1695,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-03-r18-build-handoff.md
 - New chat: tab 'r18 build', session a6ccee89-3ce6-4c30-8e76-e7fa4da4248e
 
+[brief] CoSiR: r18 build -> r18 build 2 (2026-11-03 20:52 Amsterdam)
+- Done: build 1 read the spec and the code map and drafted the ticket plan (§3). It cut at once: its context passed 200k.
+- State: nothing built. r17's scorer is not merged (r17 build chat started 20:46). GPU check passes.
+- Next: wait for r17's merge (background until-loop, §5), then write the tickets from §3, build, final review, merge.
+- Blocked: nothing (the build waits for r17's merge by design, D17).
+- Handoff: docs/superpowers/handoffs/2026-11-03-r18-build-2-handoff.md
+- New chat: tab 'r18 build 2', session b5821c9d-63bd-4507-8fce-580d321fcda9
+
