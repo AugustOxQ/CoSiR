@@ -23,23 +23,23 @@ q() {  # q LABEL EST [--short] -- command...
 }
 
 case $STAGE in
-stage0)   # gates, about 1.3 h in all; each step also rebuilds records/status.json
-  q i_a_r14         3m  --short -- $RUN gate i_a_r14
-  q i_a_partitions  2m  --short -- $RUN gate i_a_partitions
-  q i_a_r15         6m  --short -- $RUN gate i_a_r15
-  q i_b             3m  --short -- $RUN gate i_b
+stage0)   # gates, about 2.1 h in all (build-time full replays, load 30 to 60); each step also rebuilds records/status.json
+  q i_a_r14         5m  --short -- $RUN gate i_a_r14
+  q i_a_partitions  5m  --short -- $RUN gate i_a_partitions
+  q i_a_r15         20m         -- $RUN gate i_a_r15
+  q i_b             5m  --short -- $RUN gate i_b
   q i_c_affection   1m  --short -- $RUN gate i_c_affection
   q i_c_emoset      2m  --short -- $RUN gate i_c_emoset
-  q i_d_emoset      5m  --short -- $RUN gate i_d_emoset
-  q i_d_class_count 6m  --short -- $RUN gate i_d_class_count
-  q ii_scorer       11m --short -- $RUN gate ii_scorer
+  q i_d_emoset      4m  --short -- $RUN gate i_d_emoset
+  q i_d_class_count 25m         -- $RUN gate i_d_class_count
+  q ii_scorer       13m --short -- $RUN gate ii_scorer
   q ii_crl          1m  --short -- $RUN gate ii_crl
   q ii_percept      1m  --short -- $RUN gate ii_percept
   q iii             2m  --short -- $RUN gate iii
   q iv_export       10m --short -- $RUN gate iv_export    # ~ guess: mapper forward passes on CPU
   q iv              2m  --short -- $RUN gate iv
   q v               2m  --short -- $RUN gate v
-  q vi              18m         -- $RUN gate vi            # r11 stage 4 recomputed, about 17 min
+  q vi              35m         -- $RUN gate vi            # r11 stage 4 recomputed, 2,094 s at high load
   ;;
 stage1-ranges)   # measured (07, loaded machine) 85 to 330 s per painting (set, encoder); photo ~ 5 min; about 1.2 h
   for s in artelingo mmart; do for e in $ENCS; do q ranges_${s}_$e 6m --short -- $RUN ranges --set $s --enc $e; done; done
@@ -77,18 +77,18 @@ c13)             # C13 is separate code (run chat); this placeholder only checks
 verdicts)        # copies outcomes to records/verdicts.json only if c13.json has pass true and names the outcomes sha256
   q verdicts 1m --short -- $RUN verdicts
   ;;
-stage3)          # ns_diag.py (ticket 11): sweep per (set, encoder), then figures, then the rest; ~ estimates (replace with 11's)
+stage3)          # ns_diag.py (ticket 11): sweep per (set, encoder), then figures, then the rest; painting sweep 45 to 60 min each (11's), about 7 h; photo ~
   DIAG="env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 $PY /project/CoSiR/src/test/20261103_new_scores/ns_diag.py"
-  for s in artelingo mmart; do for e in $ENCS; do q sweep_${s}_$e 25m -- $DIAG sweep --set $s --enc $e; done; done
-  for e in $ENCS; do q sweep_affection_$e 10m -- $DIAG sweep --set affection --enc $e; done   # photo sets last (may be cut, §3.6)
-  q sweep_emoset_qwen 10m -- $DIAG sweep --set emoset --enc qwen
+  for s in artelingo mmart; do for e in $ENCS; do q sweep_${s}_$e 55m -- $DIAG sweep --set $s --enc $e; done; done
+  for e in $ENCS; do q sweep_affection_$e 15m -- $DIAG sweep --set affection --enc $e; done   # photo sets last (may be cut, §3.6)
+  q sweep_emoset_qwen 30m -- $DIAG sweep --set emoset --enc qwen
   for s in artelingo mmart affection emoset; do q figure_$s 2m --short -- $DIAG figure --set $s; done
   for s in artelingo mmart; do for e in $ENCS; do
-    q per_class_${s}_$e 12m -- $DIAG per-class --set $s --enc $e
-    q told_untold_${s}_$e 12m -- $DIAG told-untold --set $s --enc $e
+    q per_class_${s}_$e 3m --short -- $DIAG per-class --set $s --enc $e
+    q told_untold_${s}_$e 15m -- $DIAG told-untold --set $s --enc $e
   done; done
   q qwen_crl 20m -- $DIAG qwen-crl
-  q r0 5m --short -- $DIAG r0
+  q r0 1m --short -- $DIAG r0
   for s in artelingo mmart affection emoset; do q tables_$s 2m --short -- $DIAG tables --set $s; done
   ;;
 *) echo "unknown stage $STAGE"; exit 2;;
