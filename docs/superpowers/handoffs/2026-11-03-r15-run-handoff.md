@@ -122,7 +122,8 @@ the unseen-artist subset without cells.
   load of about 40): stage 0 about 30 min (full replays: (iii) clustering 15 min, retrieval 7 min, (vi) 21 min, in
   parallel with the exports), stage 1 about 30 min, stage 2 at full draws about 1 to 1.5 h, C13 about 1.5 h, stage 3
   about 1 to 1.5 h (the smoke took 40 min). Started at about 01:30 it ends about 07:00 to 08:00 (reports after that), before 11:00. CPU only.
-- **Git:** `*.json` is gitignored (`git add -f` for records); commit only your own paths (`git commit -- <paths>`); other
+- **Git:** the checkout `/project/CoSiR` is on `main` (the build branch is merged); commit the run's records and
+  reports on main and push main. `*.json` is gitignored (`git add -f` for records); commit only your own paths (`git commit -- <paths>`); other
   chats (the paper chat) commit on this repo too. `git fetch .` fails here.
 - **Unattended:** delete nothing; `.scratch/pending_deletions.md` has the build's rows (worktrees, ticket branches,
   smoke folders).
