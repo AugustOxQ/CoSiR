@@ -11,7 +11,7 @@ the stage 1 files by `status`, so it can be rebuilt at any time and a step never
             stage1-records             copy both files to records/stage1_ranges.json, records/stage1_picks.json
   stage 2   cells --set S --enc E --task clu|ret [--draws N]   -> OUT/stage2/cells/<task>__<set>__<enc>.json
   result    status | outcomes | c13-check | verdicts
-  stage 3   diag ITEM            -> ns_diag.py (ticket 11)
+  stage 3   diag ARGS...         -> ns_diag.py ARGS (ticket 11); the queue plan calls ns_diag.py directly
   helpers   list                 steps, claim cells per (set, enc, task)
 
 Smoke (NS_SMOKE=1, NS_OUTPUTS=<scratch>): smoke draws, records under OUT/records, and a gate counts as `ok` when its
@@ -450,17 +450,17 @@ def cmd_verdicts(args):
 
 
 def cmd_diag(args):
+    """Pass-through to ns_diag.py (ticket 11): `ns_run.py diag sweep --set S --enc E` etc."""
     path = ROUND / 'ns_diag.py'
     if not path.exists():
         print(f'{path} is absent (ticket 11 not merged)')
         return 1
-    return subprocess.call([sys.executable, str(path), args.item] + (['--draws', str(args.draws)] if args.draws else []))
+    return subprocess.call([sys.executable, str(path)] + args.rest)
 
 
 def cmd_list(args):
     import ns_outcome
     print('gates:', ' '.join(GATES))
-    print('diag items:', ' '.join(DIAG_ITEMS))
     cells = ns_outcome.claim_cells()
     print(f'{len(cells)} claim cells')
     for task in ('clu', 'ret'):
@@ -493,8 +493,7 @@ def main(argv=None):
     for n in ('status', 'outcomes', 'c13-check', 'verdicts', 'list'):
         sub.add_parser(n)
     d = sub.add_parser('diag')
-    d.add_argument('item', choices=DIAG_ITEMS)
-    d.add_argument('--draws', type=int, default=None)
+    d.add_argument('rest', nargs=argparse.REMAINDER)
     args = ap.parse_args(argv)
     fn = {'gate': cmd_gate, 'ranges': cmd_ranges, 'pick': cmd_pick, 'stage1-records': cmd_stage1_records,
           'cells': cmd_cells, 'status': cmd_status, 'outcomes': cmd_outcomes, 'c13-check': cmd_c13_check,

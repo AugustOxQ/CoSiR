@@ -77,12 +77,19 @@ c13)             # C13 is separate code (run chat); this placeholder only checks
 verdicts)        # copies outcomes to records/verdicts.json only if c13.json has pass true and names the outcomes sha256
   q verdicts 1m --short -- $RUN verdicts
   ;;
-stage3)          # ns_diag.py (ticket 11); the count sweep is the long one (~ estimates, replace with 11's)
-  q diag_count_sweep 4h -- $RUN diag count_sweep
-  q diag_per_class 30m -- $RUN diag per_class
-  q diag_qwen_crl 20m -- $RUN diag qwen_crl
-  q diag_told_untold 40m -- $RUN diag told_untold
-  q diag_tables 10m --short -- $RUN diag tables
+stage3)          # ns_diag.py (ticket 11): sweep per (set, encoder), then figures, then the rest; ~ estimates (replace with 11's)
+  DIAG="env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 $PY /project/CoSiR/src/test/20261103_new_scores/ns_diag.py"
+  for s in artelingo mmart; do for e in $ENCS; do q sweep_${s}_$e 25m -- $DIAG sweep --set $s --enc $e; done; done
+  for e in $ENCS; do q sweep_affection_$e 10m -- $DIAG sweep --set affection --enc $e; done   # photo sets last (may be cut, §3.6)
+  q sweep_emoset_qwen 10m -- $DIAG sweep --set emoset --enc qwen
+  for s in artelingo mmart affection emoset; do q figure_$s 2m --short -- $DIAG figure --set $s; done
+  for s in artelingo mmart; do for e in $ENCS; do
+    q per_class_${s}_$e 12m -- $DIAG per-class --set $s --enc $e
+    q told_untold_${s}_$e 12m -- $DIAG told-untold --set $s --enc $e
+  done; done
+  q qwen_crl 20m -- $DIAG qwen-crl
+  q r0 5m --short -- $DIAG r0
+  for s in artelingo mmart affection emoset; do q tables_$s 2m --short -- $DIAG tables --set $s; done
   ;;
 *) echo "unknown stage $STAGE"; exit 2;;
 esac
