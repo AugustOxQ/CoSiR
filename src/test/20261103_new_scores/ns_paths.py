@@ -7,6 +7,7 @@ import json
 import os
 import subprocess
 import sys
+import uuid
 from pathlib import Path
 
 ROUND = Path(__file__).resolve().parent
@@ -131,7 +132,14 @@ def read_committed_record(name):
 
 
 def write_json(path, obj):
-    """Write JSON (indent 1, sorted keys) to path, creating parents."""
+    """Atomically write JSON (indent 1, sorted keys) to path, creating parents."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(obj, indent=1, sort_keys=True) + '\n')
+    tmp = path.with_name(f'.{path.name}.{os.getpid()}.{uuid.uuid4().hex}.tmp')
+    stream = tmp.open('x')                       # normal 0666 & umask mode, rather than mkstemp's 0600
+    try:
+        with stream:
+            stream.write(json.dumps(obj, indent=1, sort_keys=True) + '\n')
+        os.replace(tmp, path)
+    finally:
+        tmp.unlink(missing_ok=True)
