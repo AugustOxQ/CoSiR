@@ -89,6 +89,11 @@ then r16. Deadlines: abstract 2026-11-10, paper 2026-11-16, supplementary 2026-1
   Order (user): a report chat in this loop for the user's questions on r15 and r14, then a stage note, then the
   direction, then r16. Options seen: freeze and write; the SemArt genre test; a second photo aspect; the emotion
   retrieval cell stated in the paper as a limit (recommended) or examined (the contentment class).
+- **Option added in the r16 report chat (user, 2026-11-03):** untold retrieval, from the other authors' "told"
+  feedback: the query is the image only (no aspect name), c*'s three heads joined into one vector, one ranking scored
+  with each aspect's labels, against the plain image (also untold); CPU, the saved held embeddings. Marked doable by
+  the user; it runs only after the report to the collaborator and the supervisor. The told form (aspect name picks
+  the head) is r11 to r15's protocol; the wrong-head form is r11's aspect-switch table.
 - **Idea (B):** none yet.
 - **Why:** the user wants the collaborator's and the supervisor's view before more experiments, with the abstract on
   2026-11-10.
