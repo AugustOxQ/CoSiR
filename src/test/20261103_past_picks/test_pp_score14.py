@@ -211,6 +211,7 @@ def test_matched_probs_of_m3_and_m6_come_from_their_stored_held_outputs(monkeypa
         asked.append(Path(path))
         return np.full((12281, 40), 1 / 40, dtype=np.float32)
     monkeypatch.setattr(S, '_load_prob', load)
+    monkeypatch.setattr(S, '_list_sha256', lambda path: bs_artclu.rs_paths.HELD_SHA256)
     for enc, arm, root in (('clip_b32', 'M3', PP.RB_PART2), ('clip_b16', 'M6', PP.EG_PART2),
                            ('clip_l14', 'M7', bs_artclu.ENC['clip_l14']['root'])):
         asked.clear()
@@ -562,7 +563,8 @@ def test_stage1_artelingo_runs_r14s_functions_on_the_new_encoders_root(monkeypat
 
     def picks(enc, root, ranges, workers=8):
         seen['picks'] = (enc, Path(root), ranges)
-        return dict(encoder=enc, kind='artelingo_retrieval_picks')
+        good = record_for(enc)['artret_picks']
+        return dict(good, cstar=dict(good['cstar'], ranges=dict(ranges)))
     monkeypatch.setattr(bs_artclu, 'clustering_ranges', clu)
     monkeypatch.setattr(bs_artret, 'validation_ranges', ret)
     monkeypatch.setattr(bs_artret, 'stage1_picks', picks)
@@ -663,3 +665,88 @@ def test_stage1_files_follow_r14s_names_and_the_record_is_r14s_form(tmp_path):
 def test_stage1_refuses_an_encoder_with_no_x_c_star():
     with pytest.raises(AssertionError):
         S.stage1_artelingo('qwen')
+
+
+# ------------------------------------------------------------------------------------------------ review fixes
+def unit_rows(rng, n=N, width=6, scale=1.0):
+    x = rng.normal(size=(n, width)).astype(np.float32)
+    return (x / np.linalg.norm(x, axis=1, keepdims=True) * scale).astype(np.float32)
+
+
+def test_clu_partitions_come_from_r15s_routes(monkeypatch):
+    """The clustering route itself, nothing mocked above `ct_score.output_partitions`: kind 'k1' for X-c*, the frozen image and
+    the teacher (float32, unit rows), kind 'percept' for the matched arm (its stored float32 probabilities, unchanged)."""
+    import ct_score
+    rng = np.random.default_rng(5)
+    names = [f'p{i}' for i in range(N)]
+    labels = {a: labels_of(np.random.default_rng(3 + i)) for i, a in enumerate(ASPECTS)}
+    probs = {s: (lambda p: (p / p.sum(1, keepdims=True)).astype(np.float32))(rng.random((12281, 40)).astype(np.float32) + 0.01)
+             for s in SEEDS}
+    stored = iter(probs[s] for s in SEEDS)
+    monkeypatch.setattr(bs_artclu, 'held_setup', lambda: (names, 'sha', labels))
+    monkeypatch.setattr(bs_artclu.S0, 'load_candidate', lambda cand, scale, aspect, seed: (unit_rows(rng), 'sha'))
+    monkeypatch.setattr(bs_artclu, 'store_loader', lambda enc, nm: unit_rows(rng))
+    monkeypatch.setattr(rt_data, '_instructed', lambda split, aspect, nm: unit_rows(rng, scale=3.0))   # not unit as stored
+    monkeypatch.setattr(S, '_load_prob', lambda path: next(stored))
+    monkeypatch.setattr(S, '_list_sha256', lambda path: bs_artclu.rs_paths.HELD_SHA256)
+    calls = []
+    y = labels['emotion']
+
+    def output_partitions(x, kind):
+        calls.append((kind, np.array(x, copy=True)))
+        return {'r20': partitions_of(rng, y, 0.3), 'own': partitions_of(rng, y, 0.3)[:1]}
+    monkeypatch.setattr(ct_score, 'output_partitions', output_partitions)
+    cells = S.run_artelingo_clu('clip_b32', record_for('clip_b32'), n_draws=10, workers=2)
+    assert len(cells) == 9
+    # order: frozen image (k1), matched seeds 0-4 (percept), then per aspect X-c* seeds 0-4 and the teacher (k1)
+    assert [k for k, _ in calls] == ['k1'] + ['percept'] * 5 + ['k1'] * 18
+    for kind, x in calls:
+        assert x.dtype == np.float32
+        if kind == 'k1':
+            assert x.shape == (N, 6) and np.allclose(np.linalg.norm(x, axis=1), 1.0, atol=1e-5, rtol=0), 'rows must be unit'
+    for (kind, x), s in zip(calls[1:6], SEEDS):
+        assert kind == 'percept' and x.shape == (12281, 40) and np.array_equal(x, probs[s])
+
+
+def test_matched_probs_refuse_a_sidecar_of_another_held_list(monkeypatch):
+    monkeypatch.setattr(S, '_load_prob', lambda path: np.full((12281, 40), 1 / 40, dtype=np.float32))
+    monkeypatch.setattr(S, '_list_sha256', lambda path: 'f' * 64)
+    for enc in ('clip_b32', 'clip_b16'):
+        with pytest.raises(AssertionError, match='not the held list'):
+            S.matched_probs(enc)
+
+
+def test_matched_probs_read_each_seeds_sidecar(monkeypatch):
+    asked = []
+    monkeypatch.setattr(S, '_load_prob', lambda path: np.full((12281, 40), 1 / 40, dtype=np.float32))
+    monkeypatch.setattr(S, '_list_sha256', lambda path: asked.append(Path(path)) or bs_artclu.rs_paths.HELD_SHA256)
+    S.matched_probs('clip_b32')
+    assert asked == [PP.RB_PART2 / f'full/held/M3/P3__s{s}.npz' for s in SEEDS]
+
+
+def install_stage1_world(monkeypatch, own):
+    """r14's `stage1_picks` stays in place; only its readers (validation data) are faked."""
+    menu = rt_readout.menu(512)
+    rows = {ro: {a: 0.3 + 0.001 * i for i, a in enumerate(ASPECTS)} for ro in menu}
+    ranges = dict(ranges=dict(own), per_seed={}, sources={}, n_val=6152, labelled={})
+    monkeypatch.setattr(bs_artclu, 'clustering_ranges', lambda root, seeds=bs_artclu.SEEDS: ranges)
+    monkeypatch.setattr(bs_artret, 'validation_ranges', lambda root, seeds=bs_artret.SEEDS: ranges)
+    monkeypatch.setattr(bs_artret, 'frozen_rows', lambda view, workers=8: rows)
+    monkeypatch.setattr(bs_artret, 'pick_cstar', lambda root, r, workers=8: dict(pick='center+k10', table={}, ranges=r,
+                                                                                  dropped={}))
+
+
+def test_stage1_artelingo_with_r14s_picks_in_place_uses_r11s_ranges_for_the_frozen_image(monkeypatch):
+    own = {'emotion': 0.5, 'style': 0.6, 'genre': 0.7}
+    install_stage1_world(monkeypatch, own)
+    got = S.stage1_artelingo('clip_b32')
+    assert got['artret_picks']['frozen']['ranges'] == bs_artret.r11_ranges() != own
+    assert got['artret_picks']['cstar']['ranges'] == own
+
+
+def test_stage1_artelingo_refuses_a_frozen_pick_made_with_x_c_stars_own_ranges(monkeypatch):
+    own = {'emotion': 0.5, 'style': 0.6, 'genre': 0.7}
+    install_stage1_world(monkeypatch, own)
+    monkeypatch.setattr(bs_artret, 'pick_frozen', lambda view, workers=8: dict(pick='none+k0', table={}, ranges=dict(own)))
+    with pytest.raises(AssertionError, match='D21'):
+        S.stage1_artelingo('clip_b32')

@@ -50,8 +50,18 @@ def test_compare_ignores_the_written_key_anywhere():
 
 def test_compare_extra_keys_of_ours_only_when_allowed():
     ours, theirs = {'v': 1.0, 'n_rows': 12281}, {'v': 1.0}
-    assert G.compare(ours, theirs, extra_ok=True)['passed']
+    assert G.compare(ours, theirs, extra_keys=('n_rows',))['passed']
     assert not G.compare(ours, theirs)['passed']
+
+
+def test_compare_cells_tolerate_only_n_rows_and_n_labelled_at_any_depth():
+    base = [cell()]
+    ok = [dict(cell(), n_rows=7, n_labelled=5)]
+    assert G.compare_cells(ok, base)['passed']
+    for bad in (dict(cell(), n_rows=7, extra=1), dict(cell(), n_rows=7, seeds_note={'x': 1})):
+        assert not G.compare_cells([bad], base)['passed']
+    nested = dict(cell(), reading={'v': 1.0, 'extra': 2.0})
+    assert not G.compare_cells([nested], [dict(cell(), reading={'v': 1.0})])['passed']
 
 
 def test_compare_skips_intervals_and_draw_counts_only_at_reduced_draws():

@@ -38,6 +38,7 @@ STORED = dict(clu='cells_artelingo_clu.json', ret='cells_artelingo_ret.json', af
 EXPECT_CELLS = dict(clu=9, ret=6, affection=4)
 INTERVAL_KEYS = ('lo', 'hi', 'n_draws')              # not compared at reduced draws
 SKIP_ALWAYS = ('written',)
+OUR_EXTRA_KEYS = ('n_rows', 'n_labelled')             # keys our cells add to r14's; tolerated, no other extra key
 
 
 # ============================================================================================ compare
@@ -49,14 +50,13 @@ def _is_number(v):
     return isinstance(v, (int, float)) and not isinstance(v, bool)
 
 
-def _walk(ours, theirs, path, items, skip, extra_ok):
+def _walk(ours, theirs, path, items, skip, extra_keys):
     if isinstance(theirs, dict):
         if not isinstance(ours, dict):
             items[path or '.'] = _item(repr(ours), '<dict>', False, 1.0)
             return
-        if not extra_ok:
-            for k in sorted(set(ours) - set(theirs) - set(SKIP_ALWAYS)):
-                items[f'{path}/{k}' if path else k] = _item('<present>', '<absent>', False, 1.0)
+        for k in sorted(set(ours) - set(theirs) - set(SKIP_ALWAYS) - set(extra_keys)):
+            items[f'{path}/{k}' if path else k] = _item('<present>', '<absent>', False, 1.0)
         for k, v in theirs.items():
             if k in SKIP_ALWAYS or k in skip:
                 continue
@@ -64,14 +64,14 @@ def _walk(ours, theirs, path, items, skip, extra_ok):
             if k not in ours:
                 items[sub] = _item('<absent>', repr(v) if not isinstance(v, (dict, list)) else '<value>', False, 1.0)
             else:
-                _walk(ours[k], v, sub, items, skip, extra_ok)
+                _walk(ours[k], v, sub, items, skip, extra_keys)
     elif isinstance(theirs, list):
         if not isinstance(ours, list) or len(ours) != len(theirs):
             items[path or '.'] = _item(f'len {len(ours) if isinstance(ours, list) else repr(ours)}', f'len {len(theirs)}',
                                        False, 1.0)
             return
         for i, (o, t) in enumerate(zip(ours, theirs)):
-            _walk(o, t, f'{path}[{i}]', items, skip, extra_ok)
+            _walk(o, t, f'{path}[{i}]', items, skip, extra_keys)
     elif _is_number(theirs):
         if not _is_number(ours):
             items[path] = _item(repr(ours), theirs, False, 1.0)
@@ -84,14 +84,14 @@ def _walk(ours, theirs, path, items, skip, extra_ok):
         items[path or '.'] = _item(ours, theirs, same, 0.0 if same else 1.0)
 
 
-def compare(ours, theirs, full_draws=True, extra_ok=False):
+def compare(ours, theirs, full_draws=True, extra_keys=()):
     """Recursive compare of `ours` with the stored `theirs`. Numbers within 1e-9; strings, booleans, None exact and of the
-    same type; NaN fails; a key of `theirs` missing from `ours` fails; extra keys of `ours` fail unless `extra_ok`; the
+    same type; NaN fails; a key of `theirs` missing from `ours` fails; extra keys of `ours` fail unless named in `extra_keys` (any depth); the
     `written` key is ignored anywhere; `lo`, `hi`, `n_draws` are skipped unless `full_draws`.
     Returns items {path: {ours, theirs, abs_diff, ok}}, `max_abs_diff`, `wiring_ok` (all items ok), `intervals_compared`
     (= full_draws), `passed` (wiring_ok and full_draws; like `mt_clu._result`)."""
     items = {}
-    _walk(ours, theirs, '', items, set() if full_draws else set(INTERVAL_KEYS), extra_ok)
+    _walk(ours, theirs, '', items, set() if full_draws else set(INTERVAL_KEYS), extra_keys)
     assert items, 'nothing was compared'
     ok = all(i['ok'] for i in items.values())
     return dict(items=items, n_items=len(items), max_abs_diff=max(i['abs_diff'] for i in items.values()), wiring_ok=ok,
@@ -107,7 +107,7 @@ def compare_cells(ours, theirs, full_draws=True):
     o, t = {_key(c): c for c in ours}, {_key(c): c for c in theirs}
     assert len(o) == len(ours) and len(t) == len(theirs), 'a cell appears twice'
     assert sorted(o) == sorted(t), f'cells differ: ours {sorted(o)}, stored {sorted(t)}'
-    return compare(o, t, full_draws=full_draws, extra_ok=True)
+    return compare(o, t, full_draws=full_draws, extra_keys=OUR_EXTRA_KEYS)
 
 
 # ============================================================================================ inputs

@@ -10,7 +10,7 @@ that produced r14's numbers, called on the new encoder's own arms:
                 form: `bs_artret.ENC[X]['r11_arm']` is None), the teacher's stored pick.
     Affection   `bs_affection.photo_stage1` and `bs_affection.frozen_readout` (the photo model's ranges and pick; the frozen
                 image's pick by r12's rule with r12's r_ret,mAP). Body copied from `bs_affection.stage1` (bs_affection.py
-                :224-244) only to return the record instead of writing into `<root>/stage1`.
+                :223-242) only to return the record instead of writing into `<root>/stage1`.
   stage 2 (held; reads stage 1 ONLY through `pp_paths.read_committed_record`, before any held row)
     artelingo_clu   SC1, SC3, SC6: `bs_artclu.frozen_margin`, `matched_margin`, `teacher_margin`, `aspect_cells` (r14's cells),
                     on partitions fixed as r15's replay of r14 does (`mt_clu.replay_iii`, bs_artclu's route equal to 1e-9
@@ -19,7 +19,7 @@ that produced r14's numbers, called on the new encoder's own arms:
                     (M3, M6: their stored `full/held/<M>/P3__s<k>.npz`; M5: `pp_matched.held_probs`).
     artelingo_ret   SC2, SC6: `bs_artret.score_encoder` unchanged (frozen image at the record's pick through
                     `bs_artret.score_frozen_held`; teacher: r11's stored instructed outputs).
-    affection       SC4, SC5, SC6 x 2: `bs_affection.score_cells`; body copied from `bs_affection.score` (:332-353) to read the
+    affection       SC4, SC5, SC6 x 2: `bs_affection.score_cells`; body copied from `bs_affection.score` (:332-349) to read the
                     committed record instead of OUT/stage1.
   Cells: `OUT/stage2/cells_<part>.json`, r14's cell dicts plus `n_rows` (rows of the held population: 12,281 ArtELingo held
   paintings, 8,501 Affection test photos) and, for clustering, `n_labelled`; `n_queries` stays on retrieval cells.
@@ -84,12 +84,12 @@ def require_protocol_draws(part, n_draws):
 
 # ============================================================================================ stage 1
 def artclu_block(enc, result):
-    """The clustering ranges record, as `bs_artclu.write_ranges` writes it (bs_artclu.py:289-292)."""
+    """The clustering ranges record, as `bs_artclu.write_ranges` writes it (bs_artclu.py:302-309)."""
     return dict(encoder=enc, kind='artelingo_clustering_validation_ranges', **result)
 
 
 def artret_block(enc, result):
-    """The retrieval ranges record, as `bs_artret.write_ranges` writes it (bs_artret.py:261)."""
+    """The retrieval ranges record, as `bs_artret.write_ranges` writes it (bs_artret.py:275)."""
     return dict(encoder=enc, kind='artelingo_retrieval_validation_ranges', **result)
 
 
@@ -102,7 +102,9 @@ def stage1_artelingo(enc, root=None, workers=8):
     clu = bs_artclu.clustering_ranges(root)
     ret = bs_artret.validation_ranges(root)
     picks = bs_artret.stage1_picks(enc, root, ret['ranges'], workers)
-    return dict(artclu=artclu_block(enc, clu), artret_ranges=artret_block(enc, ret), artret_picks=picks)
+    blocks = dict(artclu=artclu_block(enc, clu), artret_ranges=artret_block(enc, ret), artret_picks=picks)
+    check_artelingo_blocks(enc, blocks)             # D21, before anything is written (r14's stage1_picks is called as is)
+    return blocks
 
 
 def stage1_affection(enc, root=None, workers=8):
@@ -154,24 +156,32 @@ def stage1_record(enc, out=None):
 
 
 # ============================================================================================ the committed record
+def check_artelingo_blocks(enc, blocks):
+    """The ArtELingo part of `check_record` (`blocks`: a dict with `artclu`, `artret_ranges`, `artret_picks`): encoder names,
+    finite ranges, X-c*'s picks made with its own ranges, and D21 for a computed frozen pick."""
+    for key in ('artclu', 'artret_ranges', 'artret_picks'):
+        assert blocks[key]['encoder'] == enc, (key, blocks[key]['encoder'], enc)
+    for key in ('artclu', 'artret_ranges'):
+        r = blocks[key]['ranges']
+        assert set(r) == set(ASPECTS) and all(np.isfinite(v) and v > 0 for v in r.values()), (key, r)
+    picks = blocks['artret_picks']
+    assert picks['cstar']['ranges'] == blocks['artret_ranges']['ranges'], 'X-c* picks were made with other ranges'
+    assert picks['cstar']['pick'] and picks['frozen']['pick'] and picks['teacher']['pick']
+    if bs_artret.ENC[enc]['r11_arm'] is None:               # a computed frozen pick (SigLIP 1, the new three): D19, D21
+        assert picks['frozen']['ranges'] == bs_artret.r11_ranges(), \
+            f'{enc}: the frozen pick must be made with r11\'s r_a, not X-c*\'s own ranges (D21)'
+        assert picks['r11_ranges_sha256'] == bs_artret.sha_file(bs_artret.R11_RANGES_FILE), 'r11 ranges file changed'
+
+
 def check_record(enc, rec):
     """The stage 1 record's blocks agree with each other and with the rules of D21: encoder names, picks made with the
     ranges they say, a new encoder's frozen picks made with r11's / r12's ranges (never X-c*'s own)."""
     assert rec['encoder'] == enc, (enc, rec['encoder'])
     for key in ('artclu', 'artret_ranges', 'artret_picks', 'affection'):
         assert key in rec, f'stage 1 record of {enc} lacks {key!r}'
-        assert rec[key]['encoder'] == enc, (key, rec[key]['encoder'], enc)
-    for key in ('artclu', 'artret_ranges'):
-        r = rec[key]['ranges']
-        assert set(r) == set(ASPECTS) and all(np.isfinite(v) and v > 0 for v in r.values()), (key, r)
-    picks = rec['artret_picks']
-    assert picks['cstar']['ranges'] == rec['artret_ranges']['ranges'], 'X-c* picks were made with other ranges'
-    assert picks['cstar']['pick'] and picks['frozen']['pick'] and picks['teacher']['pick']
-    if bs_artret.ENC[enc]['r11_arm'] is None:               # a computed frozen pick (SigLIP 1, the new three): D19, D21
-        assert picks['frozen']['ranges'] == bs_artret.r11_ranges(), \
-            f'{enc}: the frozen pick must be made with r11\'s r_a, not X-c*\'s own ranges (D21)'
-        assert picks['r11_ranges_sha256'] == bs_artret.sha_file(bs_artret.R11_RANGES_FILE), 'r11 ranges file changed'
+    check_artelingo_blocks(enc, rec)
     aff = rec['affection']
+    assert aff['encoder'] == enc, ('affection', aff['encoder'], enc)
     assert aff['kind'] == 'affection_validation_ranges_and_readouts'
     for m in ('clu', 'map', 'ndcg'):
         per_seed = aff['ranges_doc'][m]['per_seed']
@@ -197,15 +207,24 @@ def _load_prob(path):
         return z['prob']
 
 
+def _list_sha256(path):
+    """The held-list hash in the sidecar of a stored probabilities file (`pp_matched.held_probs` checks the same field)."""
+    return json.loads(Path(path).with_suffix('.json').read_text())['list_sha256']
+
+
 def matched_probs(enc):
     """{seed: float32 [12281, 40]} held probabilities of the matched arm, in r14's held order. M3, M6 (and M7 for the gate):
-    the arm's stored `full/held/<M>/P3__s<k>.npz`; DINOv2's M5: `pp_matched.held_probs`."""
+    the arm's stored `full/held/<M>/P3__s<k>.npz`, each sidecar's `list_sha256` equal to `rs_paths.HELD_SHA256`; DINOv2's M5:
+    `pp_matched.held_probs` (checks the same)."""
     if enc == 'dinov2_large':
         import pp_matched
         probs = pp_matched.held_probs(enc)
     else:
         spec = bs_artclu.ENC[enc]
-        probs = {s: _load_prob(Path(spec['root']) / f'full/held/{spec["matched"]}/P3__s{s}.npz') for s in SEEDS}
+        paths = {s: Path(spec['root']) / f'full/held/{spec["matched"]}/P3__s{s}.npz' for s in SEEDS}
+        for s, path in paths.items():
+            assert _list_sha256(path) == bs_artclu.rs_paths.HELD_SHA256, f'{path}: not the held list'
+        probs = {s: _load_prob(path) for s, path in paths.items()}
     assert sorted(probs) == list(SEEDS), f'{enc}: matched seeds {sorted(probs)}'
     for s, p in probs.items():
         assert p.shape == (N_HELD, 40) and np.isfinite(p).all(), f'{enc} seed {s}: matched probabilities {p.shape}'
@@ -272,7 +291,7 @@ def run_artelingo_ret(enc, rec, outputs, n_draws=None, workers=8, root=None):
 
 # ============================================================================================ Affection
 def run_affection(enc, rec, root=None, cache=None, n_clu=None, n_ret=None, workers=8):
-    """SC4, SC5 and the two SC6 cells on the Affection test photos (copy of `bs_affection.score`, bs_affection.py:332-353,
+    """SC4, SC5 and the two SC6 cells on the Affection test photos (copy of `bs_affection.score`, bs_affection.py:332-349,
     reading the record `rec['affection']` instead of OUT/stage1). `root`: where the photo model's exports live."""
     n_clu, n_ret = draws('clu', n_clu), draws('ret', n_ret)
     a = rec['affection']
@@ -317,7 +336,8 @@ def check_cells(part, enc, cells, smoke=None):
 
 
 def write_cells(part, enc, cells, out=None):
-    """Merge into `cells_<part>.json`: the encoder's cells are replaced, the other encoders' kept (atomic; r14's writer)."""
+    """Merge into `cells_<part>.json`: the encoder's cells are replaced, the other encoders' kept (atomic; r14's writer).
+    Read-modify-write without a lock: run one encoder of a part at a time."""
     return bs_artclu.write_cells(cells_path(part, out), cells, [enc])
 
 
