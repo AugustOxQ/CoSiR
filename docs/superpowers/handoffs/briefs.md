@@ -1613,3 +1613,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-03-r16-report-handoff.md
 - New chat: tab 'r16 report', session cbb85455-1e39-45f2-a672-691328db14ba
 
+[brief] CoSiR: r16 report -> r16 report 2 (2026-11-03 16:48 Amsterdam)
+- Done: r16 report answered the user's questions on retrieval (protocol, read-out, mAP, CRL, CLAY, TPIPS); the user marked untold retrieval doable and a TPIPS comparator doable given a run time.
+- State: c* is ahead of the teacher in clustering almost everywhere; in retrieval, emotion is level (3 of 8 cells below), style and genre mostly ahead.
+- Next: list the open items for the user; then the stage note (ask its form and readers first); then decision A.
+- Blocked: nothing (the five merged GitHub branches still wait for the user's delete).
+- Handoff: docs/superpowers/handoffs/2026-11-03-r16-report-2-handoff.md
+- New chat: tab 'r16 report 2', session 8f9a6254-785b-4560-b56f-1bda07a81ec6
+
