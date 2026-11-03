@@ -1735,3 +1735,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-03-r19-build3-handoff.md
 - New chat: tab 'r19 build 3', session 8ed85e38-0792-46e4-b566-1bfe2941a14b
 
+[brief] CoSiR: r17 build 2 -> r17 build 3 (2026-11-03 23:19 Amsterdam)
+- Done: all 11 tickets built, reviewed and merged into `r17-new-scores` (624b980); full replays pass.
+- State: gates (i) a to d, (ii) and (vi) match stored values exactly (diff 0.0): 209 and 150 items.
+- Next: smoke stage 3 and the runner's gate wrappers, then the Opus `xhigh` final review, fixes, merge, run handoff.
+- Blocked: nothing. Codex has room from now (5h window resets 23:34). The run should start by about 01:00.
+- Handoff: docs/superpowers/handoffs/2026-11-03-r17-build3-handoff.md
+- New chat: tab 'r17 build 3', session 705bc8f1-cdf9-45fc-8840-a1bbf082633a
+
