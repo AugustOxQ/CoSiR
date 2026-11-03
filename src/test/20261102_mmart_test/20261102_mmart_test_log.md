@@ -107,3 +107,5 @@ run mode night. Outputs: `/data/SSD2/cosir_r15/20261102_mmart_test/outputs/` (`O
   small emotion values and narrow teacher wins, labelled counts and 20 clusters, the encoder-selection wording).
   One fix wave by the controller: all applied, background facts added (project aim, PercepT, earlier results). The
   narrow-win caveat was also missing from the auto report and was added there. No re-check (the reference's rule).
+- 05:05 run chat done: handoff `docs/superpowers/handoffs/2026-11-03-r16-decide-handoff.md`; the next loop's decide
+  chat ("r16 decide") opens for decision C. Nothing runs.
