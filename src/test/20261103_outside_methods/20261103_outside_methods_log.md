@@ -86,3 +86,19 @@ a3f1890, 4674efa, c6a81a6.
 - The build's parity tests read these files and must use 8 CPU threads for the CPU comparison.
 
 **Glossary:** rows for TPIPS, CLAY, TURTLE and TEMI (field names).
+
+## 2026-11-04, build chat 2
+
+Tickets in `.scratch/r18-outside-methods/` (outside git); the list goes into the build's handoff to the run chat.
+
+- **r17 merged** at 8cf743b2 (00:20); its signatures match the planned ones.
+- **SC5's candidate form (agent default):** `ns_clu._boot` asserts a candidate of [5, 3, n] and r17's folder is
+  read-only, so ticket 10 repeats X-c* + TURTLE's one start three times per seed. The mean over states and the draws
+  are unchanged.
+- **Per-metric words (agent default):** `paired_cell` takes `r` for every metric or none, so cells call it with None
+  and use `ns_outcome.word_of(lo, r)` per metric; `not WIN` with a missing range is this round's `inconclusive`.
+- **Codex** had no room for an implementer at 00:25 (77% left, 80% needed, reset 04:35): Claude took the first wave.
+- **Gate (i) reach (Opus review of ticket 01):** at rank 49 of 50, P equals the projector on span(T) ∩ μ⊥, so the
+  reference cannot see centring, angle scaling or singular-vector order in `subspace`. Set B's truncated path (rank 50
+  of about 99) has no official reference; it rests on the unit test and a float32 cross-check. On MMArt test and
+  ArtELingo held, float32 and our float64 math differ by at most 9.15e-7, with identical k-means partitions.
