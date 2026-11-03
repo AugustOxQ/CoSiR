@@ -31,7 +31,8 @@ import ns_paths as NP  # noqa: E402
 
 NP.add_rounds()
 for _var in ('BS_OUTPUTS', 'BS_SMOKE', 'BS_STORE_ROOT'):
-    assert not os.environ.get(_var), f'{_var} is set: r17 reads r14 as it was run, not a smoke redirect'
+    if os.environ.get(_var):
+        raise RuntimeError(f'{_var} is set: r17 reads r14 as it was run, not a smoke redirect')
 import bs_paths as BP  # noqa: E402
 import bs_stores  # noqa: E402
 import bs_emoset  # noqa: E402
