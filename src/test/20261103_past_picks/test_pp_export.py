@@ -12,6 +12,7 @@ import torch
 import pp_paths as PP
 import pp_register  # noqa: F401  (registers the new three before the older rounds' modules are used)
 import pp_export as E
+import pp_stores
 
 import bs_cstar
 import bs_photo
@@ -86,6 +87,28 @@ def test_semart_round_trip_matches_direct_inference(cstar_root, tmp_path):
     assert side['sha256'] == E.sha_file(paths[1]) and side['n'] == 7 and side['view'] == ENC
     assert side['checkpoint'] == str(weights) and side['checkpoint_sha256'] == E.sha_file(weights)
     assert (side['encoder'], side['aspect'], side['seed'], side['set']) == (ENC, 'genre', 1, 'semart')
+
+
+def test_semart_export_reads_the_real_store_by_key(cstar_root, tmp_path):
+    """No `rows=`: the store read of `export_semart` itself, on 20 real SemArt set keys (sha order, spread over the set), against
+    an independent lookup of `image_file` in the store's index.json."""
+    all_keys = E.semart_keys()
+    keys = all_keys[::len(all_keys) // 20][:20]
+    assert len(keys) == 20 and keys == PP.order(keys) and keys != sorted(keys)      # sorted() would be another order
+    folder = pp_stores.sources('semart', ENC)[0]
+    index = json.loads((folder / 'index.json').read_text())['images']
+    row_of = {m['image_file']: i for i, m in enumerate(index)}
+    img = np.load(folder / 'img.npy', mmap_mode='r')
+    rows = np.stack([np.asarray(img[row_of[k]], dtype=np.float32) for k in keys])
+    rows = rows / np.linalg.norm(rows, axis=1, keepdims=True)
+    out = tmp_path / 'out'
+    E.export_semart(ENC, seeds=[0], root=out, keys=keys)
+    weights = bs_cstar.rb_student.weights_path(cstar_root, 'k11=40', 'genre', 0)
+    want = bs_cstar._infer_sides(weights, 'genre', 512, {'img': rows}, 'cpu')['img']
+    with np.load(E.semart_path(ENC, 'genre', 0, out)) as z:
+        assert z['keys'].tolist() == keys
+        assert np.array_equal(z['emb'], want)
+    assert np.array_equal(E.load('semart', ENC, 'genre', 0, keys[::-1], root=out), want[::-1])
 
 
 def test_semart_export_refuses_keys_out_of_sha_order(cstar_root, tmp_path):
@@ -200,8 +223,9 @@ def test_held_export_refuses_other_than_the_held_list(cstar_root, tmp_path):
     doc = json.loads(side.read_text())
     doc['list_sha256'] = '0' * 64
     side.write_text(json.dumps(doc))
-    with pytest.raises(AssertionError):
-        E.load('artelingo_held', ENC, 'genre', 0, ['x'], root=out_root)
+    names, _ = bs_cstar.rb_student.held_names()
+    with pytest.raises(AssertionError, match='not the held list'):
+        E.load('artelingo_held', ENC, 'genre', 0, [names[0], names[1]], root=out_root)
 
 
 # ------------------------------------------------------------------------------------------------ MMArt (val keys read ArtELingo stores)
@@ -248,6 +272,35 @@ def test_affection_photo_round_trip(tmp_path):
         E.load('affection_val', enc, 'emotion', 0, ask, root=root, kind='photo', old_ok=False)
 
 
+def test_affection_cstar_round_trip(cstar_root, tmp_path, monkeypatch):
+    """kind='cstar': the frozen X-c* emotion head of a new encoder (fake checkpoint; the new encoders' Affection stores do not
+    exist yet, so the image rows are random unit rows)."""
+    root = tmp_path / 'out'
+    keys = bs_photo.pf_data.keys('val')
+    x = unit_rows(len(keys), 512, seed=5)
+    monkeypatch.setattr(bs_photo, 'images', lambda dataset, enc, ks: x if list(ks) == keys and enc == ENC else pytest.fail('rows'))
+    paths = E.export_affection(ENC, seeds=[0], splits=['val'], kinds=['cstar'], root=root)
+    assert paths == [root / 'exports/affection' / f'cstar_{ENC}' / 'val__s0.npz']
+    ckpt = cstar_root / 'weights/k11=40/emotion__s0.pt'
+    want = bs_photo.infer(torch.load(ckpt, map_location='cpu', weights_only=True), x, 512)
+    with np.load(paths[0]) as z:
+        assert z['keys'].tolist() == keys and np.array_equal(z['emb'], want)
+    side = json.loads(paths[0].with_name('val__s0.pp.json').read_text())
+    assert side['sha256'] == E.sha_file(paths[0]) and side['n'] == len(keys) and side['view'] == ENC
+    assert side['arm'] == f'cstar_{ENC}' and side['checkpoint'] == str(ckpt) and side['checkpoint_sha256'] == E.sha_file(ckpt)
+    ask = [keys[9], keys[2]]
+    got = E.load('affection_val', ENC, 'emotion', 0, ask, root=root, kind='cstar', old_ok=False)
+    assert np.array_equal(got, want[[9, 2]])
+    with pytest.raises(FileNotFoundError):                          # the photo model's export does not exist
+        E.load('affection_val', ENC, 'emotion', 0, ask, root=root, kind='photo', old_ok=False)
+    # retrained head (its sidecar follows): the export is stale
+    torch.save({k: v + 1 for k, v in torch.load(ckpt, weights_only=True).items()}, ckpt)
+    doc = json.loads(ckpt.with_suffix('.json').read_text())
+    ckpt.with_suffix('.json').write_text(json.dumps(dict(doc, weights_sha256=E.sha_file(ckpt))))
+    with pytest.raises(AssertionError, match='stale'):
+        E.load('affection_val', ENC, 'emotion', 0, ask, root=root, kind='cstar', old_ok=False)
+
+
 # ------------------------------------------------------------------------------------------------ validation reader (real files)
 @pytest.mark.parametrize('enc', ['qwen', 'clip_l14'])
 def test_validation_reads_the_stored_validation_export(enc):
@@ -255,6 +308,23 @@ def test_validation_reads_the_stored_validation_export(enc):
     assert names == rt_data.names('val')
     assert x.dtype == np.float32 and x.shape == (6152, 2048)
     assert abs(np.linalg.norm(x, axis=1) - 1).max() < 1e-3
+
+
+def test_validation_refuses_a_head_trained_on_another_encoder(tmp_path):
+    src = PP.R10_OUT / 'full/train/k11=40/R6-5'
+    dst = tmp_path / 'train/k11=40/R6-5'
+    dst.mkdir(parents=True)
+    f = 'genre__R0o__s0'
+    for ext in ('json', 'npz'):
+        shutil.copy(src / f'{f}.{ext}', dst / f'{f}.{ext}')
+    side = tmp_path / 'weights/k11=40/genre__s0.json'
+    side.parent.mkdir(parents=True)
+    side.write_text(json.dumps(dict(config=dict(rb=dict(encoder='clip_l14')))))
+    with pytest.raises(AssertionError, match='trained on'):
+        E.validation('qwen', 'genre', 0, root=tmp_path)
+    side.write_text(json.dumps(dict(config=dict(rb=dict(encoder=bs_cstar.backbone('qwen'))))))
+    names, x = E.validation('qwen', 'genre', 0, root=tmp_path)
+    assert x.shape == (6152, 2048)
 
 
 def test_validation_refuses_a_changed_file(tmp_path):
@@ -310,6 +380,44 @@ def test_gate_part_passes_only_with_every_item_passing():
     bad[key] = {'pass': False, 'max_abs_diff': 0.5, 'rows': 3}
     res = E.gate_part('r14', bad)
     assert not res['pass'] and res['failed'] == [key]
+
+
+def test_tolerance_is_1e_3_and_a_1p5e_3_difference_fails_the_gate():
+    assert E.TOL == 1e-3
+    a = np.zeros((4, 3), dtype=np.float16)
+    b = a.copy()
+    b[2, 1] = np.float16(1.5e-3)
+    near = a.copy()
+    near[2, 1] = np.float16(0.5e-3)
+    assert E.compare(a, near)['pass']
+    res = E.compare(a, b)                                           # default tolerance
+    assert not res['pass'] and res['max_abs_diff'] > 1e-3
+    bad = items()
+    key = 'artelingo_held/genre__s3'
+    bad[key] = res
+    out = E.gate_part('r14', bad)
+    assert not out['pass'] and out['failed'] == [key] and out['tol'] == 1e-3
+
+
+def test_gate_part_fails_when_an_item_ran_on_other_weights():
+    ok = items()
+    assert E.gate_part('r14', ok)['weights_all_equal'] is True
+    for field, key in (('weights_sha256_equal', 'artelingo_held/style__s1'), ('checkpoint_sha256_equal', 'affection_test/emotion__s4')):
+        bad = items()
+        bad[key] = dict(bad[key], **{field: False})                 # every difference is 0, but not the stored weights
+        res = E.gate_part('r14', bad)
+        assert not res['pass'] and res['weights_all_equal'] is False and res['failed'] == []
+
+
+def test_held_items_record_when_the_export_was_reused(cstar_root, tmp_path, monkeypatch):
+    monkeypatch.setattr(E, 'SEEDS', (0,))
+    E.export_artelingo(ENC, seeds=[0])                              # the "stored" files, under the fake c* root
+    work = tmp_path / 'work'
+    first = E._held_items(ENC, cstar_root, work)
+    again = E._held_items(ENC, cstar_root, work)
+    assert sorted(first) == sorted(f'artelingo_held/{a}__s0' for a in ASPECTS)
+    assert not any(v['held_export_reused'] for v in first.values())
+    assert all(v['held_export_reused'] and v['pass'] and v['weights_sha256_equal'] for v in again.values())
 
 
 def test_gate_part_refuses_a_missing_item():

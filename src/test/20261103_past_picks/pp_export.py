@@ -324,6 +324,10 @@ def validation(enc, aspect, seed, root=None):
     with bs_artclu.cstar_root(_cstar_root(enc) if root is None else root):
         x = rt_data._cstar('val', aspect, seed, names)
     assert x.shape == (len(names), EMB_WIDTH)
+    side = bs_cstar.rb_student.weights_path(_cstar_root(enc) if root is None else root, ARM, aspect, seed).with_suffix('.json')
+    if side.exists():                      # the head's own record names its encoder (absent in a bare test folder)
+        want = json.loads(side.read_text()).get('config', {}).get('rb', {}).get('encoder')
+        assert want is None or want == bs_cstar.backbone(enc), f'{side}: trained on {want!r}, not {bs_cstar.backbone(enc)!r}'
     return names, x.astype(np.float32)
 
 
@@ -346,12 +350,16 @@ def compare(ours, stored, tol=TOL):
 
 def gate_part(part, items, tol=TOL):
     """One part of the gate from per-item results `{'<set>/<aspect>__s<seed>': {'pass', 'max_abs_diff', 'rows'}}`; every item of
-    `GATE_ITEMS[part]` must be present; pass only if all pass."""
+    `GATE_ITEMS[part]` must be present; pass only if all pass and every item ran on the stored weights
+    (`weights_sha256_equal`, `checkpoint_sha256_equal`)."""
     want = GATE_ITEMS[part]
     assert sorted(items) == sorted(want), f'gate (iii) {part} needs the {len(want)} items {sorted(want)}, got {sorted(items)}'
     failed = [k for k in want if not items[k]['pass']]
     diffs = [items[k]['max_abs_diff'] for k in want]
-    return {'part': part, 'encoder': GATE_ENC[part], 'tol': tol, 'pass': not failed, 'failed': failed,
+    weights_all_equal = all(items[k].get('weights_sha256_equal', True) and items[k].get('checkpoint_sha256_equal', True)
+                            for k in want)                  # an item run on other weights than the stored ones proves nothing
+    return {'part': part, 'encoder': GATE_ENC[part], 'tol': tol, 'pass': bool(not failed and weights_all_equal),
+            'failed': failed, 'weights_all_equal': weights_all_equal,
             'max_abs_diff': None if None in diffs else max(diffs), 'items': {k: items[k] for k in want}}
 
 
@@ -380,6 +388,7 @@ def _held_items(enc, stored_root, work):
     """The held export of `enc` from the checkpoints under `stored_root` (r14's path, CPU) against the stored held files."""
     names, names_sha = bs_cstar.rb_student.held_names()
     stored_root = Path(stored_root)
+    reused = {(a, s): held_path(enc, a, s, work).exists() for s in SEEDS for a in PP.ASPECTS}
     with threadpool_limits(limits=8):
         got = bs_cstar.export_held(enc, bs_cstar.REF, list(SEEDS), stored_root, device='cpu', out_root=work)
     items = {}
@@ -392,7 +401,8 @@ def _held_items(enc, stored_root, work):
             res = compare(got[aspect, seed]['img'], stored['img'])
             res.update(weights_sha256_equal=bool(ours['weights_sha256'] == info['weights_sha256']),
                        weights_sha256=ours['weights_sha256'], stored_file=str(stored_path),
-                       stored_device=info.get('export_device', info.get('device')))
+                       stored_device=info.get('export_device', info.get('device')),
+                       held_export_reused=reused[aspect, seed])       # True: `_export` found the file in `work`, no inference
             items[f'artelingo_held/{aspect}__s{seed}'] = res
     return items
 
@@ -425,7 +435,8 @@ def _affection_items(enc, stored_root, work):
 def gate_iii(part, out_root=None, run=None, log=print):
     """Stage 0 gate (iii), part `r10` (Qwen c*: the 15 held exports against r10's stored ones) or `r14` (CLIP L/14: its 15
     held exports and its 5 photo-model Affection test exports against r14's stored ones). The export code runs from the
-    stored checkpoints on CPU into a fresh folder under `out_root`; a difference above 1e-3 in any item fails the part.
+    stored checkpoints on CPU into a fresh folder under `out_root`; a difference above 1e-3 in any item, or any item run on
+    other weights than the stored ones, fails the part. Each held item records `held_export_reused`.
     Writes OUT/stage0/gate_iii.json (the other part is kept). Returns the part's dict."""
     assert part in GATE_ITEMS, part
     out_root = _root(out_root)
@@ -438,8 +449,6 @@ def gate_iii(part, out_root=None, run=None, log=print):
         items.update(_affection_items(enc, PP.R14_OUT, work))
     doc = gate_part(part, items)
     doc.update(run_folder=str(work), checkpoint_root=str(stored_root), export_device='cpu',
-               weights_all_equal=all(v.get('weights_sha256_equal', True) and v.get('checkpoint_sha256_equal', True)
-                                     for v in items.values()),
                seconds=round(time.monotonic() - start, 1))
     write_gate_part(out_root, part, doc)
     log(f'gate (iii) {part}: pass={doc["pass"]} max|diff|={doc["max_abs_diff"]} failed={doc["failed"]} {doc["seconds"]}s')
