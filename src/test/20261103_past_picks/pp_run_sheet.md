@@ -141,7 +141,7 @@ The run chat writes and commits `records/c13.json`: `pass: true` and `sha256` of
 `records/semart_set.json`. Hash keys are relative to OUT, with records under `records/` even in a real run.
 Stage 4 checks these exact bytes. It runs outcomes with the actual MMArt cut count and post-md5 SemArt painting and
 artist counts. Diagnostics follow as `pp_diag.py run`; an absent module fails cleanly in its own log, after outcomes.
-Allow about 30 min for diagnostics. r17 context rows are optional and never affect a verdict.
+Allow about 1 h for diagnostics (`r17_metrics` repeats about the k-means fits of `clustering_kclass`). r17 context rows never affect a verdict.
 
 ```bash
 bash "$R/pp_run_cpu.sh" 4
@@ -152,7 +152,7 @@ It uses small synthetic key subsets, stand-in exports and raw timing files, and 
 The recorded reduced gates are failed, so its outcomes demonstrate inconclusive wiring, not a scientific gate pass.
 It explicitly shows the uncommitted-record refusal and the strict wrong-status refusal.
 Smoke diagnostics run gain_share, percept_strongest, cost_rows and node_time from saved synthetic artifacts.
-The other seven diagnostics require full stores and are outside this small smoke. Production stage 4 runs all eleven.
+The other eight diagnostics require full stores and are outside this small smoke. Production stage 4 runs all twelve.
 Prior diagnostic attempts are moved aside without deletion before a smoke diagnostic rerun.
 
 ```bash

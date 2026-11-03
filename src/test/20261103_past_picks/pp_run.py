@@ -410,7 +410,7 @@ def tasks(stage, encs):
         add('cells_cost', 'pp_probe', 'cells', '--enc', *encs, est='1m', outputs=['stage3/cells_cost.json'], gate=True)
     else:
         own('decide', 'decide', est='1m', outputs=['stage4/outcomes.json'])
-        add('diagnostics', 'pp_diag', 'run', est='30m', deps=('decide',))
+        add('diagnostics', 'pp_diag', 'run', est='1h', deps=('decide',))
     return result
 
 

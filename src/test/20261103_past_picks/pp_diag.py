@@ -501,25 +501,23 @@ def kind_semart_close(ctx):
     except Skip:
         pass
     res, md_rows, changed = {}, [], []
-    guard = record_encoders()
-    guard.__enter__()
-    for enc in ENCODERS:
-        if enc not in guard.have:
-            res[enc] = missing_encoder(guard.have)
-            continue
+    with record_encoders() as guard:
+        for enc in ENCODERS:
+            if enc not in guard.have:
+                res[enc] = missing_encoder(guard.have)
+                continue
 
-        def one(enc=enc):
-            got = SS.score('semart_clu', enc, n_draws('clu'), ctx['workers'], subset=far) + \
-                SS.score('semart_ret', enc, n_draws('ret'), ctx['workers'], subset=far)
-            full_clu_sc14 = [c for c in cells_all if c['encoder'] == enc and c['data'] == SA]
-            o_far, v_far = semart_outcomes(got)
-            o_full, v_full = semart_outcomes(full_clu_sc14) if full_clu_sc14 else (None, None)
-            changes = None if o_full is None else {k: [o_full.get(k), o_far[k]] for k in o_far if o_full.get(k) != o_far[k]}
-            return dict(n_close=len(close), n_far=len(far), cells_without_close=got, outcome_without_close=o_far,
-                        verdict_without_close=v_far, outcome_whole_set=o_full, verdict_whole_set=v_full,
-                        outcome_changes=changes, verdict_changes=None if v_full is None else v_full != v_far)
-        res[enc] = section(one)
-    guard.__exit__(None, None, None)
+            def one(enc=enc):
+                got = SS.score('semart_clu', enc, n_draws('clu'), ctx['workers'], subset=far) + \
+                    SS.score('semart_ret', enc, n_draws('ret'), ctx['workers'], subset=far)
+                full_clu_sc14 = [c for c in cells_all if c['encoder'] == enc and c['data'] == SA]
+                o_far, v_far = semart_outcomes(got)
+                o_full, v_full = semart_outcomes(full_clu_sc14) if full_clu_sc14 else (None, None)
+                changes = None if o_full is None else {k: [o_full.get(k), o_far[k]] for k in o_far if o_full.get(k) != o_far[k]}
+                return dict(n_close=len(close), n_far=len(far), cells_without_close=got, outcome_without_close=o_far,
+                            verdict_without_close=v_far, outcome_whole_set=o_full, verdict_whole_set=v_full,
+                            outcome_changes=changes, verdict_changes=None if v_full is None else v_full != v_far)
+            res[enc] = section(one)
     for enc, r in res.items():
         if 'skipped' in r:
             md_rows.append([enc, 'skipped', r['skipped'][:70], '', '', ''])
@@ -558,20 +556,18 @@ def kind_semart_ap_type(ctx):
     keys = ds.keys()
     y = ds.labels('genre')
     res = {}
-    guard = record_encoders()
-    guard.__enter__()
-    for enc in ENCODERS:
-        if enc not in guard.have:
-            res[enc] = missing_encoder(guard.have)
-            continue
+    with record_encoders() as guard:
+        for enc in ENCODERS:
+            if enc not in guard.have:
+                res[enc] = missing_encoder(guard.have)
+                continue
 
-        def one(enc=enc):
-            units, picks = SS.stage1_for(enc)
-            arms = SS.ret_arms(enc, SS.SemartInputs('ret'), keys, picks, ctx['workers'])
-            return {arm: dict(point=float(arms[arm]['point']), per_type=per_type(arms[arm]['ap'], arms[arm]['rows'], y))
-                    for arm in SS.ARMS}
-        res[enc] = section(one)
-    guard.__exit__(None, None, None)
+            def one(enc=enc):
+                units, picks = SS.stage1_for(enc)
+                arms = SS.ret_arms(enc, SS.SemartInputs('ret'), keys, picks, ctx['workers'])
+                return {arm: dict(point=float(arms[arm]['point']), per_type=per_type(arms[arm]['ap'], arms[arm]['rows'], y))
+                        for arm in SS.ARMS}
+            res[enc] = section(one)
     if all('skipped' in r for r in res.values()):
         raise Skip('no encoder had its picks or rows: ' + json.dumps(res)[:300])
     md = ['Mean per-query AP per SemArt type at each arm\'s pick (c*: mean of seeds 0 to 4); queries are the paintings of the type.', '']
