@@ -271,4 +271,4 @@ Nothing deleted; sizes from the round log, 04:46.
 |`c13_smoke/`|16 MB|
 |`smoke_build3/`|12 GB|
 
-Files: cells/outcomes, diagnostics, queue logs, C13 compare/derive log, [records](../../../../src/test/20261102_mmart_test/records/). Storage decision: **to be decided at the next wrap-up (disk ledger)**.
+Files: cells/outcomes, diagnostics, queue logs, C13 compare/derive log, [records](../../../../src/test/20261102_mmart_test/records/). Storage (decided 2026-11-03, r16 decide; disk ledger): `outputs/exports/` (9.0 GB) kept until the paper's numbers are frozen; the build smoke, stage 0 gate files and C13 smoke and caches deleted.

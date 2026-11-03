@@ -11,20 +11,20 @@ weekly and stage reports.
 
 The conditioned line's log (2026-09-28 to 2026-10-15, rounds 1 to 9, parked ideas) is archived: [direction log](../../archive/v2_conditioned/docs/superpowers/direction_log.md).
 
-## Now (2026-11-02)
+## Now (2026-11-03)
 
 The new line builds a condition-free model over PercepT: one Qwen3-VL-Embedding instruction per aspect, buddy graphs
 on each view, one shared trunk with emotion, style and genre heads, read once on the default image. On ArtELingo, c*
 beats the instructed Qwen image (its teacher) in clustering on emotion and narrowly on style, is level with it in
 retrieval, and passes the CRL bars (reports 12-28, 12-29, 12-31). The photo model (c* fine-tuned on Affection's
 unlabeled train photos) beats its teacher on Affection (report 2027-01-01) and on EmoSet, a test set that shaped
-nothing: AMI +0.0181, mAP +0.0320 (report 2027-01-02, holds). The recipe carries over to SigLIP 2, SigLIP 1 and CLIP
-L/14: a WIN over each plain image; against the Qwen teacher 18 WIN, 5 LEVEL and 1 BELOW of 24 cells. Next: r15
-(confirmation, medium loop): c* on MMArt (PolyArt), 16,384 WikiArt paintings not in ArtELingo after the near-copy
-cut at 0.95; the seven views were extracted on 2026-11-02 and pass their checks
-([round log](../../src/test/20261102_mmart_prep/20261102_mmart_prep_log.md)); the design is
-[approved](specs/2026-11-02-mmart-test-design.md) and the build runs on the night of 2026-11-02. Deadlines: abstract 2026-11-10, paper 2026-11-16, supplementary
-2026-11-23.
+nothing (report 2027-01-02). The recipe carries over to SigLIP 2, SigLIP 1 and CLIP L/14 (r14), and to MMArt, 16,384
+WikiArt paintings outside ArtELingo, on all four encoders (r15, report 2027-01-03, holds): every plain-image and
+PercepT cell is a WIN; against the teacher 18 WIN, 4 LEVEL, 2 BELOW (emotion retrieval, Qwen and CLIP L/14).
+Experiments are paused (user, 2026-11-03) while the user reports to the collaborator and the supervisor. Next: the r16
+report chat (the user's questions on r15 and r14), a stage note, then the direction (open; a SemArt genre test on
+11,162 paintings by artists outside ArtELingo is one option, [check](../../src/test/20261103_semart_check/20261103_semart_check_log.md)),
+then r16. Deadlines: abstract 2026-11-10, paper 2026-11-16, supplementary 2026-11-23.
 
 ## Parked ideas
 
@@ -60,6 +60,42 @@ cut at 0.95; the seven views were extracted on 2026-11-02 and pass their checks
 - MMArt perspective names as new Qwen instructions (narrative, formal, historical): new aspects without a c* head,
   so a new experiment, not a test of c* (never tried; parked by the user, 2026-11-02, as a later experiment;
   proposed in the MMArt prep chat, [log](../../src/test/20261102_mmart_prep/20261102_mmart_prep_log.md))
+- A SemArt genre test of c* on the paintings by artists outside ArtELingo's train set (11,162 paintings, 2,717
+  artists, Web Gallery of Art; type labels only; the 0.95 cut misses copies across the two sources there) (never
+  tried; deferred by the user (2026-11-03) until after the report to the collaborator and the supervisor;
+  [proposed in](../../src/test/20261103_semart_check/20261103_semart_check_log.md))
+
+## 2026-11-03 · MMArt test read: c* holds on four encoders (GO); experiments paused for the report to the collaborator and the supervisor (r16)
+
+- **Read:** holds, GO for Qwen3-VL-Embedding-2B, SigLIP 2, SigLIP 1 and CLIP L/14 on 16,384 MMArt paintings outside
+  ArtELingo (cut 0.95), five seeds: all nine plain-image and matched-PercepT cells WIN per encoder (Qwen emotion AMI
+  0.0609 against 0.0407 for the plain image). Against the Qwen teacher: 18 WIN, 4 LEVEL, 2 BELOW of 24 cells (r14 on
+  ArtELingo: 18, 5, 1); all 15 cells set for "better than" WIN (narrowest lower bound +0.0004, CLIP L/14 emotion AMI);
+  BELOW: emotion retrieval, Qwen −0.0010 [−0.0015, −0.0004] and CLIP L/14. Re-derivation: 6,697 items, 0 failed.
+  Unseen artists: 15 paintings, no cells. Type note: this log called r15 a confirmation; the spec ran stage 2 as a
+  claim test (agent default D6).
+- **Meaning (C):** "I think that's good, but Qwen emotion retrieval [below the teacher] is out of my expectation"
+  (user, before seeing ours). Ours: the gains over the plain image and PercepT carry to new paintings and labels on all
+  four encoders; against the teacher the ArtELingo pattern repeats (clustering wins, emotion retrieval level or
+  slightly below); sure of the verdict, less of new artists. Where they differ: we expected the emotion retrieval
+  cell, since it was the weakest teacher cell on ArtELingo too (Qwen below with plain cosine, −0.0023, level after the
+  read-out pick, +0.0007; CLIP L/14 below in r14); on MMArt its gap sits mostly in contentment (AP 0.2413 against
+  0.2547).
+- **Side check (user):** SemArt feasibility (CPU, existing stores, 2026-11-03 14:13): 17,840 of 21,382 paintings kept
+  at the 0.95 cut, but the cut misses copies across the two sources (Leonardo's Last Supper at 0.944); 11,162 kept
+  paintings by 2,717 artists without ArtELingo train paintings; type labels only (10 classes, close to genre).
+- **Decided (A):** open, awaiting the user. No further experiments for now: the user reports to the collaborator and
+  the supervisor first (user, after seeing the recommendation, which was a SemArt genre test on the new-artist set).
+  Order (user): a report chat in this loop for the user's questions on r15 and r14, then a stage note, then the
+  direction, then r16. Options seen: freeze and write; the SemArt genre test; a second photo aspect; the emotion
+  retrieval cell stated in the paper as a limit (recommended) or examined (the contentment class).
+- **Idea (B):** none yet.
+- **Why:** the user wants the collaborator's and the supervisor's view before more experiments, with the abstract on
+  2026-11-10.
+- **Links:** [report](../reports/auto/percept/2027-01-03_mmart_test.md) ·
+  [user-read report](../user_read/2026-11-03_mmart_test.md) ·
+  [SemArt check](../../src/test/20261103_semart_check/20261103_semart_check_log.md) ·
+  [spec](specs/2026-11-02-mmart-test-design.md) · [handoff](handoffs/2026-11-03-r16-report-handoff.md)
 
 ## 2026-11-02 · Backbones sweep read: c* holds on three more encoders and the photo model beats its teacher on EmoSet (GO); next, the MMArt (PolyArt) test (r15)
 
