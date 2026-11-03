@@ -43,7 +43,14 @@ GATES = ('i_a_r14', 'i_a_r15', 'i_a_partitions', 'i_b', 'i_c_affection', 'i_c_em
          'ii_scorer', 'ii_crl', 'ii_percept', 'iii', 'iv_export', 'iv', 'v', 'vi')
 I_A = ('i_a_r14', 'i_a_r15', 'i_a_partitions')
 I_D = ('i_d_emoset', 'i_d_class_count')
-DIAG_ITEMS = ('count_sweep', 'per_class', 'qwen_crl', 'told_untold', 'tables')    # ns_diag.py items (ticket 11)
+GATE_NOTES = {   # from the ticket 06 review
+    'i_a_partitions': 'makes no bootstrap draws; its result reports draws 2000 all the same',
+    'i_d_emoset': 'makes no bootstrap draws; its result reports draws 2000 all the same',
+    'i_d_class_count': "makes no draws (reports 2000); does not replay r15's matched.own per-seed values (that reading is K-free)",
+}
+# Each queue step is one plain process: ns_clu.paired_cell opens its own fork pool, so cell scoring is never called
+# inside a pool worker.
+DIAG_ITEMS =('count_sweep', 'per_class', 'qwen_crl', 'told_untold', 'tables')    # ns_diag.py items (ticket 11)
 
 
 # ------------------------------------------------------------------------------------------------ helpers
@@ -188,7 +195,8 @@ def cmd_gate(args):
     secs = time.monotonic() - t0
     if res is not None:
         P.write_json(OUT / 'stage0' / f'{name}.json', res)
-    write_step(name, status, err, secs)
+    note = GATE_NOTES.get(name)
+    write_step(name, status, err, secs, note=note)
     print(f'gate {name}: {status} {err or ""} ({secs:.0f}s)')
     build_status()
     return 0 if err is None else 1

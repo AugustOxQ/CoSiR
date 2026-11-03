@@ -46,13 +46,13 @@ stage1-ranges)   # ~ 8 min per painting (set, encoder), ~ 5 min per photo pair; 
   for e in $ENCS; do q ranges_affection_$e 5m --short -- $RUN ranges --set affection --enc $e; done
   q ranges_emoset_qwen 5m --short -- $RUN ranges --set emoset --enc qwen
   ;;
-stage1-picks)    # ~ untold (6,144 wide) 20 min x 8, matched 5 min x 7, CRL 4 min; about 3.5 h
-  for s in artelingo mmart; do for e in $ENCS; do q pick_untold_${s}_$e 20m -- $RUN pick --key untold/$s/$e; done; done
+stage1-picks)    # measured (09): untold 20 to 30 min x 8, matched 3 to 4 min x 7, CRL 50 s; about 4 h
+  for s in artelingo mmart; do for e in $ENCS; do q pick_untold_${s}_$e 30m -- $RUN pick --key untold/$s/$e; done; done
   for s in artelingo mmart; do for e in $ENCS; do
     if [ "$s" = artelingo ] && [ "$e" = qwen ]; then continue; fi
     q pick_matched_${s}_$e 5m --short -- $RUN pick --key matched/$s/$e
   done; done
-  q pick_crl_mmart 4m --short -- $RUN pick --key crl/mmart/clip_l14
+  q pick_crl_mmart 2m --short -- $RUN pick --key crl/mmart/clip_l14
   q stage1_records 1m --short -- $RUN stage1-records
   # THEN THE CONTROLLER COMMITS records/stage1_ranges.json, records/stage1_picks.json and records/status.json
   # (rebuilt: ns_run.py status) before any stage 2 step.
