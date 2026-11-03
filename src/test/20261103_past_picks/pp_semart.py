@@ -270,6 +270,7 @@ def record():
     return {
         'rule': 'nearest cosine < 0.95 and artist tier none and author not starting with UNKNOWN (sc_check.py)',
         'gate': gate, 'n_gate': len(sets['gate']), 'n_set': len(sets['set']),
+        'artists_set': int(_frame().set_index('image_file').loc[sets['set'], 'author'].nunique()),
         'md5_groups': sets['groups'], 'n_md5_dropped': len(sets['gate']) - len(sets['set']),
         'close_before_md5': len(sets['close_gate']), 'close': len(sets['close']), 'far': len(sets['far']),
         'close_cut': pp_paths.SEMART_CLOSE,
