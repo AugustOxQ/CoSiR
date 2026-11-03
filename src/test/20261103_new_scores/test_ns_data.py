@@ -175,6 +175,7 @@ def test_percept_held_and_test_stored():
 SMOKE_T05 = Path('/project/CoSiR/.scratch/r17-new-scores/smoke/t05')       # ticket 05's real files (all four encoders)
 
 
+@pytest.mark.skipif(not SMOKE_T05.exists(), reason='ticket 05 smoke files absent (scratch folder removed)')
 def test_percept_val_joined_by_painting_name(monkeypatch):
     monkeypatch.setattr(ns_paths, 'OUT', SMOKE_T05)
     for enc in ('siglip2', 'qwen'):
@@ -193,6 +194,7 @@ def test_percept_val_joined_by_painting_name(monkeypatch):
             assert np.array_equal(q[i], probs[where[mt_data.artelingo_name(mk[i])]])
 
 
+@pytest.mark.skipif(not SMOKE_T05.exists(), reason='ticket 05 smoke files absent (scratch folder removed)')
 def test_percept_val_refuses_rows_in_another_order(monkeypatch):
     monkeypatch.setattr(ns_paths, 'OUT', SMOKE_T05)
 
@@ -278,6 +280,41 @@ def test_check_ids_equal():
     assert ns_data.ids_equal([['a'], ['a'], ['a']]) is True
     assert ns_data.ids_equal([['a'], ['b'], ['a']]) is False
     assert ns_data.ids_equal(['h', 'h', 'h']) is True and ns_data.ids_equal(['h', 'g', 'h']) is False
+
+
+def _fake_sidecars(root, enc, seed, bad_aspect=None):
+    """Copies of the real held and validation sidecars of `enc`, seed `seed`, under `root`; the held sidecar of
+    `bad_aspect` gets another list_sha256."""
+    real = ns_data.CSTAR_ROOT[enc]
+    for a in ns_paths.ASPECTS:
+        for rel in (f'held/k11=40/{a}__s{seed}.json', f'train/k11=40/R6-5/{a}__{rt_data.GRAPHS[a]}__s{seed}.json'):
+            side = json.loads((real / rel).read_text())
+            if a == bad_aspect and rel.startswith('held'):
+                side['list_sha256'] = 'f' * 64
+            (root / rel).parent.mkdir(parents=True, exist_ok=True)
+            (root / rel).write_text(json.dumps(side))
+    return root
+
+
+def test_head_id_reads_each_held_sidecar(tmp_path, monkeypatch):
+    root = _fake_sidecars(tmp_path, 'clip_l14', 0, bad_aspect='style')
+    monkeypatch.setitem(ns_data.CSTAR_ROOT, 'clip_l14', root)
+    ids = [ns_data._head_id('artelingo', 'held', 'clip_l14', a, 0) for a in ns_paths.ASPECTS]
+    assert ids[1] == 'f' * 64 and ids[0] == ids[2] == ns_data._names_sha(rt_data.names('held'))
+
+
+def test_gate_v_and_untold_refuse_a_held_sidecar_that_differs(tmp_path, monkeypatch):
+    enc = 'clip_l14'
+    monkeypatch.setitem(ns_data.CSTAR_ROOT, enc, _fake_sidecars(tmp_path, enc, 0, bad_aspect='style'))
+
+    def fake_cstar(set_, split, enc_, aspect, seed, unit=True):          # unit rows of the right shape, no store read
+        return np.full((ns_paths.N_ROWS[(set_, split)], 2048), 1 / np.sqrt(2048), dtype=np.float32)
+    monkeypatch.setattr(ns_data, 'cstar', fake_cstar)
+    g = ns_data.gate_v(encoders=(enc,), seeds=(0,))
+    assert g[enc] == 'failed' and g['evidence'][enc]['artelingo_held_list_sha256_equal'] is False
+    assert g['evidence'][enc]['artelingo_val_names_equal'] is True
+    with pytest.raises(AssertionError, match='do not share one key list'):
+        ns_data.untold('artelingo', 'held', enc, 0)
 
 
 def test_gate_v_one_encoder_real_data():

@@ -148,7 +148,8 @@ def cstar(set_, split, enc, aspect, seed, unit=True):
 
 
 def plain(set_, split, enc):
-    """X's default image, float32 unit rows [n, WIDTH[enc]]."""
+    """X's default image, float32 unit rows [n, WIDTH[enc]]. MMArt: `mt_data.features` rows, r15's clustering form;
+    r15's retrieval form divides once more (`mt_ret.unit`, as `mt_ret.view_rows`), which ns_ret applies."""
     _check_args(set_, split, enc)
     n = ns_paths.N_ROWS[(set_, split)]
     if set_ == 'artelingo':
@@ -159,7 +160,7 @@ def plain(set_, split, enc):
 
 
 def teacher(set_, split, aspect):
-    """The Qwen image instructed for `aspect`, float32 unit rows [n, 2048]."""
+    """The Qwen image instructed for `aspect`, float32 unit rows [n, 2048]. MMArt: r15's clustering form, as `plain`."""
     _check_args(set_, split, aspect=aspect)
     n = ns_paths.N_ROWS[(set_, split)]
     if set_ == 'artelingo':
@@ -270,7 +271,7 @@ def untold(set_, split, enc, seed):
     _check_args(set_, split, enc, seed=seed)
     n = ns_paths.N_ROWS[(set_, split)]
     ids = [_head_id(set_, split, enc, a, seed) for a in ns_paths.ASPECTS]
-    rows = [cstar(set_, split, enc, a, seed, unit=True) for a in ns_paths.ASPECTS]
+    rows = [cstar(set_, split, enc, a, seed, unit=False) for a in ns_paths.ASPECTS]   # stored rows; join_heads normalises once
     out = join_heads(rows, ids)
     return _check_rows(out, n, ns_paths.UNTOLD_WIDTH, f'untold {set_}/{split}/{enc}/s{seed}', tol=1e-5)
 
