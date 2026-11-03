@@ -82,7 +82,7 @@ run mode night. Outputs: `/data/SSD2/cosir_r15/20261102_mmart_test/outputs/` (`O
   (`bash mt_run_cpu.sh stage3`, log `OUT/stage3_queue.log`); load 0.4, 55 GB available.
 - 04:43 `QUEUE stage3 OK rc=0 seconds=3053`: all ten diagnostics ok (`OUT/diag/summary.json`). The unseen-artist subset
   has 15 paintings of 12 artists, so it gets no cells (fewer paintings than the 20 clusters; final review finding 11).
-- 04:50 a display bug in `mt_diag.py`, found in the controller's read of `far.md`: the lookup of stage 2 cells
+- 04:45 a display bug in `mt_diag.py`, found in the controller's read of `far.md`: the lookup of stage 2 cells
   (`test_cells`, and `item_shared_held`'s join) keyed cells without the task, so for SC4 the retrieval cell replaced
   the clustering one. Effect: in `far.md` the "d on test" column of the 12 SC4 clustering rows showed the retrieval
   value; `shared_held.md` lacked its 12 SC4 clustering rows. The cells (JSON and cell files) and every other item
@@ -90,5 +90,13 @@ run mode night. Outputs: `/data/SSD2/cosir_r15/20261102_mmart_test/outputs/` (`O
   370 round tests pass. The two items were re-rendered from their saved JSON
   (`.scratch/r15-mmart-test/report/diag_rerender.py`, no scorer run): JSON identical, the four cell files the same
   bytes. The old files are kept in `OUT/diag/pre_fix_0450/`.
-- Storage (04:52): `OUT` 12 GB (exports 9.0 GB, stage 0 2.9 GB, the rest under 1 MB); C13 folder 19 MB (cache
+- Storage (04:46): `OUT` 12 GB (exports 9.0 GB, stage 0 2.9 GB, the rest under 1 MB); C13 folder 19 MB (cache
   16 MB); C13 smoke 16 MB; the build's smoke `smoke_build3/` 12 GB (already on `.scratch/pending_deletions.md`).
+- 04:47 auto report draft by Codex (`gpt-6.1-sol`, medium; brief `.scratch/r15-mmart-test/report/codex_auto_report_brief.md`):
+  15.4 KB, index check OK. It caught a wrong example in the brief: a LEVEL teacher cell does license "level with or
+  better than" (spec §6); the brief said no claim.
+- 04:57 claim review (Sonnet `high` worker; `.scratch/r15-mmart-test/report/claim_review.md`): about 490 numbers
+  checked, none wrong; the rule check passes (claims, D7 flags, counts, the four licensed sentences word for word).
+  1 must-fix (two clock times, changed in this log after the draft) and 9 should-fix (the results brief's link,
+  deciding number, terms and options; two readings that could be misread; commits; code labels in prose; the
+  seed-spread reading). The controller applied all ten; the report is 16.2 KB.
