@@ -390,6 +390,17 @@ def test_stage2_reads_stage1_only_through_read_committed_record(monkeypatch, par
     assert asked == ['stage1_clip_b16.json']
 
 
+@pytest.mark.parametrize('part', S.PARTS)
+def test_stage2_refuses_draw_counts_other_than_the_protocols_outside_smoke(monkeypatch, part, tmp_path):
+    """A committed record is read, then a 5-draw run is refused before any held row (ticket 11 refuses such cells anyway)."""
+    tripwires(monkeypatch)
+    monkeypatch.setattr(S, 'committed_record', lambda enc: record_for(enc))
+    monkeypatch.setattr(PP, 'SMOKE', 0)
+    monkeypatch.setattr(PP, 'OUT', tmp_path)
+    with pytest.raises(AssertionError, match='only smoke runs'):
+        S.score(part, 'clip_b32', n_draws=5)
+
+
 def test_stage2_refuses_an_encoder_that_is_not_one_of_the_new_three():
     with pytest.raises(AssertionError):
         S.score('artelingo_clu', 'qwen', n_draws=5)
