@@ -399,3 +399,45 @@ def test_mmart_plain_rows_get_r15s_retrieval_unit_and_artelingo_rows_do_not(monk
     assert np.array_equal(mm, ns_ret._unit(x)) and not np.array_equal(mm, x)
     ae = ns_ret._Rows('artelingo', 'qwen')._plain_rows('held')
     assert np.array_equal(ae, x)
+
+
+# ------------------------------------------------------------------------------------------------ record reads
+# Values copied from the records themselves (opened 2026-11-03); exact equality. These pin the reads the cells make
+# (SC6 to SC8 r, the reused plain / CRL / c* picks), which no gate checks (gate (ii) pins only the c* pick).
+@pytest.mark.parametrize('set_, enc, aspect, want', [
+    # r14 records/stage1_<enc>.json ['artret_ranges']['ranges'][aspect] (ArtELingo validation): CLIP L/14 emotion
+    # 0.26528545 - 0.26359618; r15's ret_ranges for the same encoder differs (0.000633751040052366)
+    ('artelingo', 'clip_l14', 'emotion', 0.0016892742932269056),
+    ('artelingo', 'siglip1', 'emotion', 0.0021643605637413077),     # r14 artret_ranges (r15: 0.0005943409765497565)
+    ('artelingo', 'siglip2', 'emotion', 0.0015141856668823839),     # r14 artret_ranges (r15: 0.0010930056213613037)
+    # r15 records/stage1_<enc>.json ['ret_ranges']['ranges'][aspect] (MMArt validation)
+    ('mmart', 'siglip1', 'emotion', 0.0005943409765497565),
+    ('mmart', 'siglip2', 'emotion', 0.0010930056213613037),
+    ('mmart', 'clip_l14', 'genre', 0.0019367407309804907),
+    ('mmart', 'qwen', 'style', 0.00258267282747926),
+    # r11 stage0a_ranges.json ['map'][aspect]['r'] (Qwen c*, ArtELingo validation)
+    ('artelingo', 'qwen', 'emotion', 0.0014116107779215126),
+    ('artelingo', 'qwen', 'genre', 0.0038237977312404192),
+])
+def test_recorded_range_reads_the_recorded_value(set_, enc, aspect, want):
+    r, src = ns_ret.recorded_range(set_, enc, aspect)
+    assert r == want and isinstance(src, str)
+
+
+@pytest.mark.parametrize('arm, set_, enc, want', [
+    # r15 records/stage1_<enc>.json ['picks']['arms']: cstar 'center+k10', frozen (= plain) 'none+k10' for Qwen and
+    # SigLIP 1 on MMArt. No ArtELingo encoder has a plain pick that differs from its c* pick (r14 artret_picks cstar and
+    # frozen are 'center+k10' for all three; r11 stage4/picks.json cstar and plain 'center+k10'), so the plain-versus-c*
+    # key mapping is pinned on MMArt; the same line serves both sets.
+    ('plain', 'mmart', 'qwen', 'none+k10'),
+    ('plain', 'mmart', 'siglip1', 'none+k10'),
+    ('cstar', 'mmart', 'siglip1', 'center+k10'),
+    ('cstar', 'mmart', 'qwen', 'center+k10'),
+    ('plain', 'artelingo', 'siglip1', 'center+k10'),                # r14 stage1_siglip1.json artret_picks.frozen.pick
+    ('plain', 'artelingo', 'qwen', 'center+k10'),                   # r11 stage4/picks.json plain
+    ('cstar', 'artelingo', 'clip_l14', 'center+k10'),               # r14 stage1_clip_l14.json artret_picks.cstar.pick
+    ('matched', 'artelingo', 'qwen', 'center+k10'),                 # r11 stage4/picks.json percept
+    ('crl', 'artelingo', 'clip_l14', 'none+k10'),                   # r11 stage4/picks.json crl
+])
+def test_reused_pick_reads_the_recorded_pick(arm, set_, enc, want):
+    assert ns_ret.reused_pick(arm, set_, enc) == want
