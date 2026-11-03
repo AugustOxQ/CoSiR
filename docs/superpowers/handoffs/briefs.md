@@ -1727,3 +1727,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-03-r19-build2-handoff.md
 - New chat: tab 'r19 build 2', session 5dffc27d-c94f-4137-9d05-bfebeec91b0e
 
+[brief] CoSiR: r19 build 2 -> r19 build 3 (2026-11-03 23:13 Amsterdam)
+- Done: tickets 01, 02, 03, 05, 06, 07, 09, 11 built, reviewed (Opus high), fixed and merged (integration tip 3ae28fe).
+- State: gates (iv) and (vii), r14 parts, replay r14 exactly (max difference 0.0; 414 and 920 items).
+- Next: Opus high review of ticket 08 (built, not reviewed); then 04 and 10, then 12 and 13. Codex has room after 23:34.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-03-r19-build3-handoff.md
+- New chat: tab 'r19 build 3', session 8ed85e38-0792-46e4-b566-1bfe2941a14b
+
