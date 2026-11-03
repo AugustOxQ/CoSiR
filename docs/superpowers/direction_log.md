@@ -117,7 +117,7 @@ then r16. Deadlines: abstract 2026-11-10, paper 2026-11-16, supplementary 2026-1
     would need our own training run).
   - No bigger sweep before the paper; r14's 39 knob rows serve as the ablation (user, after seeing the
     recommendation and r14's best rows: about +1 seed range on style, no row better on all three aspects).
-  - Asked by the user, 2026-11-03 17:20: an overview report of what we have and what is missing, clustering first,
+  - Asked by the user, 2026-11-03 17:05: an overview report of what we have and what is missing, clustering first,
     retrieval second, with every open to-do labelled and costed (user-read report); deeper heads (a 3-layer
     residual head) and a DEC loss on every head as possible ablations (never run in the new line).
   - Correction to r11 D1: its reason for no text queries, "c* has no text side", is not exact. c* has a caption side
