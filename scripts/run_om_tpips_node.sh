@@ -145,8 +145,8 @@ import om_paths as P
 hub = Path(os.environ['HUB'])
 for repo, snap in ((P.TPIPS_REPO, P.TPIPS_SNAPSHOT), (P.TPIPS_BACKBONE_REPO, P.TPIPS_BACKBONE_SNAPSHOT)):
     d = hub / ('models--' + repo.replace('/', '--')) / 'snapshots' / snap
-    files = sorted(d.glob('*.safetensors')) if d.is_dir() else []
-    ok = d.is_dir() and (d / 'config.json').exists() and files and all(f.exists() for f in files)   # exists() follows the blob link
+    files = [f for f in d.rglob('*') if f.is_file()] if d.is_dir() else []   # is_file() follows the blob link; layouts differ per repo
+    ok = len(files) > 0 and any(f.stat().st_size > 1e9 for f in files)
     gb = sum(f.stat().st_size for f in files) / 1e9 if ok else 0
     print('snapshot', repo, snap[:8], 'ok' if ok else 'MISSING', f'{gb:.1f} GB in {len(files)} files')
     if not ok: problems.append(f'snapshot {repo}@{snap[:8]} missing or incomplete in {hub}')
