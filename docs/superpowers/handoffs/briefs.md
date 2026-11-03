@@ -1678,3 +1678,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-03-r19-spec-handoff.md
 - New chat: tab 'r19 spec', session b31c9071-11a1-436c-8008-f56faca25bfa
 
+[brief] CoSiR: r17 decide 2 -> r17 build (2026-11-03 20:46 Amsterdam)
+- Done: r17 spec approved 20:45 from its brief; the Opus `xhigh` rule review passed after fixes, all applied.
+- State: CPU only, no training: 412 metric cells in eight families (SC1 to SC8); every input is saved.
+- Next: tickets and build per `matt-chain.md`, the final review, merge into main, then open the run chat.
+- Blocked: nothing. No container restart (user).
+- Handoff: docs/superpowers/handoffs/2026-11-03-r17-build-handoff.md
+- New chat: tab 'r17 build', session 62d08565-f371-4464-8fc8-97ea106613dd
+
