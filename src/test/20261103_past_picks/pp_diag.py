@@ -10,7 +10,8 @@ inside a kind, for one encoder or set, with the other parts kept); an unexpected
 exit code 1 at the end.
 
   r0                 R0 (plain cosine, no read-out map) mAP of every arm: X-c* (5 seeds), X's plain image, X's matched arm
-                     (L2-normalised topic probabilities, 5 seeds), the teacher. Sets: SemArt (all seven), MMArt test (new three).
+                     (L2-normalised topic probabilities, 5 seeds), the teacher. Sets: SemArt (all seven), MMArt test (new
+                     three), ArtELingo held (c* per seed, plain image, validation R0) and Affection test (photo model's validation R0).
   clustering_kclass  AMI of k-means with K = the class count (SemArt 10; MMArt 9, 20, 10) beside K = 20, same arms and sets
                      (route: `ct_score.partitions(x, K)`, states 0 to 2; matched also its own 40-topic argmax).
   semart_close       D14: SC11 to SC14 again on the SemArt set without the paintings at nearest cosine >= 0.93
@@ -21,7 +22,8 @@ exit code 1 at the end.
   r6_5_held          10-25's and 10-26's stored held AMI (20 clusters) of the R6-5 student on the three new encoders beside the
                      c* held AMI of this round (cells SC1).
   gain_share         (X-c* - plain) / (teacher - plain) per encoder, set, aspect, task, from the stage 2 cells.
-  seed_spreads       max - min over seeds 0 to 4 of X-c* on SemArt and MMArt test (AMI at 20 clusters; mAP at R0) beside the
+  seed_spreads       max - min over seeds 0 to 4 of X-c* on SemArt, MMArt, ArtELingo held and Affection test (the last two: r14's
+                     `bs_diag.artelingo_held` / `affection_held`, new three, against OUT/stage1 ranges) (AMI at 20 clusters; mAP at R0) beside the
                      validation range the teacher cell carries (its LEVEL unit r).
   percept_strongest  per set and aspect the largest matched-arm value of the cells SC3, SC9, SC13 (C1).
   cost_rows          the cost table's other rows from the probe's files (`OUT/stage3/cost_table.json`, `cells_cost.json`).
@@ -33,6 +35,7 @@ PP_SMOKE=1 (fewer draws).
 """
 import pp_paths as PP  # noqa: I001  (first: sets the older rounds' output roots)
 import pp_register  # noqa: F401  (all seven encoders in r14's and r15's tables)
+import bs_diag  # noqa: E402  (r14's held readers; after pp_paths and pp_register)
 
 import argparse
 import json
@@ -325,9 +328,89 @@ def each_set(ctx, fn, sets=None):
     return res
 
 
+
+# ---------------------------------------------------------------------------------------------- held sets (r14's code, driven by registration)
+def held_art(enc, workers):
+    """ArtELingo held per-seed values of the new encoder `enc` through r14's `bs_diag.artelingo_held` (OUT = r19's OUT by
+    `pp_paths`; c* exports `OUT/cstar/<enc>/held`, stage 1 files `OUT/stage1/*_<enc>.json`). A missing input is a skip."""
+    try:
+        return bs_diag.artelingo_held(enc, workers)
+    except bs_diag.NotRun as e:
+        raise Skip(f'{e}: {e.missing}')
+
+
+def held_aff(enc, workers):
+    """Affection test per-seed values of the X photo model (`bs_diag.affection_held`; the photo model's rows, as r14)."""
+    try:
+        return bs_diag.affection_held(enc, workers)
+    except bs_diag.NotRun as e:
+        raise Skip(f'{e}: {e.missing}')
+
+
+def stage1_file(name):
+    try:
+        return bs_diag.read_json(Path(PP.OUT) / 'stage1' / name)
+    except bs_diag.NotRun as e:
+        raise Skip(f'{e}: {e.missing}')
+
+
+def per_encoder(fn):
+    return {enc: section(lambda enc=enc: fn(enc)) for enc in NEW}
+
+
+def r0_held(ctx):
+    w = ctx['workers']
+
+    def art(enc):
+        h = held_art(enc, w)['ret']
+        val = stage1_file(f'artret_ranges_{enc}.json')['per_seed']
+        return dict(cstar_r0_per_seed=h['cstar_r0'], frozen_r0=h['frozen_r0'],
+                    validation_cstar_r0_mean={a: float(np.mean(list(v.values()))) for a, v in val.items()})
+
+    def aff(enc):
+        rec = stage1_file(f'affection_ranges_{enc}.json')
+        ps = rec['ranges_doc']['map']['per_seed']
+        ps = list(ps.values()) if isinstance(ps, dict) else list(ps)
+        return dict(validation_photo_r0_per_seed=ps, validation_photo_r0_mean=float(np.mean(ps)))
+    return dict(artelingo_held=per_encoder(art), affection_test=per_encoder(aff))
+
+
+def spreads_held(ctx):
+    w = ctx['workers']
+
+    def ratio(sp, r):
+        return dict(held_spread=sp, validation_range=r, ratio=sp / r)
+
+    def art(enc):
+        h = held_art(enc, w)
+        rc, rr = stage1_file(f'artclu_ranges_{enc}.json')['ranges'], stage1_file(f'artret_ranges_{enc}.json')['ranges']
+        return dict(clustering={a: ratio(spread(h['clu'][a]), rc[a]) for a in ASPECTS},
+                    retrieval_r0={a: ratio(spread(h['ret']['cstar_r0'][a]), rr[a]) for a in ASPECTS})
+
+    def aff(enc):
+        h = held_aff(enc, w)
+        return dict(ami=ratio(spread(h['ami']), h['ranges']['clu']), map_at_pick=ratio(spread(h['map']), h['ranges']['map']))
+    return dict(artelingo_held=per_encoder(art), affection_test=per_encoder(aff))
+
+
+def held_ok(res):
+    return any('skipped' not in v for sec in res.values() for v in sec.values())
+
+
+def skip_lines(res):
+    return [f'- {sname} {e}: skipped ({v["skipped"][:80]})' for sname, sec in res.items() for e, v in sec.items() if 'skipped' in v]
+
+
 # ============================================================================================ row kinds
 def kind_r0(ctx):
-    res = each_set(ctx, lambda ds, e, a: arm_table(ds, e, a, ctx['workers']))
+    try:
+        res = each_set(ctx, lambda ds, e, a: arm_table(ds, e, a, ctx['workers']))
+    except Skip as e:
+        res = {'skipped': str(e)}
+    held = r0_held(ctx)
+    if 'skipped' in res and not held_ok(held):
+        raise Skip('no set had its inputs: ' + json.dumps([res, held])[:300])
+    res = {k: v for k, v in res.items() if k != 'skipped'}
     md = ['R0 = plain cosine retrieval mAP (no read-out map; every labelled row is a query and a gallery row).', '']
     for sname, encs in res.items():
         rows = []
@@ -339,7 +422,16 @@ def kind_r0(ctx):
                 rows.append([e, a, f4(mean(t['cstar']['r0'])), f4(t['frozen']['r0']), f4(mean(t['matched']['r0'])), f4(t['teacher']['r0']),
                              f'{f4(min(t["cstar"]["r0"]))} to {f4(max(t["cstar"]["r0"]))}'])
         md += [f'### {sname}', '', *table(['encoder', 'aspect', 'X-c*', 'plain image', 'matched (PercepT)', 'teacher', 'c* seed range'], rows), '']
-    return dict(sets=res), md
+    rows = []
+    for e, v in held['artelingo_held'].items():
+        for a in ASPECTS if 'skipped' not in v else ():
+            rows.append([e, a, f4(mean(v['cstar_r0_per_seed'][a])), f4(v['frozen_r0'][a]), f4(v['validation_cstar_r0_mean'][a])])
+    md += ["### artelingo_held (new three; r14's `bs_diag.artelingo_held`)", '',
+           *table(['encoder', 'aspect', 'X-c* held', 'plain image held', 'X-c* validation'], rows), '']
+    rows = [[e, f4(v['validation_photo_r0_mean'])] for e, v in held['affection_test'].items() if 'skipped' not in v]
+    md += ['### affection_test (X photo model; validation R0 as r14 reports it)', '', *table(['encoder', 'photo validation R0 mean'], rows), '',
+           *skip_lines(held), '']
+    return dict(sets=res, **held), md
 
 
 def kind_clustering_kclass(ctx):
@@ -542,7 +634,14 @@ def kind_seed_spreads(ctx):
         sc, sr = spread(t['cstar']['ami20']), spread(t['cstar']['r0'])
         return dict(ami20=dict(per_seed=t['cstar']['ami20'], test_spread=sc, validation_range=rc, ratio=None if not rc else sc / rc),
                     map_r0=dict(per_seed=t['cstar']['r0'], test_spread=sr, validation_range=rr, ratio=None if not rr else sr / rr))
-    res = each_set(ctx, one_cell)
+    try:
+        res = each_set(ctx, one_cell)
+    except Skip as e:
+        res = {'skipped': str(e)}
+    held = spreads_held(ctx)
+    if 'skipped' in res and not held_ok(held):
+        raise Skip('no set had its inputs: ' + json.dumps([res, held])[:300])
+    res = {k: v for k, v in res.items() if k != 'skipped'}
     rows = []
     for sname, encs in res.items():
         for e, aspects in encs.items() if 'skipped' not in encs else ():
@@ -552,9 +651,22 @@ def kind_seed_spreads(ctx):
                 rows.append([sname, e, a, f4(v['ami20']['test_spread']), f4(v['ami20']['validation_range']), f4(v['ami20']['ratio'], 2),
                              f4(v['map_r0']['test_spread']), f4(v['map_r0']['validation_range']), f4(v['map_r0']['ratio'], 2)])
     md = ['Seed spread (max - min over seeds 0 to 4) of X-c* on test beside the validation range (the LEVEL unit r of the teacher cell, '
-          'unrounded; "n/a" when the cell file is missing). ArtELingo held and Affection test spreads are not computed here.', '',
+          'unrounded; "n/a" when the cell file is missing). ArtELingo held and Affection test: r14\'s `bs_diag` values against the stage 1 '
+          'ranges.', '',
           *table(['set', 'encoder', 'aspect', 'AMI spread (test)', 'AMI range (val)', 'ratio', 'mAP R0 spread (test)', 'mAP range (val)', 'ratio'], rows), '']
-    return dict(sets=res), md
+    rows = []
+    for e, v in held['artelingo_held'].items():
+        for a in ASPECTS if 'skipped' not in v else ():
+            rows.append(['artelingo_held', e, a, f4(v['clustering'][a]['held_spread']), f4(v['clustering'][a]['validation_range']),
+                         f4(v['clustering'][a]['ratio'], 2), f4(v['retrieval_r0'][a]['held_spread']), f4(v['retrieval_r0'][a]['validation_range']),
+                         f4(v['retrieval_r0'][a]['ratio'], 2)])
+    for e, v in held['affection_test'].items():
+        if 'skipped' not in v:
+            rows.append(['affection_test', e, 'emotion', f4(v['ami']['held_spread']), f4(v['ami']['validation_range']), f4(v['ami']['ratio'], 2),
+                         f'{f4(v["map_at_pick"]["held_spread"])} (at pick)', f4(v['map_at_pick']['validation_range']), f4(v['map_at_pick']['ratio'], 2)])
+    md += ['', *table(['set', 'encoder', 'aspect', 'AMI spread', 'AMI range (val)', 'ratio', 'mAP spread (R0; Affection at pick)',
+                       'mAP range (val)', 'ratio'], rows), '', *skip_lines(held), '']
+    return dict(sets=res, **held), md
 
 
 def kind_percept_strongest(ctx):
