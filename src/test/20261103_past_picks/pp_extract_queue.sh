@@ -14,6 +14,7 @@ OUT=${PP_OUTPUTS:-/data/SSD2/cosir_r19/20261103_past_picks/outputs}
 STATUS=$OUT/stage0/gate_i/extract_queue_status.txt
 mkdir -p "$OUT/stage0/gate_i"
 WHICH=${1:-all}
+START=$(cat "$STATUS" 2>/dev/null | wc -l)    # judge only the lines this run appends (an older run's stay)
 
 step() {  # step <est> <label-suffix> <short|long> <args of pp_extract.py>
     est=$1; label=$2; kind=$3; shift 3
@@ -47,7 +48,7 @@ if [ "$WHICH" = semart ] || [ "$WHICH" = all ]; then
     step 15m "extract-semart-siglip1" long extract --dataset semart --view siglip1
     step 40m "extract-semart-genre_word" long extract --dataset semart --view genre_word
 fi
-if grep -qP '\t[1-9][0-9]*$' "$STATUS" 2>/dev/null; then
+if tail -n +$((START + 1)) "$STATUS" 2>/dev/null | grep -qP '\t[1-9][0-9]*$'; then
     echo "some steps failed: see $STATUS" >&2
     exit 1
 fi
