@@ -31,7 +31,9 @@ STATUS OF A ROW: 'decided', 'inconclusive' (a failed gate or stage 1 item voids 
 'missing' (no stage 2 cell and no failed gate excuses it). Missing cells are rows, never dropped. `meets_bar` is None
 unless decided. Teacher cells (SC3, SC4): `meets_bar` is True at WIN or LEVEL for either bar; `wording` tells which
 sentence (WIN: "better than", LEVEL: "level with or better than"), as r15's SC4 rule. A non-teacher cell meets its
-(WIN) bar only at WIN.
+(WIN) bar only at WIN. `bar_met` is the strict reading (None unless decided): True only when the outcome reaches the
+cell's own bar (WIN bar: WIN; LEVEL_OR_WIN bar: WIN or LEVEL), so a WIN-bar teacher cell at LEVEL has `meets_bar`
+True (its weaker sentence is licensed) and `bar_met` False (r17 review of ticket 02, finding 1).
 """
 import argparse
 import functools
@@ -259,7 +261,7 @@ def _row(cc, c, status, smoke):
     """One output row for claim cell `cc` and stage 2 cell `c` (None when absent)."""
     void = gate_voids(cc, status)
     rk = range_key(cc)
-    row = dict(cc, present=c is not None, void=void, outcome=None, meets_bar=None, wording=None, status=None,
+    row = dict(cc, present=c is not None, void=void, outcome=None, meets_bar=None, bar_met=None, wording=None, status=None,
                range_key=rk, r_used=None, cand=None, comp=None, d=None, lo=None, hi=None, r=None, r_source=None,
                n_draws=None, n_rows=None)
     if c is not None:
@@ -282,6 +284,7 @@ def _row(cc, c, status, smoke):
         wording = claim_wording(cc, row['outcome'])
         row['wording'] = wording
         row['meets_bar'] = wording is not None
+        row['bar_met'] = row['outcome'] == WIN if cc['bar'] == BAR_WIN else row['outcome'] in (WIN, LEVEL)
     return row
 
 
@@ -363,16 +366,17 @@ def licensed_families(rows):
 # ------------------------------------------------------------------------------------------------ summary, files
 def summary(rows):
     """{sc: {metric tag: counts}}: cells, decided, inconclusive, missing, and over the decided rows WIN, LEVEL,
-    BELOW, NOT_WIN, meets_bar."""
+    BELOW, NOT_WIN, meets_bar, bar_met."""
     out = {}
     for r in rows:
         d = out.setdefault(r['sc'], {}).setdefault(metric_tag(r), dict(
-            cells=0, decided=0, inconclusive=0, missing=0, WIN=0, LEVEL=0, BELOW=0, NOT_WIN=0, meets_bar=0))
+            cells=0, decided=0, inconclusive=0, missing=0, WIN=0, LEVEL=0, BELOW=0, NOT_WIN=0, meets_bar=0, bar_met=0))
         d['cells'] += 1
         d[r['status']] += 1
         if r['status'] == 'decided':
             d['NOT_WIN' if r['outcome'] == NOT_WIN else r['outcome']] += 1
             d['meets_bar'] += int(r['meets_bar'])
+            d['bar_met'] += int(r['bar_met'])
     return out
 
 

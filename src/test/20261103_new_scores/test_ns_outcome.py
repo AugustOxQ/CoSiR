@@ -588,6 +588,21 @@ def test_teacher_wording_win_bar_cell():
     assert lic(kw, -0.5) is None
 
 
+def test_bar_met_is_strict_for_win_bar_teacher_cells():
+    win_bar = find(sc='SC3', set='mmart', encoder='siglip2', aspect='emotion', metric='nmi')
+    lvl_bar = find(sc='SC3', set='artelingo', encoder='qwen', aspect='genre', metric='ami')
+    plain = find(sc='SC1', set='mmart', encoder='qwen', aspect='genre', metric='ari')
+    assert (win_bar['bar'], lvl_bar['bar'], plain['bar']) == ('WIN', 'LEVEL_OR_WIN', 'WIN')
+    for cc, lo, word, meets, met in ((win_bar, 0.01, 'WIN', True, True), (win_bar, 0.0, 'LEVEL', True, False),
+                                     (win_bar, -0.5, 'BELOW', False, False), (lvl_bar, 0.01, 'WIN', True, True),
+                                     (lvl_bar, 0.0, 'LEVEL', True, True), (lvl_bar, -0.3, 'BELOW', False, False),
+                                     (plain, 0.01, 'WIN', True, True), (plain, 0.0, 'LEVEL', False, False)):
+        r = row_of(run([mk(cc, lo=lo)]), cc['id'])
+        assert (r['outcome'], r['meets_bar'], r['bar_met']) == (word, meets, met), (cc['id'], lo)
+    s = O.summary(run([mk(win_bar, lo=0.0)]))
+    assert s['SC3']['nmi']['meets_bar'] == 1 and s['SC3']['nmi']['bar_met'] == 0
+
+
 def test_teacher_wording_sc4():
     kw = dict(sc='SC4', set='emoset', encoder='qwen', comparator='teacher', metric='acc')
     assert lic(kw, 0.01) == ('On EmoSet test, the photo model on Qwen3-VL-Embedding-2B clusters photos by emotion '
