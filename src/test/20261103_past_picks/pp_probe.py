@@ -71,11 +71,6 @@ def passes_of(enc):
 
 
 # ------------------------------------------------------------------------------------------------ the arithmetic
-def batch_sizes(n, batch):
-    assert n > 0 and batch > 0
-    return [min(batch, n - i) for i in range(0, n, batch)]
-
-
 def time_batches(run, batches, *, warmup, sync, clock):
     """Seconds per batch. `warmup` warm-up runs come first (the first batches, cycled when there are fewer), are
     synchronised and are not timed; then every batch is timed with a synchronisation before and after."""
@@ -166,13 +161,18 @@ def poll_gpu():
     return parse_compute_apps(out)
 
 
-def run_repeat(name, repeat, measure, poll, own_pid, max_attempts=5, wait=0.0, sleep=time.sleep):
+def run_repeat(name, repeat, measure, poll, own_pid, max_attempts=5, wait=0.0, sleep=time.sleep, on_discard=None):
     """measure() once between two polls. A repeat with another compute process before or after it is discarded and run
-    again. Returns (record with `attempt`, discard log). The log keeps each discarded record."""
+    again. CPU load is diagnostic only. Returns (record with `attempt`, discard log); on_discard persists each rejected
+    attempt before retrying, so exhausting the attempts cannot lose the log."""
     discarded = []
     for attempt in range(1, max_attempts + 1):
         before = foreign(poll(), own_pid)
+        load_before = list(os.getloadavg())
         record = measure()
+        load_after = list(os.getloadavg())
+        record.update(cpu_load_before=load_before, cpu_load_after=load_after)
+        print(f'{name} repeat {repeat} attempt {attempt}: CPU load {load_before} before, {load_after} after', flush=True)
         after = foreign(poll(), own_pid)
         if not before and not after:
             record['attempt'] = attempt
@@ -180,6 +180,8 @@ def run_repeat(name, repeat, measure, poll, own_pid, max_attempts=5, wait=0.0, s
         discarded.append({'pass': name, 'repeat': repeat, 'attempt': attempt,
                           'processes_before': [list(p) for p in before], 'processes_after': [list(p) for p in after],
                           'record': record})
+        if on_discard is not None:
+            on_discard(discarded[-1])
         print(f'DISCARDED {name} repeat {repeat} attempt {attempt}: processes {before} before, {after} after', flush=True)
         if attempt < max_attempts and wait:
             sleep(wait)
@@ -290,7 +292,9 @@ def cost_table(root, cells, smoke=None):
         if f.is_file():
             m = _read(f)
             prep[view] = {'seconds': m['seconds'], 'paintings': m['n'], 'ms_per_image': 1000 * m['seconds'] / m['n']}
-    return {'passes': rows, 'whole_set_16384': whole, 'prep_log_qwen': prep, 'n_images': doc['meta']['n_images']}
+    return {'passes': rows, 'whole_set_16384': whole, 'prep_log_qwen': prep, 'n_images': doc['meta']['n_images'],
+            # One encoder pass shared by three aspects for c*, one instructed pass per aspect for the teacher (D8).
+            'passes_per_aspect': {'cstar': 1 / len(PP.ASPECTS), 'teacher': 1}}
 
 
 # ================================================================================================ GPU plumbing
@@ -335,7 +339,7 @@ def environment(keys, n):
     return {'n_images': n, 'batch_size': PP.PROBE_BATCH, 'repeats': PP.PROBE_REPEATS, 'warmup_batches': PP.PROBE_WARMUP,
             'keys_sha256': keys_sha(keys), 'first_key': keys[0], 'last_key': keys[-1], 'smoke': bool(PP.SMOKE),
             'gpu': torch.cuda.get_device_name(0), 'torch': torch.__version__, 'transformers': transformers.__version__,
-            'host': os.uname().nodename, 'started': now()}
+            'host': os.uname().nodename, 'started': now(), 'torch_num_threads': torch.get_num_threads()}
 
 
 def update_passes(keys, n, edit):
@@ -348,13 +352,14 @@ def update_passes(keys, n, edit):
             assert doc['meta'][k] == env[k], f'passes.json was written with another {k}: {doc["meta"][k]} vs {env[k]}'
     else:
         doc = {'meta': env, 'passes': {}, 'repeats_discarded': []}
+    doc['meta']['torch_num_threads'] = env['torch_num_threads']
     edit(doc)
     write_json(path, doc)
 
 
-def sync_fn():
-    import torch
-    return torch.cuda.synchronize
+def assert_threads():
+    for name in ('OMP_NUM_THREADS', 'MKL_NUM_THREADS'):
+        assert os.environ.get(name) == '8', f'{name} must be set to 8 to match the embedding stores'
 
 
 def count_params(module):
@@ -421,14 +426,28 @@ def any_file(name):
 def store_discards(doc, discarded):
     """Write each discarded record to OUT/probe/discarded and its summary into passes.json."""
     for d in discarded:
-        rec = d.pop('record')
+        rec = d['record']
         tag = 'e2e' if d['repeat'] == 'e2e' else f"r{d['repeat']}"
         f = f"{d['pass']}__{tag}__a{d['attempt']}.json"
         write_json(probe_dir() / 'discarded' / f, rec)
-        doc['repeats_discarded'].append({**d, 'file': f, 'total_seconds': rec['total_seconds'], 'kind': rec['kind']})
+        summary = {k: v for k, v in d.items() if k != 'record'}
+        doc['repeats_discarded'].append({**summary, 'file': f, 'total_seconds': rec['total_seconds'], 'kind': rec['kind'],
+                                        'cpu_load_before': rec['cpu_load_before'], 'cpu_load_after': rec['cpu_load_after']})
 
 
-def run_one_pass(name, view, encode, items, repeats, kind='model', e2e=None, poll=poll_gpu, **extra):
+def discard_logger(keys, n):
+    # Persist every discard immediately, including earlier repeats if a later repeat exhausts its attempts.
+    def save(discard):
+        update_passes(keys, n, lambda doc: store_discards(doc, [discard]))
+    return save
+
+
+def timing_summary(rec, filename):
+    return {'file': filename, **{k: rec[k] for k in ('ms_per_image', 'total_seconds', 'attempt',
+                                                    'cpu_load_before', 'cpu_load_after')}}
+
+
+def run_one_pass(name, view, encode, items, repeats, kind='model', e2e=None, poll=poll_gpu, on_discard=None, **extra):
     """3 repeats of `encode` over `items` (+ the end to end `e2e() -> record`), polled; returns (entry, discards)."""
     import torch
     own = os.getpid()
@@ -438,18 +457,16 @@ def run_one_pass(name, view, encode, items, repeats, kind='model', e2e=None, pol
     discards = []
     for k in range(repeats):
         rec, d = run_repeat(name, k, lambda: model_repeat(name, encode, items, k, PP.PROBE_BATCH, PP.PROBE_WARMUP, sync,
-                                                           clock, kind=kind, view=view), poll, own, wait=30.0)
+                                                           clock, kind=kind, view=view), poll, own, wait=30.0, on_discard=on_discard)
         discards += d
         write_json(probe_dir() / 'batches' / f'{name}__r{k}.json', rec)
-        entry['repeats'][str(k)] = {'file': f'{name}__r{k}.json', 'ms_per_image': rec['ms_per_image'],
-                                    'total_seconds': rec['total_seconds'], 'attempt': rec['attempt']}
+        entry['repeats'][str(k)] = timing_summary(rec, f'{name}__r{k}.json')
         print(f'{name} r{k}: {rec["ms_per_image"]:.3f} ms/image (attempt {rec["attempt"]})', flush=True)
     if e2e is not None:
-        rec, d = run_repeat(name, 'e2e', e2e, poll, own, wait=30.0)
+        rec, d = run_repeat(name, 'e2e', e2e, poll, own, wait=30.0, on_discard=on_discard)
         discards += d
         write_json(probe_dir() / 'batches' / f'{name}__e2e.json', rec)
-        entry['e2e'] = {'file': f'{name}__e2e.json', 'ms_per_image': rec['ms_per_image'],
-                        'total_seconds': rec['total_seconds'], 'attempt': rec['attempt']}
+        entry['e2e'] = timing_summary(rec, f'{name}__e2e.json')
         print(f'{name} e2e: {rec["ms_per_image"]:.3f} ms/image', flush=True)
     entry['peak_memory_allocated_mib'] = torch.cuda.max_memory_allocated() / 2 ** 20
     entry['peak_memory_reserved_mib'] = torch.cuda.max_memory_reserved() / 2 ** 20
@@ -475,7 +492,7 @@ def load_images_from_files(batch):
     return [_open_rgb(p) for p in batch]
 
 
-def vision_tower_share(enc, images, own, poll):
+def vision_tower_share(enc, images, own, poll, on_discard=None):
     """One extra Qwen default repeat with the vision tower wrapped in synchronised timers: its share of one pass. A separate
     repeat, since the extra synchronisations would perturb the timed ones."""
     import torch
@@ -506,17 +523,19 @@ def vision_tower_share(enc, images, own, poll):
         assert len(rec['visual_batch_seconds']) == len(rec['batch_n'])
         return rec
     try:
-        rec, discards = run_repeat('qwen_vision', 'vision', measure, poll, own, wait=30.0)
+        rec, discards = run_repeat('qwen_vision', 'vision', measure, poll, own, wait=30.0, on_discard=on_discard)
     finally:
         h1.remove()
         h2.remove()
     vis = float(sum(rec['visual_batch_seconds']))
     return {'total_seconds': rec['total_seconds'], 'visual_seconds': vis, 'share': vis / rec['total_seconds'],
             'batch_seconds': rec['batch_seconds'], 'visual_batch_seconds': rec['visual_batch_seconds'],
-            'params_visual': count_params(visual), 'params_total': count_params(enc.m)}, discards
+            'params_visual': count_params(visual), 'params_total': count_params(enc.m),
+            'cpu_load_before': rec['cpu_load_before'], 'cpu_load_after': rec['cpu_load_after']}, discards
 
 
 def cmd_passes(enc_name, n, resume):
+    assert_threads()
     import torch
     import pp_extract
     smoke_guard(n)
@@ -533,6 +552,7 @@ def cmd_passes(enc_name, n, resume):
         print('nothing to do', flush=True)
         return 0
     keys = probe_keys(n)
+    log_discard = discard_logger(keys, n)
     paths = image_paths(keys)
     enc, identity, _ = pp_extract.load_encoder(enc_name)
     p_image, p_loaded = image_path_params(enc)
@@ -549,10 +569,9 @@ def cmd_passes(enc_name, n, resume):
     def encode(batch):
         enc.encode_images(batch, batch_size=PP.PROBE_BATCH)
 
-    def finish(name, entry, discards, extra=None):
+    def finish(name, entry, extra=None):
         def edit(doc):
             doc['passes'][name] = {**entry, **(extra or {})}
-            store_discards(doc, discards)
         update_passes(keys, n, edit)
 
     for name in passes_of(enc_name):
@@ -564,20 +583,21 @@ def cmd_passes(enc_name, n, resume):
         is_default = name == enc_name
         e2e = e2e_record(name, lambda ims: enc.encode_images(ims, batch_size=PP.PROBE_BATCH), paths,
                          load_images_from_files, {'view': view}) if is_default else None
-        entry, discards = run_one_pass(name, view, encode, images, PP.PROBE_REPEATS, e2e=e2e, **info)
+        entry, _ = run_one_pass(name, view, encode, images, PP.PROBE_REPEATS, e2e=e2e, on_discard=log_discard, **info)
         extra = {}
         if enc_name == 'qwen' and is_default:
-            vt, d = vision_tower_share(enc, images, own, poll_gpu)
-            discards += d
+            vt, _ = vision_tower_share(enc, images, own, poll_gpu, on_discard=log_discard)
             extra['vision_tower'] = vt
             print(f'qwen vision tower share of one pass: {vt["share"]:.3f}', flush=True)
-        finish(name, entry, discards, extra)
+        finish(name, entry, extra)
     if TEACHER_E2E in todo:
+        for v in TEACHER_VIEWS:
+            set_instruction(enc, ins[v])
         seconds = {v: [] for v in TEACHER_VIEWS}
 
         def run_three(ims):
             for v in TEACHER_VIEWS:
-                set_instruction(enc, ins[v])
+                enc.instruction = ins[v]
                 torch.cuda.synchronize()
                 t = time.perf_counter()
                 enc.encode_images(ims, batch_size=PP.PROBE_BATCH)
@@ -592,14 +612,13 @@ def cmd_passes(enc_name, n, resume):
                 s.clear()
             return e2e_record(TEACHER_E2E, run_three, paths, load_images_from_files, pass_seconds)()
         torch.cuda.reset_peak_memory_stats()
-        rec, discards = run_repeat(TEACHER_E2E, 'e2e', measure, poll_gpu, own, wait=30.0)
+        rec, _ = run_repeat(TEACHER_E2E, 'e2e', measure, poll_gpu, own, wait=30.0, on_discard=log_discard)
         write_json(probe_dir() / 'batches' / f'{TEACHER_E2E}__e2e.json', rec)
         print(f'teacher e2e: {rec["ms_per_image"]:.3f} ms/image', flush=True)
         entry = {'encoder': 'qwen', 'kind': 'model', 'view': 'three instructed passes, one decode', 'repeats': {},
-                 'e2e': {'file': f'{TEACHER_E2E}__e2e.json', 'ms_per_image': rec['ms_per_image'],
-                         'total_seconds': rec['total_seconds'], 'attempt': rec['attempt']},
+                 'e2e': timing_summary(rec, f'{TEACHER_E2E}__e2e.json'),
                  'peak_memory_allocated_mib': torch.cuda.max_memory_allocated() / 2 ** 20}
-        finish(TEACHER_E2E, entry, discards)
+        finish(TEACHER_E2E, entry)
     return 0
 
 
@@ -615,7 +634,6 @@ def load_networks(enc, device, standin):
     import torch
     import rb_rows
     import rb_student
-    import pp_stores as S
     width = PP.WIDTH[enc]
     nets, prov = [], {}
     for aspect in PP.ASPECTS:
@@ -625,8 +643,8 @@ def load_networks(enc, device, standin):
         if path.is_file():
             sha = hashlib.sha256(path.read_bytes()).hexdigest()
             side = path.with_suffix('.json')
-            if side.is_file():
-                assert _read(side)['weights_sha256'] == sha, f'{path}: sidecar sha256 differs'
+            assert side.is_file(), f'{path}: missing sha256 sidecar {side}'
+            assert _read(side)['weights_sha256'] == sha, f'{path}: sidecar sha256 differs'
             view.load_state_dict(torch.load(path, map_location=device, weights_only=True))
             prov[aspect] = {'path': str(path), 'sha256': sha}
         else:
@@ -639,14 +657,15 @@ def load_networks(enc, device, standin):
 
 
 def cmd_heads(encs, n, standin):
+    assert_threads()
     import numpy as np
     import torch
     import pp_stores as S
     smoke_guard(n)
     assert torch.cuda.is_available(), 'no GPU'
     keys = probe_keys(n)
+    log_discard = discard_logger(keys, n)
     device = torch.device('cuda')
-    own = os.getpid()
     for enc in encs:
         name = heads_pass(enc)
         assert not any_file(name), f'{name}: raw files exist; nothing is overwritten (move them away to rerun)'
@@ -662,13 +681,12 @@ def cmd_heads(encs, n, standin):
                 t = torch.from_numpy(xb).to(device)
                 outs = [m(t) for m in nets]
                 [o.cpu().numpy() for o in outs]
-        entry, discards = run_one_pass(name, 'networks', encode, x, PP.PROBE_REPEATS, kind='heads', encoder=enc,
-                                       params_network=params, weights=prov,
+        entry, _ = run_one_pass(name, 'networks', encode, x, PP.PROBE_REPEATS, kind='heads', encoder=enc,
+                                       params_network=params, weights=prov, on_discard=log_discard,
                                        standin=any(p.get('standin') for p in prov.values()))
 
         def edit(doc):
             doc['passes'][name] = entry
-            store_discards(doc, discards)
         update_passes(keys, n, edit)
     return 0
 
