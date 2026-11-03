@@ -24,13 +24,9 @@ The two-reading comparator (r14's `b_matched`: the larger of the matched arm's r
 every draw, both readings on the SAME seed draw) is the private `_boot` with two readings; `paired_cell` is its
 one-reading case, which draws the comparator's five seeds in the same slot, so its draws equal `b_matched`'s.
 
-Gate (i) replays: `replay_i_a`, `replay_i_b`, `replay_i_c`, `replay_i_d_emoset`, `replay_i_d_class_count`; each returns
-{'pass', 'max_abs_diff', 'items': [...]} with the stored value cited by path and key. A `draws` argument below 2,000
-compares the point values only (the intervals need the stored 2,000 draws); `pass` is True only for the full replay.
+Gate (i) replays live in `ns_clu_replay.py` (they import this module and the older rounds' loaders).
 """
-import json
 import multiprocessing
-from pathlib import Path
 
 import numpy as np
 from threadpoolctl import threadpool_limits
