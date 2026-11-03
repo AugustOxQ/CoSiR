@@ -1759,3 +1759,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-04-r19-build4-handoff.md
 - New chat: tab 'r19 build 4', session f230deb2-5b4b-4531-9369-0d454a9ed956
 
+[brief] CoSiR: r17 build 4 -> r17 run (2026-11-04 00:21 Amsterdam)
+- Done: the fix wave closed all 9 review items; the re-review passed; 524 tests pass; the code is on main (8cf743b2).
+- State: nothing has run on the real output folder yet; it is empty. CPU idle at 00:20, GPU check passes.
+- Next: open the round log, run stage 0, then stages 1 and 2 in three chains, with C13 code written beside them.
+- Blocked: nothing. Stages 0 to 2 end about 06:30; stage 3 likely ends about 13:30, past 11:00.
+- Handoff: docs/superpowers/handoffs/2026-11-04-r17-run-handoff.md
+- New chat: tab 'r17 run', session 798d271f-5359-4d24-a39c-67752de65187
+
