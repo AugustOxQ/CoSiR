@@ -1703,3 +1703,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-03-r18-build-2-handoff.md
 - New chat: tab 'r18 build 2', session b5821c9d-63bd-4507-8fce-580d321fcda9
 
+[brief] CoSiR: r19 spec -> r19 build (2026-11-03 21:09 Amsterdam)
+- Done: r19 specced, rule-reviewed (pass after 25 fixes) and approved by the user at 20:44; no container restart.
+- State: 11,159 SemArt paintings by new artists to score; node402 free (3 GPUs, about 113 h left); queues empty.
+- Next: tickets and build per matt-chain; the ticket that imports r17's module waits for r17's merge; then open the run chat.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-03-r19-build-handoff.md
+- New chat: tab 'r19 build', session df3145e1-2a5c-4715-b3cf-9d45816f048c
+
