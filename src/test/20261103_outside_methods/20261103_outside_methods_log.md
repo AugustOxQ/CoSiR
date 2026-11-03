@@ -56,3 +56,33 @@ deleted. The build must settle how it runs CLAY's, TURTLE's and TEMI's code (han
   four encoders × two datasets × r17's counts × three starts, c*'s heads at the class count and 20 with one start
   per seed; WIN, LEVEL or BELOW against c* with no gate.
 - No plan page (user). Closing summary confirmed (user): the handoff's §2.
+
+## 2026-11-03, spec chat
+
+**Code route (key point left by the grill), 19:30 to 19:45.** Options put answer-first: a. clones outside git under
+a standing permission rule; b. re-implement all three, checked against the clones; c. re-implement CLAY and TURTLE,
+TEMI later. User's first pick a (no reason given). After our recommendation (b), a cost table (CLAY about 1 h,
+TURTLE 1 to 2 h, TEMI about half a day), the risks of a (the rule, torch 2.11, TURTLE's CPU batch copy, repo-only
+reproduction) and the licence facts (no licence: no copy in the public repo, credit line or not; TEMI Apache-2.0:
+copy allowed with its notice), final pick **f**: CLAY's math and TURTLE's loop re-implemented and checked; TEMI's code
+copied with its notice; no request to the authors (user, after seeing the recommendation). Spec D12.
+
+**Clones** copied to `/data/SSD2/cosir_r18/ext/{CLAY,turtle,TEMI}` (outside git, 15 MB), clean at the pinned commits
+a3f1890, 4674efa, c6a81a6.
+
+**Parity references (gates (i), (ii)), run once by the official code, attended, with the user's yes (19:58).**
+- Inputs: `om_parity_inputs.py` (ours) writes `/data/SSD2/cosir_r18/ext/parity/inputs.npz`: the first 2,000 sorted
+  ArtELingo validation paintings, unit CLIP L/14 and plain Qwen rows, r11's emotion text vectors (text set A, 50).
+  sha256 7b10bf69d6fe0358b7b00d98ef974a2d486a73a74f4faa384cc75dd219e4876c.
+- Script: `/data/SSD2/cosir_r18/ext/parity/ref_official.py` (outside git: it mirrors CLAY's main block), sha256
+  2c3e9df9b3de20ecb89bbbbb68124260d74b385768b195b07807c5771cdc2047; `python -I`, CPU, 8 threads.
+- CLAY: `make_subspace` with r 49 on the text vectors (a stub model returns them), then main.py's alignment by the
+  gallery mean, log map and projection; query = gallery = the 2,000 rows. `clay_ref.npz` sha256
+  3bd542a01e9898dceb4f198c99a4240fc87f81693f089f91c6d0554104c8771a. First try failed: the env's own `src` package
+  hid CLAY's `src`; fixed by pointing the name at CLAY's folder.
+- TURTLE: `run_turtle.run`, K 9 (through its `datasets_to_c`), T 100, CPU, seed 0, train = val = the Qwen rows, zero
+  labels for its printed accuracy; weights after its weight-norm removal and the argmax partition. 9 of 9 clusters.
+  `turtle_ref.npz` sha256 d73efb37269c50711356e642c0fb78fd65167d588636e2d704cb2353f327a4b1.
+- The build's parity tests read these files and must use 8 CPU threads for the CPU comparison.
+
+**Glossary:** rows for TPIPS, CLAY, TURTLE and TEMI (field names).
