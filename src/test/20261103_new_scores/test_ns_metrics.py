@@ -342,6 +342,7 @@ def test_gate_iii_fails_when_a_metric_is_broken(monkeypatch):
 
 
 def test_gate_iii_fails_when_nmi_is_not_arithmetic(monkeypatch):
+    # _generalized_average also feeds AMI's contingency form, so AMI fails too; only NMI and ARI are asserted.
     real = M._generalized_average
     monkeypatch.setattr(M, '_generalized_average', lambda u, v: float(np.sqrt(u * v)))
     out = M.gate_iii_metrics()
