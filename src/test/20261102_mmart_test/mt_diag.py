@@ -597,12 +597,12 @@ def item_per_class_ap(res):
 
 
 def test_cells():
-    """The verdict cells of stage 2 ({(encoder, sc, aspect): cell}); empty when the files are absent."""
+    """The verdict cells of stage 2 ({(encoder, sc, aspect, task): cell}); empty when the files are absent."""
     out = {}
     for path in (_clu().cells_path('test'), _ret().cells_path('test')):
         if Path(path).exists():
             for c in json.loads(Path(path).read_text()):
-                out[(c['encoder'], c['sc'], c['aspect'])] = c
+                out[(c['encoder'], c['sc'], c['aspect'], c['task'])] = c
     return out
 
 
@@ -610,7 +610,7 @@ def cell_rows(cells, with_test=True):
     tc = test_cells() if with_test else {}
     rows = []
     for c in cells:
-        t = tc.get((c['encoder'], c['sc'], c['aspect']))
+        t = tc.get((c['encoder'], c['sc'], c['aspect'], c['task']))
         rows.append([c['encoder'], c['aspect'], c['sc'], c['task'], f4(c['candidate_value']), f4(c['comparator_value']),
                      f'{c["d"]:+.4f}', f'[{c["lo"]:+.4f}, {c["hi"]:+.4f}]', f4(c['r']) if c['r'] else '-',
                      f'{t["d"]:+.4f}' if t else 'n/a', c['n_draws'], c['n_rows']])
@@ -657,11 +657,11 @@ def item_shared_held(res):
         def sec():
             cells = got(res, 'shared_clu', enc)['cells'] + got(res, 'shared_ret', enc)['cells']
             cells_all.extend(cells)
-            by = {(c['sc'], c['aspect'], c['data']): c for c in cells}
+            by = {(c['sc'], c['aspect'], c['task'], c['data']): c for c in cells}
             rows = []
             for a in ASPECTS:
-                for sc in ('SC1', 'SC2', 'SC4'):
-                    m, e = by.get((sc, a, 'mmart_shared_held')), by.get((sc, a, DATA_SHARED_AE))
+                for sc, task in (('SC1', 'clu'), ('SC2', 'ret'), ('SC4', 'clu'), ('SC4', 'ret')):
+                    m, e = by.get((sc, a, task, 'mmart_shared_held')), by.get((sc, a, task, DATA_SHARED_AE))
                     if m is None or e is None:
                         continue
                     rows.append([a, sc, m['task'], f4(m['candidate_value']), f4(m['comparator_value']), f'{m["d"]:+.4f}',
@@ -900,7 +900,7 @@ def item_percept_strongest(res):
             out[a] = dict(strongest_encoder=best, strongest_entry=per[a][best]['entry'], value=per[a][best]['larger'],
                           reading=per[a][best]['larger_reading'], arms=per[a])
             for enc in ENCODERS:                      # beside the SC3 cell's comparator value, when the stage 2 file exists
-                c = cells.get((enc, 'SC3', a))
+                c = cells.get((enc, 'SC3', a, 'clu'))
                 per[a][enc]['sc3_cell_comparator_value'] = None if c is None else c['comparator_value']
         doc.add(*table(['aspect', 'strongest', 'encoder', 'larger reading', 'AMI'],
                        [[a, v['strongest_entry'], v['strongest_encoder'], v['reading'], f4(v['value'])] for a, v in out.items()]), '')

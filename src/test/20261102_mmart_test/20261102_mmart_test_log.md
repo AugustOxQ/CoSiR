@@ -75,3 +75,20 @@ run mode night. Outputs: `/data/SSD2/cosir_r15/20261102_mmart_test/outputs/` (`O
 - 03:51 **`C13 PASS items=6697 failed=0 max_abs=0 scope=full`**: every re-derived number equals the round's exactly
   (the cut, 24 ranges, 9 picks with their tables, 60 cells, verdicts and claims). `records/c13.json` written; its
   digests match `OUT/stage2/{outcomes,cells_clu,cells_ret}.json`.
+- 03:51 `QUEUE verdicts OK`; `records/verdicts.json` committed (5c323d8). **All four encoders hold, GO**; every
+  gate and stage 1 status ok, so no void (D17). SC3 wins on emotion, style and genre for each encoder.
+- 03:53 no cut to a second run chat: the context meter's note came before the chat's compaction (about 03:00), which
+  brought the context well under 200k, so a cut would only add a handoff (agent default). Stage 3 started
+  (`bash mt_run_cpu.sh stage3`, log `OUT/stage3_queue.log`); load 0.4, 55 GB available.
+- 04:43 `QUEUE stage3 OK rc=0 seconds=3053`: all ten diagnostics ok (`OUT/diag/summary.json`). The unseen-artist subset
+  has 15 paintings of 12 artists, so it gets no cells (fewer paintings than the 20 clusters; final review finding 11).
+- 04:50 a display bug in `mt_diag.py`, found in the controller's read of `far.md`: the lookup of stage 2 cells
+  (`test_cells`, and `item_shared_held`'s join) keyed cells without the task, so for SC4 the retrieval cell replaced
+  the clustering one. Effect: in `far.md` the "d on test" column of the 12 SC4 clustering rows showed the retrieval
+  value; `shared_held.md` lacked its 12 SC4 clustering rows. The cells (JSON and cell files) and every other item
+  were right; `teacher_gain_share` keys by task; `percept_strongest` reads SC3 only. Fix: the task joins both keys;
+  370 round tests pass. The two items were re-rendered from their saved JSON
+  (`.scratch/r15-mmart-test/report/diag_rerender.py`, no scorer run): JSON identical, the four cell files the same
+  bytes. The old files are kept in `OUT/diag/pre_fix_0450/`.
+- Storage (04:52): `OUT` 12 GB (exports 9.0 GB, stage 0 2.9 GB, the rest under 1 MB); C13 folder 19 MB (cache
+  16 MB); C13 smoke 16 MB; the build's smoke `smoke_build3/` 12 GB (already on `.scratch/pending_deletions.md`).
