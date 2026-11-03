@@ -1751,3 +1751,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-04-r17-build4-handoff.md
 - New chat: tab 'r17 build 4', session abc1ece9-9498-4cad-9419-08c05f07e9a7
 
+[brief] CoSiR: r19 build 3 -> r19 build 4 (2026-11-04 00:19 Amsterdam)
+- Done: tickets 04, 08, 10 built, reviewed, fixed and merged; tickets 01 to 11 are all merged (integration tip 001d3d1).
+- State: gates (iv) and (vii) r15 parts and gate (iv) SemArt part replay at 0.0; all three Affection stores written.
+- Next: node402 probe and smoke; ticket 12 (Codex), ticket 13 (Claude); final review; merge; run chat.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-04-r19-build4-handoff.md
+- New chat: tab 'r19 build 4', session f230deb2-5b4b-4531-9369-0d454a9ed956
+
