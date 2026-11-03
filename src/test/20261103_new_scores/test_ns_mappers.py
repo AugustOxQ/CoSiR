@@ -206,3 +206,29 @@ def test_judge_nan_and_inf_fail():
     held = all_ok()
     held['qwen'][0] = float('inf')
     assert M.judge(held, {s: 0.0 for s in NP.SEEDS})['qwen']['status'] == 'failed'
+
+
+def _replace_npz(path, names, probs):
+    """Replace the npz and bring the sidecar's sha256 and n up to date, but not its names hash."""
+    np.savez_compressed(path, names=np.asarray(names), probs=probs)
+    side = json.loads(path.with_suffix('.json').read_text())
+    side['sha256'], side['n'] = M.sha_file(path), len(names)
+    path.with_suffix('.json').write_text(json.dumps(side))
+
+
+def test_unsorted_names_refused_on_read(tmp_path, names, probs):
+    path = write(tmp_path, names, probs)
+    swapped = list(names)
+    swapped[0], swapped[1] = swapped[1], swapped[0]
+    _replace_npz(path, swapped, probs)
+    with pytest.raises(AssertionError, match='not sorted'):
+        M.read_val(tmp_path, 'qwen', 0)
+
+
+def test_renamed_rows_refused_on_read(tmp_path, names, probs):
+    path = write(tmp_path, names, probs)
+    renamed = list(names)
+    renamed[-1] = 'zzz_other_painting'                  # still sorted and unique, but not the exported names
+    _replace_npz(path, renamed, probs)
+    with pytest.raises(AssertionError, match='names hash'):
+        M.read_val(tmp_path, 'qwen', 0)
