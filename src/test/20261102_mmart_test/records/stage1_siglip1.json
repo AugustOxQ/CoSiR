@@ -1,0 +1,675 @@
+{
+ "encoder": "siglip1",
+ "clu_ranges": {
+  "encoder": "siglip1",
+  "kind": "mmart_clustering_validation_ranges",
+  "ranges": {
+   "emotion": 0.003835759130330657,
+   "style": 0.018954696185318975,
+   "genre": 0.010028808035874803
+  },
+  "per_seed": {
+   "emotion": {
+    "0": 0.05853600755567453,
+    "1": 0.05816368779425751,
+    "2": 0.060240554551010704,
+    "3": 0.05768717607407614,
+    "4": 0.0615229352044068
+   },
+   "style": {
+    "0": 0.46699062756487936,
+    "1": 0.45756925178352453,
+    "2": 0.4765239479688435,
+    "3": 0.46055247048166414,
+    "4": 0.47062892388358674
+   },
+   "genre": {
+    "0": 0.5299516206552962,
+    "1": 0.5282701258884014,
+    "2": 0.530720357989437,
+    "3": 0.5349942102792299,
+    "4": 0.5382989339242762
+   }
+  },
+  "sources": {
+   "emotion": {
+    "0": "ce817af1c0488c949b9c1a844f8fcb9e7661fcd037a9a69939883213a3193dd9",
+    "1": "53e2c74368933a036eeb4d451eef524747387daa8dba56ba10aee61eeef52456",
+    "2": "822dee75f554a8f0483ecf623a6d896140353dcb89c19d97bb1771b04a40f87a",
+    "3": "87462aeda04c7c21d2ed4133906a84da7f2ad79c2dd626913631543e3b09b59c",
+    "4": "34f419f444b1449e71d4b8d3fd061b808817b471b0ebc99cb1454d4b3a8c9f7a"
+   },
+   "style": {
+    "0": "00a1ba0388dc7c5828a00e810c1c67c9000fe80fe0fff2187e0f7ff987151ced",
+    "1": "603266907beba0f7f24374cc9cea004dc18efb1b34bab42eb57c168f0c391b4e",
+    "2": "0c36869f329ef2f98d2cfc680e8ca9071ea92185d9cd0f44b2743c6b6fcf918e",
+    "3": "c8619f7fa800d0fdd5ec1bf88987944d0f9f8def0a71fc3e3832e59adc835f5e",
+    "4": "fa5b72c1f3b07a50b849dff46990f5a3bc1b91bf800476bcc42fd291540e9987"
+   },
+   "genre": {
+    "0": "464524021646edf9f3687f1f6ffd2abc99a4843730bbd2c5e68cc17872a09d5f",
+    "1": "13d2ba391154540cd037880c5509f5980b282c98e825765668b7c1932ce1f470",
+    "2": "b562ff680461fc418b13fd6b6570f4db1277d3545782656c637d42191ba68e6b",
+    "3": "5bee89baa0f83722ecad5e2369678da97c814e4c333377b698ebf5bed321f4ba",
+    "4": "e601a9ece7d38b54e2a5f87d3c3c68c003e0b185c19c2240fb6c0e73b167b0de"
+   }
+  },
+  "n_val": 5769,
+  "labelled": {
+   "emotion": 5720,
+   "style": 5769,
+   "genre": 4679
+  }
+ },
+ "ret_ranges": {
+  "encoder": "siglip1",
+  "kind": "mmart_retrieval_validation_ranges",
+  "ranges": {
+   "emotion": 0.0005943409765497565,
+   "style": 0.005078570836115792,
+   "genre": 0.004160257189950056
+  },
+  "per_seed": {
+   "emotion": {
+    "0": 0.1994142192139144,
+    "1": 0.1993466326134829,
+    "2": 0.19983364961375127,
+    "3": 0.19951530955095978,
+    "4": 0.19923930863720152
+   },
+   "style": {
+    "0": 0.37460825012442367,
+    "1": 0.3704682171078238,
+    "2": 0.3695296792883079,
+    "3": 0.3706224720850999,
+    "4": 0.3729768119825813
+   },
+   "genre": {
+    "0": 0.6060186553343496,
+    "1": 0.6083465767815729,
+    "2": 0.609311948840468,
+    "3": 0.6101789125242997,
+    "4": 0.6072645781457281
+   }
+  },
+  "sources": {
+   "emotion": {
+    "0": {
+     "path": "/data/SSD2/cosir_r15/20261102_mmart_test/outputs/exports/val/siglip1/cstar/emotion__s0.npz",
+     "sha256": "ce817af1c0488c949b9c1a844f8fcb9e7661fcd037a9a69939883213a3193dd9"
+    },
+    "1": {
+     "path": "/data/SSD2/cosir_r15/20261102_mmart_test/outputs/exports/val/siglip1/cstar/emotion__s1.npz",
+     "sha256": "53e2c74368933a036eeb4d451eef524747387daa8dba56ba10aee61eeef52456"
+    },
+    "2": {
+     "path": "/data/SSD2/cosir_r15/20261102_mmart_test/outputs/exports/val/siglip1/cstar/emotion__s2.npz",
+     "sha256": "822dee75f554a8f0483ecf623a6d896140353dcb89c19d97bb1771b04a40f87a"
+    },
+    "3": {
+     "path": "/data/SSD2/cosir_r15/20261102_mmart_test/outputs/exports/val/siglip1/cstar/emotion__s3.npz",
+     "sha256": "87462aeda04c7c21d2ed4133906a84da7f2ad79c2dd626913631543e3b09b59c"
+    },
+    "4": {
+     "path": "/data/SSD2/cosir_r15/20261102_mmart_test/outputs/exports/val/siglip1/cstar/emotion__s4.npz",
+     "sha256": "34f419f444b1449e71d4b8d3fd061b808817b471b0ebc99cb1454d4b3a8c9f7a"
+    }
+   },
+   "style": {
+    "0": {
+     "path": "/data/SSD2/cosir_r15/20261102_mmart_test/outputs/exports/val/siglip1/cstar/style__s0.npz",
+     "sha256": "00a1ba0388dc7c5828a00e810c1c67c9000fe80fe0fff2187e0f7ff987151ced"
+    },
+    "1": {
+     "path": "/data/SSD2/cosir_r15/20261102_mmart_test/outputs/exports/val/siglip1/cstar/style__s1.npz",
+     "sha256": "603266907beba0f7f24374cc9cea004dc18efb1b34bab42eb57c168f0c391b4e"
+    },
+    "2": {
+     "path": "/data/SSD2/cosir_r15/20261102_mmart_test/outputs/exports/val/siglip1/cstar/style__s2.npz",
+     "sha256": "0c36869f329ef2f98d2cfc680e8ca9071ea92185d9cd0f44b2743c6b6fcf918e"
+    },
+    "3": {
+     "path": "/data/SSD2/cosir_r15/20261102_mmart_test/outputs/exports/val/siglip1/cstar/style__s3.npz",
+     "sha256": "c8619f7fa800d0fdd5ec1bf88987944d0f9f8def0a71fc3e3832e59adc835f5e"
+    },
+    "4": {
+     "path": "/data/SSD2/cosir_r15/20261102_mmart_test/outputs/exports/val/siglip1/cstar/style__s4.npz",
+     "sha256": "fa5b72c1f3b07a50b849dff46990f5a3bc1b91bf800476bcc42fd291540e9987"
+    }
+   },
+   "genre": {
+    "0": {
+     "path": "/data/SSD2/cosir_r15/20261102_mmart_test/outputs/exports/val/siglip1/cstar/genre__s0.npz",
+     "sha256": "464524021646edf9f3687f1f6ffd2abc99a4843730bbd2c5e68cc17872a09d5f"
+    },
+    "1": {
+     "path": "/data/SSD2/cosir_r15/20261102_mmart_test/outputs/exports/val/siglip1/cstar/genre__s1.npz",
+     "sha256": "13d2ba391154540cd037880c5509f5980b282c98e825765668b7c1932ce1f470"
+    },
+    "2": {
+     "path": "/data/SSD2/cosir_r15/20261102_mmart_test/outputs/exports/val/siglip1/cstar/genre__s2.npz",
+     "sha256": "b562ff680461fc418b13fd6b6570f4db1277d3545782656c637d42191ba68e6b"
+    },
+    "3": {
+     "path": "/data/SSD2/cosir_r15/20261102_mmart_test/outputs/exports/val/siglip1/cstar/genre__s3.npz",
+     "sha256": "5bee89baa0f83722ecad5e2369678da97c814e4c333377b698ebf5bed321f4ba"
+    },
+    "4": {
+     "path": "/data/SSD2/cosir_r15/20261102_mmart_test/outputs/exports/val/siglip1/cstar/genre__s4.npz",
+     "sha256": "e601a9ece7d38b54e2a5f87d3c3c68c003e0b185c19c2240fb6c0e73b167b0de"
+    }
+   }
+  },
+  "n_val": 5769,
+  "labelled": {
+   "emotion": 5720,
+   "style": 5769,
+   "genre": 4679
+  }
+ },
+ "picks": {
+  "encoder": "siglip1",
+  "kind": "mmart_retrieval_picks",
+  "n_val": 5769,
+  "arms": {
+   "cstar": {
+    "pick": "center+k10",
+    "table": {
+     "none+k0": {
+      "map": {
+       "emotion": 0.2008204169212701,
+       "style": 0.37391263804631186,
+       "genre": 0.6090872688712812
+      },
+      "score": 0.0,
+      "kept": true
+     },
+     "center+k0": {
+      "map": {
+       "emotion": 0.20202310704108206,
+       "style": 0.3739146497298916,
+       "genre": 0.6184837182855917
+      },
+      "score": 1.4275291983530012,
+      "kept": true
+     },
+     "whiten1024+k0": {
+      "map": {
+       "emotion": 0.17795532422960947,
+       "style": 0.15151418153477247,
+       "genre": 0.2439994838115184
+      },
+      "score": -56.67298104699858,
+      "kept": false
+     },
+     "whiten256+k0": {
+      "map": {
+       "emotion": 0.1803258202280597,
+       "style": 0.1919231251116147,
+       "genre": 0.26919617799633616
+      },
+      "score": -50.67240683508444,
+      "kept": false
+     },
+     "whiten64+k0": {
+      "map": {
+       "emotion": 0.18640247877537455,
+       "style": 0.2584799657124782,
+       "genre": 0.3842707704374977
+      },
+      "score": -33.6757152857588,
+      "kept": false
+     },
+     "none+k1": {
+      "map": {
+       "emotion": 0.20078899619685092,
+       "style": 0.3801870449867299,
+       "genre": 0.6160561478953002
+      },
+      "score": 0.9525694327023361,
+      "kept": true
+     },
+     "none+k3": {
+      "map": {
+       "emotion": 0.20119633437312867,
+       "style": 0.3856481547270779,
+       "genre": 0.6218924391985451
+      },
+      "score": 2.007087138729706,
+      "kept": true
+     },
+     "none+k5": {
+      "map": {
+       "emotion": 0.2013637943317546,
+       "style": 0.3879646526394769,
+       "genre": 0.624586737488906
+      },
+      "score": 2.468926156422157,
+      "kept": true
+     },
+     "none+k10": {
+      "map": {
+       "emotion": 0.20143510739019735,
+       "style": 0.390491932309838,
+       "genre": 0.6271591939623768
+      },
+      "score": 2.880913992259483,
+      "kept": true
+     },
+     "center+k1": {
+      "map": {
+       "emotion": 0.20222341921891013,
+       "style": 0.3798209123046553,
+       "genre": 0.6254008926716714
+      },
+      "score": 2.4817589402174614,
+      "kept": true
+     },
+     "center+k3": {
+      "map": {
+       "emotion": 0.2028720938368711,
+       "style": 0.38512638658102694,
+       "genre": 0.6313124177608782
+      },
+      "score": 3.6674418521579693,
+      "kept": true
+     },
+     "center+k5": {
+      "map": {
+       "emotion": 0.20308587196972866,
+       "style": 0.38740579277019077,
+       "genre": 0.6342175614281697
+      },
+      "score": 4.169717291554108,
+      "kept": true
+     },
+     "center+k10": {
+      "map": {
+       "emotion": 0.20323815089266786,
+       "style": 0.3899180772297185,
+       "genre": 0.6369503612551284
+      },
+      "score": 4.638977466833845,
+      "kept": true
+     },
+     "whiten1024+k1": {
+      "map": {
+       "emotion": 0.17817437917798865,
+       "style": 0.16155888151350517,
+       "genre": 0.2575796001195073
+      },
+      "score": -54.80275551091547,
+      "kept": false
+     },
+     "whiten256+k1": {
+      "map": {
+       "emotion": 0.18051716773425844,
+       "style": 0.2050259715178681,
+       "genre": 0.28510892951811523
+      },
+      "score": -48.430100323686304,
+      "kept": false
+     },
+     "whiten64+k1": {
+      "map": {
+       "emotion": 0.18663474666681124,
+       "style": 0.2696801763690119,
+       "genre": 0.39986783992717784
+      },
+      "score": -31.560632238319624,
+      "kept": false
+     },
+     "whiten1024+k3": {
+      "map": {
+       "emotion": 0.17874047229591922,
+       "style": 0.17193762050522032,
+       "genre": 0.27486101402007784
+      },
+      "score": -52.419410517747885,
+      "kept": false
+     },
+     "whiten256+k3": {
+      "map": {
+       "emotion": 0.1809958462345346,
+       "style": 0.21774719659671912,
+       "genre": 0.30374184409072325
+      },
+      "score": -45.833745087413014,
+      "kept": false
+     },
+     "whiten64+k3": {
+      "map": {
+       "emotion": 0.18737501716229119,
+       "style": 0.28102295518829734,
+       "genre": 0.4159228250220625
+      },
+      "score": -29.114591140425233,
+      "kept": false
+     },
+     "whiten1024+k5": {
+      "map": {
+       "emotion": 0.17916785757944714,
+       "style": 0.17791293837205896,
+       "genre": 0.2856326634809165
+      },
+      "score": -50.92446235733393,
+      "kept": false
+     },
+     "whiten256+k5": {
+      "map": {
+       "emotion": 0.1814206637181651,
+       "style": 0.22422738365835562,
+       "genre": 0.3151519985314463
+      },
+      "score": -44.25594074787737,
+      "kept": false
+     },
+     "whiten64+k5": {
+      "map": {
+       "emotion": 0.18783639775482752,
+       "style": 0.2872124781681046,
+       "genre": 0.4250079115736759
+      },
+      "score": -27.72165036656737,
+      "kept": false
+     },
+     "whiten1024+k10": {
+      "map": {
+       "emotion": 0.17985226031320103,
+       "style": 0.18489914231480004,
+       "genre": 0.30308365983613
+      },
+      "score": -48.68384640723639,
+      "kept": false
+     },
+     "whiten256+k10": {
+      "map": {
+       "emotion": 0.18210602457266592,
+       "style": 0.23339420758817986,
+       "genre": 0.33300888410440405
+      },
+      "score": -41.839140709668094,
+      "kept": false
+     },
+     "whiten64+k10": {
+      "map": {
+       "emotion": 0.18851962039871015,
+       "style": 0.29455334517147247,
+       "genre": 0.43878781548336293
+      },
+      "score": -25.75255772445624,
+      "kept": false
+     }
+    },
+    "ranges": {
+     "emotion": 0.0005943409765497565,
+     "style": 0.005078570836115792,
+     "genre": 0.004160257189950056
+    },
+    "dropped": {
+     "emotion": [
+      0,
+      0
+     ],
+     "style": [
+      0,
+      0
+     ],
+     "genre": [
+      0,
+      0
+     ]
+    }
+   },
+   "frozen": {
+    "pick": "none+k10",
+    "table": {
+     "none+k0": {
+      "map": {
+       "emotion": 0.19294966743695063,
+       "style": 0.29588624056751006,
+       "genre": 0.4709100212928159
+      },
+      "score": 0.0,
+      "kept": true
+     },
+     "center+k0": {
+      "map": {
+       "emotion": 0.19107047272921096,
+       "style": 0.3057790318104444,
+       "genre": 0.4890091901774628
+      },
+      "score": 1.0455427298973106,
+      "kept": false
+     },
+     "whiten1024+k0": {
+      "map": {
+       "emotion": 0.1759458512821862,
+       "style": 0.136037865811612,
+       "genre": 0.19960664902009875
+      },
+      "score": -41.765908573479344,
+      "kept": false
+     },
+     "whiten256+k0": {
+      "map": {
+       "emotion": 0.17981312582310466,
+       "style": 0.19002388682152116,
+       "genre": 0.26311917689310893
+      },
+      "score": -30.964748944773465,
+      "kept": false
+     },
+     "whiten64+k0": {
+      "map": {
+       "emotion": 0.18370016899958486,
+       "style": 0.24620588034663962,
+       "genre": 0.3425851628115213
+      },
+      "score": -18.730126004089843,
+      "kept": false
+     },
+     "none+k1": {
+      "map": {
+       "emotion": 0.1925847506388119,
+       "style": 0.3009846034185598,
+       "genre": 0.48103941245600734
+      },
+      "score": 0.9415702786245094,
+      "kept": true
+     },
+     "none+k3": {
+      "map": {
+       "emotion": 0.19252563277960327,
+       "style": 0.30543404814741715,
+       "genre": 0.48936524149810945
+      },
+      "score": 1.86754727653447,
+      "kept": true
+     },
+     "none+k5": {
+      "map": {
+       "emotion": 0.1925088302428759,
+       "style": 0.3062191990608185,
+       "genre": 0.49388538509342883
+      },
+      "score": 2.271825842209575,
+      "kept": true
+     },
+     "none+k10": {
+      "map": {
+       "emotion": 0.19253758853318992,
+       "style": 0.30649002814605464,
+       "genre": 0.49865549933326137
+      },
+      "score": 2.6879277951177336,
+      "kept": true
+     },
+     "center+k1": {
+      "map": {
+       "emotion": 0.1908020417955668,
+       "style": 0.3131255524445491,
+       "genre": 0.501009510464939
+      },
+      "score": 2.338690003104205,
+      "kept": false
+     },
+     "center+k3": {
+      "map": {
+       "emotion": 0.19085457150397084,
+       "style": 0.32005461957534803,
+       "genre": 0.5123990847880155
+      },
+      "score": 3.7355119154228724,
+      "kept": false
+     },
+     "center+k5": {
+      "map": {
+       "emotion": 0.19093575327238171,
+       "style": 0.3224682955575381,
+       "genre": 0.5187126986988477
+      },
+      "score": 4.445331861160901,
+      "kept": false
+     },
+     "center+k10": {
+      "map": {
+       "emotion": 0.19100191517294796,
+       "style": 0.32442830621395313,
+       "genre": 0.5263569621592391
+      },
+      "score": 5.223567510398186,
+      "kept": false
+     },
+     "whiten1024+k1": {
+      "map": {
+       "emotion": 0.17612174237044326,
+       "style": 0.1430339452353554,
+       "genre": 0.20844261474731812
+      },
+      "score": -40.500105067533696,
+      "kept": false
+     },
+     "whiten256+k1": {
+      "map": {
+       "emotion": 0.17986632705055833,
+       "style": 0.20217408676090626,
+       "genre": 0.27912565151490565
+      },
+      "score": -28.85493892424455,
+      "kept": false
+     },
+     "whiten64+k1": {
+      "map": {
+       "emotion": 0.18340248196114828,
+       "style": 0.25823603869137957,
+       "genre": 0.3588994498872227
+      },
+      "score": -16.800326039410866,
+      "kept": false
+     },
+     "whiten1024+k3": {
+      "map": {
+       "emotion": 0.17644959156381212,
+       "style": 0.15126086866917726,
+       "genre": 0.21870764502183726
+      },
+      "score": -38.95378850636784,
+      "kept": false
+     },
+     "whiten256+k3": {
+      "map": {
+       "emotion": 0.18040167724447811,
+       "style": 0.21434957410059102,
+       "genre": 0.29673416322233437
+      },
+      "score": -26.344697764480543,
+      "kept": false
+     },
+     "whiten64+k3": {
+      "map": {
+       "emotion": 0.18372393495529493,
+       "style": 0.26905739774259424,
+       "genre": 0.3790191580142089
+      },
+      "score": -14.297721459401421,
+      "kept": false
+     },
+     "whiten1024+k5": {
+      "map": {
+       "emotion": 0.17655448956641606,
+       "style": 0.1550877559699405,
+       "genre": 0.2242920878540861
+      },
+      "score": -38.196334483493985,
+      "kept": false
+     },
+     "whiten256+k5": {
+      "map": {
+       "emotion": 0.18069052079017167,
+       "style": 0.221122062826151,
+       "genre": 0.30807853371221605
+      },
+      "score": -24.829239294085927,
+      "kept": false
+     },
+     "whiten64+k5": {
+      "map": {
+       "emotion": 0.1839604904154596,
+       "style": 0.2750579428507125,
+       "genre": 0.3897658792203105
+      },
+      "score": -12.910140841526607,
+      "kept": false
+     },
+     "whiten1024+k10": {
+      "map": {
+       "emotion": 0.17703766164524595,
+       "style": 0.15872957899981535,
+       "genre": 0.23251286697092977
+      },
+      "score": -37.02764213602486,
+      "kept": false
+     },
+     "whiten256+k10": {
+      "map": {
+       "emotion": 0.18118925807298097,
+       "style": 0.2296453741199732,
+       "genre": 0.32496432097521516
+      },
+      "score": -22.63715088118164,
+      "kept": false
+     },
+     "whiten64+k10": {
+      "map": {
+       "emotion": 0.18417335014343636,
+       "style": 0.282840060336343,
+       "genre": 0.4050543211108697
+      },
+      "score": -11.05501846257575,
+      "kept": false
+     }
+    },
+    "ranges": {
+     "emotion": 0.0005943409765497565,
+     "style": 0.005078570836115792,
+     "genre": 0.004160257189950056
+    },
+    "dropped": {
+     "emotion": [
+      0,
+      0
+     ],
+     "style": [
+      0,
+      0
+     ],
+     "genre": [
+      0,
+      0
+     ]
+    }
+   }
+  }
+ }
+}

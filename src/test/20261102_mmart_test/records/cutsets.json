@@ -1,0 +1,24 @@
+{
+ "test": {
+  "threshold": 0.95,
+  "n": 16384,
+  "n_new": 16782,
+  "dropped": {
+   "exact": 34,
+   "near": 356,
+   "md5": 8
+  },
+  "sha256": "8f0b683a824a168d580b4c3a3f9f0f708b446d4c675efbf4598d4bd929cb4429"
+ },
+ "far": {
+  "threshold": 0.85,
+  "n": 10403,
+  "n_new": 16782,
+  "dropped": {
+   "exact": 34,
+   "near": 6341,
+   "md5": 4
+  },
+  "sha256": "ad2b7ab7ed8deb02b8862dde1306545ffd811c88e9933e6497f4feffed36ffd2"
+ }
+}

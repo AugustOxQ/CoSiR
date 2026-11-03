@@ -1,0 +1,50 @@
+{
+ "gates": {
+  "i_nearcopy": "ok",
+  "i_default": {
+   "qwen": "ok",
+   "siglip2": "ok",
+   "siglip1": "ok",
+   "clip_l14": "ok"
+  },
+  "i_teacher": {
+   "emotion": "ok",
+   "style": "ok",
+   "genre": "ok"
+  },
+  "v": {
+   "emotion": "ok",
+   "style": "ok",
+   "genre": "ok"
+  },
+  "ii": {
+   "qwen": "ok",
+   "siglip2": "ok",
+   "siglip1": "ok",
+   "clip_l14": "ok"
+  },
+  "iv": {
+   "qwen": "ok",
+   "siglip2": "ok",
+   "siglip1": "ok",
+   "clip_l14": "ok"
+  },
+  "iii": "ok",
+  "vi": "ok"
+ },
+ "stage1": {
+  "ranges": {
+   "qwen": "ok",
+   "siglip2": "ok",
+   "siglip1": "ok",
+   "clip_l14": "ok"
+  },
+  "picks": {
+   "qwen": "ok",
+   "siglip2": "ok",
+   "siglip1": "ok",
+   "clip_l14": "ok"
+  },
+  "teacher_pick": "ok"
+ }
+}
