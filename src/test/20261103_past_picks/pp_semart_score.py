@@ -100,8 +100,14 @@ def production_order():
     """The SemArt set's keys in sha256 order (`pp_semart.keys('set')`), asserted to be in that order."""
     import pp_semart
     keys = [str(k) for k in pp_semart.keys('set')]
+    assert len(keys) == PP.N_SEMART, f'{len(keys)} SemArt keys, {PP.N_SEMART} expected'
     assert keys == PP.order(keys), 'pp_semart.keys("set") is not in the sha256 order (D19)'
     return keys
+
+
+def n_val_rows():
+    """The number of ArtELingo validation rows (6,152): the fit set of every read-out map."""
+    return len(rt_data.names('val'))
 
 
 def _rows(x, n, name):
@@ -157,7 +163,14 @@ class Inputs:
 
 
 class SemartInputs(Inputs):
-    """Production wiring: the SemArt set (ticket 03), exports (06), probabilities (05), stores (01)."""
+    """Production wiring: the SemArt set (ticket 03), exports (06), probabilities (05), stores (01). `task` ('clu' | 'ret')
+    picks the form of the X-c* rows on the scored set: `pp_export.load` returns float16 stored rows, and each task takes
+    them the way its inherited code does. Retrieval: r15's `cstar_rows` form, `mt_ret.unit` (cast to float32, divide by the
+    row norm). Clustering: the cast-only route of `mt_clu.cstar_fixed` (r14's `S0.load_candidate`; float32, no division)."""
+
+    def __init__(self, task):
+        assert task in ('clu', 'ret'), task
+        self.task = task
 
     def labels(self, keys):
         import pp_semart
@@ -168,7 +181,8 @@ class SemartInputs(Inputs):
 
     def cstar_eval(self, enc, seed, keys):
         import pp_export
-        return pp_export.load('semart', enc, ASPECT, seed, keys)
+        x = pp_export.load('semart', enc, ASPECT, seed, keys)
+        return mt_ret.unit(x) if self.task == 'ret' else np.asarray(x).astype(np.float32)
 
     def frozen_val(self, enc):
         return bs_artret.frozen_embed(bs_artret.ENC[enc]['view'], 'val')
@@ -219,11 +233,17 @@ def ret_arms(enc, inputs, order, picks, workers=8, subset=None):
     assert y.shape == (n,) and np.issubdtype(y.dtype, np.integer) and (y >= 0).any()
     y = y.astype(np.int64)
     assert set(picks) >= set(ARMS)
-    cand = mt_ret.arm_ap(lambda s: inputs.cstar_val(enc, s), lambda s: _rows(inputs.cstar_eval(enc, s, keys), n, f'{enc} c* s{s}'),
-                         picks['cstar'], y, True, workers)
-    fz_val, fz_eval = inputs.frozen_val(enc), _rows(inputs.frozen_eval(enc, keys), n, f'{enc} frozen')
+
+    def fit_rows(x, name):
+        x = np.asarray(x)
+        want = n_val_rows()
+        assert x.ndim == 2 and x.shape[0] == want, f'{name}: {x.shape[0]} fit rows, {want} ArtELingo validation rows expected'
+        return x
+    cand = mt_ret.arm_ap(lambda s: fit_rows(inputs.cstar_val(enc, s), f'{enc} c* val s{s}'),
+                         lambda s: _rows(inputs.cstar_eval(enc, s, keys), n, f'{enc} c* s{s}'), picks['cstar'], y, True, workers)
+    fz_val, fz_eval = fit_rows(inputs.frozen_val(enc), f'{enc} frozen val'), _rows(inputs.frozen_eval(enc, keys), n, f'{enc} frozen')
     frozen = mt_ret.arm_ap(lambda s: fz_val, lambda s: fz_eval, picks['frozen'], y, False, workers)
-    t_val, t_eval = inputs.teacher_val(), _rows(inputs.teacher_eval(keys), n, 'teacher')
+    t_val, t_eval = fit_rows(inputs.teacher_val(), 'teacher val'), _rows(inputs.teacher_eval(keys), n, 'teacher')
     teacher = mt_ret.arm_ap(lambda s: t_val, lambda s: t_eval, picks['teacher'], y, False, workers)
     return dict(cstar=cand, frozen=frozen, teacher=teacher)
 
@@ -279,6 +299,11 @@ def unit_values(enc, root=None, clu_fn=None, ret_fn=None, recorded=None):
             assert abs(unit[k] - float(recorded[k])) <= TOL, \
                 f'{enc}: {k} unit {unit[k]!r} differs from the stage 1 record\'s {recorded[k]!r}'
     return unit
+
+
+def r11_map_range():
+    """r11's stored genre mAP range (`ac_paths.R11_RANGES_FILE`, map, genre, r): what `mt_ret.replay_iii_ret` compares to."""
+    return float(mt_ret.read_json(mt_ret.ac_paths.R11_RANGES_FILE)['map'][ASPECT]['r'])
 
 
 def load_record(enc):
@@ -349,12 +374,18 @@ def stage1(encs=ENCODERS):
         rec = load_record(enc)
         recorded = None if rec is None else recorded_units(rec)
         u = unit_values(enc, recorded=recorded)
+        r11_checked = None
+        if enc == 'qwen':                        # no r14 record: the mAP unit is r11's own stored range (D20)
+            r11_checked = r11_map_range()
+            assert abs(u['ret'] - r11_checked) <= TOL, f'qwen: mAP unit {u["ret"]!r} differs from r11\'s stored {r11_checked!r}'
         picks, picks_source = arm_picks(enc, rec, r11)
         how = ("computed with bs_artclu.clustering_ranges and bs_artret.validation_ranges on the five ArtELingo validation "
                f"exports of {PP.CSTAR_ROOT[enc]}, genre entry")
         if recorded is not None:
             who = 'r14' if enc in OLD_RECORD else "this round's"
             how += f"; equal within 1e-9 to {who} committed records/stage1_{enc}.json"
+        if r11_checked is not None:
+            how += f"; the mAP unit equals r11's stored range ({mt_ret.ac_paths.R11_RANGES_FILE.name}, map, genre, r = {r11_checked!r}) within 1e-9"
         doc[enc] = stage1_entry(u['clu'], u['ret'], picks, how, picks_source)
         print(f'{enc}: units clu {u["clu"]:.6g} ret {u["ret"]:.6g}, picks {picks} ({time.monotonic() - t0:.0f}s)', flush=True)
     return doc
@@ -392,7 +423,7 @@ def score(part, enc, n_draws=None, workers=8, inputs=None, subset=None):
     n_draws = draws(task, n_draws)
     units, picks = stage1_for(enc)
     order = production_order()
-    inputs = SemartInputs() if inputs is None else inputs
+    inputs = SemartInputs(task) if inputs is None else inputs
     if task == 'clu':
         cells = score_clu(enc, inputs, order, units['clu'], n_draws, workers, subset)
     else:

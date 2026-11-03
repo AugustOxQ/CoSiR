@@ -9,6 +9,8 @@ against r14's stored ones; picks come from the stage 1 records and are cross-che
 through `pp_paths.read_committed_record`; gate (iv) compares every value within 1e-9. Real data are not read: arrays are
 synthetic and the readers are fakes in the layout of the index (tickets 05 and 06)."""
 import json
+import sys
+import types
 
 import numpy as np
 import pytest
@@ -18,7 +20,10 @@ import pp_register  # noqa: F401
 import pp_outcome
 import pp_semart_score as S
 
+import bs_artret
 import mt_clu
+import mt_ret
+import rt_data
 from ac_select import readout_from_name
 import rb_score
 import rt_metrics
@@ -100,6 +105,14 @@ class FakeInputs(S.Inputs):
             return self._matched(keys)
         probs = {s: np.stack([self.w.prob_of[s][k] for k in keys]) for s in SEEDS}
         return mt_clu.matched_from_probs(probs)
+
+
+@pytest.fixture(scope='module', autouse=True)
+def small_validation():
+    """The synthetic validation set has NVAL rows where the real one has 6,152 (`rt_data.names('val')`)."""
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(S, 'n_val_rows', lambda: NVAL)
+        yield
 
 
 PICKS = dict(cstar='center+k10', frozen='center+k5', teacher='none+k3')
@@ -242,6 +255,8 @@ def test_sc13_comparator_is_the_larger_reading(world, better):
     sc13 = cells[1]
     assert sc13['comparator_reading'] == f'M7-{better}'
     assert set(sc13['comparator_readings']) == {'M7-own', 'M7-r20'}
+    other = 'r20' if better == 'own' else 'own'
+    assert sc13['comparator_readings'][f'M7-{better}'] > sc13['comparator_readings'][f'M7-{other}'] + 0.5   # not a tie
     assert sc13['comparator_value'] == max(sc13['comparator_readings'].values())
     assert sc13['d'] == pytest.approx(sc13['candidate_value'] - sc13['comparator_value'], abs=1e-12)
 
@@ -328,7 +343,12 @@ def test_production_order_is_the_sha256_order_of_the_set(monkeypatch, world):
     import pp_semart
     keys = PP.order(world.keys)
     monkeypatch.setattr(pp_semart, 'keys', lambda name: list(keys))
+    monkeypatch.setattr(PP, 'N_SEMART', len(keys))
     assert S.production_order() == keys
+    monkeypatch.setattr(PP, 'N_SEMART', len(keys) + 1)             # the set must have the recorded size
+    with pytest.raises(AssertionError):
+        S.production_order()
+    monkeypatch.setattr(PP, 'N_SEMART', len(keys))
     monkeypatch.setattr(pp_semart, 'keys', lambda name: list(world.keys))
     with pytest.raises(AssertionError):
         S.production_order()
@@ -475,3 +495,129 @@ def test_gate_feeds_the_scorer_r14s_order_and_labels(world):
     cells = S.score_clu(ENC, inputs, names, UNIT_CLU, n_draws=40, workers=2, data='artelingo_held')
     assert all(c['data'] == 'artelingo_held' for c in cells)
     assert all(keys == tuple(names) for _, keys in inputs.asked)
+
+
+# ------------------------------------------------------------------------------------------------ fit rows of the maps
+def test_fit_rows_must_be_the_validation_rows(world):
+    class Short(FakeInputs):
+        def __init__(self, w, which):
+            super().__init__(w)
+            self.which = which
+
+        def cstar_val(self, enc, seed):
+            x = super().cstar_val(enc, seed)
+            return x[:-1] if self.which == 'cstar' else x
+
+        def frozen_val(self, enc):
+            x = super().frozen_val(enc)
+            return x[:-1] if self.which == 'frozen' else x
+
+        def teacher_val(self):
+            x = super().teacher_val()
+            return x[:-1] if self.which == 'teacher' else x
+    S.ret_arms(ENC, FakeInputs(world), world.keys, PICKS, workers=2)
+    for which in ('cstar', 'frozen', 'teacher'):
+        with pytest.raises(AssertionError, match='fit rows'):
+            S.ret_arms(ENC, Short(world, which), world.keys, PICKS, workers=2)
+
+
+# ------------------------------------------------------------------------------------------------ Qwen's mAP unit
+def test_qwen_map_unit_is_checked_against_r11s_stored_range(monkeypatch, tmp_path):
+    (tmp_path / 'picks.json').write_text(json.dumps(R11))
+    monkeypatch.setattr(S, 'R11_PICKS', tmp_path / 'picks.json')
+    monkeypatch.setattr(S, 'unit_values', lambda enc, **kw: dict(clu=0.0123, ret=0.0045))
+    monkeypatch.setattr(S, 'r11_map_range', lambda: 0.0045 + 5e-10)
+    doc = S.stage1(('qwen',))
+    assert doc['qwen']['units'] == dict(clu=0.0123, ret=0.0045) and 'r11' in doc['qwen']['units_source']
+    monkeypatch.setattr(S, 'r11_map_range', lambda: 0.0045 + 3e-9)
+    with pytest.raises(AssertionError, match="r11"):
+        S.stage1(('qwen',))
+
+
+def test_r11_map_range_reads_the_stored_genre_entry(monkeypatch, tmp_path):
+    f = tmp_path / 'ranges.json'
+    f.write_text(json.dumps({'map': {'genre': {'r': 0.25, 'per_seed': [1]}, 'style': {'r': 0.5}}}))
+    monkeypatch.setattr(mt_ret.ac_paths, 'R11_RANGES_FILE', f)
+    assert S.r11_map_range() == 0.25
+
+
+# ------------------------------------------------------------------------------------------------ SemartInputs end to end
+@pytest.fixture
+def production_readers(world, monkeypatch):
+    """The production readers faked with the real dtypes: float16 c* rows from `pp_export.load`, float32 unit rows from
+    `pp_stores.load`, int32 matched partitions, int64 labels; ArtELingo validation rows from the older rounds' loaders."""
+    import pp_matched
+    import pp_semart
+    import pp_stores
+    calls = []
+
+    def export_load(set_, enc, aspect, seed, keys, root=None, **kw):
+        calls.append(('export', set_, enc, aspect, seed))
+        assert set_ == 'semart' and aspect == 'genre' and seed in SEEDS
+        return np.stack([world.cstar[seed][k] for k in keys]).astype(np.float16)
+
+    def stores_load(dataset, view, keys, **kw):
+        calls.append(('stores', dataset, view))
+        assert dataset == 'semart'
+        table = world.teacher if view == PP.TEACHER_VIEW['genre'] else world.frozen
+        return np.stack([table[k] for k in keys]).astype(np.float32)
+
+    def partitions(set_name, enc, keys, root=None):
+        calls.append(('matched', set_name, enc))
+        probs = {s: np.stack([world.prob_of[s][k] for k in keys]) for s in SEEDS}
+        got = mt_clu.matched_from_probs(probs)
+        return {s: {'own': np.asarray(got[s]['own']).astype(np.int32), 'r20': np.asarray(got[s]['r20']).astype(np.int32)}
+                for s in SEEDS}
+    try:
+        import pp_export
+    except ImportError:                       # ticket 06 is not merged: the module is a stand-in with `load`
+        pp_export = types.ModuleType('pp_export')
+        monkeypatch.setitem(sys.modules, 'pp_export', pp_export)
+    monkeypatch.setattr(pp_export, 'load', export_load, raising=False)
+    monkeypatch.setattr(pp_stores, 'load', stores_load)
+    monkeypatch.setattr(pp_matched, 'partitions', partitions)
+    monkeypatch.setattr(pp_semart, 'labels', lambda keys: np.array([world.y[k] for k in keys], dtype=np.int64))
+    monkeypatch.setattr(bs_artret, 'cstar_embed', lambda root, split, aspect, seed: world.val_cstar[seed])
+    monkeypatch.setattr(bs_artret, 'frozen_embed', lambda view, split: world.val_frozen)
+    monkeypatch.setattr(rt_data, 'embed', lambda *a, **k: world.val_teacher)
+    return calls
+
+
+def test_semart_inputs_deliver_what_the_scorer_accepts(world, production_readers):
+    clu = S.score_clu(ENC, S.SemartInputs('clu'), world.keys, UNIT_CLU, n_draws=40, workers=2)
+    ret = S.score_ret(ENC, S.SemartInputs('ret'), world.keys, UNIT_RET, PICKS, n_draws=60, workers=2)
+    assert [c['sc'] for c in clu] == ['SC11', 'SC13', 'SC14'] and [c['sc'] for c in ret] == ['SC12', 'SC14']
+    assert {k[0] for k in production_readers} == {'export', 'stores', 'matched'}
+    for c in clu + ret:
+        pp_outcome.check_cell(c, smoke=True)
+
+
+def test_semart_inputs_take_cstar_rows_the_inherited_way(world, production_readers):
+    keys = world.keys
+    x16 = np.stack([world.cstar[0][k] for k in keys]).astype(np.float16)
+    assert x16.dtype == np.float16
+    ret = S.SemartInputs('ret').cstar_eval(ENC, 0, keys)
+    clu = S.SemartInputs('clu').cstar_eval(ENC, 0, keys)
+    assert ret.dtype == clu.dtype == np.float32
+    assert np.array_equal(ret, mt_ret.unit(x16))                          # r15's cstar_rows form: cast, divide by the norm
+    assert np.array_equal(clu, x16.astype(np.float32))                    # r14 / mt_clu.cstar_fixed: cast only
+    with pytest.raises(AssertionError):
+        S.SemartInputs('both')
+
+
+def test_semart_inputs_score_equals_the_float32_fake(world, production_readers):
+    """The production wiring and the index-layout fake give the same cells once the rows are float16-rounded."""
+    class Rounded(FakeInputs):
+        def __init__(self, w, task):
+            super().__init__(w)
+            self.task = task
+
+        def cstar_eval(self, enc, seed, keys):
+            x16 = np.stack([self.w.cstar[seed][k] for k in keys]).astype(np.float16)
+            return mt_ret.unit(x16) if self.task == 'ret' else x16.astype(np.float32)
+    got = S.score_ret(ENC, S.SemartInputs('ret'), world.keys, UNIT_RET, PICKS, n_draws=60, workers=2)
+    want = S.score_ret(ENC, Rounded(world, 'ret'), world.keys, UNIT_RET, PICKS, n_draws=60, workers=2)
+    assert [c['candidate_value'] for c in got] == [c['candidate_value'] for c in want]
+    got = S.score_clu(ENC, S.SemartInputs('clu'), world.keys, UNIT_CLU, n_draws=40, workers=2)
+    want = S.score_clu(ENC, Rounded(world, 'clu'), world.keys, UNIT_CLU, n_draws=40, workers=2)
+    assert [c['candidate_value'] for c in got] == [c['candidate_value'] for c in want]
