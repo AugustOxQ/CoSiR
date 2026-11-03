@@ -17,6 +17,22 @@ from threadpoolctl import threadpool_info
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import mt_c13 as c
 
+COMPARE_ROOT = c.SMOKE_OUT / 'unit_round'
+COMPARE_OUT = c.SMOKE_OUT / 'unit_compare'
+
+
+def mock_compare_integrity(monkeypatch):
+    """Claim/layout tests exercise integrity helpers separately below."""
+    monkeypatch.setattr(c, 'compare_matched_identity', lambda *args: ({}, {}))
+    monkeypatch.setattr(c, 'compare_code_provenance', lambda doc, commit: dict(
+        derive_commit=commit, committed_source_sha256=doc.get('source_sha256'),
+        derived_source_sha256=doc.get('source_sha256'), current_source_sha256='current',
+        error=None, matches=True))
+
+
+def record_report(failed=0):
+    return {'failed': failed, 'code_provenance': {'matches': True}}
+
 
 def cells():
     return [dict(zip(c.IDENTITY, k), lo=.02, r=.1 if k[0] == 'SC4' else None,
@@ -225,11 +241,11 @@ def full_doc():
 def test_record_full_coverage_draw_counts_and_failures():
     doc = full_doc()
     assert c.full_scope(doc)
-    assert c.record_refusal(doc, {'failed': 0}, cells()) is None
-    assert 'failed' in c.record_refusal(doc, {'failed': 1}, cells())
+    assert c.record_refusal(doc, record_report(), cells()) is None
+    assert 'failed' in c.record_refusal(doc, record_report(1), cells())
     reduced = deepcopy(cells())
     reduced[0]['n_draws'] = 40
-    assert 'draws' in c.record_refusal(doc, {'failed': 0}, reduced)
+    assert 'draws' in c.record_refusal(doc, record_report(), reduced)
     for field, value in [('sections', ['cut']), ('n_clu', 40), ('n_ret', 100), ('complete', False), ('cells', cells()[1:])]:
         changed = {**doc, field: value}
         assert 'subset' in c.record_refusal(changed, {'failed': 0}, cells())
@@ -294,7 +310,7 @@ def test_cli_kmeans_thread_default_and_sensitivity_option(monkeypatch, option, w
 
 
 def test_compare_refuses_subset_without_writing_record(monkeypatch):
-    doc = dict(root=str(c.DEFAULT_ROOT), complete=True, source_sha256='source', unavailable=[],
+    doc = dict(root=str(COMPARE_ROOT), complete=True, source_sha256='source', unavailable=[],
                inputs={}, cutsets={}, ranges={}, picks={}, cells=[], sections=['cut'],
                scope='subset:cut', n_clu=40, n_ret=100)
     reports = []
@@ -303,41 +319,155 @@ def test_compare_refuses_subset_without_writing_record(monkeypatch):
     monkeypatch.setattr(Path, 'exists', lambda _: False)
     monkeypatch.setattr(c, 'write_json', lambda p, v: reports.append(v))
     monkeypatch.setattr(Path, 'write_text', lambda *args: pytest.fail('record must not be written'))
+    mock_compare_integrity(monkeypatch)
     with pytest.raises(ValueError, match='subset'):
-        c.compare(write_record=True)
+        c.compare(root=COMPARE_ROOT, records=COMPARE_ROOT / 'records', out=COMPARE_OUT, write_record=True)
     assert reports and reports[0]['record'].startswith('refused:')
 
 
-def test_compare_cut_digest_and_decided_status_layouts(monkeypatch):
-    rows = [x for x in cells() if x['encoder'] == 'siglip2']
-    status = c.good_status()
+def comparison_fixture(monkeypatch, rows=None, status=None):
+    rows = [x for x in cells() if x['encoder'] == 'siglip2'] if rows is None else rows
+    status = c.good_status() if status is None else status
     decided = c.decisions(rows, status, encoders=('siglip2',))
-    outcome_rows = [{**x, 'status': 'decided'} for x in decided['cells']]
-    claims = [{**x, 'status': 'decided', 'void': []} for x in decided['sc4']['siglip2']]
+    outcome_rows = [{**x, 'status': 'decided' if x['status'] == 'ok' else x['status']} for x in decided['cells']]
+    claims = [{**x, 'status': 'decided' if x['status'] == 'ok' else x['status'],
+               'void': ['failed gate'] if x['void'] else [],
+               'claim': None if x['claim'] == 'no claim' else x['claim']} for x in decided['sc4']['siglip2']]
     kept = c.hashed_order(['a', 'b'])
     cut = dict(threshold=.95, n=2, n_new=2, dropped=dict(exact=0, near=0, md5=0),
                sha256=c.keys_sha(kept), keys=kept)
-    doc = dict(root=str(c.DEFAULT_ROOT), complete=True, source_sha256='derive-source', unavailable=[],
+    doc = dict(root=str(COMPARE_ROOT), complete=True, source_sha256='derive-source', unavailable=[],
                inputs={}, cutsets={'test': cut}, ranges={}, picks={}, cells=rows,
                sections=['cut', 'cells:siglip2'], scope='subset:cut,cells:siglip2', n_clu=2000, n_ret=10000, kmeans_threads=8)
-    out = dict(status=status, cells=outcome_rows, verdicts={'siglip2': {'verdict': 'holds'}},
+    out = dict(status=status, cells=outcome_rows, verdicts={'siglip2': {'verdict': decided['verdicts']['siglip2']}},
                sc4={'siglip2': claims})
-    result_bytes = {c.DEFAULT_ROOT / 'stage2/cells_clu.json': json.dumps([x for x in rows if x['task'] == 'clu']).encode(),
-                    c.DEFAULT_ROOT / 'stage2/cells_ret.json': json.dumps([x for x in rows if x['task'] == 'ret']).encode(),
-                    c.DEFAULT_ROOT / 'stage2/outcomes.json': json.dumps(out).encode()}
+    result_bytes = {COMPARE_ROOT / 'stage2/cells_clu.json': lambda: json.dumps([x for x in rows if x['task'] == 'clu']).encode(),
+                    COMPARE_ROOT / 'stage2/cells_ret.json': lambda: json.dumps([x for x in rows if x['task'] == 'ret']).encode(),
+                    COMPARE_ROOT / 'stage2/outcomes.json': lambda: json.dumps(out).encode()}
     record_cut = {k: v for k, v in cut.items() if k != 'keys'}
     record_cut['sha256'] = c.keys_sha(sorted(kept))
-    values = {c.DEFAULT_OUT / 'derived.json': doc, c.ROUND / 'records/status.json': status,
-              c.ROUND / 'records/cutsets.json': {'test': record_cut}}
+    values = {COMPARE_OUT / 'derived.json': doc, COMPARE_ROOT / 'records/status.json': status,
+              COMPARE_ROOT / 'records/cutsets.json': {'test': record_cut}}
     monkeypatch.setattr(c, 'source_identity', lambda: 'compare-source')
     monkeypatch.setattr(c, 'read_json', lambda p: values[Path(p)])
     monkeypatch.setattr(Path, 'exists', lambda p: p in values or p in result_bytes)
-    monkeypatch.setattr(Path, 'read_bytes', lambda p: result_bytes[p])
+    monkeypatch.setattr(Path, 'read_bytes', lambda p: result_bytes[p]())
     monkeypatch.setattr(c, 'write_json', lambda *args: None)
-    result = c.compare()
+    mock_compare_integrity(monkeypatch)
+    return doc, out
+
+
+def compare_fixture():
+    return c.compare(root=COMPARE_ROOT, records=COMPARE_ROOT / 'records', out=COMPARE_OUT)
+
+
+def test_compare_cut_digest_and_decided_status_layouts(monkeypatch):
+    comparison_fixture(monkeypatch)
+    result = compare_fixture()
     assert result['pass'] and result['failed'] == 0
     assert result['derive_source_sha256'] == 'derive-source'
     assert result['kmeans_threads'] == 8
+
+
+def test_compare_below_null_and_voided_sc4_claims(monkeypatch):
+    rows = [x for x in cells() if x['encoder'] == 'siglip2']
+    next(x for x in rows if x['sc'] == 'SC4' and x['aspect'] == 'emotion' and x['task'] == 'clu')['lo'] = -.1
+    status = c.good_status()
+    status['gates']['i_teacher']['style'] = 'failed'
+    _, out = comparison_fixture(monkeypatch, rows, status)
+    below = next(x for x in out['sc4']['siglip2'] if x['aspect'] == 'emotion' and x['task'] == 'clu')
+    voided = next(x for x in out['sc4']['siglip2'] if x['aspect'] == 'style' and x['task'] == 'clu')
+    assert below['outcome'] == 'BELOW' and below['claim'] is None
+    assert voided['status'] == 'inconclusive' and voided['void'] and voided['claim'] == 'inconclusive'
+    assert compare_fixture()['pass']
+    voided['claim'] = None
+    result = compare_fixture()
+    failures = [x for x in result['items'] if not x['pass']]
+    assert len(failures) == 1 and failures[0]['name'].endswith('style.clu.claim')
+    voided['claim'] = 'inconclusive'
+    below.pop('claim')
+    assert not compare_fixture()['pass'], 'missing claim must not be accepted as null'
+
+
+def test_compare_rejects_duplicate_sc4_identities(monkeypatch):
+    _, out = comparison_fixture(monkeypatch)
+    out['sc4']['siglip2'].append(deepcopy(out['sc4']['siglip2'][0]))
+    result = compare_fixture()
+    assert not result['pass']
+    assert any(x['name'].endswith('/unique_identities') and not x['pass'] for x in result['items'])
+
+
+@pytest.mark.parametrize('claim', ['WIN', 'BELOW', 'inconclusive', 'better than', 'level with or better than', '', False, None])
+def test_only_no_claim_maps_to_null(claim):
+    assert c.compare_claim_value('no claim') is None
+    assert c.compare_claim_value(claim) is not None
+
+
+def matched_side(enc, seed, digest):
+    suffix = ('percept/core/stage2/k40' if enc == 'qwen' else 'matched/' + c.MATCHED[enc])
+    return dict(encoder=enc, seed=seed, view=c.DEFAULT_VIEW[enc],
+                mapper='/frozen/root/' + suffix + f'/P3__s{seed}.npz', sha256=digest)
+
+
+@pytest.mark.parametrize('enc,seed', [(e, s) for e in c.ENCODERS for s in c.SEEDS])
+def test_matched_identity_all_twenty_exports(enc, seed):
+    digest = 'a' * 64
+    expected, actual = c.compare_matched_identity(enc, seed, matched_side(enc, seed, digest), digest, digest)
+    assert expected == actual
+
+
+@pytest.mark.parametrize('field,value', [('encoder', 'qwen'), ('seed', 2), ('seed', True),
+    ('view', 'qwen_default'), ('mapper', '/matched/M8/P3__s1.npz'),
+    ('mapper', '/matched/M2/P3__s0.npz'), ('sha256', 'b' * 64), ('input', None),
+    ('input', 'b' * 64), ('npz', None)])
+def test_matched_identity_rejects_misbound_sidecar_or_bytes(field, value):
+    digest = 'a' * 64
+    side, npz, input_hash = matched_side('siglip2', 1, digest), digest, digest
+    if field == 'input':
+        input_hash = value
+    elif field == 'npz':
+        npz = value
+    else:
+        side[field] = value
+    expected, actual = c.compare_matched_identity('siglip2', 1, side, npz, input_hash)
+    assert expected != actual
+
+
+def test_code_provenance_matches_git_file_and_records_current_hash(monkeypatch):
+    import subprocess
+    from types import SimpleNamespace
+    data = b'committed source\n'
+    digest = hashlib.sha256(data).hexdigest()
+    commands = []
+    def run(command, **kwargs):
+        commands.append(command)
+        return SimpleNamespace(returncode=0, stdout=data, stderr=b'')
+    monkeypatch.setattr(subprocess, 'run', run)
+    monkeypatch.setattr(c, 'file_sha', lambda _: 'current-file-hash')
+    composite = hashlib.sha256((c.frozen.frozen_identity() + digest + 'current-file-hash').encode()).hexdigest()
+    result = c.compare_code_provenance({'source_sha256': composite}, 'f093fb7')
+    assert result['matches'] and result['committed_source_sha256'] == composite
+    assert not c.compare_code_provenance({'source_sha256': digest}, 'f093fb7')['matches']   # the bare file hash is not it
+    assert result['current_source_sha256'] == 'current-file-hash'
+    assert commands[0][-1] == 'f093fb7:src/test/20261102_mmart_test/mt_c13.py'
+    assert not c.compare_code_provenance({'source_sha256': 'different'}, 'f093fb7')['matches']
+    monkeypatch.setattr(subprocess, 'run', lambda *args, **kwargs: SimpleNamespace(returncode=1, stdout=b'', stderr=b'bad commit'))
+    result = c.compare_code_provenance({'source_sha256': composite}, 'missing')
+    assert not result['matches'] and result['error'] == 'bad commit'
+
+
+def test_record_refuses_failed_or_missing_code_identity():
+    for report in ({'failed': 0}, {'failed': 1, 'code_provenance': {'matches': False}}):
+        assert 'derive-commit' in c.record_refusal(full_doc(), report, cells())
+
+
+@pytest.mark.parametrize('option,want', [([], 'f093fb7'), (['--derive-commit', 'abc1234'], 'abc1234')])
+def test_compare_cli_derive_commit(monkeypatch, option, want):
+    calls = []
+    monkeypatch.setattr(sys, 'argv', ['mt_c13.py', 'compare', *option])
+    monkeypatch.setattr(c, 'compare', lambda *args, **kwargs: calls.append(kwargs) or {'pass': True})
+    assert c.main() == 0
+    assert calls == [{'derive_commit': want}]
 
 
 def test_seedwise_crossfit_matches_frozen_arm_table(monkeypatch):

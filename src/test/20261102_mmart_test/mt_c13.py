@@ -603,11 +603,60 @@ class Comparison:
                     max_abs=max((x['abs_diff'] or 0. for x in self.items), default=0.), sections=sections)
 
 
+def compare_claim_value(value):
+    """The round's CLAIM_NONE is JSON null; no other claim maps to null."""
+    if value == 'no claim':
+        return None
+    return {'invalid_derived_claim': None} if value is None else value
+
+
+def compare_matched_identity(enc, seed, side, npz_sha256, input_sha256):
+    """One exact integrity item per export, including its saved-input binding."""
+    arm = MATCHED[enc]
+    prefix = ('percept', 'core', 'stage2', 'k40') if enc == 'qwen' else ('matched', arm)
+    suffix = (*prefix, f'P3__s{seed}.npz')
+    mapper = side.get('mapper')
+    actual_suffix = '/'.join(Path(mapper).parts[-len(suffix):]) if isinstance(mapper, str) else mapper
+    expected = dict(encoder=enc, seed=seed, seed_type='int', view=DEFAULT_VIEW[enc],
+                    mapper_suffix='/'.join(suffix), npz_present=True,
+                    sidecar_sha256=npz_sha256, input_sha256=npz_sha256)
+    actual = dict(encoder=side.get('encoder'), seed=side.get('seed'), seed_type=type(side.get('seed')).__name__,
+                  view=side.get('view'), mapper_suffix=actual_suffix, npz_present=npz_sha256 is not None,
+                  sidecar_sha256=side.get('sha256'), input_sha256=input_sha256)
+    return expected, actual
+
+
+def compare_code_provenance(doc, derive_commit):
+    """Check the requested literal git-file digest without altering derive's schema."""
+    import subprocess
+    command = ['git', '-C', '/project/CoSiR', 'show', '--end-of-options',
+               f'{derive_commit}:src/test/20261102_mmart_test/mt_c13.py']
+    error, committed = None, None
+    try:
+        completed = subprocess.run(command, capture_output=True, check=False)
+        if completed.returncode:
+            error = completed.stderr.decode('utf-8', errors='replace').strip()[:1000]
+        else:
+            # derive's source_identity() is a composite (frozen sources + this file + mp_stores); rebuild it with the
+            # committed bytes of this file in place of the current ones (controller fix, 2026-11-03).
+            committed_file = hashlib.sha256(completed.stdout).hexdigest()
+            committed = hashlib.sha256((frozen.frozen_identity() + committed_file
+                                        + file_sha(mp_stores.__file__)).encode()).hexdigest()
+    except OSError as exc:
+        error = str(exc)
+    derived = doc.get('source_sha256')
+    return dict(derive_commit=derive_commit, committed_source_sha256=committed,
+                derived_source_sha256=derived, current_source_sha256=file_sha(__file__), error=error,
+                matches=committed is not None and isinstance(derived, str) and derived == committed)
+
+
 def record_refusal(doc, report, cells):
     if not full_scope(doc):
         return 'scope is a subset or lacks full protocol coverage/draw counts'
     if doc.get('kmeans_threads') != 8 or isinstance(doc.get('kmeans_threads'), bool):
         return 'derived.json must specify kmeans_threads 8'
+    if report.get('code_provenance', {}).get('matches') is not True:
+        return 'derive source hash does not match --derive-commit'
     if report['failed']:
         return 'one or more comparisons failed'
     if len(cells) != 60 or any(c.get('n_draws') != (2000 if c.get('task') == 'clu' else 10000) for c in cells):
@@ -615,7 +664,7 @@ def record_refusal(doc, report, cells):
     return None
 
 
-def compare(root=DEFAULT_ROOT, records=None, out=DEFAULT_OUT, write_record=False):
+def compare(root=DEFAULT_ROOT, records=None, out=DEFAULT_OUT, write_record=False, derive_commit='f093fb7'):
     """Sole result boundary: read exact bytes once, adapt layouts here only."""
     root, out = Path(root).resolve(), check_output(out)
     records = ROUND / 'records' if records is None else Path(records)
@@ -623,8 +672,9 @@ def compare(root=DEFAULT_ROOT, records=None, out=DEFAULT_OUT, write_record=False
     result = Comparison()
     result.add('integrity/complete', doc.get('complete'), True)
     result.add('integrity/root', doc.get('root'), str(root))
-    # The source hash belongs to the derive/cache provenance. A later change
-    # to a compare-only layout adapter must not invalidate that evidence.
+    code = compare_code_provenance(doc, derive_commit)
+    result.add('integrity/derive_source_commit', code['derived_source_sha256'],
+               code['committed_source_sha256'] if code['error'] is None else {'git_error': code['error']})
     result.add('integrity/unavailable', doc.get('unavailable'), [])
     # Export checksums were checked during derive; check the same bytes still exist.
     for path, digest in doc.get('inputs', {}).items():
@@ -632,6 +682,19 @@ def compare(root=DEFAULT_ROOT, records=None, out=DEFAULT_OUT, write_record=False
     def load(path):
         path = Path(path)
         return read_json(path) if path.exists() else {}
+    for enc in ENCODERS:
+        for seed in SEEDS:
+            npz = root / 'exports' / 'new' / enc / 'matched' / f'probs__s{seed}.npz'
+            try:
+                side = load(npz.with_suffix('.json'))
+                if not isinstance(side, dict):
+                    side = {}
+            except (ValueError, OSError):
+                side = {}
+            digest = file_sha(npz) if npz.exists() else None
+            expected_identity, recorded_identity = compare_matched_identity(
+                enc, seed, side, digest, doc.get('inputs', {}).get(str(npz)))
+            result.add(f'integrity/matched.{enc}.s{seed}', expected_identity, recorded_identity)
     status = load(records / 'status.json')
     result.add('integrity/status_present', bool(status), True)
     stage2, hashes = {}, {}
@@ -702,19 +765,26 @@ def compare(root=DEFAULT_ROOT, records=None, out=DEFAULT_OUT, write_record=False
             result.add(name + '.status', 'decided' if c['status'] == 'ok' else c['status'], ref.get('status'))
             result.add(name + '.void', bool(c['void']), bool(ref.get('void')))
         for enc, claims in expected['sc4'].items():
-            refs = {(c['aspect'], c['task']): c for c in outcomes.get('sc4', {}).get(enc, [])}
+            recorded_claims = outcomes.get('sc4', {}).get(enc, [])
+            refs = {(c['aspect'], c['task']): c for c in recorded_claims}
+            result.add(f'claims:{enc}/unique_identities', len(refs), len(recorded_claims))
             result.add(f'claims:{enc}/identities', sorted((c['aspect'], c['task']) for c in claims), sorted(refs))
             for c in claims:
                 ref = refs.get((c['aspect'], c['task']), {})
                 for k, v in c.items():
                     if k == 'status' and v == 'ok':
                         v = 'decided'
-                    value = bool(ref.get('void')) if k == 'void' else ref.get(k)
+                    if k == 'claim':
+                        v = compare_claim_value(v)
+                    # Missing is different from an explicit CLAIM_NONE/null.
+                    value = (bool(ref.get('void')) if k == 'void' else
+                             ref[k] if k in ref else {'missing_field': k})
                     result.add(f"claims:{enc}/{c['aspect']}.{c['task']}.{k}", v, value)
     payload = result.report()
     payload.update(scope='full' if full_scope(doc) else doc.get('scope', 'subset'),
                    draws=dict(clu=doc['n_clu'], ret=doc['n_ret']), sha256=hashes,
                    kmeans_threads=doc.get('kmeans_threads'),
+                   code_provenance=code,
                    derive_source_sha256=doc.get('source_sha256'), compare_source_sha256=source_identity(),
                    pass_=payload['failed'] == 0)
     refusal = record_refusal(doc, payload, round_cells) if write_record else None
@@ -750,13 +820,14 @@ def main():
         else:
             p.add_argument('--records', type=Path, default=ROUND / 'records')
             p.add_argument('--write-record', action='store_true')
+            p.add_argument('--derive-commit', default='f093fb7')
     args = parser.parse_args()
     with threadpool_limits(limits=8):
         if args.command == 'derive':
             derive(args.root, args.out, args.draws_clu, args.draws_ret, args.sections, args.workers,
                    kmeans_threads=args.kmeans_threads)
         else:
-            result = compare(args.root, args.records, args.out, args.write_record)
+            result = compare(args.root, args.records, args.out, args.write_record, derive_commit=args.derive_commit)
             return 0 if result['pass'] else 1
     return 0
 
