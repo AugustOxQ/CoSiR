@@ -1686,3 +1686,12 @@
 - Handoff: docs/superpowers/handoffs/2026-11-03-r17-build-handoff.md
 - New chat: tab 'r17 build', session 62d08565-f371-4464-8fc8-97ea106613dd
 
+[brief] CoSiR: r18 spec -> r18 build (2026-11-03 20:47 Amsterdam)
+- Done: the r18 spec is approved (labels only against c*; Opus rule review, all fixes applied). The official CLAY and
+  TURTLE code made the parity references once, attended.
+- State: nothing built. r17's scoring code is not merged yet; node402 and the local queue were free at 20:45.
+- Next: wait for r17's merge, then tickets, build and the final review; merge to main; cut to the r18 run chat.
+- Blocked: nothing (the build waits for r17's merge by design).
+- Handoff: docs/superpowers/handoffs/2026-11-03-r18-build-handoff.md
+- New chat: tab 'r18 build', session a6ccee89-3ce6-4c30-8e76-e7fa4da4248e
+
