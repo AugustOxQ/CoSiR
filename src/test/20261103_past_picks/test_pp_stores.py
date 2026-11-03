@@ -402,3 +402,13 @@ def test_real_check_passes_an_old_store_and_counts_its_rows():
     r = S.check('affection', 'clip_l14')
     assert r['ok'], r['problems']
     assert r['n'] == 85007 and len(r['folders']) == 2
+
+
+def test_check_mmart_new_store_covers_exactly_the_index_keys_without_an_artelingo_copy(mmart, monkeypatch):
+    monkeypatch.setitem(S.EXPECTED_ROWS, 'mmart', 3)
+    r = S.check('mmart', 'clip_b32', index=mmart['index'])
+    assert r['ok'], r['problems']
+    shorter = mmart['index'].copy()
+    shorter.loc[shorter.key == mmart['keys'][3], 'artelingo'] = 'none'        # a key the store does not hold
+    r = S.check('mmart', 'clip_b32', index=shorter)
+    assert not r['ok'] and any('reference' in p for p in r['problems'])
