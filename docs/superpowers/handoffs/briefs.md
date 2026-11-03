@@ -1670,3 +1670,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-03-r18-spec-handoff.md
 - New chat: tab 'r18 spec', session 014c0b3a-5fff-40cf-862d-4db7578df65c
 
+[brief] CoSiR: r19 decide -> r19 spec (2026-11-03 19:31 Amsterdam)
+- Done: the r19 grill, two rounds and a closing summary, confirmed by the user (19:20).
+- State: c* is tested unchanged on DINOv2, CLIP B/32 and B/16 (ArtELingo, MMArt, photos), on SemArt's new artists (all seven encoders) and in a cost probe.
+- Next: write the spec from §2 and §4 below, have its rule reviewed (fresh Opus `xhigh`), paste the brief for approval.
+- Blocked: nothing. DAS6 node402 is free (3 GPUs, ends about 11-08 14:00).
+- Handoff: docs/superpowers/handoffs/2026-11-03-r19-spec-handoff.md
+- New chat: tab 'r19 spec', session b31c9071-11a1-436c-8008-f56faca25bfa
+
