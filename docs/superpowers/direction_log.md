@@ -149,7 +149,24 @@ abstract 2026-11-10, paper 2026-11-16, supplementary 2026-11-23.
   (agent recommendation). Shared code: earlier round folders stay frozen and are imported; r17's scoring module merges
   first, and r18 and r19 import it read-only. Each loop's report states shortly how much it changes the current paper
   writing: related work, method, experiments (user's own, 18:33).
+- **r18 grill (decide chat, 2026-11-03 19:20):** TPIPS timing probe: 219 ms per image per factor on the 3090 at
+  batch 1 (298 at 4, 350 at 8), so about 6.4 GPU h for 34,817 images × 3 factors, against the earlier guess of 7.5 to
+  11 h ([probe](../../src/test/20261103_outside_methods/records/tpips_probe.json)). TEMI and TURTLE both, TURTLE
+  built and run first, TEMI built after it and run later (user's own; ours was TURTLE only); TEMI's scope set by a
+  timing run at its build, its results after 11-16 go to the supplementary. CLAY: both text sets, CRL's 50-value
+  lists and new 100-value lists in CLAY's recipe, picked on validation (user's own, after the cost table; ours the
+  same). Minor defaults accepted (user, after seeing the recommendation): bare factor names for TPIPS, TPIPS on DAS6,
+  r11 to r15's read-out, labels against c* with no gate. Record:
+  [round log](../../src/test/20261103_outside_methods/20261103_outside_methods_log.md).
 - **Idea (B):** none yet.
+- **r17 grill (B), 2026-11-03 19:00 to 19:20 (r17 decide chat):** cluster counts per aspect, emotion 5, 8, 9, 16, 20,
+  genre 5, 10, 16, 20, style 10, 20, 27, 40 (user, 1a, before seeing ours; ours was the same); AMI, NMI, ARI and ACC
+  at the class count with intervals and verdicts in every claim cell, AMI and ARI at the other counts as point values;
+  intervals at every count a later option if time allows (user, 2a, before seeing ours; ours the same); a WIN bar in
+  all 12 cells of c* on CLIP L/14 against CRL on CLIP L/14 (user, 3a, after seeing the recommendation; first pick 3b);
+  the minor batch m1 to m8 (user, after seeing the recommendation); glossary term "told, untold retrieval" (user).
+  Class counts (label code, 2026-11-03): emotion 9 (EmoSet 8), style 27 on ArtELingo held and 20 on MMArt, genre 10.
+  Spec written in [r17 decide 2](handoffs/2026-11-03-r17-decide-2-handoff.md).
 - **Why:** the user wants the collaborator's and the supervisor's view before more experiments, with the abstract on
   2026-11-10.
 - **Links:** [report](../reports/auto/percept/2027-01-03_mmart_test.md) ·
