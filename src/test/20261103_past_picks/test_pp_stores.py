@@ -189,7 +189,8 @@ def test_semart_old_index_format_is_keyed_by_image_file(roots):
 def mmart(roots):
     keys = [f'Style/p{i}.jpg' for i in range(9)]
     group = ['none'] * 3 + ['held'] * 3 + ['trainval'] * 3
-    index = pd.DataFrame(dict(key=keys, painting=[f'p{i}' for i in range(9)], artelingo=group))
+    split = ['new'] * 3 + ['held'] * 3 + ['val'] * 3
+    index = pd.DataFrame(dict(key=keys, painting=[f'p{i}' for i in range(9)], split=split, artelingo=group))
     art = roots / 'art_root'
     # ArtELingo side lists held and trainval paintings by painting name; row order differs from the index
     art_names = ['p8', 'p3', 'p6', 'p4', 'p5', 'p7']
@@ -224,6 +225,13 @@ def test_mmart_teacher_view_new_from_mmart_store_held_from_held_trainval_from_s2
 def test_mmart_key_missing_from_the_index_asserts(mmart):
     with pytest.raises(AssertionError, match='index'):
         S.load('mmart', 'clip_b32', ['Style/nope.jpg'], index=mmart['index'])
+
+
+def test_mmart_train_split_key_asserts(mmart):
+    index = mmart['index'].copy()
+    index.loc[index.key == 'Style/p6.jpg', 'split'] = 'train'                           # a trainval painting, train split
+    with pytest.raises(AssertionError, match='only new, val and held'):
+        S.load('mmart', 'clip_b32', ['Style/p6.jpg'], index=index)
 
 
 # ------------------------------------------------------------------------------------------------ check (gate (i))
