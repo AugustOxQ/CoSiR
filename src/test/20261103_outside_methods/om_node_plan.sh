@@ -32,16 +32,12 @@ OM_BATCH=$OM_BATCH   OM_EST_SHARD=$OM_EST_SHARD   OM_EST_PROBE=$OM_EST_PROBE   s
      \$CLUSTER hf-fetch sywang/TPIPS-Embed-Qwen3VL-8B --revision 86a1493c60121e656a1c075bc7aed88f25fcd4d4 --wait      (background)
      \$CLUSTER hf-fetch Qwen/Qwen3-VL-Embedding-8B --revision 2c4565515e0f265c6511776e7193b22c0968ddc7 --wait         (background)
      \$CLUSTER hf-fetch sywang/TPIPS-Embed-Qwen3VL-8B --status ; \$CLUSTER hf-fetch Qwen/Qwen3-VL-Embedding-8B --status
-2  Env (NOT run by the ticket; the script installs nothing). The CoSiR env stays untouched: tpips needs transformers >= 5.0
-   and peft >= 0.19. The cluster CLI has no pip route for a hand-managed env (\`cluster env\` only reports), so this is a
-   step on the DAS6 head node by the user or by a CLI change (see the hand-back). The commands:
-     conda create -y -p /var/scratch/wding/conda-envs/CoSiR-tpips --clone /var/scratch/wding/conda-envs/CoSiR
-     /var/scratch/wding/conda-envs/CoSiR-tpips/bin/python -m pip install 'transformers==5.6.2' 'peft==0.19.1' 'accelerate==1.13.0'
-     /var/scratch/wding/conda-envs/CoSiR-tpips/bin/python -m pip install 'tpips==0.1.2' --no-deps
-   (versions as the local venv /root/venvs/tpips; check torch there: \`$PY -c 'import torch;print(torch.__version__)'\`
-    against the node env's torch before trusting the clone; the probe job re-checks all of it.)
-3  DATA_MAP: add this pair to cluster.conf (the manifests; the images already map through wikiart_proj):
+2  Env: no new env. The job uses the node's CoSiR env (torch 2.14, transformers 5.16.1 when last read) with tpips 0.1.2 and
+   peft 0.19.1 from the input folder tpips_pylibs on PYTHONPATH (pure Python, copied from the local venv). A second CLI
+   profile cannot build an env: load_profiles refuses a shared REPO_URL. Gate (iv) compares node and local vectors.
+3  DATA_MAP: these two pairs in cluster.conf (the images already map through wikiart_proj):
      /local/wding/r18_in/tpips_inputs:/data/SSD2/cosir_r18/20261103_outside_methods/outputs/tpips_inputs
+     /local/wding/r18_in/tpips_pylibs:/data/SSD2/cosir_r18/20261103_outside_methods/node_inputs/tpips_pylibs
    and adopt the node dataset config:
      \$CLUSTER configs --adopt configs/dataset/om_node_cluster.yaml
 

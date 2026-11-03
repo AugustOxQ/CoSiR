@@ -8,8 +8,10 @@
 # gate-probe  the 48 probe images, 3 factors, one shard, merged: the store gate (iv) compares with the local batch-1 run.
 #             Use the same --batch as the shard jobs (gate (iv) pairs host and batch).
 # extract     om_tpips.py extract for shard I of N on the sets (default: artelingo, then mmart); a rerun skips finished chunks.
-# Python: TPIPS_PY (default /var/scratch/wding/conda-envs/CoSiR-tpips/bin/python); nothing is installed at run time.
-# Inputs: manifests (om_tpips.py prepare) at node /local/wding/r18_in/tpips_inputs (DATA_MAP), bound at their local path;
+# Python: TPIPS_PY (default the node's CoSiR env). tpips 0.1.2 and peft 0.19.1 come from the input folder tpips_pylibs
+#         (pure Python, copied from the local venv) on PYTHONPATH; nothing is installed at run time.
+# Inputs: manifests (om_tpips.py prepare) at node /local/wding/r18_in/tpips_inputs and tpips_pylibs at
+#         /local/wding/r18_in/tpips_pylibs (both DATA_MAP), bound at their local paths;
 #         images through --image-root-map (local /data/PDD/wikiart_proj/wikiart -> node /var/scratch/wding/Dataset/...);
 #         weights from the node HF hub /var/scratch/wding/cache/hub (offline, pinned snapshots).
 # Results: node /local/wding/res/r18_tpips (probe: r18_tpips_probe), bound at the local node_out folder; stores under tpips_store/.
@@ -51,17 +53,19 @@ ROUND=src/test/20261103_outside_methods
 # One bound input: the manifests. NODE_IN is where DATA_MAP puts them, LOCAL_IN the path the code reads (om_paths.OUT / tpips_inputs).
 NODE_IN=/local/wding/r18_in/tpips_inputs
 LOCAL_IN=/data/SSD2/cosir_r18/20261103_outside_methods/outputs/tpips_inputs
+NODE_LIBS=/local/wding/r18_in/tpips_pylibs
+LOCAL_LIBS=/data/SSD2/cosir_r18/20261103_outside_methods/node_inputs/tpips_pylibs
 LOCAL_OUT=/data/SSD2/cosir_r18/20261103_outside_methods/node_out     # OM_OUTPUTS inside the job (not om_paths.DEFAULT_OUT)
 case "$mode" in
     probe) NODE_RES=/local/wding/res/r18_tpips_probe ;;
     *) NODE_RES=/local/wding/res/r18_tpips ;;
 esac
-TPIPS_PY=${TPIPS_PY:-/var/scratch/wding/conda-envs/CoSiR-tpips/bin/python}
+TPIPS_PY=${TPIPS_PY:-/var/scratch/wding/conda-envs/CoSiR/bin/python}
 HUB=/var/scratch/wding/cache/hub
 IMG_MAP='/data/PDD/wikiart_proj/wikiart=/var/scratch/wding/Dataset/wikiart_proj/wikiart'
 if [[ -n "${CLUSTER_DRY_RUN:-}" ]]; then
     # The line `cluster check` composes with Hydra: the +om_in.* value is an input it must find or sync on the node.
-    echo "python main_cosir.py dataset=om_node_cluster ++experiment.results_dir=$NODE_RES +om_in.tpips_inputs_path=$LOCAL_IN"
+    echo "python main_cosir.py dataset=om_node_cluster ++experiment.results_dir=$NODE_RES +om_in.tpips_inputs_path=$LOCAL_IN +om_in.tpips_pylibs_path=$LOCAL_LIBS"
     exit 0
 fi
 if [[ "$plan" == 1 ]]; then
@@ -70,6 +74,7 @@ if [[ "$plan" == 1 ]]; then
     echo "bind $CODE -> /project/CoSiR"
     echo "bind $NODE_RES -> $LOCAL_OUT"
     echo "bind $NODE_IN -> $LOCAL_IN"
+    echo "bind $NODE_LIBS -> $LOCAL_LIBS (PYTHONPATH)"
     echo 'No writes or node contact.'
     exit 0
 fi
@@ -79,14 +84,15 @@ fi
 [[ "${CUDA_VISIBLE_DEVICES:-}" =~ ^[0-9]+$ ]] || {
     echo "REFUSING: CUDA_VISIBLE_DEVICES must be one GPU index from cluster launch, got '${CUDA_VISIBLE_DEVICES:-unset}'" >&2; exit 1;
 }
-[[ -x "$TPIPS_PY" ]] || { echo "Missing python $TPIPS_PY (the env step of om_node_plan.sh creates it; this script installs nothing)" >&2; exit 1; }
+[[ -x "$TPIPS_PY" ]] || { echo "Missing python $TPIPS_PY (this script installs nothing)" >&2; exit 1; }
 [[ -d "$NODE_IN" ]] || { echo "Missing bind source: $NODE_IN (cluster check --sync-data -- bash scripts/run_om_tpips_node.sh $mode ...)" >&2; exit 1; }
+[[ -d "$NODE_LIBS/tpips" ]] || { echo "Missing bind source: $NODE_LIBS (cluster check --sync-data -- bash scripts/run_om_tpips_node.sh $mode ...)" >&2; exit 1; }
 mkdir -p "$NODE_RES"
 mkdir -p "$JOB/om-tmp" "$JOB/om-home" "$JOB/om-cache" "$JOB/om-mpl"
 R=$(mktemp -d -p "$JOB" om-root.XXXXXX)
-export NODE_RES LOCAL_OUT NODE_IN LOCAL_IN CODE JOB R TPIPS_PY HUB IMG_MAP ROUND
+export NODE_RES LOCAL_OUT NODE_IN LOCAL_IN NODE_LIBS LOCAL_LIBS CODE JOB R TPIPS_PY HUB IMG_MAP ROUND
 export TMPDIR="$JOB/om-tmp" MPLCONFIGDIR="$JOB/om-mpl" HOME="$JOB/om-home" XDG_CACHE_HOME="$JOB/om-cache"
-export PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=8 MKL_NUM_THREADS=8
+export PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 PYTHONPATH="$LOCAL_LIBS"
 export WANDB_MODE=disabled HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 HF_HUB_CACHE="$HUB"
 export OM_OUTPUTS="$LOCAL_OUT" OM_BATCH="$batch" OM_SETS="$sets" OM_SHARD="$shard" OM_OF="$of"
 # CUDA_VISIBLE_DEVICES is deliberately inherited from the allocation.
@@ -110,6 +116,7 @@ bind_path "$JOB/om-tmp" /tmp
 bind_path "$CODE" /project/CoSiR
 bind_path "$NODE_RES" "$LOCAL_OUT"
 bind_path "$NODE_IN" "$LOCAL_IN"
+bind_path "$NODE_LIBS" "$LOCAL_LIBS"
 chroot "$R" /bin/bash -s -- "$mode" <<'INNER'
 set -euo pipefail
 cd /project/CoSiR
@@ -151,6 +158,11 @@ for p in man['image'][:3]:
     try:
         with Image.open(q) as im: im.convert('RGB').load(); print('image ok', q, im.size)
     except Exception as e: problems.append(f'image {q}: {e!r}')
+for s in ('artelingo', 'mmart'):                     # every image the shard jobs will open, not only the three above
+    paths = json.loads(Path(os.environ['LOCAL_IN'], s + '.json').read_text())['image']
+    gone = [p for p in paths if not (p.startswith(old) and os.path.exists(new + p[len(old):]))]
+    print('images', s, len(paths), 'missing', len(gone), *gone[:3])
+    if gone: problems.append(f'{s}: {len(gone)} of {len(paths)} images missing on the node')
 print('PROBLEMS' if problems else 'PROBE_ENV_OK', *problems, sep='\n  ')
 sys.exit(1 if problems else 0)
 PY
