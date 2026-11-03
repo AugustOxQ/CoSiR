@@ -41,8 +41,8 @@ stage0)   # gates, about 1.3 h in all; each step also rebuilds records/status.js
   q v               2m  --short -- $RUN gate v
   q vi              18m         -- $RUN gate vi            # r11 stage 4 recomputed, about 17 min
   ;;
-stage1-ranges)   # ~ 8 min per painting (set, encoder), ~ 5 min per photo pair; about 1.3 h
-  for s in artelingo mmart; do for e in $ENCS; do q ranges_${s}_$e 8m --short -- $RUN ranges --set $s --enc $e; done; done
+stage1-ranges)   # measured (07, loaded machine) 85 to 330 s per painting (set, encoder); photo ~ 5 min; about 1.2 h
+  for s in artelingo mmart; do for e in $ENCS; do q ranges_${s}_$e 6m --short -- $RUN ranges --set $s --enc $e; done; done
   for e in $ENCS; do q ranges_affection_$e 5m --short -- $RUN ranges --set affection --enc $e; done
   q ranges_emoset_qwen 5m --short -- $RUN ranges --set emoset --enc qwen
   ;;
