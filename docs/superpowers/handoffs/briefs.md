@@ -1711,3 +1711,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-03-r19-build-handoff.md
 - New chat: tab 'r19 build', session df3145e1-2a5c-4715-b3cf-9d45816f048c
 
+[brief] CoSiR: r17 build -> r17 build 2 (2026-11-03 21:10 Amsterdam)
+- Done: tickets 01 (metrics), 02 (outcome code), 03 (painting data), 05 (CPU mappers) built; 05 reviewed and merged.
+- State: gates (iv) and (v) and the class counts pass on real data; new k-means equals the older routes exactly.
+- Next: Opus `high` reviews of 01, 02, 03 and their merges; implementers for 04, 06, 08, then 09, 07, 10, 11.
+- Blocked: nothing. Codex has no room until 23:34.
+- Handoff: docs/superpowers/handoffs/2026-11-03-r17-build2-handoff.md
+- New chat: tab 'r17 build 2', session f7e96eb3-1553-403a-adb0-583ba6ff67a9
+
