@@ -100,3 +100,10 @@ run mode night. Outputs: `/data/SSD2/cosir_r15/20261102_mmart_test/outputs/` (`O
   1 must-fix (two clock times, changed in this log after the draft) and 9 should-fix (the results brief's link,
   deciding number, terms and options; two readings that could be misread; commits; code labels in prose; the
   seed-spread reading). The controller applied all ten; the report is 16.2 KB.
+- 05:01 user-read report draft by Codex (`gpt-6.1-sol`, medium), 150 lines. Checks in parallel: cold read (Haiku)
+  answered the four reader questions right, and listed undefined terms (PercepT, holds, GO, the encoders) and two
+  dense paragraphs; fidelity check (Sonnet `high`) found no wrong number in about 40, two claims too strong (the
+  "better than" scope, the far-subset style line), five missing caveats (Qwen-only shared reading, "about half",
+  small emotion values and narrow teacher wins, labelled counts and 20 clusters, the encoder-selection wording).
+  One fix wave by the controller: all applied, background facts added (project aim, PercepT, earlier results). The
+  narrow-win caveat was also missing from the auto report and was added there. No re-check (the reference's rule).

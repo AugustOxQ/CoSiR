@@ -150,6 +150,9 @@ Claim sentences: **"c* on [encoder] is [claim] the Qwen image instructed for [as
 |CLIP L/14, genre|AMI|+0.0045 [-0.0034, +0.0108]|0.0086|LEVEL|no|L|
 |CLIP L/14, genre|mAP|+0.0072 [+0.0058, +0.0087]|0.0019|WIN|yes|B|
 
+Some teacher WINs are narrow: the lower bound is +0.0004 for CLIP L/14 emotion AMI and +0.0011 for Qwen style AMI.
+Emotion AMI is low for every arm (c* about 0.06), so emotion differences are small in absolute terms.
+
 <details>
 <summary>Licensed sentences, records/verdicts.json</summary>
 
