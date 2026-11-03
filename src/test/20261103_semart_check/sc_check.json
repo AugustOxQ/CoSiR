@@ -1,0 +1,329 @@
+{
+  "n": 21382,
+  "reference_n": 49121,
+  "train_names": 42969,
+  "train_artists": 1086,
+  "nearcopy_counts": {
+    "0.85": 12176,
+    "0.90": 6292,
+    "0.95": 3542,
+    "0.99": 1670
+  },
+  "nearest_cosine_quantiles": {
+    "0.05": 0.7489,
+    "0.25": 0.8173,
+    "0.5": 0.8619,
+    "0.75": 0.9114,
+    "0.95": 1.0
+  },
+  "inner_pairs_at_cut": 1095,
+  "inner_paintings_at_cut": 1653,
+  "kept_at_cut": 17840,
+  "kept_types": {
+    "religious": 6893,
+    "portrait": 2901,
+    "landscape": 2289,
+    "mythological": 1772,
+    "genre": 1464,
+    "still-life": 963,
+    "historical": 551,
+    "other": 497,
+    "interior": 464,
+    "study": 46
+  },
+  "authors": 3281,
+  "author_tiers": {
+    "exact": 236,
+    "given_surname": 118,
+    "surname_only": 188,
+    "none": 2739
+  },
+  "paintings_by_tier_kept": {
+    "exact": 4557,
+    "given_surname": 773,
+    "surname_only": 853,
+    "none": 11657
+  },
+  "unknown_author_kept": 495,
+  "new_artist_kept": 11162,
+  "new_artist_upper_kept": 12788,
+  "new_artist_artists": 2717,
+  "new_artist_types": {
+    "religious": 4101,
+    "portrait": 1686,
+    "landscape": 1548,
+    "mythological": 1175,
+    "genre": 885,
+    "still-life": 823,
+    "historical": 344,
+    "interior": 323,
+    "other": 253,
+    "study": 24
+  },
+  "nearest_same_artist_by_band": {
+    "0.85-0.90": {
+      "n": 5884,
+      "same_artist": 673
+    },
+    "0.90-0.95": {
+      "n": 2750,
+      "same_artist": 840
+    },
+    "0.95-0.99": {
+      "n": 1872,
+      "same_artist": 1627
+    },
+    "0.99-1.00": {
+      "n": 1670,
+      "same_artist": 1502
+    }
+  },
+  "samples": {
+    "0.85-0.90": [
+      {
+        "semart": "19873-1darmst.jpg",
+        "author": "HOLBEIN, Hans the Younger",
+        "title": "Darmstadt Madonna",
+        "cos": 0.8922,
+        "nearest": "piero-della-francesca_madonna-and-child-attended-by-angels"
+      },
+      {
+        "semart": "11023-502david.jpg",
+        "author": "DAVID, Jacques-Louis",
+        "title": "Portrait of Emmanuel-Joseph Siey?s",
+        "cos": 0.8606,
+        "nearest": "camille-corot_portrait-of-laurent-denis-sennegon-1842"
+      },
+      {
+        "semart": "37954-m_party.jpg",
+        "author": "STEEN, Jan",
+        "title": "A Merry Party",
+        "cos": 0.8785,
+        "nearest": "jan-steen_the-way-you-hear-it-1665"
+      },
+      {
+        "semart": "07406-bosco.jpg",
+        "author": "CANUTI, Domenico Maria",
+        "title": "St Michael Flinging the Rebellious Angels into the Abyss",
+        "cos": 0.8914,
+        "nearest": "giovanni-battista-tiepolo_the-apotheosis-of-the-spanish-monarchy-1766"
+      },
+      {
+        "semart": "05878-campagna.jpg",
+        "author": "B\u00d6CKLIN, Arnold",
+        "title": "Campagna Landscape",
+        "cos": 0.889,
+        "nearest": "theodore-rousseau_the-collier-s-hut"
+      },
+      {
+        "semart": "35839-valkhof1.jpg",
+        "author": "RUYSDAEL, Salomon van",
+        "title": "The Valkhof at Nijmegen",
+        "cos": 0.878,
+        "nearest": "cornelis-springer_along-the-canal-1844"
+      }
+    ],
+    "0.90-0.95": [
+      {
+        "semart": "21949-4lastsu3.jpg",
+        "author": "LEONARDO da Vinci",
+        "title": "The Last Supper",
+        "cos": 0.9437,
+        "nearest": "leonardo-da-vinci_the-last-supper-1495"
+      },
+      {
+        "semart": "18992-1virgin.jpg",
+        "author": "GUTI\u00c9RREZ CABELLO, Francisco",
+        "title": "Presentation of the Virgin at the Temple",
+        "cos": 0.9002,
+        "nearest": "domenico-ghirlandaio_presentation-of-the-virgin-1490"
+      },
+      {
+        "semart": "40991-01crucif.jpg",
+        "author": "UNKNOWN MASTER, French",
+        "title": "Crucifixion",
+        "cos": 0.9181,
+        "nearest": "fra-angelico_crucifixion"
+      },
+      {
+        "semart": "18199-0205grec.jpg",
+        "author": "GRECO, El",
+        "title": "Annunciation",
+        "cos": 0.9093,
+        "nearest": "el-greco_annunciation"
+      },
+      {
+        "semart": "21919-2annunc.jpg",
+        "author": "LEONARDO da Vinci",
+        "title": "Annunciation",
+        "cos": 0.9043,
+        "nearest": "leonardo-da-vinci_annunciation-1"
+      },
+      {
+        "semart": "40789-crucifix.jpg",
+        "author": "UNKNOWN MASTER, Bohemian",
+        "title": "Crucifixion",
+        "cos": 0.9269,
+        "nearest": "fra-angelico_crucifixion"
+      }
+    ],
+    "0.95-0.99": [
+      {
+        "semart": "03093-calvary.jpg",
+        "author": "BALTENS, Peeter",
+        "title": "Christ on the Road to Calvary",
+        "cos": 0.9504,
+        "nearest": "pieter-bruegel-the-elder_christ-carrying-the-cross-1564"
+      },
+      {
+        "semart": "18223-0404grec.jpg",
+        "author": "GRECO, El",
+        "title": "The Adoration of the Name of Jesus",
+        "cos": 0.9518,
+        "nearest": "el-greco_the-adoration-of-the-name-of-jesus"
+      },
+      {
+        "semart": "00970-10ponta1.jpg",
+        "author": "ANGELICO, Fra",
+        "title": "The Lamentation over St Francis",
+        "cos": 0.973,
+        "nearest": "fra-angelico_lamentation-over-st-francis"
+      },
+      {
+        "semart": "30919-knobelsd.jpg",
+        "author": "PESNE, Antoine",
+        "title": "Portrait of Georg Wenzeslaus von Knobelsdorff",
+        "cos": 0.9878,
+        "nearest": "antoine-pesne_georg-wenzeslaus-von-knobelsdorff-1738"
+      },
+      {
+        "semart": "18048-01scene.jpg",
+        "author": "GOZZOLI, Benozzo",
+        "title": "The School of Tagaste (scene 1, north wall)",
+        "cos": 0.9587,
+        "nearest": "benozzo-gozzoli_the-school-of-tagaste-1465"
+      },
+      {
+        "semart": "08513-1lands13.jpg",
+        "author": "C\u00c9ZANNE, Paul",
+        "title": "Ch\u00e2teau de M\u00e9dan",
+        "cos": 0.9725,
+        "nearest": "paul-cezanne_the-chateau-de-medan"
+      }
+    ],
+    ">=0.99": [
+      {
+        "semart": "18759-guard301.jpg",
+        "author": "GUARDI, Francesco",
+        "title": "Landscape with a Fisherman's Tent",
+        "cos": 0.993,
+        "nearest": "francesco-guardi_landscape-with-a-fisherman-s-1775"
+      },
+      {
+        "semart": "39491-08soranz.jpg",
+        "author": "TINTORETTO",
+        "title": "Portrait of Procurator Jacopo Soranzo",
+        "cos": 1.0,
+        "nearest": "tintoretto_portrait-of-jacopo-soranso"
+      },
+      {
+        "semart": "15595-11pala1.jpg",
+        "author": "GHIRLANDAIO, Domenico",
+        "title": "Madonna in Glory with Saints",
+        "cos": 1.0,
+        "nearest": "domenico-ghirlandaio_madonna-in-glory-with-saints"
+      },
+      {
+        "semart": "42752-1jairus.jpg",
+        "author": "VERONESE, Paolo",
+        "title": "Raising of the Daughter of Jairus",
+        "cos": 1.0,
+        "nearest": "paolo-veronese_raising-of-the-daughter-of-jairus"
+      },
+      {
+        "semart": "31942-04lady.jpg",
+        "author": "PONTORMO, Jacopo",
+        "title": "Lady with a Basket of Spindles",
+        "cos": 1.0,
+        "nearest": "jacopo-pontormo_lady-with-a-basket-of-spindles"
+      },
+      {
+        "semart": "22958-25confes.jpg",
+        "author": "LONGHI, Pietro",
+        "title": "The Confession",
+        "cos": 0.9925,
+        "nearest": "pietro-longhi_the-confession"
+      }
+    ]
+  },
+  "author_examples": {
+    "exact": [
+      "AACHEN, Hans von",
+      "BERMEJO, Bartolom\u00e9",
+      "BROUWER, Adriaen",
+      "CHASS\u00c9RIAU, Th\u00e9odore",
+      "CRANACH, Lucas the Elder",
+      "EAKINS, Thomas",
+      "GIORGIONE",
+      "HEEMSKERCK, Maerten van",
+      "LEIBL, Wilhelm",
+      "METSU, Gabriel",
+      "PIERO DELLA FRANCESCA",
+      "RODIN, Auguste",
+      "SIGNAC, Paul",
+      "S\u00c9RUSIER, Paul",
+      "TRUMBULL, John"
+    ],
+    "given_surname": [
+      "AIVAZOVSKY, Ivan Konstantinovich",
+      "ANTONIO DA CREVALCORE",
+      "BEERT, Osias the Elder",
+      "CRANACH, Lucas the Younger",
+      "FILIPPO DA VERONA",
+      "FRANCESCO DI VANNUCCIO",
+      "GIOVANNI DA RIMINI",
+      "GIOVANNI DI NICOLA DA PISA",
+      "GOYA Y LUCIENTES, Francisco de",
+      "JACOPO DA EMPOLI",
+      "JUAN DE FLANDES",
+      "LORENZO DA VITERBO",
+      "LUCHIAN, ?tefan",
+      "OSTADE, Adriaen Jansz. van",
+      "PIETRO DI DOMENICO DA MONTEPULCIANO"
+    ],
+    "surname_only": [
+      "ADAM, Albrecht",
+      "BROWN, Mather",
+      "CUYP, Benjamin Gerritsz.",
+      "EYCK, Hubert van",
+      "GRECO, Gennaro",
+      "HAMILTON, Johann Georg de",
+      "LA FOSSE, Charles de",
+      "LEFEBVRE, Claude",
+      "MARK\u00d3, Andr\u00e1s",
+      "MORRIS, William",
+      "PINO, Marco",
+      "RUISDAEL, Isaack van",
+      "STERN, Ignaz",
+      "TURNER, Joseph Mallord William",
+      "VINCENT, Fran\u00e7ois-Andr\u00e9"
+    ],
+    "none": [
+      "?LEWI?SKI, W?adis?aw",
+      "BELLE, Cl\u00e9ment-Louis-Marie-Anne",
+      "BREENBERGH, Bartholomeus",
+      "CHODOWIECKI, Daniel Nikolaus",
+      "DEVIS, Arthur",
+      "FRANCKEN, Hieronymus, I",
+      "HAAGEN, Joris Abrahamsz. van der",
+      "KNEBEL, Franz",
+      "L\u00d3PEZ Y PIQUER, Luis",
+      "MAZZANTI, Ludovico",
+      "NONO, Luigi",
+      "POURBUS, Frans the Younger",
+      "R\u00c9GNIER, Nicolas",
+      "STOOP, Dirck Willemsz.",
+      "VECCHIA, Pietro della"
+    ]
+  }
+}
