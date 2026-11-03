@@ -278,7 +278,8 @@ def write_cells(part, enc, cells, out=None, smoke=None):
         pp_outcome.check_cell(c, smoke=smoke)
         assert c['encoder'] == enc and c['data'] == DATA and c['task'] == task, (part, enc, pp_outcome.cell_key(c))
     path = cells_path(part, out)
-    mt_clu.write_cells(path, cells)
+    with PP.file_lock(path):
+        mt_clu.write_cells(path, cells)
     return path
 
 

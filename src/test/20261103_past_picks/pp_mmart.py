@@ -277,7 +277,8 @@ def write_cells(part, cells):
         assert c['sc'] in SC_NEW.values() and c['data'] == 'mmart_test' and c['task'] == part, c
         assert {'encoder', 'aspect', 'candidate', 'comparator', 'candidate_value', 'comparator_value', 'd', 'lo', 'hi', 'r',
                 'r_source', 'n_draws', 'seeds', 'n_rows'} <= set(c)
-    return mt_clu.write_cells(cells_path(part), cells)
+    with PP.file_lock(cells_path(part)):
+        return mt_clu.write_cells(cells_path(part), cells)
 
 
 # ============================================================================================ gates

@@ -337,8 +337,10 @@ def check_cells(part, enc, cells, smoke=None):
 
 def write_cells(part, enc, cells, out=None):
     """Merge into `cells_<part>.json`: the encoder's cells are replaced, the other encoders' kept (atomic; r14's writer).
-    Read-modify-write without a lock: run one encoder of a part at a time."""
-    return bs_artclu.write_cells(cells_path(part, out), cells, [enc])
+    Locked, so two encoders of a part may run at once."""
+    path = cells_path(part, out)
+    with PP.file_lock(path):
+        return bs_artclu.write_cells(path, cells, [enc])
 
 
 def score(part, enc, n_draws=None, workers=8, root=None, out=None):
