@@ -263,12 +263,13 @@ class Fake:
         return {'cstar': 'center+k3', 'plain': 'none+k0'}.get(arm)
 
     def recorded_range(self, set_, enc, aspect):
-        return 0.002, 'fake range'
+        return {'clip_l14': 0.002, 'siglip1': 0.003, 'siglip2': 0.004, 'qwen': 0.005}[enc], 'fake range'
 
     def record(self, name):
         self.picks_read.append(name)
         assert name == 'stage1_picks.json'
-        return {f'{arm}/mmart/clip_l14': {'pick': 'center+k1'} for arm in ('untold', 'matched', 'crl')}
+        return {f'{arm}/mmart/{enc}': {'pick': 'center+k1'}
+                for arm in ('untold', 'matched', 'crl') for enc in ns_paths.ENCODERS}
 
 
 @pytest.fixture
@@ -283,15 +284,18 @@ def by_sc(cells):
     return out
 
 
-def test_score_cells_gives_the_claim_cells_of_the_scs(fake):
-    cells = ns_ret.score_cells('mmart', 'clip_l14', ('SC6', 'SC7', 'SC8'), None, 60, workers=1)
+@pytest.mark.parametrize('enc', ns_paths.ENCODERS)
+def test_score_cells_gives_the_claim_cells_of_the_scs(fake, enc):
+    scs = ('SC6', 'SC7', 'SC8') if enc == 'clip_l14' else ('SC7', 'SC8')
+    cells = ns_ret.score_cells('mmart', enc, scs, None, 60, workers=1)
     want = {c['id'] for c in ns_outcome.claim_cells()
-            if c['set'] == 'mmart' and c['encoder'] == 'clip_l14' and c['sc'] in ('SC6', 'SC7', 'SC8')}
-    assert {c['id'] for c in cells} == want and len(cells) == 9
+            if c['set'] == 'mmart' and c['encoder'] == enc and c['sc'] in scs}
+    assert {c['id'] for c in cells} == want and len(cells) == 3 * len(scs)
     for c in cells:
         cc = ns_outcome.check_cell(c, smoke=True)          # the format 02 reads
         assert c['task'] == 'ret' and c['metric'] == 'map' and c['k'] is None
-        assert c['n_draws'] == 60 and c['r'] == 0.002 and c['r_source'] == 'fake range'
+        assert c['n_draws'] == 60 and c['r_source'] == 'fake range'
+        assert c['r'] == {'clip_l14': 0.002, 'siglip1': 0.003, 'siglip2': 0.004, 'qwen': 0.005}[enc]
         assert abs(c['d'] - (c['cand'] - c['comp'])) < 1e-15
         assert c['n_rows'] == N_E and 0 < c['n_queries'] <= N_E
     assert fake.picks_read                                   # new picks come through the committed-record reader
