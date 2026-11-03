@@ -390,3 +390,12 @@ def test_score_cells_qwen_artelingo_sc8_keeps_r11_probabilities(fake, monkeypatc
     cells = ns_ret.score_cells('artelingo', 'qwen', ('SC8',), None, 20, workers=1)
     assert sorted(set(called)) == [0, 1, 2, 3, 4] and len(cells) == 3
     assert not any(k == 'probs' and s == 'val' for k, s in fake.calls)
+
+
+def test_mmart_plain_rows_get_r15s_retrieval_unit_and_artelingo_rows_do_not(monkeypatch):
+    x = synth_rows(N_E, D, 1)[0] * np.float32(1.0000001)           # unit within 1e-7, not exactly
+    monkeypatch.setattr(ns_data, 'plain', lambda set_, split, enc: x)
+    mm = ns_ret._Rows('mmart', 'clip_l14')._plain_rows('test')
+    assert np.array_equal(mm, ns_ret._unit(x)) and not np.array_equal(mm, x)
+    ae = ns_ret._Rows('artelingo', 'qwen')._plain_rows('held')
+    assert np.array_equal(ae, x)

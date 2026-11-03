@@ -233,7 +233,9 @@ class _Rows:
 
     def _plain_rows(self, split):
         if split not in self._plain:
-            self._plain[split] = data.plain(self.set, split, self.enc)
+            x = data.plain(self.set, split, self.enc)
+            # MMArt: r15's retrieval form divides once more (`mt_ret.unit(features)`, `view_rows`); ArtELingo rows are r11's
+            self._plain[split] = _unit(x) if self.set == 'mmart' else x
         return self._plain[split]
 
     def seeds(self, arm):
