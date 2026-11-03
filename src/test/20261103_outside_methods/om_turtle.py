@@ -17,6 +17,7 @@ No label is read anywhere: the official every-20-steps accuracy evaluation draws
 CLI: `python om_turtle.py gate-ii --device cpu|cuda` writes `OUT/stage0/gate_ii.json`.
 """
 import argparse
+import hashlib
 import sys
 import time
 from pathlib import Path
@@ -56,11 +57,20 @@ def _effective_weight(v, g):
     return v * (g / v.norm(dim=1, keepdim=True))
 
 
-def batch_indices(n, seed, draws):
-    """The first `draws` batch index arrays the loop uses: the numpy stream after the official seed setting
-    (`np.random.seed(seed)`), `choice(n, min(10000, n), replace=False)` each time. A list of int arrays."""
+def _batch_draws(n, seed):
+    """The loop's batch index stream, one generator for `fit` and for `batch_indices` (so gate (ii) checks the
+    draws `fit` uses): the numpy stream after the official seed setting (`np.random.seed(seed)`), each draw
+    `choice(n, min(10000, n), replace=False)`. The 10,000 cap lives here. Yields int arrays without end."""
     rs = np.random.RandomState(seed)
-    return [rs.choice(n, size=min(BATCH, n), replace=False) for _ in range(draws)]
+    size = min(BATCH, n)
+    while True:
+        yield rs.choice(n, size=size, replace=False)
+
+
+def batch_indices(n, seed, draws):
+    """The first `draws` batch index arrays the loop uses (from `_batch_draws`). A list of int arrays."""
+    stream = _batch_draws(n, seed)
+    return [next(stream) for _ in range(draws)]
 
 
 def fit(z, K, seed, device, outer_steps=P.TURTLE['outer_steps'], threads=None):
@@ -82,7 +92,7 @@ def fit(z, K, seed, device, outer_steps=P.TURTLE['outer_steps'], threads=None):
         torch.set_num_threads(threads)
     try:
         torch.manual_seed(seed)
-        rs = np.random.RandomState(seed)
+        stream = _batch_draws(n, seed)
         zt = torch.from_numpy(z).to(device)                      # data stays on the device
         enc = torch.nn.Linear(d, K)                              # task encoder: init draw
         g = enc.weight.detach().norm(dim=1, keepdim=True).to(device).requires_grad_()
@@ -90,10 +100,9 @@ def fit(z, K, seed, device, outer_steps=P.TURTLE['outer_steps'], threads=None):
         b = enc.bias.detach().to(device).requires_grad_()
         opt = torch.optim.Adam([b, g, v], lr=OUTER_LR, betas=BETAS)
         _init_inner(d, K, device)                                # drawn before the loop, as in the official order
-        batch = min(BATCH, n)
         loss = entropy = float('nan')
         for _ in range(outer_steps):
-            idx = torch.from_numpy(rs.choice(n, size=batch, replace=False)).to(device)
+            idx = torch.from_numpy(next(stream)).to(device)
             zb = zt[idx]
             p = F.softmax(F.linear(zb, _effective_weight(v, g), b), dim=1)       # [batch, K]
             iw, ib = _init_inner(d, K, device)                   # cold start
@@ -113,8 +122,6 @@ def fit(z, K, seed, device, outer_steps=P.TURTLE['outer_steps'], threads=None):
             w_eff = _effective_weight(v, g)
             labels = F.linear(zt, w_eff, b).argmax(dim=1).cpu().numpy().astype(np.int32)
             weight, bias = w_eff.cpu().numpy().astype(np.float32), b.detach().cpu().numpy().astype(np.float32)
-        if device.type == 'cuda':
-            torch.cuda.synchronize(device)
     finally:
         torch.set_num_threads(old_threads)
     assert labels.shape == (n,) and weight.shape == (K, d) and bias.shape == (K,)
@@ -128,11 +135,16 @@ def _gate_path():
     return Path(OUT) / 'stage0' / 'gate_ii.json'
 
 
+def _code_sha256():
+    return hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
+
+
 def gate_ii(device):
     """Gate (ii) (D23). CPU part: our fit on the parity inputs equals the official run's saved weight and bias
     within 1e-5, the partition is identical, the batch draws equal numpy's. CUDA part: the GPU partition's AMI
-    against our CPU one at least 0.99. Writes `OUT/stage0/gate_ii.json`: the parts run so far; `pass` is true only
-    when both parts are present and pass. Returns the JSON content."""
+    against our CPU one at least 0.99. Writes `OUT/stage0/gate_ii.json`: the parts run so far, each with the sha256
+    of this file (`code_sha256`); `pass` is true only when both parts are present, pass and carry the same code
+    hash (a part from an older version of the code does not count). Returns the JSON content."""
     from sklearn.metrics import adjusted_mutual_info_score
     c = P.PARITY_TURTLE
     z = np.load(P.parity_file('inputs'))['qwen']
@@ -158,7 +170,7 @@ def gate_ii(device):
                       'max_abs_weight': dw, 'max_abs_bias': db, 'partition_identical': same,
                       'batch_indices_identical': bool(batch_same), 'tol': P.TOL_TURTLE, 'n_clusters': cpu['n_clusters'],
                       'threads': c['threads'], 'seconds': cpu['seconds'], 'K': c['K'], 'outer_steps': c['outer_steps'],
-                      'seed': c['seed'], 'reference_sha256': P.PARITY_SHA256['turtle']}
+                      'seed': c['seed'], 'reference_sha256': P.PARITY_SHA256['turtle'], 'code_sha256': _code_sha256()}
     else:
         assert device == 'cuda' and torch.cuda.is_available()
         gpu = fit(z, c['K'], c['seed'], 'cuda', outer_steps=c['outer_steps'])
@@ -166,8 +178,9 @@ def gate_ii(device):
         res['cuda'] = {'pass': bool(ami >= P.GPU_CPU_AMI), 'ami_vs_cpu': ami, 'threshold': P.GPU_CPU_AMI,
                        'n_clusters': gpu['n_clusters'], 'seconds': gpu['seconds'], 'K': c['K'],
                        'outer_steps': c['outer_steps'], 'seed': c['seed'],
-                       'tf32': bool(torch.backends.cuda.matmul.allow_tf32)}
-    res['pass'] = bool('cpu' in res and 'cuda' in res and res['cpu']['pass'] and res['cuda']['pass'])
+                       'tf32': bool(torch.backends.cuda.matmul.allow_tf32), 'code_sha256': _code_sha256()}
+    res['pass'] = bool('cpu' in res and 'cuda' in res and res['cpu']['pass'] and res['cuda']['pass']
+                       and res['cpu'].get('code_sha256') == res['cuda'].get('code_sha256') == _code_sha256())
     P.write_json(path, res)
     return res
 

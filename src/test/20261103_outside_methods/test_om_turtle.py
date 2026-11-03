@@ -31,7 +31,7 @@ def cpu_fit(ref):
 
 
 def test_cpu_gate_weights_bias_partition(ref, cpu_fit):
-    # Fails if the loss, the init draw order, the cold start, the batch draw or the weight norm differs from the run.
+    # Fails if the loss, the init draw order, the cold start or the weight norm differs from the run.
     _, t = ref
     assert cpu_fit['weight'].shape == t['weight'].shape and cpu_fit['weight'].dtype == np.float32
     assert cpu_fit['bias'].shape == t['bias'].shape and cpu_fit['bias'].dtype == np.float32
@@ -163,3 +163,68 @@ def test_gate_ii_cpu_part_writes_json(tmp_path, monkeypatch):
     import json
     on_disk = json.loads((tmp_path / 'stage0' / 'gate_ii.json').read_text())
     assert on_disk['cpu']['pass'] is True and 'cuda' not in on_disk and on_disk['pass'] is False
+
+
+def _oracle(z, K, seed, steps):
+    """The official order restated plainly: global numpy stream, torch's own weight norm, a fresh inner model per step."""
+    n, d = z.shape
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+    enc = torch.nn.utils.weight_norm(torch.nn.Linear(d, K))
+    opt = torch.optim.Adam(enc.parameters(), lr=1e-3)
+    new_inner = lambda: (lambda m: (m, torch.optim.Adam(m.parameters(), lr=1e-3)))(torch.nn.Linear(d, K))
+    new_inner()
+    for _ in range(steps):
+        zb = torch.from_numpy(z[np.random.choice(n, size=min(10000, n), replace=False)])
+        p = torch.softmax(enc(zb), 1)
+        m, o = new_inner()
+        for _ in range(10):
+            o.zero_grad()
+            torch.nn.functional.cross_entropy(m(zb), p.detach()).backward()
+            o.step()
+        opt.zero_grad()
+        err = torch.nn.functional.cross_entropy(m(zb).detach(), p)
+        (err - 10.0 * torch.special.entr(p.mean(0)).sum()).backward()
+        opt.step()
+    torch.nn.utils.remove_weight_norm(enc)
+    return enc.weight.detach().numpy(), enc.bias.detach().numpy()
+
+
+@pytest.mark.filterwarnings('ignore')
+@pytest.mark.parametrize('seed', [0, 3])
+def test_fit_equals_independent_oracle_on_subset_batches(seed):
+    # n 12,281 > 10,000, so each batch is a real subset. Fails if fit's batch stream is seeded another way, the batch
+    # is not the capped draw, one batch is reused, or fit ignores the drawn indices (all four sabotages differ > 1e-4).
+    rng = np.random.RandomState(7)
+    z = (rng.randn(5, 32)[rng.randint(5, size=12281)] * 3 + rng.randn(12281, 32)).astype(np.float32)
+    w, b = _oracle(z, 5, seed, 6)
+    f = T.fit(z, 5, seed, 'cpu', outer_steps=6, threads=8)
+    assert np.abs(f['weight'] - w).max() < 1e-6 and np.abs(f['bias'] - b).max() < 1e-6
+
+
+def test_fit_uses_the_batch_draws_generator(monkeypatch):
+    # Gate (ii) checks batch_indices; fit must take its batches from the same generator.
+    calls = []
+    orig = T._batch_draws
+    monkeypatch.setattr(T, '_batch_draws', lambda n, seed: calls.append((n, seed)) or orig(n, seed))
+    T.fit(np.random.RandomState(1).randn(50, 8).astype(np.float32), 2, 4, 'cpu', outer_steps=1, threads=1)
+    assert calls == [(50, 4)]
+
+
+def test_gate_pass_needs_both_parts_with_the_current_code_hash(tmp_path, monkeypatch, cpu_fit):
+    # Fails if a part from older code (different hash) or a missing hash can leave the top-level pass true.
+    import json
+    monkeypatch.setattr(P, 'OUT', tmp_path)
+    monkeypatch.setattr(T, 'OUT', tmp_path)
+    monkeypatch.setattr(T, 'fit', lambda *a, **k: cpu_fit)                 # the same fit, run once
+    path = tmp_path / 'stage0' / 'gate_ii.json'
+    path.parent.mkdir(parents=True)
+    cuda = {'pass': True, 'code_sha256': 'old'}
+    path.write_text(json.dumps({'cuda': cuda}))
+    res = T.gate_ii('cpu')
+    assert res['cpu']['code_sha256'] == T._code_sha256() and res['pass'] is False     # stale cuda part
+    cuda['code_sha256'] = T._code_sha256()
+    path.write_text(json.dumps({'cuda': cuda}))
+    assert T.gate_ii('cpu')['pass'] is True
+    path.write_text(json.dumps({'cuda': {'pass': True}}))
+    assert T.gate_ii('cpu')['pass'] is False                                           # part without a hash
