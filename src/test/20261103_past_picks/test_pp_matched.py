@@ -117,6 +117,24 @@ def test_stored_sample_readings_real():
     assert all(v['min'] <= v['seed0'] <= v['max'] for d in got.values() for v in d.values())
 
 
+def test_stored_sample_readings_asserts_seeds_zero_to_four_and_min_max(tmp_path):
+    doc = json.loads((PP.EG_PART2 / 'reported_stage3.json').read_text())
+    spread = doc['blocks']['K5']['aspects']['emotion']['point_spread']['M5']['r20']
+
+    def read(change):
+        d = json.loads(json.dumps(doc))
+        change(d['blocks']['K5']['aspects']['emotion']['point_spread']['M5']['r20'])
+        path = tmp_path / 'doc.json'
+        path.write_text(json.dumps(d))
+        return M.stored_sample_readings(path)
+
+    assert read(lambda sp: None)['emotion']['r20']['seed0'] == float(spread['per_seed']['0'])
+    with pytest.raises(AssertionError, match='seeds 0 to 4'):
+        read(lambda sp: sp['per_seed'].pop('4'))
+    with pytest.raises(AssertionError, match='min and max'):
+        read(lambda sp: sp.update(max=sp['max'] + 0.01))
+
+
 # ---------------------------------------------------------------------------------------------- CPU replay
 def test_replay_probs_tolerance_is_1e_5_max_abs():
     stored = np.random.default_rng(0).uniform(0.01, 0.99, size=(30, 40)).astype(np.float32)
@@ -222,22 +240,48 @@ def test_partitions_follow_the_requested_rows_in_shuffled_order(tmp_path, fake_m
         assert np.array_equal(got['own'][0], fake_probs(asked, s).argmax(axis=1))     # own = argmax, row by row
 
 
+def test_partitions_r20_is_fitted_on_exactly_the_requested_rows(tmp_path, fake_mapper):
+    keys = fake_keys(80)
+    write_fake(tmp_path, 'semart', 'dinov2_large', keys)
+    subset = list(np.random.default_rng(3).permutation(keys)[:50])
+    out = M.partitions('semart', 'dinov2_large', subset, root=tmp_path)
+    for s in PP.SEEDS:
+        assert np.array_equal(out[s]['r20'], M.MM.readings(fake_probs(subset, s))['r20'])
+
+
+def key_rows(ks, width):
+    """The stored image rows of the fake loader: a function of the key alone."""
+    return np.stack([np.random.default_rng(int(hashlib.sha256(k.encode()).hexdigest()[:8], 16)).normal(size=width)
+                     for k in ks]).astype(np.float32)
+
+
+def rows_to_probs(rows, seed):
+    """The fake mapper: row-wise, so its output depends on the rows it is given and on their order."""
+    return (1.0 / (1.0 + np.exp(-(rows[:, :PP.N_TOPICS].astype(np.float64) + seed)))).astype(np.float32).clip(0.001, 0.999)
+
+
 def test_export_writes_one_file_per_seed_through_the_loader(tmp_path, fake_mapper, monkeypatch):
     keys = fake_keys(40)
     calls = []
 
     def loader(dataset, enc, ks):
         calls.append((dataset, enc, len(ks)))
-        return np.random.default_rng(0).normal(size=(len(ks), PP.WIDTH[enc])).astype(np.float32)
+        return key_rows(ks, PP.WIDTH[enc])
 
     def infer(path, images):
         assert images.shape == (40, PP.WIDTH['clip_b16'])
-        return fake_probs(keys, int(str(path)[-1]))
+        return rows_to_probs(images, int(str(path)[-1]))
 
     monkeypatch.setattr(M, 'mapper_path', lambda enc, seed: f'mapper{seed}')
     paths = M.export('mmart_new', 'clip_b16', root=tmp_path, keys=keys, loader=loader, infer=infer)
     assert calls == [('mmart', 'clip_b16', 40)] and len(paths) == 5 and all(p.is_file() for p in paths)
-    assert np.array_equal(M.load_probs('mmart_new', 'clip_b16', 4, keys, root=tmp_path), fake_probs(keys, 4))
+    rows = key_rows(keys, PP.WIDTH['clip_b16'])
+    for seed in PP.SEEDS:                                            # per key: the exported row is the mapper of that key's row
+        got = M.load_probs('mmart_new', 'clip_b16', seed, keys, root=tmp_path)
+        assert np.array_equal(got, rows_to_probs(rows, seed))
+        for i in (0, 17, 39):
+            assert np.array_equal(M.load_probs('mmart_new', 'clip_b16', seed, [keys[i]], root=tmp_path)[0],
+                                  rows_to_probs(key_rows([keys[i]], PP.WIDTH['clip_b16']), seed)[0])
     with pytest.raises(AssertionError, match='sha256 order'):        # the evaluation order is sha256 of the key
         M.export('mmart_new', 'clip_b16', root=tmp_path / 'x', keys=sorted(keys), loader=loader, infer=infer)
     with pytest.raises(AssertionError):                              # MMArt's new keys: the new three only

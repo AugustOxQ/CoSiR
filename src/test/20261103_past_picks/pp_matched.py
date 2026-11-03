@@ -40,6 +40,7 @@ os.environ.setdefault('CUBLAS_WORKSPACE_CONFIG', ':4096:8')        # `base.deter
 import argparse
 import hashlib
 import json
+import socket
 import sys
 from pathlib import Path
 
@@ -104,8 +105,14 @@ def stored_sample_readings(path=None):
     out = {}
     for aspect in PP.ASPECTS:
         spread = doc['blocks']['K5']['aspects'][aspect]['point_spread']['M5']
-        out[aspect] = {r: dict(seed0=float(spread[r]['per_seed']['0']), min=float(spread[r]['min']),
-                               max=float(spread[r]['max'])) for r in READINGS}
+        out[aspect] = {}
+        for r in READINGS:
+            per_seed = spread[r]['per_seed']
+            assert sorted(per_seed) == [str(s) for s in PP.SEEDS], f'{aspect}/{r}: per-seed values are not seeds 0 to 4'
+            values = [float(per_seed[str(s)]) for s in PP.SEEDS]
+            assert min(values) == float(spread[r]['min']) and max(values) == float(spread[r]['max']), \
+                f'{aspect}/{r}: the stored min and max do not agree with the per-seed values'
+            out[aspect][r] = dict(seed0=values[0], min=float(spread[r]['min']), max=float(spread[r]['max']))
     return out
 
 
@@ -399,6 +406,7 @@ def gate_v_dinov2(part2=None, sample_root=None, out_root=None, write=True):
         new_w = json.loads((sample_root / 'part2/sample/matched/M5/P3__s0.json').read_text())['weights_sha256']
         d23['rerun_mapper_equals_stored'] = bool(stored_w == new_w)
         d23['rerun_device'] = json.loads((sample_root / 'part2/sample/matched/M5/P3__s0.json').read_text())['config']['device']
+        d23['rerun_hostname'] = socket.gethostname()
     except (AssertionError, OSError) as exc:
         d23 = {'pass': False, 'error': str(exc)}
     result['d23'] = d23
