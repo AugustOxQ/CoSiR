@@ -412,10 +412,11 @@ class Voids:
         if bad(g['i_aff_l14_parity']):
             add('gate i_aff_l14_parity failed', pairs(('photos',), NEW))
         if bad(g['ii']):
-            add('gate ii failed', pairs(KINDS[:4], NEW))
+            add('gate ii failed', pairs(KINDS[:4], NEW) | {('cost', e) for e in NEW})    # "every verdict": SC15 too
         for fam, v in g['iii'].items():
             if bad(v):
-                add(f'gate iii failed for {fam} checkpoints', pairs(KINDS[:4], NEW) | pairs(('semart',), CKPT_FAMILY[fam]))
+                add(f'gate iii failed for {fam} checkpoints',
+                    pairs(KINDS[:4], NEW) | {('cost', e) for e in NEW} | pairs(('semart',), CKPT_FAMILY[fam]))
         if bad(g['iv']):
             add('gate iv failed', pairs(KINDS[:4], ENCODERS))
         for e, v in g['v'].items():
@@ -426,11 +427,14 @@ class Voids:
         for path, kinds in (('artelingo', ('artelingo', 'semart')), ('affection', ('photos',)), ('mmart', ('mmart',))):
             if bad(g['vii'][path]):
                 add(f'gate vii failed on the {path} path (ranges or picks)', pairs(kinds, NEW), mode='ret')
+                if path == 'artelingo':       # the existing encoders' SC14 mAP unit is a range from this path (D20)
+                    add('gate vii failed on the artelingo path (SC14 retrieval units of the existing encoders)', set(),
+                        pairs(('semart',), OLD), 'teacher_ret')
         if bad(g['viii']):
             add('gate viii failed (probe)', {('cost', e) for e in ENCODERS})
         for e, r in runs.items():
             if bad(r['cstar']):
-                add(f'{e}: c* runs failed twice (r14 D18)', pairs(KINDS[:4], (e,)))
+                add(f'{e}: c* runs failed twice (r14 D18)', pairs(KINDS[:4], (e,)) | {('cost', e)})   # probe: seed-0 c*
             if bad(r['photo']):
                 add(f'{e}: photo runs failed twice (r14 D18)', pairs(('photos',), (e,)))
             if bad(r['matched']):
@@ -446,7 +450,8 @@ class Voids:
         pair = (KIND_OF_DATA[data], enc)
         out = []
         for reason, _, scope, mode in self.rules:
-            hit = {'all': True, 'matched': sc in MATCHED_SC, 'ret': task == 'ret', 'teacher': sc in TEACHER}[mode]
+            hit = {'all': True, 'matched': sc in MATCHED_SC, 'ret': task == 'ret', 'teacher': sc in TEACHER,
+                   'teacher_ret': sc in TEACHER and task == 'ret'}[mode]
             if pair in scope and hit:
                 out.append(reason)
         return out
@@ -459,9 +464,9 @@ class Voids:
 def teacher_claim(enc, aspect, task, data, outcome):
     """D17: a D17 cell at WIN gives 'better than'; a D17 cell at LEVEL, and any other cell at LEVEL or WIN, give 'level
     with or better than'; BELOW gives no claim."""
-    if outcome == BELOW:
+    assert outcome in (WIN, LEVEL, BELOW), f'teacher cell outcome {outcome!r}'
+    if not sc6_claim(outcome):
         return CLAIM_NONE
-    assert outcome in (WIN, LEVEL), f'teacher cell outcome {outcome!r}'
     if outcome == WIN and (enc, aspect, task, data) in PP.D17:
         return CLAIM_BETTER
     return CLAIM_LEVEL

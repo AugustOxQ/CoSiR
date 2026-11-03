@@ -359,14 +359,16 @@ def test_void_row_i_aff_l14_parity_voids_the_new_three_photos():
                drop_voided=True)
 
 
-def test_void_row_ii_voids_everything_of_the_new_three():
-    check_void(failed('gates', 'ii'), NEW_VERDICTS, cset(encs=NEW, datas=ALL_DATA), drop_voided=True)
+def test_void_row_ii_voids_everything_of_the_new_three_cost_included():
+    check_void(failed('gates', 'ii'), NEW_VERDICTS | vset(('cost',), NEW),
+               cset(encs=NEW, datas=ALL_DATA) | {('SC15', e) for e in NEW}, drop_voided=True)
 
 
 @pytest.mark.parametrize('fam,old', [('r10', ('qwen',)), ('r14', ('siglip2', 'siglip1', 'clip_l14'))])
 def test_void_row_iii_voids_new_three_and_semart_of_the_failed_family(fam, old):
-    check_void(failed('gates', 'iii', fam), NEW_VERDICTS | vset(('semart',), old),
-               cset(encs=NEW, datas=ALL_DATA) | cset(encs=old, datas=(SA,)), drop_voided=True)
+    check_void(failed('gates', 'iii', fam), NEW_VERDICTS | vset(('cost',), NEW) | vset(('semart',), old),
+               cset(encs=NEW, datas=ALL_DATA) | {('SC15', e) for e in NEW} | cset(encs=old, datas=(SA,)),
+               drop_voided=True)
 
 
 def test_void_row_iv_voids_everything_except_cost():
@@ -389,7 +391,9 @@ def test_void_row_vi_voids_every_semart_verdict_and_sc14():
 
 def test_void_row_vii_artelingo_voids_retrieval_of_new_three_on_artelingo_and_semart_not_ami_not_old_encoders():
     r = check_void(failed('gates', 'vii', 'artelingo'), vset(('artelingo', 'semart'), NEW),
-                   cset(encs=NEW, datas=(AE, SA), tasks=('ret',)), drop_voided=True)
+                   cset(encs=NEW, datas=(AE, SA), tasks=('ret',))
+                   | cset(encs=OLD, datas=(SA,), scs=('SC14',), tasks=('ret',)), drop_voided=True)
+    assert all(x['verdict'] == 'holds' for e, x in r['verdicts']['semart'].items() if e in OLD)   # verdicts stand
     assert r['verdicts']['semart']['qwen']['verdict'] == 'holds'
     # AMI teacher claims stand
     assert claim_of(r, ('SC6', 'clip_b32', 'style', 'clu', AE))['claim'] == 'level with or better than'
@@ -416,11 +420,11 @@ def test_void_row_viii_voids_cost_only():
 
 
 @pytest.mark.parametrize('enc', NEW)
-def test_runs_row_cstar_failed_voids_x_everywhere_except_cost(enc):
+def test_runs_row_cstar_failed_voids_x_everywhere_cost_included(enc):
     s = ok_status()
     s['runs'][enc].update(cstar='failed', photo='failed')           # the photo model starts from the c* checkpoint
-    check_void(s, vset(('artelingo', 'photos', 'mmart', 'semart'), (enc,)), cset(encs=(enc,), datas=ALL_DATA),
-               drop_voided=True)
+    check_void(s, vset(('artelingo', 'photos', 'mmart', 'semart', 'cost'), (enc,)),
+               cset(encs=(enc,), datas=ALL_DATA) | {('SC15', enc)}, drop_voided=True)
 
 
 @pytest.mark.parametrize('enc', NEW)
