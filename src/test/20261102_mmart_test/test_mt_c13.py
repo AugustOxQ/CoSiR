@@ -444,7 +444,10 @@ def test_code_provenance_matches_git_file_and_records_current_hash(monkeypatch):
         return SimpleNamespace(returncode=0, stdout=data, stderr=b'')
     monkeypatch.setattr(subprocess, 'run', run)
     monkeypatch.setattr(c, 'file_sha', lambda _: 'current-file-hash')
-    composite = hashlib.sha256((c.frozen.frozen_identity() + digest + 'current-file-hash').encode()).hexdigest()
+    composite = hashlib.sha256((c.frozen_identity_with(data) + digest + 'current-file-hash').encode()).hexdigest()
+    stale = hashlib.sha256((c.frozen_identity_with(Path(c.__file__).read_bytes()) + digest
+                            + 'current-file-hash').encode()).hexdigest()
+    assert not c.compare_code_provenance({'source_sha256': stale}, 'f093fb7')['matches']   # frozen part from disk
     result = c.compare_code_provenance({'source_sha256': composite}, 'f093fb7')
     assert result['matches'] and result['committed_source_sha256'] == composite
     assert not c.compare_code_provenance({'source_sha256': digest}, 'f093fb7')['matches']   # the bare file hash is not it
@@ -454,6 +457,12 @@ def test_code_provenance_matches_git_file_and_records_current_hash(monkeypatch):
     monkeypatch.setattr(subprocess, 'run', lambda *args, **kwargs: SimpleNamespace(returncode=1, stdout=b'', stderr=b'bad commit'))
     result = c.compare_code_provenance({'source_sha256': composite}, 'missing')
     assert not result['matches'] and result['error'] == 'bad commit'
+
+
+def test_frozen_identity_with_current_bytes_equals_the_frozen_identity():
+    current = Path(c.__file__).read_bytes()
+    assert c.frozen_identity_with(current) == c.frozen.frozen_identity.__wrapped__()
+    assert c.frozen_identity_with(current + b'#') != c.frozen.frozen_identity.__wrapped__()
 
 
 def test_record_refuses_failed_or_missing_code_identity():

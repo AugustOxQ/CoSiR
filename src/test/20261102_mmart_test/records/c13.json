@@ -1,0 +1,8 @@
+{
+ "pass": true,
+ "sha256": {
+  "stage2/outcomes.json": "e369ac7e4e805b70330bffc7b73432be9487f3529299ebee7da694f56f4fe7bf",
+  "stage2/cells_clu.json": "f99896c0a3f4e5f2f26a7c51b3c3ce435e560ed7ca069b04ccf65d864dbb9513",
+  "stage2/cells_ret.json": "c2fb6224022295f9526b2ebf1e5810940fe76a92d07496c0cb0e545cfa4cbdce"
+ }
+}

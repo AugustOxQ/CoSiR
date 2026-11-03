@@ -626,6 +626,23 @@ def compare_matched_identity(enc, seed, side, npz_sha256, input_sha256):
     return expected, actual
 
 
+def frozen_identity_with(data):
+    """bs_c13.frozen_identity() computed now, uncached, with this file's bytes replaced by data (compare only)."""
+    me = Path(__file__).resolve()
+    files = {Path(frozen.__file__)}
+    for module in tuple(sys.modules.values()):
+        path = getattr(module, '__file__', None)
+        if path and str(path).endswith('.py'):
+            p = Path(path)
+            if p.is_relative_to(frozen.P.TEST) and p.parent != frozen.P.ROUND:
+                files.add(p)
+    h = hashlib.sha256()
+    for p in sorted(files):
+        h.update(str(p).encode())
+        h.update(data if p.resolve() == me else p.read_bytes())
+    return h.hexdigest()
+
+
 def compare_code_provenance(doc, derive_commit):
     """Check the requested literal git-file digest without altering derive's schema."""
     import subprocess
@@ -637,10 +654,11 @@ def compare_code_provenance(doc, derive_commit):
         if completed.returncode:
             error = completed.stderr.decode('utf-8', errors='replace').strip()[:1000]
         else:
-            # derive's source_identity() is a composite (frozen sources + this file + mp_stores); rebuild it with the
-            # committed bytes of this file in place of the current ones (controller fix, 2026-11-03).
+            # derive's source_identity() is a composite (frozen sources + this file + mp_stores), and the frozen part
+            # hashes this file too (as a loaded module); rebuild both parts with the committed bytes of this file in
+            # place of the current ones (controller fixes, 2026-11-03).
             committed_file = hashlib.sha256(completed.stdout).hexdigest()
-            committed = hashlib.sha256((frozen.frozen_identity() + committed_file
+            committed = hashlib.sha256((frozen_identity_with(completed.stdout) + committed_file
                                         + file_sha(mp_stores.__file__)).encode()).hexdigest()
     except OSError as exc:
         error = str(exc)

@@ -53,3 +53,25 @@ run mode night. Outputs: `/data/SSD2/cosir_r15/20261102_mmart_test/outputs/` (`O
   tied to its code. Not applicable here: a voided encoder would block the record (every gate passed). 02:31 second fix
   round by resume, compare-side code only (the running derive stays valid): claim vocabulary, 20 matched-sidecar
   items, `--derive-commit f093fb7` source check, unique SC4 identities.
+- 02:35 second fix round back: only compare-side functions changed (an AST diff against f093fb7: `compare`,
+  `record_refusal`, `main`, three new compare helpers). Its source check hashed the bare file, but the derive records a
+  composite (frozen sources, this file, `mp_stores`); the brief's wording was wrong. The controller rebuilt the composite
+  with the committed file's bytes (three lines) and fixed its test: 95 tests pass. The smoke's `derived.json` comes from
+  an earlier draft of the file, so its source item fails by design; the subset also lacks 15 matched-arm input
+  bindings (only SigLIP 2 ran). Committed as c00fda2.
+- 02:44 `QUEUE stage2 OK rc=0 seconds=2189`: 8 scorer steps (clustering 637 to 825 s, retrieval 250 to 488 s) and
+  `decide`, none failed; 60 cells at 2,000 and 10,000 draws, n = 16,384. The round's outcomes (pending C13): all four
+  encoders hold; against the teacher 18 WIN, 4 LEVEL, 2 BELOW (emotion retrieval, Qwen and CLIP L/14); every D7 cell
+  WIN. Cell table: `.scratch/r15-mmart-test/stage2_table.txt`.
+- 03:47 full C13 derive done: `C13 derived cells=60 seconds=5177.9 scope=full`. Its `source_sha256` (8fbc1c…) is the
+  composite with the f093fb7 bytes of `mt_c13.py` in both parts, so the derive ran exactly f093fb7.
+- 03:48 compare (`--write-record --derive-commit f093fb7`): 6,697 items, 1 failed, max difference 0; the record was
+  refused. The one failure is the source item. Cause: the compare rebuilt only the file part of the composite;
+  the frozen part (`bs_c13.frozen_identity()`) also hashes this file as a loaded module, and compare took it from
+  the current file (c00fda2). Fix, compare only: `frozen_identity_with(bytes)` rebuilds the frozen part with the
+  committed bytes, and a test checks it equals the frozen identity on the current bytes; 96 tests pass. This also
+  corrects the 02:35 note: the smoke's `derived.json` came from the same code (8fbc1c…); its source item failed for
+  this same reason.
+- 03:51 **`C13 PASS items=6697 failed=0 max_abs=0 scope=full`**: every re-derived number equals the round's exactly
+  (the cut, 24 ranges, 9 picks with their tables, 60 cells, verdicts and claims). `records/c13.json` written; its
+  digests match `OUT/stage2/{outcomes,cells_clu,cells_ret}.json`.
