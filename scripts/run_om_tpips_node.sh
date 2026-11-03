@@ -10,6 +10,7 @@
 # extract     om_tpips.py extract for shard I of N on the sets (default: artelingo, then mmart); a rerun skips finished chunks.
 # Python: TPIPS_PY (default the node's CoSiR env). tpips 0.1.2 and peft 0.19.1 come from the input folder tpips_pylibs
 #         (pure Python, copied from the local venv) on PYTHONPATH; nothing is installed at run time.
+# Hub: a job-local HF_HUB_CACHE with refs/main pinned to the om_paths hashes, over the real hub (see pin_ref).
 # Inputs: manifests (om_tpips.py prepare) at node /local/wding/r18_in/tpips_inputs and tpips_pylibs at
 #         /local/wding/r18_in/tpips_pylibs (both DATA_MAP), bound at their local paths;
 #         images through --image-root-map (local /data/PDD/wikiart_proj/wikiart -> node /var/scratch/wding/Dataset/...);
@@ -93,7 +94,17 @@ R=$(mktemp -d -p "$JOB" om-root.XXXXXX)
 export NODE_RES LOCAL_OUT NODE_IN LOCAL_IN NODE_LIBS LOCAL_LIBS CODE JOB R TPIPS_PY HUB IMG_MAP ROUND
 export TMPDIR="$JOB/om-tmp" MPLCONFIGDIR="$JOB/om-mpl" HOME="$JOB/om-home" XDG_CACHE_HOME="$JOB/om-cache"
 export PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 PYTHONPATH="$LOCAL_LIBS"
-export WANDB_MODE=disabled HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 HF_HUB_CACHE="$HUB"
+# hf-fetch --revision writes no refs/main, and tpips loads the backbone by repo name: offline that name needs the ref.
+# A job-local hub links the real snapshots and pins refs/main to the two om_paths hashes; the probe checks them.
+HUB_JOB="$JOB/om-hub"
+pin_ref() {
+    mkdir -p "$HUB_JOB/$1/refs"
+    ln -sfn "$HUB/$1/snapshots" "$HUB_JOB/$1/snapshots"
+    printf %s "$2" > "$HUB_JOB/$1/refs/main"
+}
+pin_ref models--sywang--TPIPS-Embed-Qwen3VL-8B 86a1493c60121e656a1c075bc7aed88f25fcd4d4   # om_paths.TPIPS_SNAPSHOT
+pin_ref models--Qwen--Qwen3-VL-Embedding-8B 2c4565515e0f265c6511776e7193b22c0968ddc7      # om_paths.TPIPS_BACKBONE_SNAPSHOT
+export WANDB_MODE=disabled HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 HF_HUB_CACHE="$HUB_JOB"
 export OM_OUTPUTS="$LOCAL_OUT" OM_BATCH="$batch" OM_SETS="$sets" OM_SHARD="$shard" OM_OF="$of"
 # CUDA_VISIBLE_DEVICES is deliberately inherited from the allocation.
 unshare --user --map-root-user --mount bash -s -- "$mode" <<'NS'
@@ -150,6 +161,8 @@ for repo, snap in ((P.TPIPS_REPO, P.TPIPS_SNAPSHOT), (P.TPIPS_BACKBONE_REPO, P.T
     gb = sum(f.stat().st_size for f in files) / 1e9 if ok else 0
     print('snapshot', repo, snap[:8], 'ok' if ok else 'MISSING', f'{gb:.1f} GB in {len(files)} files')
     if not ok: problems.append(f'snapshot {repo}@{snap[:8]} missing or incomplete in {hub}')
+    ref = Path(os.environ['HF_HUB_CACHE']) / ('models--' + repo.replace('/', '--')) / 'refs' / 'main'
+    if ref.read_text() != snap: problems.append(f'job hub ref of {repo} is {ref.read_text()}, not {snap}')
 old, new = os.environ['IMG_MAP'].split('=', 1)
 man = json.loads(Path(os.environ['LOCAL_IN'], 'probe.json').read_text())
 for p in man['image'][:3]:
