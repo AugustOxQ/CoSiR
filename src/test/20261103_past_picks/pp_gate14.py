@@ -222,7 +222,7 @@ def gate_vii(enc, workers=8):
     ours = S.stage1_artelingo(enc, root=PP.R14_OUT / 'cstar' / enc, workers=workers)
     ours = dict(ours, affection=S.stage1_affection(enc, root=PP.R14_OUT, workers=workers))
     blocks = ('artclu', 'artret_ranges', 'artret_picks', 'affection')
-    res = compare({b: ours[b] for b in blocks}, {b: stored[b] for b in blocks}, full_draws=True)
+    res = compare(json.loads(json.dumps({b: ours[b] for b in blocks})), {b: stored[b] for b in blocks}, full_draws=True)
     doc = dict(gate='vii_r14', encoder=enc, blocks=list(blocks), seconds=round(time.monotonic() - t0), **res)
     _write(f'gate_vii_r14_{enc}.json', doc)
     return doc
