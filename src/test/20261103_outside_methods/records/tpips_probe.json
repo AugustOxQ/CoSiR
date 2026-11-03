@@ -1,0 +1,32 @@
+{
+ "n_images": 48,
+ "load_s": 34.0,
+ "attn": "sdpa",
+ "visual_tokens": {
+  "mean": 436.3125,
+  "min": 96,
+  "max": 1739
+ },
+ "image_px_mean": 454002.2083333333,
+ "gpu": "NVIDIA GeForce RTX 3090",
+ "batches": {
+  "1": {
+   "ms_per_image": 219.4,
+   "peak_gb": 17.02
+  },
+  "4": {
+   "ms_per_image": 297.7,
+   "peak_gb": 18.46
+  },
+  "8": {
+   "ms_per_image": 349.6,
+   "peak_gb": 20.38
+  }
+ },
+ "factor_cos_image0": {
+  "emotion|style": 0.7687,
+  "emotion|genre": 0.7582,
+  "style|genre": 0.8692
+ },
+ "dim": 4096
+}
