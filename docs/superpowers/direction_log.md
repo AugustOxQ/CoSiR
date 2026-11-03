@@ -158,6 +158,12 @@ abstract 2026-11-10, paper 2026-11-16, supplementary 2026-11-23.
   same). Minor defaults accepted (user, after seeing the recommendation): bare factor names for TPIPS, TPIPS on DAS6,
   r11 to r15's read-out, labels against c* with no gate. Record:
   [round log](../../src/test/20261103_outside_methods/20261103_outside_methods_log.md).
+- **r18 spec approved (2026-11-03 20:45, r18 spec chat):** [spec](specs/2026-11-03-outside-methods-design.md), labels
+  only (WIN, LEVEL, BELOW against c*) in SC1 to SC8; Opus `xhigh` rule review, all 27 findings applied. Code route
+  (user, after seeing the recommendation; first pick: clones under a permission rule): CLAY's math and TURTLE's loop
+  re-implemented and checked against references the official code made once, attended (round log); TEMI's
+  Apache-2.0 code copied with its notice; no CLAY or TURTLE code in the public repo. No container restart (user).
+  Build handoff: [r18 build](handoffs/2026-11-03-r18-build-handoff.md).
 - **Idea (B):** none yet.
 - **r17 grill (B), 2026-11-03 19:00 to 19:20 (r17 decide chat):** cluster counts per aspect, emotion 5, 8, 9, 16, 20,
   genre 5, 10, 16, 20, style 10, 20, 27, 40 (user, 1a, before seeing ours; ours was the same); AMI, NMI, ARI and ACC
@@ -167,6 +173,11 @@ abstract 2026-11-10, paper 2026-11-16, supplementary 2026-11-23.
   the minor batch m1 to m8 (user, after seeing the recommendation); glossary term "told, untold retrieval" (user).
   Class counts (label code, 2026-11-03): emotion 9 (EmoSet 8), style 27 on ArtELingo held and 20 on MMArt, genre 10.
   Spec written in [r17 decide 2](handoffs/2026-11-03-r17-decide-2-handoff.md).
+- **r17 spec approved (2026-11-03 20:45, r17 decide 2):** [spec](specs/2026-11-03-new-scores-design.md), 412 metric
+  cells in eight families (SC1 to SC8), CPU only; Opus `xhigh` rule review passed after fixes, all applied. Agent
+  defaults flagged in its brief: each class-count cell keeps its 20-cluster bar; PercepT read by k-means only at the
+  class count; PercepT's seeds drawn apart from c*'s in retrieval. No container restart (user). Build handoff:
+  [r17 build](handoffs/2026-11-03-r17-build-handoff.md).
 - **Why:** the user wants the collaborator's and the supervisor's view before more experiments, with the abstract on
   2026-11-10.
 - **Links:** [report](../reports/auto/percept/2027-01-03_mmart_test.md) ·
