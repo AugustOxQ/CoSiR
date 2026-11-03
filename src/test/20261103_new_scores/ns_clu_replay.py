@@ -138,7 +138,9 @@ def _unit32(x):
 def replay_a_r15(draws=FULL, aspects=ASPECTS, enc='clip_l14'):
     """r15 CLIP L/14 MMArt test: SC1 (c* against the frozen image) and SC4 (against the teacher) AMI values and intervals.
     The partitions are recomputed with `ns_metrics.partitions` (8 threads) from r15's exports and features, in r15's
-    order (`mt_clu.score_encoder`'s loaders)."""
+    order (`mt_clu.score_encoder`'s loaders). Frozen image and teacher rows go in as `mt_data.features` returns them
+    (already unit rows), as r15's `single_fixed` does: a second float32 normalisation (up to 6e-8 per entry) flips a
+    near-tie row in k-means (SC4 genre, state 0, one row of 16,384)."""
     import importlib
     import mt_clu
     import mt_paths
@@ -147,12 +149,12 @@ def replay_a_r15(draws=FULL, aspects=ASPECTS, enc='clip_l14'):
     cells_path = O15 / 'stage2/cells_clu.json'
     stored = _stored_cells(cells_path, encoder=enc, data='mmart_test')
     fit = lambda x: ns_metrics.partitions(x, ns_paths.K20, 'mmart')   # noqa: E731
-    frozen = fit(_unit32(md.features(mt_paths.DEFAULT_VIEW[enc], keys)))
+    frozen = fit(md.features(mt_paths.DEFAULT_VIEW[enc], keys))
     items = []
     for a in aspects:
         y = np.asarray(md.labels(keys, a)).astype(np.int64)
         cand = np.stack([fit(np.asarray(ex.load('new', enc, a, s, keys)).astype(np.float32)) for s in SEEDS])
-        teacher = fit(_unit32(md.features(mt_paths.TEACHER_VIEW[a], keys)))
+        teacher = fit(md.features(mt_paths.TEACHER_VIEW[a], keys))
         for sc, comp in (('SC1', frozen), ('SC4', teacher)):
             cell = _ami_cell(cand, comp, y, ns_paths.K20, draws)
             items += _cell_items(f'r15/{enc}/mmart/{a}/{sc}', cell, stored[f'{sc}/{a}'], cells_path, draws)
