@@ -1,6 +1,7 @@
 # c* past our picks: three more encoders, SemArt's new artists and the cost table: design
 
-> Date: 2026-11-03 19:42, revised after the rule review · Status: draft · Kind: experiment
+> Date: 2026-11-03 19:42, revised after the rule review · Status: approved 2026-11-03 20:44 (from the brief, r19 decide);
+> amended at approval (A1: the shared queue) · Kind: experiment
 > Builds on: decision A of 2026-11-03 18:30 (the [experiment overview](../../user_read/2026-11-03_experiment_overview.md)'s
 > plan, loop r19: items 16, 6 and 19) and the r19 grill (r19 decide chat, 2026-11-03: round 1 about 18:55, round 2
 > about 19:10, closing summary confirmed about 19:20; its answers are §4) · Constitution:
@@ -182,7 +183,7 @@ applied to SemArt; query expansion reads the SemArt gallery, with k fixed on val
   and CLIP L/14 X-c* r14's stage 1; the new encoders' X-c* and frozen images this round's stage 1. LEVEL unit (SC14):
   X-c*'s range over seeds 0 to 4 on ArtELingo validation, genre (AMI at 20 clusters; mAP at R0), from the five runs'
   validation exports with ArtELingo's genre labels.
-- **Cost (item 19, D8, D22).** On the local 3090 under the GPU lock, with no other compute process on the GPU (a
+- **Cost (item 19, D8, D22).** On the local 3090 as a `res-queue gpu` job (A1), with no other compute process on the GPU (a
   repeat during which one shows in `nvidia-smi` is discarded and run again, and the log says so); batch 32 for every
   pass; the round extractors' preprocessing, precision and settings (the MMArt prep's for Qwen); 3 warm-up batches not
   timed; CUDA-synchronized wall time over the 2,000 paintings. Model time, three repeats: images decoded to RGB at file
@@ -312,7 +313,11 @@ summary confirmed about 19:20). D16 to D25 are agent defaults of this spec (19:4
 | D24 | Failure scope | §3.5's table; r14 D18's rerun rule | a failure voids only what uses the failed part (an encoder's whole verdict) | agent default | 2026-11-03 19:42 |
 | D25 | Folders and time-box | round folder `src/test/20261103_past_picks/`, prefix `pp_`; outputs `/data/SSD2/cosir_r19/20261103_past_picks/outputs/`; new stores in new folders under `/data/SSD2/pre_extract/<dataset>/<encoder>/`; report about 11-06, at the latest 11-07 23:00; node rows not done by 11-07 18:00 reported as not run | the project's layout; node402 ends about 11-08 14:00 (wait for the node's end) | agent default | 2026-11-03 19:42 |
 
-**Amendments**: none.
+**Amendments**
+
+| ID | When | Change | Reason | Decided by | Before or after results | Places updated |
+|----|------|--------|--------|------------|-------------------------|----------------|
+| A1 | 2026-11-03 20:45 | all local GPU work through `res-queue gpu` (`--short` under 15 min), CPU-heavy steps through `res-queue cpu`, DAS6 launches through `cluster launch --queue`, each step queued on its own, in place of the GPU lock | the user's rule update for three loops at once (global `shared-resources.md`, 2026-11-03 20:45) | user | before | header, §3.4 Cost, §8, §9 Budget |
 
 ## 5. Assumptions and open questions
 
@@ -405,7 +410,7 @@ Exceptions: none.
 | A new encoder's run fails or diverges | the rerun rule | that encoder's dependent verdicts inconclusive; the others go on |
 | node402 is busy with r18, or slower than estimated | the timed first runs | the runs queue for a free GPU; the time-box holds; rows not done by 11-07 18:00 are reported as not run |
 | The heavy extraction cannot start before Wednesday 10:00 | the build's end time | it waits until 19:00 (weekday rule); the report moves to 11-07 at the latest |
-| GPU timing noise or another process on the 3090 | the three repeats; gate (viii); the lock | the probe runs alone; a failed (viii) stops it for tracing |
+| GPU timing noise or another process on the 3090 | the three repeats; gate (viii); the queue (A1) | the probe runs alone; a failed (viii) stops it for tracing |
 | r17's module is not merged | the build's start | context rows skipped and noted; no verdict depends on them |
 | Selection disclosure: the three encoders were left out of r14 because of their R6-5 results (B/32, B/16 inconclusive; DINOv2 NO-GO), so the choice leans toward hard cases; ArtELingo validation carried c*'s stopping, r10's 59 runs and r11 to r15's picks; Affection validation r12's and r13's picks; stage 1 adds up to 25 read-outs per arm; on SemArt, the SemArt check and the grill read type counts and cosines, no model score | validation numbers inflated | only test numbers are results; every pick is frozen before scoring; the claim names how the encoders were chosen |
 
@@ -425,7 +430,7 @@ Exceptions: none.
   23:00.
 - Budget: node402, 3 A6000: 15 X-c* runs about 2.2 GPU h (r14: about 516 s each), 15 photo models about 0.9 GPU h,
   DINOv2's M5 about 4 min, stage 0's three runs about 0.2 GPU h; together about 3½ GPU h, about 1¼ h of wall time on
-  three free GPUs. Local 3090, under the lock: extractions about 1¾ to 2 h, heavy, after 19:00 on weekdays and ending
+  three free GPUs, each run a `cluster launch --queue` (A1). Local 3090, through `res-queue gpu` (A1): extractions about 1¾ to 2 h, heavy, after 19:00 on weekdays and ending
   by 10:00 (MMArt B/32, B/16, DINOv2, 16,782 each; Affection the same three, 85,007 each; SemArt SigLIP 1, CLIP L/14,
   B/16, DINOv2 and Qwen `genre_word`, 21,382 each); the probe about 45 min (Qwen's four passes dominate), short. CPU
   about 3 to 4 h at 8 threads (ArtELingo, Affection and MMArt scoring for three encoders; SemArt for seven; C13).
