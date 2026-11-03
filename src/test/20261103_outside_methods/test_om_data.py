@@ -297,6 +297,23 @@ def test_plain_k_outside_the_planned_counts_is_refused(parts):
         save_plain(parts, k=11, labels=lab(0, 11))
 
 
+def test_cstar_k_outside_the_label_counts_is_refused(parts):
+    assert 16 in op.plain_ks('artelingo') and 16 not in op.label_ks('artelingo', 'emotion')
+    with pytest.raises(AssertionError, match='c\\* K'):
+        save_cstar(parts, 0, k=16, labels=lab(0, 16))
+    with pytest.raises(AssertionError, match='c\\* K'):
+        od.turtle_parts('artelingo', 'qwen', 'cstar', 16, aspect='emotion', out=parts['out'])
+    save_cstar(parts, 0, aspect='style', k=27, labels=lab(0, 27))         # ArtELingo style has 27 classes, MMArt 20
+    with pytest.raises(AssertionError, match='c\\* K'):
+        od.save_parts(np.zeros(3, dtype=np.int32), method='turtle', set_='mmart', enc='qwen', arm='cstar', k=27,
+                      aspect='style', seed=0, start=0, input_sha256='cd' * 32, out=parts['out'], **FIT)
+
+
+def test_cstar_label_counts_give_the_spec_fit_count():
+    pairs = sum(len(op.label_ks(s, a)) for s in op.SETS for a in op.ASPECTS)
+    assert pairs == 11 and pairs * len(op.ENCODERS) * len(op.SEEDS) == op.N_TURTLE_FITS - 192
+
+
 def test_temi_takes_the_same_form(parts):
     for s in (0, 1, 2):
         od.save_parts(lab(s, 9), method='temi', set_='artelingo', enc='qwen', arm='plain', k=9, start=s,

@@ -23,6 +23,7 @@ New here:
         (c*), refuses a missing file, a sidecar of another fit, a wrong npz sha256, keys that differ from
         `keys(set, split)` in value or order, labels outside [0, K). Arm names with the method suffix
         (`plain_turtle`, `cstar_turtle`) are accepted and stored as `plain`, `cstar`.
+        K: `om_paths.plain_ks(set)` (plain) or `om_paths.label_ks(set, aspect)` (c*, spec §3.3: 11 aspect-K pairs).
 """
 import hashlib
 import json
@@ -163,6 +164,7 @@ def _check_fit(set_, enc, arm, k, aspect, start, seed):
         assert aspect in op.ASPECTS, f'a c* fit needs an aspect, got {aspect!r}'
         assert seed in op.SEEDS, f'a c* fit needs a seed in {op.SEEDS}, got {seed!r}'
         assert start == op.TURTLE_CSTAR_START, f'c* fits use start {op.TURTLE_CSTAR_START}, got {start}'
+        assert k in op.label_ks(set_, aspect), f'c* K {k} is not one of {op.label_ks(set_, aspect)} for {aspect}'
 
 
 def _check_labels(y, n, k, what):
