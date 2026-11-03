@@ -1783,3 +1783,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-04-r19-build5-handoff.md
 - New chat: tab 'r19 build 5', session bade26c5-7a42-4fc8-81cd-8d7cd60d4e18
 
+[brief] CoSiR: r18 build 3 -> r18 build 4 (2026-11-04 00:52 Amsterdam)
+- Done: tickets 02 (after one fix round), 04 and 06 merged; gate (i) passes; gate (ii) passes, 2.54e-7 against 1e-5 and GPU against CPU AMI 1.0; text set B frozen; D20 set to batch 1.
+- State: 6 of 12 tickets merged. Node route works, only the probe's own weight check failed; it is fixed, rerun due.
+- Next: node probe, node gate probe, then tickets 07, 08, 09.
+- Blocked: nothing. GPU check passes.
+- Handoff: docs/superpowers/handoffs/2026-11-04-r18-build-4-handoff.md
+- New chat: tab 'r18 build 4', session 80de1fc3-2c7a-4bd6-8e4a-f235d3c5cc1c
+
