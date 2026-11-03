@@ -200,7 +200,9 @@ def keys(name):
 
 
 def labels(keys_):
-    """int64 [n]: the type index (position in `pp_paths.SEMART_TYPES`) of each key, joined by key."""
+    """int64 [n]: the type index (position in `pp_paths.SEMART_TYPES`) of each key, joined by key. `_frame()` runs
+    first, so the index-against-CSV type check has run before any label is given out."""
+    _frame()
     return type_labels(keys_, _index()[1])
 
 
@@ -248,13 +250,12 @@ def gate_vi():
 
 
 def _qwen_rows(key_list):
-    """float32 unit rows of the default Qwen store for `key_list`, joined by key through the store index."""
+    """float32 rows of the default Qwen store for `key_list`, joined by key through the store index."""
     files, _ = _index()
     pos = {k: i for i, k in enumerate(files)}
     x = np.load(QWEN_STORE / 'img.npy', mmap_mode='r')
     assert x.shape == (N_FILES, 2048)
-    rows = np.asarray(x[[pos[k] for k in key_list]], dtype=np.float32)
-    return rows / np.linalg.norm(rows, axis=1, keepdims=True)
+    return np.asarray(x[[pos[k] for k in key_list]], dtype=np.float32)    # inner_pairs normalises once
 
 
 def record():

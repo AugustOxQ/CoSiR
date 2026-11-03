@@ -188,7 +188,10 @@ def test_real_close_count_before_md5_is_217():
     rec = S.record()
     assert rec['close_before_md5'] == 217
     assert rec['close'] + rec['far'] == 11159
-    assert rec['close'] == len(S.keys('close'))
+    assert rec['close'] == len(S.keys('close')) == 217
+    cos = dict(zip(S._frame().image_file, S._frame().max_cos))    # the parquet's nearest cosine, joined by key
+    assert all(cos[k] >= 0.93 for k in S.keys('close'))
+    assert all(cos[k] < 0.93 for k in S.keys('far'))
 
 
 def test_real_labels_match_csv_and_counts():
