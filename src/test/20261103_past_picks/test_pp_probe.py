@@ -2,8 +2,11 @@
 
 Fake clocks advance by amounts the tests choose, so every sum, maximum, minimum and rate is known in advance. The GPU
 parts (encoders, nvidia-smi, the networks) are plumbing and are covered by the smoke run, not here."""
+import hashlib
 import json
+import sys
 import threading
+from types import SimpleNamespace
 
 import pytest
 
@@ -27,10 +30,14 @@ class FakeClock:
 
 
 # ------------------------------------------------------------------------------------------------ batches
+def batch_sizes(n, batch):
+    return [min(batch, n - i) for i in range(0, n, batch)]
+
+
 def test_batches_split_2000_into_63_with_a_short_last_batch():
-    sizes = P.batch_sizes(2000, 32)
+    sizes = batch_sizes(2000, 32)
     assert len(sizes) == 63 and sizes[:62] == [32] * 62 and sizes[-1] == 16 and sum(sizes) == 2000
-    assert P.batch_sizes(64, 32) == [32, 32]
+    assert batch_sizes(64, 32) == [32, 32]
 
 
 def test_warmup_batches_are_run_but_out_of_the_timings_and_sums():
@@ -179,6 +186,23 @@ def test_end_to_end_closes_every_batch_of_images():
     assert sorted(closed) == [0, 1, 10, 11]
 
 
+def test_end_to_end_prefetches_the_next_batch_while_the_current_batch_runs():
+    next_loaded = threading.Event()
+    clock = FakeClock()
+
+    def load(batch):
+        if batch == 1:
+            next_loaded.set()
+        return [batch]
+
+    def run(ims):
+        if ims == [0]:
+            assert next_loaded.wait(timeout=0.2), 'next decode must overlap run(0)'
+        clock.t += 1.0
+
+    assert P.end_to_end(run, [0, 1], load, sync=clock.sync, clock=clock) == [1.0, 1.0]
+
+
 # ------------------------------------------------------------------------------------------------ the model pass
 def test_model_repeat_uses_held_images_and_a_fake_encoder_with_a_cold_start():
     clock = FakeClock()
@@ -282,10 +306,10 @@ def test_sc15_reads_the_slowest_cstar_repeat_against_the_fastest_teacher_repeat(
 
 
 def test_repeats_pair_by_index_not_by_sorted_order(tmp_path):
-    # X repeat 2 is the slowest and the teacher repeat 2 the fastest: c*(r) = X(r) + networks(r) must pair by r.
-    write_raw(tmp_path, c_secs=[0.064, 0.064, 0.064], t_secs=T3, heads_secs=[Z, Z, 0.64])
+    # Networks repeat 0 is slowest: c*(r) = X(r) + networks(r) must preserve the repeat index.
+    write_raw(tmp_path, c_secs=[0.064, 0.064, 0.064], t_secs=T3, heads_secs=[0.64, Z, Z])
     cell = cells(tmp_path, encoders=['clip_b32'])[0]
-    assert cell['cstar_ms'] == pytest.approx([1.0, 1.0, 11.0], abs=1e-3)
+    assert cell['cstar_ms'] == pytest.approx([11.0, 1.0, 1.0], abs=1e-3)
 
 
 def test_rebuild_ignores_files_that_are_not_accepted_repeats(tmp_path):
@@ -363,7 +387,7 @@ def test_pass_names_and_the_teacher_passes():
 
 
 def test_a_full_2000_image_set_is_accepted_outside_smoke_and_standins_are_not(tmp_path):
-    n = tuple(P.batch_sizes(2000, 32))
+    n = tuple(batch_sizes(2000, 32))
     doc = write_raw(tmp_path, c_secs=[2.0, 2.0, 2.0], t_secs=T3, heads_secs=[Z] * 3, n=n)
     cell = P.build_cells(tmp_path, encoders=['clip_b32'], smoke=False)[0]
     assert cell['n_images'] == 2000 and cell['cstar_ms'] == pytest.approx([1.0] * 3, abs=1e-3)
@@ -372,3 +396,195 @@ def test_a_full_2000_image_set_is_accepted_outside_smoke_and_standins_are_not(tm
     with pytest.raises(AssertionError, match='stand-in'):
         P.build_cells(tmp_path, encoders=['clip_b32'], smoke=False)
     assert P.build_cells(tmp_path, encoders=['clip_b32'], smoke=True)
+
+
+def test_cost_table_whole_set_seconds_rates_and_passes_per_aspect(tmp_path, monkeypatch):
+    monkeypatch.setattr(PP, 'MMART_PRE', tmp_path / 'prep')
+    write_raw(tmp_path, c_secs=[0.064, 0.128, 0.192], t_secs=T3, heads_secs=[0.0064, 0.0128, 0.0192],
+              e2e={'x': 0.32, 'teacher': 0.96})
+    table = P.cost_table(tmp_path, cells(tmp_path, encoders=['clip_b32']))
+    whole = table['whole_set_16384']['clip_b32']
+    assert whole == pytest.approx({'cstar_s': 2.2 * 16384 / 1000,
+                                  # Three instructed passes: means 1.1 + 1 + 2.9/3 seconds over 64 images.
+                                  'teacher_s': (1.1 + 1 + 2.9 / 3) / 64 * 16384,
+                                  'cstar_e2e_s': 5.2 * 16384 / 1000,
+                                  'teacher_e2e_s': 15 * 16384 / 1000, 'paintings': 16384})
+    expected_ms = {'clip_b32': 2, 'heads_clip_b32': 0.2, 'qwen_emotion_focus': 17.1875,
+                   'qwen_style_word': 15.625, 'qwen_genre_word': 1000 * 2.9 / 3 / 64}
+    for name, ms in expected_ms.items():
+        assert table['passes'][name]['ms_per_image_mean'] == pytest.approx(ms)
+        assert table['passes'][name]['images_per_second'] == pytest.approx(1000 / ms)
+    for name, ms in [('clip_b32', 5), ('teacher', 15)]:
+        assert table['passes'][name]['ms_per_image_e2e'] == pytest.approx(ms)
+        assert table['passes'][name]['images_per_second_e2e'] == pytest.approx(1000 / ms)
+    assert table['passes_per_aspect'] == {'cstar': 1 / 3, 'teacher': 1}
+
+
+@pytest.fixture
+def fake_torch(monkeypatch):
+    cuda = SimpleNamespace(synchronize=lambda: None, reset_peak_memory_stats=lambda: None,
+                           max_memory_allocated=lambda: 0, max_memory_reserved=lambda: 0,
+                           get_device_name=lambda _: 'fake GPU')
+    torch = SimpleNamespace(cuda=cuda, get_num_threads=lambda: 8, __version__='fake')
+    monkeypatch.setitem(sys.modules, 'torch', torch)
+    monkeypatch.setitem(sys.modules, 'transformers', SimpleNamespace(__version__='fake'))
+    return torch
+
+
+@pytest.mark.parametrize('command', ['passes', 'heads'])
+@pytest.mark.parametrize('variable,value', [('OMP_NUM_THREADS', None), ('OMP_NUM_THREADS', '4'),
+                                            ('MKL_NUM_THREADS', None), ('MKL_NUM_THREADS', '4')])
+def test_commands_require_store_thread_settings_before_loading_models(monkeypatch, command, variable, value):
+    for name in ('OMP_NUM_THREADS', 'MKL_NUM_THREADS'):
+        monkeypatch.setenv(name, '8')
+    if value is None:
+        monkeypatch.delenv(variable)
+    else:
+        monkeypatch.setenv(variable, value)
+    with pytest.raises(AssertionError, match=variable + ' must be set to 8'):
+        if command == 'passes':
+            P.cmd_passes('clip_b32', 64, False)
+        else:
+            P.cmd_heads(['clip_b32'], 64, False)
+
+
+def test_cpu_load_is_logged_and_saved_for_model_and_e2e_without_discarding(tmp_path, monkeypatch, capsys, fake_torch):
+    monkeypatch.setattr(PP, 'OUT', tmp_path)
+    # Pin recording the actual torch value, independently of the required environment setting.
+    fake_torch.get_num_threads = lambda: 7
+    clock = FakeClock()
+    monkeypatch.setattr(P.time, 'perf_counter', clock)
+    loads = iter([(100, 90, 80), (99, 89, 79), (98, 88, 78), (97, 87, 77)])
+    monkeypatch.setattr(P.os, 'getloadavg', lambda: next(loads))
+
+    def encode(batch):
+        clock.t += 0.1
+
+    entry, discards = P.run_one_pass('clip_b32', 'default', encode, list(range(64)), 1,
+                                     e2e=lambda: rec('clip_b32', [0.1, 0.2], kind='e2e', repeat=None),
+                                     poll=lambda: [], encoder='clip_b32')
+    assert discards == []
+    P.update_passes(['a', 'b'], 64, lambda doc: doc['passes'].update(clip_b32=entry))
+    doc = P._read(tmp_path / 'probe' / 'passes.json')
+    assert doc['meta']['torch_num_threads'] == 7
+    for summary, tag, before, after in [(entry['repeats']['0'], 'r0', [100, 90, 80], [99, 89, 79]),
+                                        (entry['e2e'], 'e2e', [98, 88, 78], [97, 87, 77])]:
+        raw = P._read(tmp_path / 'probe' / 'batches' / summary['file'])
+        saved = doc['passes']['clip_b32']['repeats']['0'] if tag == 'r0' else doc['passes']['clip_b32']['e2e']
+        for record in (raw, summary, saved):
+            assert record['cpu_load_before'] == before and record['cpu_load_after'] == after
+        assert P.read_timing(tmp_path, 'clip_b32', 0 if tag == 'r0' else 'e2e', saved, 64, True) > 0
+    output = capsys.readouterr().out
+    for load in ([100, 90, 80], [99, 89, 79], [98, 88, 78], [97, 87, 77]):
+        assert str(load) in output
+
+
+@pytest.mark.parametrize('failure', ['model', 'e2e'])
+def test_exhausted_attempts_persist_current_and_earlier_repeat_discards(tmp_path, monkeypatch, fake_torch, failure):
+    monkeypatch.setattr(PP, 'OUT', tmp_path)
+    clock = FakeClock()
+    monkeypatch.setattr(P.time, 'perf_counter', clock)
+    monkeypatch.setattr(P.os, 'getloadavg', lambda: (1, 2, 3))
+    original = P.run_repeat
+
+    def without_wait(*args, **kw):
+        kw['sleep'] = lambda _: None
+        return original(*args, **kw)
+
+    monkeypatch.setattr(P, 'run_repeat', without_wait)
+    polls = iter([[(999, 1)], [], [], []] + [[(999, 1)]] * 10)
+
+    def encode(batch):
+        clock.t += 0.1
+
+    with pytest.raises(RuntimeError, match='all 5 attempts'):
+        P.run_one_pass('clip_b32', 'default', encode, list(range(64)), 2 if failure == 'model' else 1,
+                       e2e=(lambda: rec('clip_b32', [0.1], kind='e2e', repeat=None)) if failure == 'e2e' else None,
+                       poll=lambda: next(polls), encoder='clip_b32', on_discard=P.discard_logger(['a', 'b'], 64))
+    doc = P._read(tmp_path / 'probe' / 'passes.json')
+    discarded = doc['repeats_discarded']
+    assert len(discarded) == 6
+    assert [(d['repeat'], d['attempt']) for d in discarded] == [(0, 1)] + [
+        (1 if failure == 'model' else 'e2e', i) for i in range(1, 6)]
+    for d in discarded:
+        raw = P._read(tmp_path / 'probe' / 'discarded' / d['file'])
+        assert raw['total_seconds'] == d['total_seconds'] > 0
+        assert raw['cpu_load_before'] == d['cpu_load_before'] == [1, 2, 3]
+    assert len(list((tmp_path / 'probe' / 'discarded').glob('*.json'))) == 6
+
+
+def test_real_checkpoint_requires_a_matching_sha256_sidecar(tmp_path, monkeypatch, fake_torch):
+    monkeypatch.setattr(P, 'weights_dir', lambda _: tmp_path)
+    path = tmp_path / f'{PP.ASPECTS[0]}__s0.pt'
+    path.write_bytes(b'checkpoint')
+    monkeypatch.setitem(sys.modules, 'rb_rows', SimpleNamespace(REFERENCE='ref', recipe=lambda _: {'base': 'base'}))
+    monkeypatch.setitem(sys.modules, 'rb_student', SimpleNamespace(
+        build_model=lambda *a, **kw: (None, {aspect: object() for aspect in PP.ASPECTS})))
+    # Even --standin must not bypass verification of a real checkpoint.
+    with pytest.raises(AssertionError, match='missing sha256 sidecar'):
+        P.load_networks('clip_b32', 'cpu', standin=True)
+    P.write_json(path.with_suffix('.json'), {'weights_sha256': 'wrong'})
+    with pytest.raises(AssertionError, match='sidecar sha256 differs'):
+        P.load_networks('clip_b32', 'cpu', standin=False)
+    loaded = []
+    fake_torch.load = lambda *a, **kw: loaded.append(a[0]) or {}
+    for aspect in PP.ASPECTS:
+        checkpoint = tmp_path / f'{aspect}__s0.pt'
+        checkpoint.write_bytes(b'checkpoint')
+        P.write_json(checkpoint.with_suffix('.json'), {'weights_sha256': hashlib.sha256(b'checkpoint').hexdigest()})
+    # A dict models the real view's 'img' lookup as well as state loading and eval.
+    class View(dict):
+        def load_state_dict(self, state):
+            pass
+
+        def eval(self):
+            pass
+
+    monkeypatch.setattr(sys.modules['rb_student'], 'build_model',
+                        lambda *a, **kw: (None, {aspect: View(img='net') for aspect in PP.ASPECTS}))
+    nets, provenance = P.load_networks('clip_b32', 'cpu', standin=False)
+    assert nets == ['net'] * 3 and len(loaded) == len(provenance) == 3
+
+
+def test_teacher_checks_instructions_once_before_the_timed_loop(tmp_path, monkeypatch, fake_torch):
+    monkeypatch.setattr(PP, 'OUT', tmp_path)
+    clock = FakeClock()
+    monkeypatch.setattr(P.time, 'perf_counter', clock)
+    monkeypatch.setattr(P.os, 'getloadavg', lambda: (1, 2, 3))
+    for name in ('OMP_NUM_THREADS', 'MKL_NUM_THREADS'):
+        monkeypatch.setenv(name, '8')
+    fake_torch.cuda.is_available = lambda: True
+    instructions = {v: f'exact instruction for {v}' for v in P.TEACHER_VIEWS}
+    checks, calls = [], []
+
+    def check(enc, text):
+        assert enc.instruction == text
+        checks.append(text)
+        clock.t += 0.0012
+
+    def encode(ims, batch_size):
+        assert checks == list(instructions.values()), 'all views must be checked before timing'
+        calls.append(enc.instruction)
+        clock.t += 0.1
+
+    enc = SimpleNamespace(instruction='default instruction', encode_images=encode)
+    monkeypatch.setitem(sys.modules, 'mp_extract', SimpleNamespace(
+        held_identity=lambda v: {'instruction': instructions[v]}, assert_image_instruction=check))
+    monkeypatch.setitem(sys.modules, 'pp_extract', SimpleNamespace(load_encoder=lambda _: (enc, {}, None)))
+    monkeypatch.setattr(P, 'smoke_guard', lambda _: None)
+    monkeypatch.setattr(P, 'file_done', lambda name: name != P.TEACHER_E2E)
+    monkeypatch.setattr(P, 'any_file', lambda _: False)
+    monkeypatch.setattr(P, 'probe_keys', lambda n: [f'key{i}' for i in range(n)])
+    monkeypatch.setattr(P, 'image_paths', lambda keys: keys)
+    monkeypatch.setattr(P, 'image_path_params', lambda _: (1, 2))
+    monkeypatch.setattr(P, 'decode_all', lambda paths: [SimpleNamespace(size=(1, 1)) for _ in paths])
+    monkeypatch.setattr(P, 'load_images_from_files', lambda batch: batch)
+    monkeypatch.setattr(P, 'poll_gpu', lambda: [])
+    assert P.cmd_passes('qwen', 64, resume=True) == 0
+    assert calls == list(instructions.values()) * 2
+    raw = P._read(tmp_path / 'probe' / 'batches' / 'teacher__e2e.json')
+    assert raw['total_seconds'] == pytest.approx(0.6)
+    for v in P.TEACHER_VIEWS:
+        assert raw['pass_seconds'][v] == pytest.approx([0.1, 0.1])
+    entry = P._read(tmp_path / 'probe' / 'passes.json')['passes']['teacher']['e2e']
+    assert entry['cpu_load_before'] == entry['cpu_load_after'] == [1, 2, 3]
