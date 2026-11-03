@@ -1,0 +1,102 @@
+# Task: an inventory of CoSiR's experiments (facts only)
+
+This is a read-only fact-finding job in the repo /project/CoSiR. Read only there, and write only the one output file
+named below. Do not create `.ccg` task records. Delete nothing; if you would remove something, list it instead. Keep
+command output short (head, grep, tail; long output goes to a file in the output folder, then read its tail or grep
+it). No single command may run longer than about 4 minutes. No GPU jobs, no training, no commits.
+
+## Context
+
+CoSiR builds c*, a condition-free model over a frozen image encoder: one shared trunk with emotion, style and genre
+heads, trained with "buddy" graph losses built from Qwen3-VL-Embedding instructed image views, plus a teacher term
+(the "teacher" is the instructed Qwen image of an aspect). The main task is clustering (k-means with 20 clusters, AMI
+against ArtELingo-style labels); the secondary task is label retrieval (query-by-example, mAP). The "new line" started
+2026-10-15.
+
+Where things are:
+- Auto reports of the new line: /project/CoSiR/docs/reports/auto/percept/, from 2026-12-06_new_line_candidates.md to
+  2027-01-03_mmart_test.md (their names carry sequence dates, not real dates). Each opens with a results brief.
+  The rounds: r10 = recipe sweep (2026-12-28_recipe_sweep.md) and earlier r10 reports (12-11 to 12-27); r11 =
+  2026-12-29_retrieval.md; r12 = 2026-12-31_affection_confirmation.md; r13 = 2027-01-01_photo_finetune.md; r14 =
+  2027-01-02_backbones_sweep.md; r15 = 2027-01-03_mmart_test.md.
+- Direction log: /project/CoSiR/docs/superpowers/direction_log.md, one entry per round, newest first, down to the
+  heading "## 2026-10-15"; its "Parked ideas" section lists ideas never run. Stop reading at the 2026-10-15 entry.
+- Specs: /project/CoSiR/docs/superpowers/specs/ (files dated 2026-10-17 onward), each with a scope or "not covered"
+  section and a decision table.
+- Run logs: /project/CoSiR/src/test/<yyyymmdd_name>/<yyyymmdd_name>_log.md for folders dated 20261017 onward, plus
+  files such as bs_run_log.md, rs_node_log.md.
+- Literature notes: /project/CoSiR/docs/reports/literature/ (2026-10-21 onward), especially
+  2026-10-21_cvpr_literature_review.md, 2026-10-24_aspect_task_novelty_check.md,
+  2026-12-04_conditional_similarity_update.md, 2026-12-17_cluster_level_losses.md, 2026-12-20_ways_to_improve.md,
+  2026-12-30_signals_beyond_teacher.md, 2027-01-02_photo_aspect_datasets.md, 2027-01-03_paper_related_work_sources.md.
+- Paper notes: /project/CoSiR/docs/paper/cvpr2027_aspect_spaces/notes/ (facts_brief.md, drafting_brief_v1.md) and
+  drafts/v1/.
+- Do not read /project/CoSiR/archive/ (a closed line).
+
+Numbers: each auto report's own tables and results brief are the authority. When a result was measured again later,
+give the latest and note the earlier one.
+
+## Output
+
+Write one Markdown file:
+/tmp/claude-0/-project-CoSiR/8f9a6254-785b-4560-b56f-1bda07a81ec6/scratchpad/inventory/facts_inventory.md
+
+### A. Results inventory
+
+Tables: A1 clustering, A2 retrieval, A3 other measurements (supervised probe ceilings, Leiden readings, graded nDCG,
+the aspect-switch test, ARI/V/FMI, per-class diagnostics), A3 brief.
+
+Columns: round | dataset and split (ArtELingo development / validation / held; Affection validation / test; EmoSet
+test; MMArt test; Impressions; ArtELingo-28; others) | aspect(s) | encoder (Qwen3-VL-Embedding-2B, SigLIP 2, SigLIP 1,
+CLIP L/14, CLIP B/32, CLIP B/16, DINOv2, ...) | method row | metric | seeds | role (claim / descriptive / ablation /
+diagnostic) | headline number or outcome (WIN / LEVEL / BELOW where the report gives one) | source (file, section).
+
+Method rows to look for: c* (and its earlier names G, D2); the photo model (c* fine-tuned on Affection photos); the
+instructed Qwen image (teacher); the plain (default) image of each encoder; PercepT (core, K = 40, paper settings,
+matched PercepT per encoder, frozen PercepT on other datasets); CRL (Qwen and CLIP L/14 versions); CLAY; TPIPS; any
+other external method; ablation rows (removals: instructed graphs, buddy terms, relational term, content correction,
+direct teacher, caption endpoints, trunk, separate trunks, ...); knob or sensitivity rows (summarise them, e.g. "39
+knob rows, validation, seeds 1 to 3"); photo sweep rows.
+
+Collapse repeated rows: one line may cover "4 encoders x 3 aspects" when the same row ran on all; say which cells
+exist.
+
+### B. Coverage grid (derived from A only)
+
+B1 clustering and B2 retrieval. Rows: method rows. Columns: dataset x encoder (ArtELingo held: Qwen, SigLIP 2,
+SigLIP 1, CLIP L/14, other encoders if any; Affection test: the same; EmoSet test; MMArt test: four encoders). Cell:
+the aspects measured (E, S, G), or "-" when never measured. Mark cells that carry a claim with an asterisk.
+
+### C. Ablations and analysis already done
+
+Each ablation or analysis set: what it removes or varies, data split, encoder(s), task(s) (clustering only, or
+retrieval too), seeds, source.
+
+### D. Not run: comparators, datasets, metrics, ablations
+
+From the literature notes, the paper notes, the specs' "not covered" or scope sections and the direction log's
+"Parked ideas": every comparator method, dataset, metric or ablation that a source names as relevant to our task but
+that was never run. For each: what it is (one line), which source names it, why it was not run if a source says so
+(for example "r11 D5: the user chose CRL only"), and any feasibility fact (code public, training-free, which encoder,
+model size). Cover at least: CLAY; TPIPS; IC|TC and other text-criteria clustering methods; multiple or multi-facet
+clustering methods (for example Multi-MaP); general deep image clustering methods (for example DEC, SCAN, TEMI,
+TURTLE) if the notes name them; DEC or cluster-level losses (the direction log entry of 2026-10-20 decided a "track
+2" for them: check whether it ever ran); deeper heads or other architecture changes; evaluation of the caption (text)
+side; other clustering metrics (NMI, ACC, ARI) as paper columns.
+
+### E. Cost facts
+
+From run logs and reports: wall time and machine for (1) one c* training run at full scale, per encoder if given
+(local RTX 3090 or node402 A6000); (2) one photo fine-tune run; (3) one feature extraction per dataset and encoder
+(images per second or total time); (4) one PercepT training run; (5) CPU scoring of clustering and of retrieval,
+bootstrap included; (6) the r14 knob sweep in total; (7) any other timing given. Cite file and line. When a time is
+not recorded, write "not recorded".
+
+## Rules for the content
+
+- Facts only, each with its source (file and section or line). No recommendations.
+- Copy numbers exactly as the source gives them. When two sources disagree, give both.
+- When you cannot find something, write "not found"; never guess.
+- Keep the file under about 40 KB.
+
+When done, print one line: the output path and the number of rows in A1, A2 and D.
