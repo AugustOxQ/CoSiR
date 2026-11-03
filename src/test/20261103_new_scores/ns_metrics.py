@@ -24,6 +24,10 @@ from sklearn.metrics import adjusted_mutual_info_score, adjusted_rand_score, nor
 from sklearn.metrics.cluster import mutual_info_score
 from sklearn.metrics.cluster._expected_mutual_info_fast import expected_mutual_information
 from threadpoolctl import threadpool_limits
+import sklearn
+
+# The contingency forms copy scikit-learn 1.6.1's private code paths (_supervised.py); pin the version they copy.
+assert sklearn.__version__ == '1.6.1', f'ns_metrics copies scikit-learn 1.6.1 internals; found {sklearn.__version__}'
 
 import ns_paths
 
