@@ -108,3 +108,41 @@ def test_main_requires_verdicts_before_stage3(outputs, monkeypatch, command, arg
     else:
         ns_diag.main(argv)
         assert len(calls) == 1
+
+
+@pytest.mark.parametrize('diagnostic, expected_mode, expected_calls', [
+    ('told_untold', 'shared', 3), ('per_class', 'none', 2), ('qwen_crl', 'none', 1),
+])
+def test_retrieval_diagnostics_use_the_required_seed_mode(outputs, monkeypatch, diagnostic, expected_mode, expected_calls):
+    labels = np.array([0, 0, 1, 1], dtype=np.int64)
+    monkeypatch.setattr(ns_diag.ns_data, 'labels', lambda *args: labels)
+    monkeypatch.setattr(ns_diag.ns_clu_cells, '_labels', lambda *args: labels)
+
+    def ap(rows, arm, set_, aspect, y, box, workers):
+        values = np.full((5, 4) if arm in ('cstar', 'untold') else (4,), 0.5, dtype=np.float64)
+        return dict(ap=values, rows=np.arange(4), point=0.5), 'none+k0'
+
+    monkeypatch.setattr(ns_diag, '_ap', ap)
+    monkeypatch.setattr(ns_diag, 'arm_parts', lambda s, e, a, arm, k:
+                        np.zeros((5, 3, 4) if arm == 'cstar' else (3, 4), dtype=np.int32))
+    summary = dict(cand=0.5, comp=0.5, d=0., lo=-0.1, hi=0.1, n_draws=17)
+    monkeypatch.setattr(ns_diag.ns_clu, 'paired_cell', lambda *args, **kwargs:
+                        {m: summary for m in kwargs['metrics']})
+    calls = []
+
+    def paired_ret(cand, comp, r, draws, comp_seeds):
+        assert comp_seeds == expected_mode
+        assert r is None and draws == 17
+        assert cand.shape[0] == 5 and comp.ndim == (2 if comp_seeds == 'shared' else 1)
+        calls.append(comp_seeds)
+        return summary
+
+    monkeypatch.setattr(ns_diag.ns_ret, 'paired_ret', paired_ret)
+    if diagnostic == 'qwen_crl':
+        ns_diag.qwen_crl(workers=1, clu_draws=11, ret_draws=17, aspects=['emotion'])
+        path = outputs / 'stage3/qwen_crl_mmart.json'
+    else:
+        getattr(ns_diag, diagnostic)('mmart', 'qwen', workers=1, draws=17)
+        path = outputs / 'stage3' / diagnostic / 'mmart__qwen.json'
+    assert len(calls) == expected_calls
+    assert path.is_file()
