@@ -353,3 +353,74 @@ def test_stage1_refuses_an_encoder_the_set_does_not_score(fake):
         CC.stage1_ranges('emoset', 'siglip2')
     with pytest.raises(AssertionError):
         CC.stage1_ranges('artelingo', 'nope')
+
+
+# ------------------------------------------------------------------------------------------------ seeds, cache keys
+def _want_cell(cand, comp, y, k, metrics, got_cells):
+    want = ns_clu.paired_cell(cand, comp, y, k, metrics=metrics, draws=DRAWS)
+    assert got_cells
+    for c in got_cells:
+        for key in ('cand', 'comp', 'd', 'lo', 'hi'):
+            assert c[key] == pytest.approx(want[c['metric']][key], abs=1e-12), (c['id'], key)
+
+
+def test_photo_candidate_uses_seeds_0_to_4_in_cells_and_ranges(fake):
+    """SC4 and the photo stage 1 ranges pair the photo model's five seeds s = 0..4 (a pinned seed would make every range
+    0 and give one seed five times): numbers equal `ns_clu.paired_cell` / `ranges` of `photo(..., s)` rows per seed."""
+    set_, enc = 'affection', 'clip_l14'
+    k = P.CLASS_COUNT[(set_, 'emotion')]
+    assert len({fake.photo(set_, 'test', enc, s).tobytes() for s in range(5)}) == 5          # the fake differs per seed
+    cand = np.stack([fake.partitions(fake.photo(set_, 'test', enc, s), k, set_) for s in range(5)])
+    assert len({p.tobytes() for p in cand}) == 5
+    y = fake.labels_photo(set_, 'test')
+    cells = CC.score_cells(set_, enc, ('SC4',), ranges_for(set_, enc), DRAWS)
+    comps = {'teacher': fake.partitions(fake.rows('pteacher', (set_, 'test'), 9), k, set_),
+             'plain': fake.partitions(fake.rows('pplain', (set_, 'test', enc), 8), k, set_)}
+    assert {c['comparator'] for c in cells} == set(comps)
+    for name, comp in comps.items():
+        _want_cell(cand, comp, y, k, tuple(c['metric'] for c in cells if c['comparator'] == name),
+                   [c for c in cells if c['comparator'] == name])
+    # stage 1 ranges on the validation split
+    cand_v = np.stack([fake.partitions(fake.photo(set_, 'val', enc, s), k, set_) for s in range(5)])
+    yv = fake.labels_photo(set_, 'val')
+    want = ns_clu.ranges(cand_v, yv, k)
+    out = CC.stage1_ranges(set_, enc)
+    for m in P.CLASS_METRICS:
+        got = out[f'photo/{set_}/{enc}/emotion/{m}']
+        assert got['per_seed'] == want[m]['per_seed'] and got['r'] == want[m]['r']
+        assert len(set(got['per_seed'])) > 1 and got['r'] > 0
+
+
+@pytest.mark.parametrize('set_', ['artelingo', 'mmart'])
+def test_sc5_ami_at_20_cells_use_their_own_aspects_crl_partitions(fake, set_):
+    """Each `ami@20` cell is the paired cell of c* and CRL's rows of THAT aspect, both clustered at 20; the comparator
+    cache key carries the aspect, so CRL is fitted once per aspect at k 20 and never shared across aspects."""
+    enc = 'clip_l14'
+    cells = CC.score_cells(set_, enc, ('SC5',), ranges_for(set_, enc), DRAWS)
+    fixed = {c['aspect']: c for c in cells if c['id'].split('/')[4] == 'ami@20'}
+    assert set(fixed) == {'emotion', 'style', 'genre'}
+    split = P.HELD_SPLIT[set_]
+    crl_rows = {a: fake.rows('crl', (set_, split, a), 50) for a in fixed}
+    assert len({x.tobytes() for x in crl_rows.values()}) == 3                               # the fake differs per aspect
+    for a, c in fixed.items():
+        cand = np.stack([fake.partitions(fake.cstar(set_, split, enc, a, s), 20, set_) for s in range(5)])
+        comp = fake.partitions(crl_rows[a], 20, set_)
+        y = fake.labels_data(set_, split, a)
+        _want_cell(cand, comp, y, 20, ('ami',), [c])
+    fits20 = [c for c in fake.named('partitions') if c[1][0] == 50 and c[1][1] == 20]
+    assert len(fits20) >= 3                                                                 # one per aspect, at least
+
+
+def test_teacher_partitions_are_shared_across_encoders_in_one_cache(fake):
+    """The teacher's rows do not depend on the encoder (painting sets: per aspect; photo sets: the 'artwork' image), so
+    a cache shared across encoders fits each teacher partition once; the plain image is per encoder and is refitted."""
+    cache = {}
+    for enc in ('qwen', 'siglip1'):
+        CC.score_cells('artelingo', enc, ('SC1', 'SC3'), ranges_for('artelingo', enc), DRAWS, cache=cache)
+    assert len(fake.named('teacher')) == 3                                                   # 3 aspects, once
+    assert len(fake.named('plain')) == 6                                                     # per encoder (3 class counts each)
+    fake.calls.clear()
+    cache = {}
+    for enc in ('clip_l14', 'siglip1'):
+        CC.score_cells('affection', enc, ('SC4',), ranges_for('affection', enc), DRAWS, cache=cache)
+    assert len(fake.named('pteacher')) == 1 and len(fake.named('pplain')) == 2
