@@ -151,6 +151,9 @@ Rerunnable CPU smoke, one stage at a time. No queue, GPU, extraction, training o
 It uses small synthetic key subsets, stand-in exports and raw timing files, and the real MMArt/SemArt statistics.
 The recorded reduced gates are failed, so its outcomes demonstrate inconclusive wiring, not a scientific gate pass.
 It explicitly shows the uncommitted-record refusal and the strict wrong-status refusal.
+Smoke diagnostics run gain_share, percept_strongest, cost_rows and node_time from saved synthetic artifacts.
+The other seven diagnostics require full stores and are outside this small smoke. Production stage 4 runs all eleven.
+Prior diagnostic attempts are moved aside without deletion before a smoke diagnostic rerun.
 
 ```bash
 export PP_SMOKE=1

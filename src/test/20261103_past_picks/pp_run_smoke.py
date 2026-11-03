@@ -165,10 +165,20 @@ def stage4():
     res['cell_files'] = files
     R.jdump(PP.OUT / 'stage4/outcomes.json', res)
     print(o.table(res))
-    # Actual diagnostics invocation; absence on ticket 12 is an expected clean step failure.
-    rec = R.run_step('stage4', 'diagnostics', R.py('pp_diag', 'run'))
+    # These diagnostics consume the saved cells and timings without needing full real stores.
+    # Production pp_run always calls the full `pp_diag.py run`.
+    kinds = ['gain_share', 'percept_strongest', 'cost_rows', 'node_time']
+    units = PP.OUT / 'node/units.jsonl'
+    if not units.exists():
+        units.parent.mkdir(parents=True, exist_ok=True)
+        units.write_text(''.join(json.dumps(dict(kind='standin', enc=e, seed=s, status='ok', seconds=1.,
+                                                host='smoke', attempts=1)) + '\n' for e in ENCS for s in PP.SEEDS))
+    old_diag = PP.OUT / 'stage4/diag'
+    if old_diag.exists():
+        old_diag.rename(old_diag.with_name('diag_smoke_previous_' + str(__import__('time').time_ns())))
+    rec = R.run_step('stage4', 'diagnostics', R.py('pp_diag', 'run', '--only', *kinds, '--workers', 1))
     R.jdump(PP.OUT / 'stage4/diagnostics_status.json', dict(rc=rec['rc'], failed=rec['failed'],
-                                                         module_present=(PP.ROUND / 'pp_diag.py').exists()))
+                                                         module_present=(PP.ROUND / 'pp_diag.py').exists(), kinds=kinds))
 
 
 def main():
