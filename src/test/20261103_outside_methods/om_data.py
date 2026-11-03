@@ -41,7 +41,7 @@ from ns_data import keys, labels, plain, cstar  # noqa: E402,F401
 
 FACTORS = tuple(op.TPIPS_FACTORS.values())
 HELD_SPLIT = op.HELD_SPLIT
-METHODS = ('turtle', 'temi')
+METHODS = ('turtle', 'temi', 'replay')           # 'replay': ticket 07's gate (iii) b
 ARMS = ('plain', 'cstar')
 
 assert {k: v for k, v in ns_data.ns_paths.N_ROWS.items() if k[0] in op.SETS} == op.N_ROWS

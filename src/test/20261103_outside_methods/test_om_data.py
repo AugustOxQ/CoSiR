@@ -314,6 +314,13 @@ def test_cstar_label_counts_give_the_spec_fit_count():
     assert pairs == 11 and pairs * len(op.ENCODERS) * len(op.SEEDS) == op.N_TURTLE_FITS - 192
 
 
+def test_replay_method_of_gate_iii_b_round_trips(parts):
+    for s in (0, 1, 2):
+        od.save_parts(lab(s, 20), method='replay', set_='artelingo', enc='qwen', arm='plain', k=20, start=s,
+                      input_sha256='ab' * 32, out=parts['out'], **FIT)
+    assert od.turtle_parts('artelingo', 'qwen', 'plain', 20, method='replay', out=parts['out']).shape == (3, 12)
+
+
 def test_temi_takes_the_same_form(parts):
     for s in (0, 1, 2):
         od.save_parts(lab(s, 9), method='temi', set_='artelingo', enc='qwen', arm='plain', k=9, start=s,
