@@ -4,7 +4,7 @@ Spec: docs/superpowers/specs/2026-11-03-past-picks-design.md SC7 to SC10, §3.4 
 Everything inherited runs through r15's own functions (`mt_clu`, `mt_ret`, `mt_export`, `mt_data`) with the new three
 registered by `pp_register`; this module only wires them to r19's records, matched probabilities and labels. Nothing of
 r15's statistics is rewritten. Two orchestration loops are copies, line for line, because the originals read r15's own
-records and matched probabilities: `score_clu` (mt_clu.py:227 `score_encoder`) and `score_ret` (mt_ret.py:308
+records and matched probabilities: `score_clu` (mt_clu.py:247 `score_encoder`) and `score_ret` (mt_ret.py:308
 `score_encoder`, with `load_stage1` at :286).
 
   stage 1   `stage1_block(enc)`: r15's `clu_ranges`, `ret_ranges` and `picks` (arms `cstar` and `frozen`) from the
@@ -182,9 +182,16 @@ def _n_draws(n_draws, task):
 
 def score_clu(enc, *, block=None, matched=None, n_draws=None, workers=8, aspects=ASPECTS, expect_n=N_TEST):
     """SC7, SC9, SC10 (AMI) cells of X-c* on MMArt test, aspect by aspect. A copy, line for line, of `mt_clu.score_encoder`
-    (mt_clu.py:227) for keyset 'test' with three changes: the stage 1 record is r19's (`read_block`, committed in HEAD, read
+    (mt_clu.py:247) for keyset 'test' with three changes: the stage 1 record is r19's (`read_block`, committed in HEAD, read
     before any row), the matched arm is `matched(enc, keys)` (default `matched_new`), and the cells carry r19's labels.
-    SC10's LEVEL unit is X-c*'s own MMArt validation AMI range from the record."""
+    SC10's LEVEL unit is X-c*'s own MMArt validation AMI range from the record. Explicit blocks are for smoke/tests only."""
+    if block is not None:
+        assert PP.SMOKE, 'stage 1 is read from the committed records; passing block is for smoke runs and tests'
+    return _score_clu(enc, block=block, matched=matched, n_draws=n_draws, workers=workers, aspects=aspects, expect_n=expect_n)
+
+
+def _score_clu(enc, *, block=None, matched=None, n_draws=None, workers=8, aspects=ASPECTS, expect_n=N_TEST):
+    """Shared loop; replay supplies records read through r15's committed-record reader."""
     assert enc in mt_paths.ENCODERS and set(aspects) <= set(ASPECTS)
     n_draws = _n_draws(n_draws, 'clu')
     block = read_block(enc) if block is None else check_block(enc, block)       # §3.5: before any test row
@@ -221,7 +228,15 @@ def score_ret(enc, *, block=None, teacher=None, n_draws=None, workers=8, aspects
     """SC8 and SC10 (mAP) cells of X-c* on MMArt test, aspect by aspect: a copy, line for line, of `mt_ret.score_encoder`
     (mt_ret.py:308) for keyset 'test'. Each picked map is fitted on all 5,769 validation features (the seed's own c*
     export; X's frozen image; the teacher's view) and applied to the test rows; queries and gallery are the aspect's
-    labelled rows. Ranges and picks come from r19's committed record, the teacher's pick from r15's."""
+    labelled rows. Ranges and picks come from r19's committed record, the teacher's pick from r15's. Explicit block and
+    teacher records are for smoke/tests only."""
+    if block is not None or teacher is not None:
+        assert PP.SMOKE, 'stage 1 and teacher are read from the committed records; passing them is for smoke runs and tests'
+    return _score_ret(enc, block=block, teacher=teacher, n_draws=n_draws, workers=workers, aspects=aspects, expect_n=expect_n)
+
+
+def _score_ret(enc, *, block=None, teacher=None, n_draws=None, workers=8, aspects=ASPECTS, expect_n=N_TEST):
+    """Shared loop; replay supplies records read through r15's committed-record reader."""
     assert enc in mt_paths.ENCODERS and set(aspects) <= set(ASPECTS)
     n_draws = _n_draws(n_draws, 'ret')
     block = read_block(enc) if block is None else check_block(enc, block)       # §3.5: before any test row
@@ -329,7 +344,7 @@ def _stored_cells(part):
 
 def replay_iv(parts=('clu', 'ret'), aspects=ASPECTS, n_draws_clu=None, n_draws_ret=None, workers=8, expect_n=N_TEST):
     """Gate (iv), r15 part: r15's CLIP L/14 SC1 to SC4 values and intervals (`stage2/cells_{clu,ret}.json`) within 1e-9,
-    through `score_clu` and `score_ret` fed r15's stored exports (`r15_outputs`), r15's matched probabilities
+    through the shared `_score_clu` and `_score_ret` loops fed r15's stored exports (`r15_outputs`), r15's matched probabilities
     (`matched_r15`) and r15's committed records (`stage1_clip_l14.json`, `stage1_teacher.json`). Intervals are compared at
     the stored draw counts only (2,000 and 10,000); a reduced run (draws, parts or aspects) cannot pass."""
     assert set(parts) <= {'clu', 'ret'} and parts and set(aspects) <= set(ASPECTS)
@@ -342,10 +357,10 @@ def replay_iv(parts=('clu', 'ret'), aspects=ASPECTS, n_draws_clu=None, n_draws_r
             stored = _stored_cells(f'{part}')
             stored = [c for c in stored if c['aspect'] in aspects]
             if part == 'clu':
-                got = score_clu(REPLAY_ENC, block=block, matched=matched_r15, n_draws=n_clu, workers=workers,
+                got = _score_clu(REPLAY_ENC, block=block, matched=matched_r15, n_draws=n_clu, workers=workers,
                                 aspects=tuple(aspects), expect_n=expect_n)
             else:
-                got = score_ret(REPLAY_ENC, block=block, teacher=read_teacher(), n_draws=n_ret, workers=workers,
+                got = _score_ret(REPLAY_ENC, block=block, teacher=read_teacher(), n_draws=n_ret, workers=workers,
                                 aspects=tuple(aspects), expect_n=expect_n)
             full = (n_clu if part == 'clu' else n_ret) == PP.N_DRAWS[part]
             drawn[part] = dict(n_draws=n_clu if part == 'clu' else n_ret, intervals_compared=full)
@@ -400,6 +415,10 @@ def main(argv=None):
               f'-> {path} ({time.monotonic() - t0:.0f}s)')
         return 0
     if args.cmd == 'score':
+        for part in args.parts:
+            n_draws = getattr(args, f'n_draws_{part}')
+            if n_draws is not None and not PP.SMOKE:
+                assert n_draws == PP.N_DRAWS[part], f'{n_draws} draws: only smoke runs may use other counts'
         for part in args.parts:
             if part == 'clu':
                 cells = score_clu(args.enc, n_draws=args.n_draws_clu, workers=args.workers)

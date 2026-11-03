@@ -114,6 +114,7 @@ class World:
 
 @pytest.fixture
 def world(tmp_path, monkeypatch):
+    monkeypatch.setattr(PP, 'SMOKE', 1)  # injected records are for smoke/tests only
     w = World(tmp_path, np.random.default_rng(7))
     monkeypatch.setattr(mt_paths, 'OUT', tmp_path / 'mmart')
     monkeypatch.setitem(mt_paths.CSTAR_ROOT, ENC, tmp_path / 'cstar' / ENC)
@@ -277,7 +278,7 @@ def test_scoring_refuses_a_record_that_is_not_committed(world, matched, block, t
     with pytest.raises(RuntimeError, match='not committed'):
         M.score_clu(ENC, n_draws=10, expect_n=None)
     with pytest.raises(RuntimeError, match='not committed'):
-        M.score_ret(ENC, teacher=teacher, n_draws=10, expect_n=None)
+        M.score_ret(ENC, n_draws=10, expect_n=None)
 
 
 def test_scoring_reads_a_committed_record_and_refuses_an_edited_one(world, matched, block, teacher, git_records):
@@ -291,6 +292,26 @@ def test_scoring_reads_a_committed_record_and_refuses_an_edited_one(world, match
     record.write_text(json.dumps({'mmart': edited}))
     with pytest.raises(RuntimeError, match='not committed'):
         score_clu()
+
+
+@pytest.mark.parametrize('scorer, overrides', [
+    ('score_clu', ('block',)), ('score_ret', ('block',)), ('score_ret', ('teacher',)),
+    ('score_ret', ('block', 'teacher')),
+])
+def test_record_overrides_require_smoke(block, teacher, monkeypatch, scorer, overrides):
+    monkeypatch.setattr(PP, 'SMOKE', 0)
+    records = dict(block=block, teacher=teacher)
+    calls = []
+
+    def read(*a, **kw):
+        calls.append('read')
+        raise AssertionError('record override reached a reader')
+
+    monkeypatch.setattr(M, 'read_block', read)
+    forbid_reads(monkeypatch)
+    with pytest.raises(AssertionError, match='committed records.*smoke'):
+        getattr(M, scorer)(ENC, **{k: records[k] for k in overrides})
+    assert not calls
 
 
 def test_a_record_of_another_encoder_is_refused(world, matched, block, teacher):
@@ -561,3 +582,50 @@ def test_gate_vii_reproduces_the_stored_record_and_catches_a_changed_pick(world,
     box['rec'] = wrong
     res = M.replay_vii(ENC, workers=2, expect_n=None)
     assert not res['passed'] and res['n_not_ok'] == 1
+
+
+# ------------------------------------------------------------------------------------------------ score CLI protocol
+@pytest.mark.parametrize('smoke, clu, ret, allowed', [
+    (0, None, None, True), (0, 2000, 10000, True),
+    (0, 5, None, False), (0, None, 5, False), (1, 5, 5, True),
+])
+def test_score_cli_requires_protocol_draws(monkeypatch, smoke, clu, ret, allowed):
+    monkeypatch.setattr(PP, 'SMOKE', smoke)
+    calls = []
+
+    def scorer(part):
+        def run(enc, *, n_draws, workers):
+            calls.append((part, enc, n_draws))
+            return []
+        return run
+
+    monkeypatch.setattr(M, 'score_clu', scorer('clu'))
+    monkeypatch.setattr(M, 'score_ret', scorer('ret'))
+    monkeypatch.setattr(M, 'write_cells', lambda part, cells: calls.append(('write', part)))
+    argv = ['score', '--enc', ENC]
+    for part, draws in (('clu', clu), ('ret', ret)):
+        if draws is not None:
+            argv += [f'--n-draws-{part}', str(draws)]
+    if allowed:
+        assert M.main(argv) == 0
+        assert calls == [('clu', ENC, clu), ('write', 'clu'), ('ret', ENC, ret), ('write', 'ret')]
+    else:
+        with pytest.raises(AssertionError, match='only smoke runs'):
+            M.main(argv)
+        assert not calls, 'validate both draw counts before scoring or writing either part'
+
+
+def test_gate_iv_accepts_committed_records_outside_smoke(r15_files, monkeypatch):
+    monkeypatch.setattr(PP, 'SMOKE', 0)
+    reads = []
+    reader = mt_paths.read_committed_record
+
+    def read(name):
+        reads.append(name)
+        return reader(name)
+
+    monkeypatch.setattr(mt_paths, 'read_committed_record', read)
+    res = replay_iv(n_draws_clu=DRAWS['clu'] // 2, n_draws_ret=DRAWS['ret'] // 2)
+    assert reads == [f'stage1_{ENC}.json', 'stage1_teacher.json']
+    assert res['values_ok'] and not res['passed'] and not res['complete']
+    assert all(not d['intervals_compared'] for d in res['draws'].values())
