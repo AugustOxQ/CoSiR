@@ -162,3 +162,20 @@ def read_committed_record(name):
         if head.returncode != 0 or head.stdout != text:
             raise RuntimeError(f'record {rel} is not committed unchanged in HEAD; commit stage 1 before stage 2')
     return json.loads(text)
+
+
+from contextlib import contextmanager  # noqa: E402
+
+
+@contextmanager
+def file_lock(path):
+    """Exclusive lock beside `path` (`<path>.lock`), so parallel steps merge into one cells file one at a time."""
+    import fcntl
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(str(path) + '.lock', 'w') as fh:
+        fcntl.flock(fh, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(fh, fcntl.LOCK_UN)

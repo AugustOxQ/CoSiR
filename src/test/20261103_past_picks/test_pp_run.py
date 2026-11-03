@@ -72,3 +72,24 @@ def test_stale_gate_is_not_accepted_after_a_crash(tmp_path, monkeypatch):
     rec = R.run_step('stage0', 'gate_iv_r15', [R.sys.executable, '-c', 'raise SystemExit(1)'], [gate], (0, 1))
     assert rec['failed'] and rec['attempt'] == 2 and 'stale' in rec['problem']
     assert R.collect_gates()[1]['gates']['iv'] == 'failed'
+
+
+def _clean_status(tmp_path, monkeypatch):
+    monkeypatch.setattr(R, 'OUT', tmp_path)
+    def ok(x):
+        return {k: ok(v) for k, v in x.items()} if isinstance(x, dict) else 'ok'
+    status = R.collect_gates()[1]
+    return {'gates': ok(status['gates']), 'runs': ok(status['runs'])}
+
+
+def test_stage2_skips_only_the_voided_path(tmp_path, monkeypatch):
+    clean = _clean_status(tmp_path, monkeypatch)
+    encs = ('clip_b32', 'clip_b16')
+    ts = R.tasks(2, encs)
+    names = [t['name'] for t in ts]
+    assert [t['name'] for t in R.skip_voided(ts, encs, clean)] == names
+    bad = json.loads(json.dumps(clean))
+    bad['gates']['i_store']['clip_b32']['affection'] = 'failed'
+    kept = [t['name'] for t in R.skip_voided(ts, encs, bad)]
+    assert set(names) - set(kept) == {'score_affection_clip_b32'}
+    assert 'Skipped affected path' in (tmp_path / 'stage2/logs/score_affection_clip_b32.log').read_text()

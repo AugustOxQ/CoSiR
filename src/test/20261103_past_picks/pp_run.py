@@ -414,6 +414,35 @@ def tasks(stage, encs):
     return result
 
 
+def skip_voided(ts, encs, status):
+    """Stage 2: drop (and log as skipped) the steps whose cells are all void in the committed `status`; keep the others."""
+    from pp_outcome import Voids, required_cell_keys
+    voids = Voids(status)
+    kept = []
+    for t in ts:
+        enc = next(e for e in encs if t['name'].endswith('_' + e))
+        if t['name'].startswith('score_semart_'):
+            data, task = 'semart_new', None
+        elif t['name'].startswith('score_mmart_'):
+            data, task = 'mmart_test', ('clu' if '_clu_' in t['name'] else 'ret')
+        elif t['name'].startswith('score_affection_'):
+            data, task = 'affection_test', None
+        else:
+            data, task = 'artelingo_held', ('clu' if '_clu_' in t['name'] else 'ret')
+        keys = [k for k in required_cell_keys(enc) if k[4] == data and (task is None or k[3] == task)]
+        if keys and all(voids.cell(k) for k in keys):
+            log = OUT / 'stage2/logs' / (t['name'] + '.log')
+            log.parent.mkdir(parents=True, exist_ok=True)
+            why = sorted({reason for k in keys for reason in voids.cell(k)})
+            log.write_text('Skipped affected path: ' + '; '.join(why) + '\n')
+            _record('stage2', dict(step=t['name'], argv=t['argv'], rc=-1, attempt=0, seconds=0,
+                                   failed=True, skipped=why, log=str(log), at=now()))
+            print(f'PP_RUN stage2 {t["name"]} skipped: affected path')
+        else:
+            kept.append(t)
+    return kept
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('stage', choices=('0', '1', '2', '3', '4', '_internal', 'status'))
@@ -453,31 +482,7 @@ def main(argv=None):
         previous = last_step(4, 'decide')
         assert previous and not previous['failed'], 'diagnostics needs successful outcomes first'
     if stage == 2:
-        from pp_outcome import Voids, required_cell_keys
-        voids = Voids(PP.read_committed_record('status.json'))
-        kept = []
-        for t in ts:
-            enc = next(e for e in args.enc if t['name'].endswith('_' + e))
-            if t['name'].startswith('score_semart_'):
-                data, task = 'semart_new', None
-            elif t['name'].startswith('score_mmart_'):
-                data, task = 'mmart_test', ('clu' if '_clu_' in t['name'] else 'ret')
-            elif t['name'].startswith('score_affection_'):
-                data, task = 'affection_test', None
-            else:
-                data, task = 'artelingo_held', ('clu' if '_clu_' in t['name'] else 'ret')
-            keys = [k for k in required_cell_keys(enc) if k[4] == data and (task is None or k[3] == task)]
-            if keys and all(voids.cell(k) for k in keys):
-                log = OUT / 'stage2/logs' / (t['name'] + '.log')
-                log.parent.mkdir(parents=True, exist_ok=True)
-                why = sorted({reason for k in keys for reason in voids.cell(k)})
-                log.write_text('Skipped affected path: ' + '; '.join(why) + '\n')
-                _record('stage2', dict(step=t['name'], argv=t['argv'], rc=-1, attempt=0, seconds=0,
-                                       failed=True, skipped=why, log=str(log), at=now()))
-                print(f'PP_RUN stage2 {t["name"]} skipped: affected path')
-            else:
-                kept.append(t)
-        ts = kept
+        ts = skip_voided(ts, args.enc, PP.read_committed_record('status.json'))
     done = run_graph(f'stage{stage}', ts)
     bad = [name for name, rec in done.items() if rec['failed']]
     print(f'PP_RUN_SUMMARY stage{stage} steps={len(done)} failed={len(bad)} {bad}')

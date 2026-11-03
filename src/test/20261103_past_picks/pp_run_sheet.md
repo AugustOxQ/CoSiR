@@ -1,7 +1,9 @@
 # r19 run sheet (ticket 12)
 
 Run from the checkout holding all merged r19 code. The runner never commits.
-Use eight threads. No worker count above eight. Each CPU command below queues each step on its own.
+Order: 1. parity; 2. node gate (ii), c*, photo, M5; 3. rest of extraction; 4. probe; 5. stage 3; 6. stage 0;
+7. stage 1; 8. commit; 9. stage 2; 10. C13; 11. stage 4.
+Use eight threads. No worker count above eight. Each CPU command below queues each step on its own; `PP_CPU_JOBS` (default 3) sets how many reservations are open at once, and merge, collect, decide and diagnostics steps wait for all earlier steps.
 GPU work ends by 10:00 on a weekday. Heavy work that misses that window waits until 19:00.
 CPU scoring may run until about 13:00 on 2026-11-04.
 
@@ -15,18 +17,21 @@ unset PP_SMOKE PP_OUTPUTS
 
 Affection extraction is ALREADY DONE. Skip it. Do not rerun `pp_extract_queue.sh affection` or `all`.
 The sealed stores refuse rewrites. Check the three successful Affection lines and the three store-check JSONs.
-Parity is next. MMArt and SemArt follow the node jobs below. The queue script reserves each GPU step separately.
+Parity is next. `sh "$R/pp_extract_queue.sh" parity` runs in the background beside the node jobs (short local GPU steps), so it does not hold up the node's start. MMArt and SemArt follow the node jobs below. The queue script reserves each GPU step separately.
 
 ```bash
 sh "$R/pp_extract_queue.sh" parity                  # up to 12 min per view
-rg 'extract-affection-(clip_b32|clip_b16|dinov2_large)' "$OUT/stage0/gate_i/extract_queue_status.txt"
+grep -E 'extract-affection-(clip_b32|clip_b16|dinov2_large)' "$OUT/stage0/gate_i/extract_queue_status.txt"
 $PY -c 'import json, pathlib; p=pathlib.Path("/data/SSD2/cosir_r19/20261103_past_picks/outputs/stage0/gate_i"); print({e:json.loads((p/f"store_affection_{e}.json").read_text())["ok"] for e in ("clip_b32","clip_b16","dinov2_large")})'
 ```
 
 The three Affection lines must each end in exit code 0. The three checks must be true.
 Use `pp_node_plan.sh` as the full input-check and node-smoke plan. It only prints commands.
 The controller already applied the data map. Do not clean node jobs in this run.
-Before the first pull, prepare the result symlink in the pulling checkout.
+The node input probe (tag 20261103-232618-001d3d1-9a592cff, 59 inputs, 0 failures) and the node smoke (tag
+20261103-232644-001d3d1-78737588, clip_b32 c* and photo seed 0 ok) passed in the build at 00:34 on commit 001d3d1.
+Do not rerun them. The run chat runs `$CLUSTER sync --node node402` first, and reruns the probe only if
+`pp_node_inputs.json` changed since 001d3d1. The checkout that pulls needs the symlink `res/r19_pp` (below).
 
 ```bash
 bash "$R/pp_node_plan.sh"
@@ -34,15 +39,10 @@ mkdir -p res
 ln -sfn "$OUT" res/r19_pp
 CLUSTER=/root/.claude/skills/cluster-run/cluster
 RUN='bash scripts/run_pp_node.sh'
-$CLUSTER sync --node node402
-$CLUSTER check --node node402 --sync-data -- $RUN probe aux_art qwen_art aux_aff qwen_aff art_dinov2_large art_clip_b32 art_clip_b16 aff_dinov2_large aff_clip_b32 aff_clip_b16 art_clip_l14 aff_clip_l14 m5
-$CLUSTER launch --queue --node node402 --est 10m --label r19:probe -- $RUN probe aux_art qwen_art aux_aff qwen_aff art_dinov2_large art_clip_b32 art_clip_b16 aff_dinov2_large aff_clip_b32 aff_clip_b16 art_clip_l14 aff_clip_l14 m5
-$CLUSTER watch <probe-tag>
-$CLUSTER pull --tag <probe-tag>
 $CLUSTER check --node node402 --sync-data -- $RUN regress-ii
 $CLUSTER launch --queue --node node402 --est 25m --label r19:ii -- $RUN regress-ii
-$CLUSTER watch <ii-tag>
-$CLUSTER pull --tag <ii-tag>
+$CLUSTER watch --node node402 <ii-tag>
+$CLUSTER pull --node node402 --tag <ii-tag>
 bash "$R/pp_run_cpu.sh" 0 --step gate_ii           # compare only, about 1 min
 ```
 
@@ -56,28 +56,28 @@ for e in dinov2_large clip_b32 clip_b16; do
   $CLUSTER check --node node402 --sync-data -- $RUN part-a --encoder "$e"
   $CLUSTER launch --queue --node node402 --est 60m --label "r19:cstar_$e" -- $RUN part-a --encoder "$e"
 done
-$CLUSTER watch <cstar-dinov2-tag>
-$CLUSTER pull --tag <cstar-dinov2-tag>
-$CLUSTER watch <cstar-b32-tag>
-$CLUSTER pull --tag <cstar-b32-tag>
-$CLUSTER watch <cstar-b16-tag>
-$CLUSTER pull --tag <cstar-b16-tag>
+$CLUSTER watch --node node402 <cstar-dinov2-tag>
+$CLUSTER pull --node node402 --tag <cstar-dinov2-tag>
+$CLUSTER watch --node node402 <cstar-b32-tag>
+$CLUSTER pull --node node402 --tag <cstar-b32-tag>
+$CLUSTER watch --node node402 <cstar-b16-tag>
+$CLUSTER pull --node node402 --tag <cstar-b16-tag>
 # Only for each encoder whose c* exited zero:
 for e in dinov2_large clip_b32 clip_b16; do
   if "$PY" -c 'import json,sys; from pathlib import Path; d=json.loads((Path(sys.argv[1])/"node"/f"cstar_{sys.argv[2]}.json").read_text()); sys.exit(0 if d["status"]=="ok" else 1)' "$OUT" "$e"; then
     $CLUSTER launch --queue --node node402 --est 30m --label "r19:photo_$e" -- $RUN photo --encoder "$e"
   fi
 done
-$CLUSTER watch <photo-dinov2-tag>
-$CLUSTER pull --tag <photo-dinov2-tag>
-$CLUSTER watch <photo-b32-tag>
-$CLUSTER pull --tag <photo-b32-tag>
-$CLUSTER watch <photo-b16-tag>
-$CLUSTER pull --tag <photo-b16-tag>
+$CLUSTER watch --node node402 <photo-dinov2-tag>
+$CLUSTER pull --node node402 --tag <photo-dinov2-tag>
+$CLUSTER watch --node node402 <photo-b32-tag>
+$CLUSTER pull --node node402 --tag <photo-b32-tag>
+$CLUSTER watch --node node402 <photo-b16-tag>
+$CLUSTER pull --node node402 --tag <photo-b16-tag>
 $CLUSTER check --node node402 --sync-data -- $RUN m5
 $CLUSTER launch --queue --node node402 --est 15m --label r19:m5 -- $RUN m5
-$CLUSTER watch <m5-tag>
-$CLUSTER pull --tag <m5-tag>
+$CLUSTER watch --node node402 <m5-tag>
+$CLUSTER pull --node node402 --tag <m5-tag>
 ```
 
 M5 full takes about four minutes. Its sample gate rerun ran on the local 3090; the controller accepted the byte-equal
@@ -118,7 +118,7 @@ The runner logs every attempt and continues other paths after a failure. Reduced
 ```bash
 bash "$R/pp_run_cpu.sh" 0
 bash "$R/pp_run_cpu.sh" 1
-# Execute the printed git add -f ... && git commit ... command. Inspect status first.
+# Execute the printed git add -f ... && git commit ... command (in OUT/stage1/logs/merge.log, written by the stage 1 `merge` step). Inspect status first.
 # Records: stage1_<new>.json, stage1_semart.json, semart_set.json, status.json.
 bash "$R/pp_run_cpu.sh" 2                        # roughly 3–4 CPU h total scoring at 8 threads
 ```
@@ -157,7 +157,7 @@ Prior diagnostic attempts are moved aside without deletion before a smoke diagno
 
 ```bash
 export PP_SMOKE=1
-export PP_OUTPUTS=/tmp/claude-0/-project-CoSiR/f230deb2-5b4b-4531-9369-0d454a9ed956/scratchpad/t12_smoke
+export PP_OUTPUTS=<scratch folder>/t12_smoke
 $PY "$R/pp_run_smoke.py" 0
 $PY "$R/pp_run_smoke.py" 1
 $PY "$R/pp_run_smoke.py" 2
