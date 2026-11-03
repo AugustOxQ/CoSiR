@@ -183,6 +183,12 @@ def _gate_iii():
     return dict(metric=metric, count=counts), dict(metrics=met, counts=evidence)
 
 
+def _has_failed(status):
+    if isinstance(status, dict):
+        return any(_has_failed(v) for v in status.values())
+    return status == FAILED
+
+
 def cmd_gate(args):
     name = args.name
     t0 = time.monotonic()
@@ -199,7 +205,7 @@ def cmd_gate(args):
     write_step(name, status, err, secs, note=note)
     print(f'gate {name}: {status} {err or ""} ({secs:.0f}s)')
     build_status()
-    return 0 if err is None else 1
+    return 1 if err is not None or _has_failed(status) else 0
 
 
 # ------------------------------------------------------------------------------------------------ stage 1
@@ -281,7 +287,11 @@ def _all(statuses):
 
 def _step_status(name):
     s = read_step(name)
-    return MISSING if s is None else s['status']
+    if s is None:
+        return MISSING
+    if not P.SMOKE and s.get('smoke', False):
+        return FAILED
+    return s['status']
 
 
 def build_status(write=True):
@@ -294,20 +304,17 @@ def build_status(write=True):
     g['i_d'] = _all([_step_status(n) for n in I_D])
     for k in ('ii_scorer', 'ii_crl', 'ii_percept', 'vi'):
         g[k] = _step_status(k)
-    iii = read_step('iii')
+    iii = _step_status('iii')
     keys_count = [f'{s}/{a}' for (s, a) in P.CLASS_COUNT]
-    if iii is None or isinstance(iii['status'], str):
-        bad = MISSING if iii is None else iii['status']
+    if isinstance(iii, str):
+        bad = iii
         g['iii_metric'] = {m: bad for m in P.CLASS_METRICS}
         g['iii_count'] = {k: bad for k in keys_count}
     else:
-        g['iii_metric'], g['iii_count'] = iii['status']['metric'], iii['status']['count']
+        g['iii_metric'], g['iii_count'] = iii['metric'], iii['count']
     for k in ('iv', 'v'):
-        st = read_step(k)
-        if st is None or isinstance(st['status'], str):
-            g[k] = {e: (MISSING if st is None else st['status']) for e in P.ENCODERS}
-        else:
-            g[k] = st['status']
+        st = _step_status(k)
+        g[k] = {e: st for e in P.ENCODERS} if isinstance(st, str) else st
     # stage 1: a key present in the file is ok; else failed if its step failed; else missing
     ranges_f, picks_f = OUT / 'stage1' / 'ranges.json', OUT / 'stage1' / 'picks.json'
     have_r = set(json.loads(ranges_f.read_text())) if ranges_f.exists() else set()
