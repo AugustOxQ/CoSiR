@@ -112,8 +112,14 @@ then r16. Deadlines: abstract 2026-11-10, paper 2026-11-16, supplementary 2026-1
     validation, a hit is an image with the caption's own emotion label, against plain Qwen text and the teacher's
     text); CRL on MMArt (CPU, features exist); CLAY (code public, link from the user: `github.com/kaist-ami/CLAY`,
     CVPR 2026; training-free, on CLIP and SigLIP base, Stanford40 only, no license file; checked by us 2026-11-03).
-  - TPIPS: a timing probe runs before decision A (user). Model size open: the user asked to probe a 2B model, but
-    only 8B TPIPS models are released (three, HuggingFace `sywang/`, checked 2026-11-03).
+  - TPIPS: a timing probe runs before decision A (user), on the released 8B late fusion model (user, after seeing
+    that only 8B TPIPS models are released, three on HuggingFace `sywang/`, checked 2026-11-03, and that a 2B one
+    would need our own training run).
+  - No bigger sweep before the paper; r14's 39 knob rows serve as the ablation (user, after seeing the
+    recommendation and r14's best rows: about +1 seed range on style, no row better on all three aspects).
+  - Asked by the user, 2026-11-03 17:20: an overview report of what we have and what is missing, clustering first,
+    retrieval second, with every open to-do labelled and costed (user-read report); deeper heads (a 3-layer
+    residual head) and a DEC loss on every head as possible ablations (never run in the new line).
   - Correction to r11 D1: its reason for no text queries, "c* has no text side", is not exact. c* has a caption side
     (trunk and three heads on the Qwen caption mean), trained by the buddy terms and never scored. The r11 spec
     stays as it is.
