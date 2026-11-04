@@ -57,7 +57,7 @@ Run sheet: `pp_run_sheet.md`. Spec: `docs/superpowers/specs/2026-11-03-past-pick
 | 20:30 | `check-outcomes`: `C13 FAIL items=3987 failed=59 max_abs=1.85e-09` | 58 items: stage 4's file has no `status` key. One item: claims never compared, since claim rows have no `encoder` field. No number differs |
 | 20:31 | Both fixed inside `check_outcomes`, 121 tests. `C13 PASS items=4211 failed=0 max_abs=1.85393241037e-09 scope=outcomes`; `source_identity` still equals the derive | six alterations of a copy of the real file (claim word, claim row, claim outcome, verdict, cell d, sentence number) each fail one item |
 | 21:48 | Stage 4 ended: diagnostics 79 min, 12 of 12 `ok` (`r17_metrics` included); `PP_RUN_SUMMARY stage4 steps=1 failed=0` | ok; stage 4 wrote nothing under `records/` |
-| 21:55 | `pp_report_tables.py`: `records/outcomes.json`, `outcomes_check.json`, `diag_tables.md`, `report_tables.md` | committed; the hashed records did not change |
+| 21:50 | `pp_report_tables.py`: `records/outcomes.json`, `outcomes_check.json`, `diag_tables.md`, `report_tables.md` | committed; the hashed records did not change |
 
 ## Choices of the run chat (agent default)
 
