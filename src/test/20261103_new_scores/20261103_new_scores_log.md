@@ -51,3 +51,22 @@ Stage 1 committed at c0ed42d8. Stage 2: 21 queue steps in three chains (`run_log
 `gpt-6.1-sol` high (`codex-usage --room rederivation`: room, 5h 57% left), brief `.scratch/r17-new-scores/c13/task.txt`,
 writing `ns_c13.py` and `test_ns_c13.py`. A smoke root at 40 and 100 draws (`c13_round_smoke`, EmoSet Qwen clustering and
 ArtELingo Qwen retrieval) gives its subset compare. The full derive runs after its review, section by section in the queue.
+
+## 2026-11-04 03:38: C13 code done, full derive started
+
+Codex hand-back: `ns_c13.py` and `test_ns_c13.py`, 56 tests pass, subset smoke `C13 PASS items=896 failed=0
+max_abs=3.6e-15 scope=subset` (counts, Qwen validation probabilities, EmoSet ranges, three picks, the 14 smoke cells). Its
+estimate for the full derive: 10.05 slot-hours (52 sections). The code is committed at 33d7155e; the derive runs from that
+commit, section by section through the queue, three chains (`run_logs/c13_plan_{a,b,c}.txt`). An Opus `high` worker reviews
+the code at the same time. Stage 2 so far: 13 clustering steps done or running, faster than estimated (painting 13 to 24
+min against 35 to 50).
+
+## 2026-11-04 03:52: C13 review: pass after fixes
+
+Opus `high` worker: the derive follows the rule and finds no wrong number; the gap is in `compare`. Must-fix 1: the numbers
+in `records/outcomes.json` are not compared (only the cell files are), and `verdicts` copies that file. Must-fix 2:
+`licensed` and `summary`, `status` and `smoke` of that file are not compared. Notes taken too: 3, `--write-record` passes
+with cells absent; 4, an old pass survives a later refusal. Left: 5, a missing range would be judged differently (stage 1
+has none, so it does not apply today); 6, minor notes (`rb_matched` and `ct_percept` not in the fingerprint; both frozen).
+All fixes stay inside `compare`, `certify` and `Comparison`, so the fingerprint and the running derive stay valid. Codex has
+no room (12% left, reset 04:35), so a Sonnet `high` worker makes the fixes (routing: Claude takes it).

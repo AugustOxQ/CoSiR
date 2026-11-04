@@ -164,11 +164,11 @@ def test_tolerance_and_exact_categories():
     ('subset',0,[],[('clu',2000)],b'{}'),('full',1,[],[('clu',2000)],b'{}'),
     ('full',0,[],[('clu',40)],b'{}'),('full',0,[],[('ret',100)],b'{}'),
     ('full',0,['missing status'],[('clu',2000)],b'{}'),('full',0,[],[('clu',2000)],None)])
-def test_refuse_record(scope,failed,skipped,draws,content):
-    with patch.object(Path,'mkdir') as mkdir:
-        with pytest.raises(ValueError,match='refusing --write-record'):
-            c.certify(dict(scope=scope,failed=failed,skipped=skipped),'/forbidden',content,draws)
-        mkdir.assert_not_called()
+def test_refuse_record(scope,failed,skipped,draws,content,tmp_path):
+    with pytest.raises(ValueError,match='refusing --write-record'):
+        c.certify(dict(scope=scope,failed=failed,skipped=skipped),tmp_path,content,draws)
+    rec=json.loads((tmp_path/'c13.json').read_text())
+    assert rec['pass'] is False and rec['reason'] and not list(tmp_path.glob('*.pending'))
 
 
 def test_missing_dependency_stops_without_computation():
@@ -197,7 +197,7 @@ def test_independent_pick_score_guard_and_tie():
     assert c.select_pick(rows,dict.fromkeys(c.ASPECTS,.01))[0]==other
 
 
-def test_compare_subset_lists_absent_cells_and_refuses_record():
+def test_compare_subset_lists_absent_cells_and_refuses_record(tmp_path):
     section='cells:clu:emoset:qwen'
     cells=[{**x,'cand':.4,'comp':.3,'d':.1,'lo':.01,'hi':.2,'r':.03,'n_draws':40}
            for x in c.claim_cells() if (x['set'],x['task'])==('emoset','clu')]
@@ -213,7 +213,7 @@ def test_compare_subset_lists_absent_cells_and_refuses_record():
         assert any('status' in s for s in report['skipped'])
         assert writer.call_count==1
         with pytest.raises(ValueError,match='scope is a subset'):
-            c.compare(root,root/'records',out,write_record=True)
+            c.compare(root,tmp_path,out,write_record=True)
 
 
 @pytest.mark.parametrize('gate,sc,d,affected',[
@@ -326,3 +326,166 @@ def test_compare_checks_present_numbers_with_tolerance():
     assert report['failed']==1
     assert [x['name'] for x in report['items'] if not x['pass']][0].endswith('/cand')
     assert not report['missing_round_cells']
+
+
+# ---------------------------------------------------------------- full synthetic round (r17 review fixes)
+import copy
+import random
+import shutil
+
+import ns_outcome as O
+
+_FULL = {}
+
+
+def _full_parts():
+    """The derived sections, the round's cell files and the records of a synthetic full round (built once)."""
+    if _FULL:return _FULL
+    src=c.source_identity();rng=random.Random(0)
+    def doc(s,res):return dict(section=s,complete=True,source_sha256=src,draws_clu=2000,draws_ret=10000,seconds=0,inputs={},result=res)
+    docs={'counts':doc('counts',{d:{sp:c.K[d] for sp in ('val',c.HELD[d])} for d in c.SETS})}
+    ranges={};picks={};tables={};rounds={}
+    for d,e in c.PAIRS:
+        arm='cstar' if d in c.SETS[:2] else 'photo'
+        res={f'{arm}/{d}/{e}/{a}/{m}':dict(k=c.K[d][a],n_val=10,n_labelled=10,r=.01,per_seed={str(s):.1+.002*s for s in c.SEEDS}) for a in c.K[d] for m in c.METRICS}
+        docs[f'ranges:{d}:{e}']=doc(f'ranges:{d}:{e}',res);ranges.update(res)
+    for arm,d,e in c.PICK_UNITS:
+        w=6144 if arm=='untold' else 40 if arm=='matched' else 50
+        table={c.rt_readout.name(r):dict(map=dict.fromkeys(c.ASPECTS,.2),score=0.,kept=True) for r in c.rt_readout.menu(w)}
+        res=dict(key=f'{arm}/{d}/{e}',pick='none+k0',w='none',k=0,table=table,unit=dict.fromkeys(c.ASPECTS,.01),n_val=10,scores={**table['none+k0'],'r0_map':table['none+k0']['map']})
+        docs[f'pick:{arm}:{d}:{e}']=doc(f'pick:{arm}:{d}:{e}',res)
+        rel=f'stage1/tables/{arm}__{d}__{e}.json';tables[rel]=dict(table=table)
+        picks[res['key']]={k:v for k,v in res.items() if k in('pick','w','k','unit','n_val','scores')}|dict(table_path=rel)
+    for s in c.SECTIONS:
+        if not s.startswith('cells:'):continue
+        _,t,d,e=s.split(':');res=[];ref=[]
+        for x in c.claim_cells():
+            if (x['task'],x['set'],x['encoder'])!=(t,d,e):continue
+            row={**x,'cand':.4,'comp':.3,'d':.1,'lo':rng.choice([.01,-.005,-.05]),'hi':.2,'r':.01,'n_draws':2000 if t=='clu' else 10000,'n_rows':10}
+            row.update({'n_labelled':10} if t=='clu' else {'candidate_readout':'none+k0','comparator_readout':'none+k0','n_queries':10})
+            res.append({**row,**c.decision(row)})
+            ref.append({**{k:row[k] for k in O.CELL_KEYS if k in row},'r_source':'x',
+                        **{k:row[k] for k in ('n_labelled','candidate_readout','comparator_readout','n_queries') if k in row}})
+        docs[s]=doc(s,res);rounds[s]=ref
+    good=dict(gates={**{k:'ok' for k in O.GATE_SINGLE},'i_c':{'affection':'ok','emoset':'ok'},'iii_metric':dict.fromkeys(c.METRICS,'ok'),
+                     'iii_count':{f'{d}/{a}':'ok' for d in c.SETS for a in c.K[d]},'iv':dict.fromkeys(c.ENCODERS,'ok'),'v':dict.fromkeys(c.ENCODERS,'ok')},
+              stage1=dict(ranges=dict.fromkeys(ranges,'ok'),picks={k:'ok' for k in picks}))
+    _FULL.update(docs=docs,ranges=ranges,picks=picks,tables=tables,rounds=rounds,good=good)
+    return _FULL
+
+
+class Round:
+    """Writes the synthetic round under tmp_path; `write` can corrupt one recorded piece."""
+    def __init__(self,tmp_path,monkeypatch):
+        monkeypatch.setattr(c,'SMOKE_OUT',tmp_path/'smoke')
+        self.out=tmp_path/'smoke/out';self.root=tmp_path/'root';self.rec=tmp_path/'records';self.p=_full_parts()
+
+    def write(self,status=None,mut=None,cells=None,dmut=None):
+        P=self.p;status=copy.deepcopy(P['good']) if status is None else status
+        shutil.rmtree(self.out,ignore_errors=True);shutil.rmtree(self.root,ignore_errors=True)
+        for d in (self.out/'derived',self.root/'stage0',self.root/'stage2/cells',self.root/'stage1/tables',self.rec):d.mkdir(parents=True,exist_ok=True)
+        docs=copy.deepcopy(P['docs']);pv={}
+        for e in c.ENCODERS:
+            pv[e]={}
+            for s in c.SEEDS:
+                a=self.out/'percept_val'/e/f'matched__s{s}.npz';b=self.root/'percept_val'/e/f'matched__s{s}.npz'
+                a.parent.mkdir(parents=True,exist_ok=True);b.parent.mkdir(parents=True,exist_ok=True)
+                np.savez(a,names=np.array(['a','b']),probs=np.ones((2,40),'f4'));shutil.copy(a,b)
+                pv[e][str(s)]=dict(path=str(a),sha256=c.sha(a),shape=[2,40])
+        docs['percept_val']=dict(section='percept_val',complete=True,source_sha256=c.source_identity(),draws_clu=2000,draws_ret=10000,seconds=0,inputs={},result=pv)
+        if dmut:dmut(docs)
+        for s,v in docs.items():(self.out/'derived'/f'{s}.json').write_text(json.dumps(v))
+        rounds=copy.deepcopy(P['rounds']) if cells is None else cells
+        for s,v in rounds.items():
+            _,t,d,e=s.split(':');(self.root/'stage2/cells'/f'{t}__{d}__{e}.json').write_text(json.dumps(v))
+        rows=O.outcomes([x for v in rounds.values() for x in v],status,smoke=False)
+        res=dict(smoke=False,status=status,cells=rows,summary=O.summary(rows),licensed=O.licensed_families(rows))
+        if mut:mut(res)
+        (self.rec/'outcomes.json').write_text(json.dumps(res));(self.rec/'status.json').write_text(json.dumps(status))
+        (self.rec/'stage1_ranges.json').write_text(json.dumps(P['ranges']));(self.rec/'stage1_picks.json').write_text(json.dumps(P['picks']))
+        for rel,t in P['tables'].items():(self.root/rel).write_text(json.dumps(t))
+        (self.root/'stage0/iii.json').write_text(json.dumps(dict(counts=dict(
+            painting={f'{d}/{a}':c.K[d][a] for d in c.SETS[:2] for a in c.K[d]},photo={f'{d}/{a}':c.K[d][a] for d in c.SETS[2:] for a in c.K[d]}))))
+        return res
+
+    def compare(self,**kw):return c.compare(self.root,self.rec,self.out,**kw)
+
+
+def failed_names(report):return [x['name'] for x in report['items'] if not x['pass']]
+
+
+@pytest.fixture
+def rnd(tmp_path,monkeypatch):return Round(tmp_path,monkeypatch)
+
+
+def test_full_round_baseline_passes_and_writes_record(rnd,capsys):
+    rnd.write();report=rnd.compare(write_record=True)
+    assert report['failed']==0 and report['scope']=='full' and not report['missing_round_cells']
+    assert 'failed=0 missing=0 max_abs=' in capsys.readouterr().out
+    assert json.loads((rnd.rec/'c13.json').read_text())['pass'] is True
+
+
+def test_compare_checks_outcomes_json_numbers(rnd):
+    def wrong_numbers(res):
+        for x in res['cells']:
+            x['cand']+=.05;x['hi']+=.05;x['n_rows']=3;x['n_draws']=7;x['r_used']=(x['r_used'] or 0)+.02
+    rnd.write(mut=wrong_numbers);names=failed_names(rnd.compare())
+    for field in ('cand','hi','n_rows','n_draws','r_used'):
+        assert sum(n.endswith('/outcomes.'+field) for n in names)==412,field
+    assert not any(n.endswith(('/outcome','/decision.outcome','/outcomes.lo','/outcomes.d')) for n in names)
+    # inside the tolerance: not a failure; one number off by 1e-3: a failure
+    def nudge(res):res['cells'][0]['comp']+=.5e-6
+    rnd.write(mut=nudge);assert rnd.compare()['failed']==0
+    def moved(res):res['cells'][5]['lo']+=1e-3
+    rnd.write(mut=moved);assert [n for n in failed_names(rnd.compare()) if n.endswith('/outcomes.lo')]
+
+
+def test_compare_checks_licensed_summary_status_smoke_and_row_count(rnd):
+    res=rnd.write();assert res['licensed'] and res['summary']
+    assert rnd.compare()['failed']==0
+    def failures(mut,suffix):
+        rnd.write(mut=mut);return [n for n in failed_names(rnd.compare()) if suffix in n]
+    assert failures(lambda r:r.update(licensed=[]),'outcomes/licensed')
+    assert failures(lambda r:r['licensed'].__delitem__(0),'outcomes/licensed')
+    assert failures(lambda r:r['licensed'][0].update(metrics=r['licensed'][0]['metrics']+['acc']),'outcomes/licensed')
+    assert failures(lambda r:r.update(summary={}),'outcomes/summary')
+    assert failures(lambda r:r['summary']['SC1']['ami'].update(WIN=r['summary']['SC1']['ami']['WIN']+1),'outcomes/summary.SC1.ami.WIN')
+    assert failures(lambda r:r.update(smoke=True),'outcomes/smoke')
+    assert failures(lambda r:r.update(status={'tampered':1}),'outcomes/embedded_status')
+    assert failures(lambda r:r['cells'].append(dict(r['cells'][0])),'outcomes/row_count')
+    def collapse(r):r['cells'][1]=dict(r['cells'][0])
+    got=failures(collapse,'outcomes/');assert 'outcomes/unique_row_ids' in got and 'outcomes/ids' in got
+
+
+def test_write_record_refuses_absent_round_cells(rnd,capsys):
+    keep={'cells:clu:emoset:qwen':_full_parts()['rounds']['cells:clu:emoset:qwen']}
+    rnd.write(cells=keep)
+    with pytest.raises(ValueError,match='round cells absent'):rnd.compare(write_record=True)
+    assert 'missing=404' in capsys.readouterr().out
+    # a cell excused by a failed gate stays listed and does not refuse on its own account
+    report=dict(scope='full',failed=0,skipped=[],items_compared=1,max_abs=0.,
+                missing_round_cells=[dict(id='x',reason=['gates.v:qwen'],derived=True)])
+    c.certify(report,rnd.rec,b'{}',[('clu',2000)])
+    assert json.loads((rnd.rec/'c13.json').read_text())['pass'] is True
+    report['missing_round_cells'].append(dict(id='y',reason=['round cell absent'],derived=True))
+    with pytest.raises(ValueError,match='round cells absent'):c.certify(report,rnd.rec,b'{}',[('clu',2000)])
+
+
+def test_refusal_clears_an_older_pass(rnd):
+    rnd.write();rnd.compare(write_record=True)
+    assert json.loads((rnd.rec/'c13.json').read_text())['pass'] is True
+    def bad(docs):docs['cells:clu:emoset:qwen']['result'][0]['cand']=.9
+    rnd.write(dmut=bad)
+    with pytest.raises(ValueError,match='comparison has failures'):rnd.compare(write_record=True)
+    rec=json.loads((rnd.rec/'c13.json').read_text())
+    assert rec['pass'] is False and 'comparison has failures' in rec['reason'] and 'outcomes_sha256' not in rec
+    # without --write-record an older record is left alone
+    rnd.write();rnd.compare(write_record=True);rnd.write(dmut=bad);rnd.compare()
+    assert json.loads((rnd.rec/'c13.json').read_text())['pass'] is True
+
+
+def test_compare_that_dies_before_certify_clears_an_older_pass(rnd):
+    rnd.write();rnd.compare(write_record=True)
+    (rnd.out/'derived'/'counts.json').write_text(json.dumps(dict(section='nonsense')))
+    with pytest.raises(ValueError,match='unknown derived section'):rnd.compare(write_record=True)
+    assert json.loads((rnd.rec/'c13.json').read_text())['pass'] is False

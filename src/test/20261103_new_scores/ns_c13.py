@@ -769,13 +769,22 @@ def certify(report,records,outcomes_bytes,round_draws):
     if report.get('skipped'):reasons.append('required comparison evidence was skipped')
     if not round_draws or any(v!=(2000 if task=='clu' else 10000) for task,v in round_draws):reasons.append('round draw counts are not 2000/10000')
     if outcomes_bytes is None:reasons.append('records/outcomes.json is absent')
-    if reasons:raise ValueError('refusing --write-record: '+'; '.join(reasons))
+    # An absence is excused only by a failed gate or stage 1 item (the reason lists it); a bare absence refuses.
+    bare=[x['id'] for x in report.get('missing_round_cells',()) if x.get('reason')==['round cell absent']]
+    if bare:reasons.append(f'{len(bare)} round cells absent with no failed gate or stage 1 item to excuse them (first: {bare[0]})')
     # Explicit CLI authorization is the sole exception to the output-root rule.
-    p=Path(records)/'c13.json';p.parent.mkdir(parents=True,exist_ok=True)
-    pending=p.with_name('c13.json.'+uuid.uuid4().hex+'.pending')
-    pending.write_text(json.dumps({'pass':True,'outcomes_sha256':hashlib.sha256(outcomes_bytes).hexdigest(),
-                                   'items':report['items_compared'],'max_abs':report['max_abs']})+'\n')
-    pending.replace(p)
+    p=Path(records)/'c13.json'
+    def put(doc):
+        p.parent.mkdir(parents=True,exist_ok=True)
+        pending=p.with_name('c13.json.'+uuid.uuid4().hex+'.pending')
+        pending.write_text(json.dumps(doc)+'\n')
+        pending.replace(p)
+    if reasons:
+        # A refusal replaces any older pass, so c13_state cannot still accept it.
+        put({'pass':False,'reason':'; '.join(reasons)})
+        raise ValueError('refusing --write-record: '+'; '.join(reasons))
+    put({'pass':True,'outcomes_sha256':hashlib.sha256(outcomes_bytes).hexdigest(),
+         'items':report['items_compared'],'max_abs':report['max_abs']})
 
 
 def compare(root=DEFAULT_ROOT,records=HERE/'records',out=DEFAULT_OUT,write_record=False):
@@ -786,6 +795,10 @@ def compare(root=DEFAULT_ROOT,records=HERE/'records',out=DEFAULT_OUT,write_recor
     mandatory. A full run additionally compares all outcome/status rows.
     """
     root,records,out=Path(root),Path(records),output_path(out)
+    if write_record and (records/'c13.json').exists():
+        # A compare that dies before certify must not leave an older pass standing.
+        stale=records/'c13.json';pending=stale.with_name('c13.json.'+uuid.uuid4().hex+'.pending')
+        pending.write_text(json.dumps({'pass':False,'reason':'compare did not finish'})+'\n');pending.replace(stale)
     docs={}
     for p in sorted((out/'derived').glob('*.json')):
         doc=read_json(p);section=doc['section']
@@ -827,7 +840,9 @@ def compare(root=DEFAULT_ROOT,records=HERE/'records',out=DEFAULT_OUT,write_recor
         if set(st.get('picks',{}))-used_picks:errors.append('unused pick status')
         result.add('status/schema',errors,[])
     outcomes_bytes=(records/'outcomes.json').read_bytes() if (records/'outcomes.json').exists() else None
-    outcome_rows={c['id']:c for c in row_list(json.loads(outcomes_bytes))} if outcomes_bytes is not None else {}
+    outcomes_doc=json.loads(outcomes_bytes) if outcomes_bytes is not None else None
+    outcome_list=list(row_list(outcomes_doc)) if outcomes_bytes is not None else []
+    outcome_rows={c['id']:c for c in outcome_list}
     ranges=read_json(records/'stage1_ranges.json') if (records/'stage1_ranges.json').exists() else {}
     picks=read_json(records/'stage1_picks.json') if (records/'stage1_picks.json').exists() else {}
     for section,doc in docs.items():
@@ -897,6 +912,17 @@ def compare(root=DEFAULT_ROOT,records=HERE/'records',out=DEFAULT_OUT,write_recor
                     result.add(name+'/'+field,c[field],ref.get(field),True)
                 for field in ('id','sc','set','encoder','aspect','task','metric','k','candidate','comparator','n_draws','n_rows'):
                     result.add(name+'/'+field,c[field],ref.get(field))
+                if c['id'] in outcome_rows:
+                    # The numbers of outcomes.json too, not only its words (a None where a number is due fails).
+                    orow=outcome_rows[c['id']]
+                    for field in ('cand','comp','d','lo','hi','r'):
+                        result.add(name+'/outcomes.'+field,c[field],orow.get(field),True)
+                    for field in ('n_draws','n_rows'):
+                        result.add(name+'/outcomes.'+field,c[field],orow.get(field))
+                    if status is not None:
+                        rk=range_key(c) if c['kind']=='class_count' else None
+                        if rk is None or status.get('stage1',{}).get('ranges',{}).get(rk,'missing')=='ok':
+                            result.add(name+'/outcomes.r_used',c['r'],orow.get('r_used'),True)
                 for field in (('candidate_readout','comparator_readout','n_queries') if task=='ret' else ('n_labelled',)):
                     result.add(name+'/'+field,c[field],ref.get(field))
                 recorded_word=ref.get('outcome',outcome_rows.get(c['id'],{}).get('outcome'))
@@ -929,7 +955,32 @@ def compare(root=DEFAULT_ROOT,records=HERE/'records',out=DEFAULT_OUT,write_recor
     elif full:
         ours={c['id']:c for s,doc in docs.items() if s.startswith('cells:') for c in doc['result']}
         result.add('outcomes/ids',sorted(ours),sorted(outcome_rows))
+        result.add('outcomes/row_count',len(outcome_list),412)
+        result.add('outcomes/unique_row_ids',len(outcome_rows),len(outcome_list))
         if status is not None:
+            result.add('outcomes/smoke',False,outcomes_doc.get('smoke'))
+            result.add('outcomes/embedded_status',status,outcomes_doc.get('status'))
+            absent={x['id'] for x in missing_cells}
+            expect=[];counts={}
+            for cid,c in ours.items():
+                want=decision(c,status)
+                if cid in absent:want['status']='inconclusive' if want['void'] else 'missing'
+                tag='ami@20' if c['kind']=='fixed20' else c['metric']
+                n=counts.setdefault(c['sc'],{}).setdefault(tag,dict(cells=0,decided=0,inconclusive=0,missing=0,WIN=0,LEVEL=0,BELOW=0,NOT_WIN=0,meets_bar=0,bar_met=0))
+                n['cells']+=1;n[want['status']]+=1
+                if want['status']=='decided':
+                    ranged=c['kind']!='class_count' or status.get('stage1',{}).get('ranges',{}).get(range_key(c),'missing')=='ok'
+                    n['WIN' if want['outcome']=='WIN' else want['outcome'] if ranged else 'NOT_WIN']+=1
+                    n['meets_bar']+=int(want['meets_bar']);n['bar_met']+=int(want['bar_met'])
+                    if want['meets_bar']:expect.append([c['sc'],c['set'],c['encoder'],c['aspect'],c['comparator'],want['wording'],tag])
+            families={}
+            for sc,d,e,a,comp,wording,tag in expect:families.setdefault((sc,d,e,a,comp,wording),[]).append(tag)
+            wanted=sorted([*k,sorted(v)] for k,v in families.items())
+            have=outcomes_doc.get('licensed')
+            try:have=sorted([x['sc'],x['set'],x['encoder'],x['aspect'],x['comparator'],x['wording'],sorted(x['metrics'])] for x in have)
+            except (TypeError,KeyError):have=None
+            result.add('outcomes/licensed',wanted,have)
+            result.tree('outcomes/summary',counts,outcomes_doc.get('summary'))
             for cid,c in ours.items():
                 target=outcome_rows.get(cid,{})
                 want=decision(c,status)
@@ -941,7 +992,7 @@ def compare(root=DEFAULT_ROOT,records=HERE/'records',out=DEFAULT_OUT,write_recor
             'missing_round_cells':missing_cells,'skipped':skipped,'record_layouts':record_layouts,
             'outcomes_sha256':hashlib.sha256(outcomes_bytes).hexdigest() if outcomes_bytes is not None else None}
     write_json(out/'compare.json',report)
-    print(f'C13 {"FAIL" if report["failed"] else "PASS"} items={report["items_compared"]} failed={report["failed"]} max_abs={report["max_abs"]:.12g} scope={scope}',flush=True)
+    print(f'C13 {"FAIL" if report["failed"] else "PASS"} items={report["items_compared"]} failed={report["failed"]} missing={len(missing_cells)} max_abs={report["max_abs"]:.12g} scope={scope}',flush=True)
     if write_record:certify(report,records,outcomes_bytes,round_draws)
     return report
 
