@@ -64,8 +64,8 @@ ALL_CELLS = tuple(':'.join(c) for c in CLU_CELLS) + ('r10', 'r11')
 # ------------------------------------------------------------------------------------------------ items and results
 def code_files():
     """The source files a replay number depends on: this module and the loaders and scorer it calls (om_data, om_paths,
-    ns_clu, ns_metrics, ns_ret, ns_data)."""
-    mods = (sys.modules[__name__], od, op, ns_clu, ns_metrics, ns_ret, ns_data)
+    ns_clu, ns_metrics, ns_ret, ns_data, rg_held)."""
+    mods = (sys.modules[__name__], od, op, ns_clu, ns_metrics, ns_ret, ns_data, rg_held)
     return [Path(m.__file__) for m in mods]
 
 
@@ -316,6 +316,7 @@ def main(argv=None):
     parts = ('a', 'b', 'c') if args.part is None else (args.part,)
     cache = {}
     rc = 0
+    here = code_sha256()       # taken before any part runs: a source edit during the run leaves a stale stamp
     for part in parts:
         t0 = time.monotonic()
         d = args.draws
@@ -326,7 +327,7 @@ def main(argv=None):
         else:
             res = replay_c(d or FULL['ret'], aspects, args.workers, cells=cells)
         res['seconds'] = round(time.monotonic() - t0, 1)
-        res['code_sha256'] = code_sha256()
+        res['code_sha256'] = here
         out = write_gate(gate_path(), part, res)
         bad = [i for i in res['items'] if not i['ok']]
         print(f'gate (iii) {part}: pass={res["pass"]} wiring_ok={res["wiring_ok"]} max_abs_diff={res["max_abs_diff"]:.3g} '

@@ -392,7 +392,7 @@ def test_b_reads_the_files_back_and_refuses_files_that_differ(world, monkeypatch
 # ------------------------------------------------------------------------------------------------ the code hash
 def test_code_hash_covers_the_loaders_and_the_scorer():
     names = {f.name for f in g.code_files()}
-    assert names == {'om_gate_iii.py', 'om_data.py', 'om_paths.py', 'ns_clu.py', 'ns_metrics.py', 'ns_ret.py', 'ns_data.py'}
+    assert names == {'om_gate_iii.py', 'om_data.py', 'om_paths.py', 'ns_clu.py', 'ns_metrics.py', 'ns_ret.py', 'ns_data.py', 'rg_held.py'}
     assert all(f.exists() for f in g.code_files())
 
 
