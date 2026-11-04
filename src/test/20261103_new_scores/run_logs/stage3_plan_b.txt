@@ -1,0 +1,4 @@
+res-queue cpu --short --label r17:figure_artelingo --est 2m -- env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 /root/miniconda3/envs/CoSiR/bin/python /project/CoSiR/src/test/20261103_new_scores/ns_diag.py figure --set artelingo
+res-queue cpu --short --label r17:figure_mmart --est 2m -- env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 /root/miniconda3/envs/CoSiR/bin/python /project/CoSiR/src/test/20261103_new_scores/ns_diag.py figure --set mmart
+res-queue cpu --short --label r17:tables_artelingo --est 2m -- env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 /root/miniconda3/envs/CoSiR/bin/python /project/CoSiR/src/test/20261103_new_scores/ns_diag.py tables --set artelingo
+res-queue cpu --short --label r17:tables_mmart --est 2m -- env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 /root/miniconda3/envs/CoSiR/bin/python /project/CoSiR/src/test/20261103_new_scores/ns_diag.py tables --set mmart

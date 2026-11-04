@@ -94,3 +94,12 @@ All 21 steps ok, 412 cells, rows decided 412, missing 0 (2.4 h of wall time, oth
 - `c13-check` ok, `verdicts` wrote `records/verdicts.json` (same bytes as `outcomes.json`). `status` rebuilt: ok 161, failed 0,
   missing 0; `status.json` equals HEAD.
 - Machine at 06:59: CPU idle, 4 slots free. Stage 3 starts now in three chains.
+
+## 2026-11-04 07:02: stage 3 starts, order and end estimate
+
+- Order (agent): the 39 lines of `ns_run_cpu.sh stage3` split into four parts, each in three chains:
+  a. painting sweeps, per-class, told-untold, `qwen_crl`, `r0`; b. painting figures and tables; c. photo sweeps; d. photo
+  figures and tables. Why: §3.6 says the photo sets run last and may be cut, and the plan's own order put photo sweeps before
+  the painting diagnostics. With this order a cut can lose photo rows only. No step changes.
+- End estimate: about 11:30 if the CPU slots stay free (r18 and r19 may take slots). This is past 11:00; the choice made at
+  stage 0 holds (CPU only, go on; §3.6's 12:00 cut applies).
