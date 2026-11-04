@@ -1,6 +1,6 @@
 """Tests of om_cells (ticket 10): the cell list, the repeated TURTLE candidate, labels, voids, pins, sentences, the C13 guard.
 Synthetic data only; nothing reads a real store, `records/` or `om_paths.DEFAULT_OUT`.
-Includes C13 stub/refusal cleanup and r17 range consistency checks at assembly.
+Includes C13 stub/refusal cleanup, r17 range consistency at assembly and SC3/SC4 text pin guards at scoring.
 
 Run: PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 /root/miniconda3/envs/CoSiR/bin/python -m pytest -q
      src/test/20261103_outside_methods/test_om_cells.py
@@ -268,6 +268,17 @@ def test_sc3_refuses_a_text_set_whose_pin_changed(patch_sha, monkeypatch):
     picks[s1.PIN_KEY]['B']['emotion'] = None
     with pytest.raises(AssertionError, match='pin'):
         oc.score_unit('SC3', 'artelingo', 'qwen', FakeLoaders(), picks=picks, draws=5)
+
+
+@pytest.mark.parametrize('text_set', ['A', 'B'])
+@pytest.mark.parametrize('aspect', op.ASPECTS)
+def test_sc4_refuses_a_text_set_whose_pin_changed(patch_sha, text_set, aspect):
+    picks = good_picks()
+    picks['clay/artelingo']['text_set'] = text_set
+    picks['clay_textset/ret/artelingo']['set'] = text_set
+    picks[s1.PIN_KEY][text_set][aspect] = 'stale-sha256'
+    with pytest.raises(AssertionError, match='pin'):
+        oc.score_unit('SC4', 'artelingo', 'qwen', FakeLoaders(), picks=picks, draws=5)
 
 
 def test_check_pin_ignores_other_aspects_and_compares_exactly(monkeypatch):
