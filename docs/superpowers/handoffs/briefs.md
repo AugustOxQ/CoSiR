@@ -1847,3 +1847,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-04-r19-run-2-handoff.md
 - New chat: tab 'r19 run 2', session 74fc410f-b4e2-462a-a1d3-fc17b6e8bf16
 
+[brief] CoSiR: r19 run 2 -> r19 run 3 (2026-11-04 20:28 Amsterdam)
+- Done: C13 passed in full scope: 18,778 items, none failed, largest difference 1.9e-09; `records/c13.json` is committed.
+- State: every gate (i) to (viii) passes; no verdict written, and no chat has read a stage 2 cell.
+- Next: stage 4 (about 1 h), `pp_c13.py check-outcomes`, the auto report and user-read report, the merge, the wrap-up.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-04-r19-run-3-handoff.md
+- New chat: tab 'r19 run 3', session 099d1a86-2fa6-4a11-8ea9-7a7173f4b4c4
+
