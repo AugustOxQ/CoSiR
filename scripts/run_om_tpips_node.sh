@@ -96,6 +96,7 @@ R=$(mktemp -d -p "$JOB" om-root.XXXXXX)
 export NODE_RES LOCAL_OUT NODE_IN LOCAL_IN NODE_LIBS LOCAL_LIBS CODE JOB R TPIPS_PY HUB IMG_MAP ROUND
 export TMPDIR="$JOB/om-tmp" MPLCONFIGDIR="$JOB/om-mpl" HOME="$JOB/om-home" XDG_CACHE_HOME="$JOB/om-cache"
 export PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 PYTHONPATH="$LOCAL_LIBS"
+export LD_LIBRARY_PATH="$LOCAL_LIBS/nvidia/cu13/lib"    # torch's run-time kernels need libnvrtc-builtins (index, build 3)
 # hf-fetch --revision writes no refs/main, and tpips loads the backbone by repo name: offline that name needs the ref.
 # A job-local hub links the real snapshots and pins refs/main to the two om_paths hashes; the probe checks them.
 HUB_JOB="$JOB/om-hub"
