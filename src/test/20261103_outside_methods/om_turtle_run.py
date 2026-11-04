@@ -20,11 +20,21 @@ CLI:
     python om_turtle_run.py --list                          the plan with counts (asserts 412), no data read
     python om_turtle_run.py fit --set S --enc E --arm plain|cstar [--device cuda|cpu] [--limit N] [--outer-steps N]
     python om_turtle_run.py timing [--device cuda|cpu]      -> OUT/smoke/turtle_timing.json
-`--outer-steps` (other than 6000) and `--limit` are for the smoke and need OM_SMOKE=1.
+    python om_turtle_run.py pack [--pack DIR] [--limit N]   local: export every fit input once to DIR (default OUT/turtle_pack)
+    python om_turtle_run.py fit --pack DIR ... [--only-k K --only-start S]   inputs and keys from the pack (node: no stores)
+    python om_turtle_run.py check-pulled RESULTS_DIR [--pack DIR]            local: check the 412 pulled fits against the pack
+`--outer-steps` (other than 6000) and `--limit` are for the smoke and need OM_SMOKE=1. `--only-k`/`--only-start` keep
+only the fits with that K / start (the full fit is unchanged), so they need no OM_SMOKE.
+
+Pack (DIR): <set>/<enc>/plain.npy, <set>/<enc>/<aspect>__s<seed>.npy (float32, exactly `_input`), <set>/keys.json
+(`om_data.keys` of the held split), manifest.json {files: {rel path: {sha256, shape}}, keys: {set: {n, sha256}}}. Node
+(DAS6) fits read the pack, not the older rounds' stores: scripts/run_om_turtle_node.sh.
 """
 import argparse
+import hashlib
 import itertools
 import json
+import socket
 import subprocess
 import sys
 import threading
@@ -86,40 +96,174 @@ def _input(f, held):
     return om_data.cstar(f['set'], held, f['enc'], f['aspect'], f['seed'])
 
 
-def run_fit(f, z, device, outer_steps, out=None):
+# ------------------------------------------------------------------------------------------------ pack
+def pack_rel(f):
+    """Pack path of a fit's input, relative to the pack folder."""
+    name = 'plain.npy' if f['arm'] == 'plain' else f'{f["aspect"]}__s{f["seed"]}.npy'
+    return f'{f["set"]}/{f["enc"]}/{name}'
+
+
+def pack_inputs(set_=None, enc=None, arm=None):
+    """The distinct inputs of the plan, in plan order: list of (rel path, a fit that uses it)."""
+    seen = {}
+    for f in plan(set_, enc, arm):
+        seen.setdefault(pack_rel(f), f)
+    return list(seen.items())
+
+
+def _pack_manifest(pack):
+    m = json.loads((Path(pack) / 'manifest.json').read_text())
+    assert set(m) == {'files', 'keys'}, list(m)
+    return m
+
+
+def _pack_keys(pack, set_):
+    ks = json.loads((Path(pack) / set_ / 'keys.json').read_text())
+    assert isinstance(ks, list) and all(isinstance(k, str) for k in ks), set_
+    return ks
+
+
+def _pack_input(pack, f, man):
+    """The fit input from the pack; asserts its sha256 (om_data.array_sha256) against the manifest. Returns (z, sha)."""
+    import om_data
+    rel = pack_rel(f)
+    z = np.load(Path(pack) / rel, allow_pickle=False)
+    sha = om_data.array_sha256(z)
+    ent = man['files'][rel]
+    assert sha == ent['sha256'] and list(z.shape) == ent['shape'] and z.dtype == np.float32, (rel, sha, ent)
+    return z, sha
+
+
+def pack_build(pack=None, limit=None, set_=None, enc=None, arm=None):
+    """Local, CPU: write the inputs of the plan to `pack` (default OUT/turtle_pack). A file whose sha256 equals the
+    fresh input's is kept. Returns {written, kept}."""
+    import om_data
+    pack = Path(pack or Path(P.OUT) / 'turtle_pack')
+    pack.mkdir(parents=True, exist_ok=True)
+    mp = pack / 'manifest.json'
+    man = json.loads(mp.read_text()) if mp.exists() else dict(files={}, keys={})
+    todo = pack_inputs(set_, enc, arm)
+    if limit:
+        todo = todo[:limit]
+
+    def save_manifest():
+        text = (json.dumps(man, indent=1, sort_keys=True) + '\n').encode()
+        tmp = mp.with_name(mp.name + '.tmp')
+        tmp.write_bytes(text)
+        tmp.replace(mp)
+
+    for s in sorted({f['set'] for _, f in todo}):
+        ks = [str(k) for k in om_data.keys(s, om_data.HELD_SPLIT[s])]
+        text = json.dumps(ks).encode()
+        tmp = pack / s / 'keys.json.tmp'
+        tmp.parent.mkdir(parents=True, exist_ok=True)
+        tmp.write_bytes(text)
+        tmp.replace(pack / s / 'keys.json')
+        man['keys'][s] = dict(n=len(ks), sha256=hashlib.sha256(text).hexdigest())
+    written = kept = 0
+    for rel, f in todo:
+        z = np.ascontiguousarray(_input(f, om_data.HELD_SPLIT[f['set']]), dtype=np.float32)
+        assert z.ndim == 2 and z.shape[0] == man['keys'][f['set']]['n'], (rel, z.shape)
+        assert np.isfinite(z).all(), rel
+        sha = om_data.array_sha256(z)
+        path = pack / rel
+        if path.exists() and om_data.array_sha256(np.load(path, allow_pickle=False)) == sha:
+            kept += 1
+        else:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            tmp = path.with_name(path.stem + '.tmp.npy')
+            np.save(tmp, z, allow_pickle=False)
+            tmp.replace(path)
+            written += 1
+        man['files'][rel] = dict(sha256=sha, shape=list(z.shape))
+        print(f'pack {rel}: {z.shape} {sha[:12]}', flush=True)
+    save_manifest()
+    print(f'pack {pack}: {written} written, {kept} kept, {len(man["files"])} files in the manifest', flush=True)
+    return dict(written=written, kept=kept)
+
+
+def check_pulled(results, pack=None):
+    """Local, after a pull: the 412 fits under `results`/parts/turtle against the pack manifest (input sha256, n,
+    labels in [0, K), keys equal to om_data.keys) via om_data.check_part. Prints the counts; returns (ok, bad)."""
+    import om_data
+    pack = Path(pack or Path(P.OUT) / 'turtle_pack')
+    man = _pack_manifest(pack)
+    ok, bad = 0, []
+    jobs, hosts, torch_v = {}, {}, {}
+    for f in plan():
+        sha = man['files'].get(pack_rel(f), {}).get('sha256')
+        why = 'not in the pack manifest' if sha is None else om_data.check_part(f['set'], f['enc'], f['arm'], f['K'], f['aspect'], f['start'], f['seed'], out=results,
+                                 expect=dict(input_sha256=sha))
+        jobs.setdefault((f['set'], f['enc'], f['arm']), [0, 0])[0 if why is None else 1] += 1
+        if why is None:
+            ok += 1
+            p = om_data._path(results, 'turtle', f['set'], f['enc'], f['arm'],
+                              om_data._name(f['arm'], f['K'], f['aspect'], f['start'], f['seed']))
+            side = json.loads(p.with_suffix('.json').read_text())
+            hosts[side.get('host')] = hosts.get(side.get('host'), 0) + 1
+            torch_v[side.get('torch_version')] = torch_v.get(side.get('torch_version'), 0) + 1
+        else:
+            bad.append((f, why))
+    for (s, e, a), (g, b) in sorted(jobs.items()):
+        print(f'  {s}/{e}/{a}: {g} good, {b} bad')
+    for f, why in bad[:10]:
+        print('  BAD', pack_rel(f), f['K'], f['start'], why[:160])
+    print(f'check-pulled {results}: {ok} of {len(plan())} fits good, {len(bad)} bad; hosts {hosts}; torch {torch_v}')
+    if not bad:
+        print(f'copy (not run): mkdir -p {P.OUT}/parts && rsync -a {results}/parts/turtle {P.OUT}/parts/')
+    return ok, bad
+
+
+def run_fit(f, z, device, outer_steps, out=None, ks=None, node=False):
     import om_data
     import om_turtle
     res = om_turtle.fit(z, f['K'], f['start'], device, outer_steps=outer_steps)
     extra = dict(torch_version=torch.__version__, turtle=dict(P.TURTLE, outer_steps=int(outer_steps)))
+    if node:
+        extra.update(host=socket.gethostname(), input_source='pack')
     return om_data.save_parts(res['labels'], method='turtle', set_=f['set'], enc=f['enc'], arm=f['arm'], k=f['K'],
                               aspect=f['aspect'], start=f['start'], seed=f['seed'], input_sha256=om_data.array_sha256(z),
                               loss=res['loss'], entropy=res['entropy'], n_clusters=res['n_clusters'],
-                              seconds=res['seconds'], device=str(device), out=out, overwrite=True, extra=extra)
+                              seconds=res['seconds'], device=str(device), out=out, overwrite=True, extra=extra, ks=ks)
 
 
-def fit_job(set_, enc, arm, device, outer_steps=P.TURTLE['outer_steps'], limit=None, out=None):
-    """Run (or resume) one job. Returns {done, skipped}. Inputs are loaded once per (c* aspect, seed) or once."""
+def fit_job(set_, enc, arm, device, outer_steps=P.TURTLE['outer_steps'], limit=None, out=None, pack=None,
+            only_k=None, only_start=None):
+    """Run (or resume) one job. Returns {done, skipped}. Inputs are loaded once per (c* aspect, seed) or once.
+    `pack`: inputs, their sha256 and the keys come from the pack folder (no om_data.plain, cstar or keys)."""
     import om_data
     held = om_data.HELD_SPLIT[set_]
     todo = plan(set_, enc, arm)
+    if only_k is not None:
+        todo = [f for f in todo if f['K'] == only_k]
+    if only_start is not None:
+        todo = [f for f in todo if f['start'] == only_start]
     if limit:
         todo = todo[:limit]
+    ks = man = None
+    if pack:
+        man = _pack_manifest(pack)
+        ks = _pack_keys(pack, set_)
+        assert man['keys'][set_]['n'] == len(ks) == P.N_ROWS[(set_, held)], (set_, len(ks))
     done = skipped = 0
     cache = {}
     for f in todo:
         key = (f['aspect'], f['seed'])
         if key not in cache:
             cache.clear()
-            cache[key] = _input(f, held)
-        z = cache[key]
-        want = om_data.array_sha256(z)
+            if pack:
+                cache[key] = _pack_input(pack, f, man)
+            else:
+                z0 = _input(f, held)
+                cache[key] = (z0, om_data.array_sha256(z0))
+        z, want = cache[key]
         why = om_data.check_part(f['set'], f['enc'], f['arm'], f['K'], f['aspect'], f['start'], f['seed'], out=out,
-                                 expect=dict(input_sha256=want))
+                                 expect=dict(input_sha256=want), ks=ks)
         name = f'{set_}/{enc}/{arm}/{f["aspect"]}/K{f["K"]}/start{f["start"]}/seed{f["seed"]}'
         if why is None:
             skipped += 1
             continue
-        p = run_fit(f, z, device, outer_steps, out=out)
+        p = run_fit(f, z, device, outer_steps, out=out, ks=ks, node=bool(pack))
         done += 1
         side = json.loads(p.with_suffix('.json').read_text())
         print(f'{name}: {side["seconds"]:.1f} s, loss {side["loss"]:.4f}, n_clusters {side["n_clusters"]}'
@@ -221,6 +365,18 @@ def main(argv=None):
     f.add_argument('--device', choices=('cuda', 'cpu'), default='cuda')
     f.add_argument('--limit', type=int, default=None)
     f.add_argument('--outer-steps', type=int, default=P.TURTLE['outer_steps'])
+    f.add_argument('--pack', default=None, help='read inputs and keys from this pack folder (node)')
+    f.add_argument('--only-k', type=int, default=None, help='only the fits with this K (full fits)')
+    f.add_argument('--only-start', type=int, default=None, help='only the fits with this start (full fits)')
+    pk = sub.add_parser('pack')
+    pk.add_argument('--pack', default=None, help='pack folder (default OUT/turtle_pack)')
+    pk.add_argument('--limit', type=int, default=None, help='smoke: only the first N inputs')
+    pk.add_argument('--set', dest='set_', choices=P.SETS, default=None)
+    pk.add_argument('--enc', choices=P.ENCODERS, default=None)
+    pk.add_argument('--arm', choices=('plain', 'cstar'), default=None)
+    cp = sub.add_parser('check-pulled')
+    cp.add_argument('results', help='pulled results folder (holds parts/turtle/...)')
+    cp.add_argument('--pack', default=None, help='pack folder (default OUT/turtle_pack)')
     t = sub.add_parser('timing')
     t.add_argument('--device', choices=('cuda', 'cpu'), default='cuda')
     t.add_argument('--outer-steps', type=int, default=P.TURTLE['outer_steps'])
@@ -230,12 +386,19 @@ def main(argv=None):
         return 0
     if args.cmd is None:
         ap.error('give --list or a command (fit, timing)')
-    if args.outer_steps != P.TURTLE['outer_steps'] or getattr(args, 'limit', None):
+    if getattr(args, 'outer_steps', P.TURTLE['outer_steps']) != P.TURTLE['outer_steps'] or getattr(args, 'limit', None):
         assert P.SMOKE, '--outer-steps and --limit are for the smoke: set OM_SMOKE=1'
     if P.SMOKE:
         assert Path(P.OUT).resolve() != Path(P.DEFAULT_OUT).resolve(), 'smoke needs OM_OUTPUTS in a scratch folder'
     if args.cmd == 'fit':
-        fit_job(args.set_, args.enc, args.arm, _device(args.device), args.outer_steps, args.limit)
+        fit_job(args.set_, args.enc, args.arm, _device(args.device), args.outer_steps, args.limit, pack=args.pack,
+                only_k=args.only_k, only_start=args.only_start)
+    elif args.cmd == 'pack':
+        assert not args.limit or P.SMOKE, '--limit is for the smoke: set OM_SMOKE=1'
+        pack_build(args.pack, args.limit, args.set_, args.enc, args.arm)
+    elif args.cmd == 'check-pulled':
+        ok, bad = check_pulled(args.results, args.pack)
+        return 0 if not bad else 1
     else:
         timing(_device(args.device), args.outer_steps)
     return 0

@@ -175,15 +175,16 @@ def _check_labels(y, n, k, what):
 
 
 def save_parts(labels_, *, method, set_, enc, arm, k, aspect=None, start, seed=None, input_sha256, loss, entropy,
-               n_clusters, seconds, device, out=None, overwrite=False, extra=None):
+               n_clusters, seconds, device, out=None, overwrite=False, extra=None, ks=None):
     """Write one fit's partition (`labels_` int [n] in `keys(set, held split)` order) and its sidecar; returns the npz
     path. Refuses an existing file unless `overwrite`. `extra` (dict) is merged into the sidecar (torch version,
-    TURTLE settings); a key that is already a standard sidecar key is refused."""
+    TURTLE settings); a key that is already a standard sidecar key is refused. `ks` (keys list of the held split, from
+    a pack) replaces `keys(set, split)` on a machine without the stores."""
     assert method in METHODS, method
     arm = _arm(arm, method)
     _check_fit(set_, enc, arm, k, aspect, start, seed)
     split = HELD_SPLIT[set_]
-    ks = keys(set_, split)
+    ks = keys(set_, split) if ks is None else list(ks)
     y = np.asarray(labels_)
     assert y.ndim == 1 and np.issubdtype(y.dtype, np.integer), (y.shape, y.dtype)
     y = y.astype(np.int32)
@@ -220,11 +221,11 @@ def _read_one(path, expect, ks):
     return y
 
 
-def check_part(set_, enc, arm, k, aspect=None, start=0, seed=None, method='turtle', out=None, expect=None):
+def check_part(set_, enc, arm, k, aspect=None, start=0, seed=None, method='turtle', out=None, expect=None, ks=None):
     """Check one fit's files (the resume check): None when the npz and its sidecar exist and pass every check of
     `turtle_parts` (sidecar identity, sha256, keys in value and order, labels in [0, K)), else the reason as text.
     `expect` {sidecar key: value} adds checks (for example `input_sha256`). An npz alone (a crash before the sidecar)
-    gives a reason; the caller rewrites it with `save_parts(..., overwrite=True)`."""
+    gives a reason; the caller rewrites it with `save_parts(..., overwrite=True)`. `ks`: as in `save_parts`."""
     assert method in METHODS, method
     arm = _arm(arm, method)
     _check_fit(set_, enc, arm, k, aspect, start, seed)
@@ -233,7 +234,7 @@ def check_part(set_, enc, arm, k, aspect=None, start=0, seed=None, method='turtl
     want = dict(method=method, set=set_, split=split, enc=enc, arm=arm, aspect=aspect, K=int(k), start=int(start),
                 seed=seed, **(expect or {}))
     try:
-        _read_one(path, want, keys(set_, split))
+        _read_one(path, want, keys(set_, split) if ks is None else list(ks))
     except (FileNotFoundError, AssertionError, ValueError, OSError, KeyError) as e:
         return f'{type(e).__name__}: {e}'
     return None
