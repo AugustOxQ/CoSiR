@@ -146,3 +146,32 @@ def test_retrieval_diagnostics_use_the_required_seed_mode(outputs, monkeypatch, 
         path = outputs / 'stage3' / diagnostic / 'mmart__qwen.json'
     assert len(calls) == expected_calls
     assert path.is_file()
+
+
+def test_qwen_crl_keeps_the_class_count_row_when_k_is_20(outputs, monkeypatch):
+    """MMArt style has K = 20: the class-count row stands for both, and it must not be dropped with the 20 row."""
+    labels = np.array([0, 0, 1, 1], dtype=np.int64)
+    monkeypatch.setattr(ns_diag.ns_data, 'labels', lambda *args: labels)
+    monkeypatch.setattr(ns_diag.ns_clu_cells, '_labels', lambda *args: labels)
+    monkeypatch.setattr(ns_diag, '_ap', lambda rows, arm, set_, aspect, y, box, workers: (
+        dict(ap=np.full((5, 4) if arm == 'cstar' else (4,), 0.5, dtype=np.float64), rows=np.arange(4), point=0.5), 'none+k0'))
+    monkeypatch.setattr(ns_diag, 'arm_parts', lambda s, e, a, arm, k:
+                        np.zeros((5, 3, 4) if arm == 'cstar' else (3, 4), dtype=np.int32))
+    summary = dict(cand=0.5, comp=0.5, d=0., lo=-0.1, hi=0.1, n_draws=11)
+    calls = []
+
+    def paired_cell(cand, comp, y, k, r, metrics, draws):
+        calls.append((k, tuple(metrics)))
+        return {m: summary for m in metrics}
+
+    monkeypatch.setattr(ns_diag.ns_clu, 'paired_cell', paired_cell)
+    monkeypatch.setattr(ns_diag.ns_ret, 'paired_ret', lambda *args, **kwargs: summary)
+    assert P.CLASS_COUNT[('mmart', 'style')] == 20
+    res = ns_diag.qwen_crl(workers=1, clu_draws=11, ret_draws=17)
+    assert calls.count((20, tuple(P.CLASS_METRICS))) == 1              # style, once
+    style = [r for r in res['clustering'] if r['aspect'] == 'style']
+    assert [(r['k'], r['at'], r['metric']) for r in style] == [(20, 'K', m) for m in P.CLASS_METRICS]
+    for aspect in ('emotion', 'genre'):
+        rows = [r for r in res['clustering'] if r['aspect'] == aspect]
+        K = P.CLASS_COUNT[('mmart', aspect)]
+        assert [(r['k'], r['metric']) for r in rows] == [(20, m) for m in P.SWEEP_METRICS] + [(K, m) for m in P.CLASS_METRICS]
