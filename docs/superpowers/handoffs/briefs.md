@@ -1831,3 +1831,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-04-r20-decide-handoff.md
 - New chat: tab 'r20 decide', session e55f8816-2621-413c-95f9-3682406c474a
 
+[brief] CoSiR: 2 -> weekly report (2026-11-04 10:25 Amsterdam)
+- Done: outside-view page published (update #6, 29 October to 3 November). Weekly report v3 and slides v3 are drafted and checked.
+- State: 21 slides, about 11,000 words; no wrong number in the fidelity checks. Drafts are not committed or indexed.
+- Next: discuss the weekly report with the user. After their edits, build the pptx.
+- Blocked: waits for the user's comments on v3.
+- Handoff: docs/superpowers/handoffs/2026-11-04-weekly-report-handoff.md
+- New chat: tab 'weekly report', session 75c21a4e-03b5-4e27-9d68-777aef64644c
+
