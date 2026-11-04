@@ -32,9 +32,11 @@ OM_BATCH=$OM_BATCH   OM_EST_SHARD=$OM_EST_SHARD   OM_EST_PROBE=$OM_EST_PROBE   s
      \$CLUSTER hf-fetch sywang/TPIPS-Embed-Qwen3VL-8B --revision 86a1493c60121e656a1c075bc7aed88f25fcd4d4 --wait      (background)
      \$CLUSTER hf-fetch Qwen/Qwen3-VL-Embedding-8B --revision 2c4565515e0f265c6511776e7193b22c0968ddc7 --wait         (background)
      \$CLUSTER hf-fetch sywang/TPIPS-Embed-Qwen3VL-8B --status ; \$CLUSTER hf-fetch Qwen/Qwen3-VL-Embedding-8B --status
-2  Env: no new env. The job uses the node's CoSiR env (torch 2.14, transformers 5.16.1 when last read) with tpips 0.1.2 and
-   peft 0.19.1 from the input folder tpips_pylibs on PYTHONPATH (pure Python, copied from the local venv). A second CLI
-   profile cannot build an env: load_profiles refuses a shared REPO_URL. Gate (iv) compares node and local vectors.
+2  Env: no new env. The job uses only the interpreter of the node's CoSiR env. Every numeric package comes from the input
+   folder tpips_pylibs/full on PYTHONPATH, a copy of the local versions (7.5 GB; torch, torchvision, nvidia, transformers,
+   tokenizers, safetensors, huggingface_hub, accelerate, PIL, numpy, with their dist-info, plus tpips and peft). The node's
+   own transformers 5.16.1 and torch 2.14 failed gate (iv): round log, build 4. A second CLI profile cannot build an env:
+   load_profiles refuses a shared REPO_URL. Gate (iv) compares node and local vectors.
 3  DATA_MAP: these two pairs in cluster.conf (the images already map through wikiart_proj):
      /local/wding/r18_in/tpips_inputs:/data/SSD2/cosir_r18/20261103_outside_methods/outputs/tpips_inputs
      /local/wding/r18_in/tpips_pylibs:/data/SSD2/cosir_r18/20261103_outside_methods/node_inputs/tpips_pylibs
@@ -50,7 +52,7 @@ OM_BATCH=$OM_BATCH   OM_EST_SHARD=$OM_EST_SHARD   OM_EST_PROBE=$OM_EST_PROBE   s
    If a DATA_MAP path is wrong this job fails here, not in the 2.5 h jobs. Fix, new tag, repeat (twice at most).
 6  gate probe (48 images x 3 factors at batch $OM_BATCH, one shard, merged on the node):
      \$CLUSTER launch --node node402 --queue --est $OM_EST_PROBE --$L -- bash $SH gate-probe --batch $OM_BATCH
-     \$CLUSTER watch <tag> ; \$CLUSTER pull --tag <tag>     -> $R/tpips_store/probe/{emotion,style,genre}/
+     \$CLUSTER watch <tag> ; \$CLUSTER pull --tag <tag>     -> $R/tpips_store/probe_full/{emotion,style,genre}/
 
 -- C. the extraction: 3 shard jobs, one GPU each (each takes the lowest free slot; each runs artelingo then mmart)
 7  check once, then three launches of the same commit, each expected about $OM_EST_SHARD:
@@ -70,7 +72,7 @@ OM_BATCH=$OM_BATCH   OM_EST_SHARD=$OM_EST_SHARD   OM_EST_PROBE=$OM_EST_PROBE   s
      PYTHONDONTWRITEBYTECODE=1 $PY $TPIPS merge --set artelingo --of $OM_NSHARD
      PYTHONDONTWRITEBYTECODE=1 $PY $TPIPS merge --set mmart --of $OM_NSHARD
 10 gate (iv): the node's probe store against the local batch-1 reference, then the real stores (pass = exit 0, writes OUT/stage0/gate_iv.json):
-     PYTHONDONTWRITEBYTECODE=1 $PY $TPIPS gate-iv --path das6=$R/tpips_store/probe
+     PYTHONDONTWRITEBYTECODE=1 $PY $TPIPS gate-iv --path das6=$R/tpips_store/probe_full
 11 release the node: \$CLUSTER du --node node402 ; list what is left, show the user, \$CLUSTER clean only on a yes
    (the weights, 32 GB at /var/scratch/wding/cache/hub, and the env stay until the TPIPS cells are done).
 PLAN
