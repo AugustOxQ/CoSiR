@@ -223,3 +223,6 @@ src/test/20261025_encoders_genre/outputs
 src/test/20261027_relational_genre/outputs
 # r10 build 7: the recipe sweep round outputs folder is a link to /data/SSD2
 src/test/20261027_recipe_sweep/outputs
+
+# Weekly deck figure with third-party dataset images; the repo is public. Rebuild with its build_examples.py.
+docs/reports/assets/2026-11-04_weekly/slides/examples_slide.png
