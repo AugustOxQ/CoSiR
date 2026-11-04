@@ -144,6 +144,33 @@ def test_clay_cache_is_recomputed_when_inputs_change(clay_fake, monkeypatch):
     assert side['text_sha256'] == od.array_sha256(new_text)
 
 
+def test_clay_cache_is_recomputed_when_one_image_row_changes(clay_fake, monkeypatch):
+    o = clay_fake['tmp'] / 'o'
+    first = od.clay('artelingo', 'held', 'style', 'A', out=o)
+    img2 = clay_fake['img'].copy()
+    img2[39] = unit(img2[39:40] + 0.5)[0]                         # one row of the images, text unchanged
+    monkeypatch.setattr(od, 'plain', lambda s, sp, enc: img2.copy())
+    second = od.clay('artelingo', 'held', 'style', 'A', out=o)
+    assert not np.array_equal(first, second)                      # the stale cache was not returned
+    side = json.loads((o / 'clay' / 'artelingo_held' / 'A' / 'style.json').read_text())
+    assert side['input_sha256'] == od.array_sha256(img2)
+
+
+def test_clay_refuses_a_cache_with_reordered_keys(clay_fake):
+    o = clay_fake['tmp'] / 'o'
+    od.clay('artelingo', 'held', 'style', 'A', out=o)
+    f = o / 'clay' / 'artelingo_held' / 'A' / 'style.npz'
+    with np.load(f, allow_pickle=False) as z:
+        k, e = z['keys'], z['emb']
+    np.savez(f, keys=k[::-1].copy(), emb=e[::-1].copy())          # a consistent file with the rows in another order
+    sp = f.with_suffix('.json')
+    side = json.loads(sp.read_text())
+    side['emb_sha256'] = op.sha256_file(f)                        # so only the key check can catch it
+    sp.write_text(json.dumps(side))
+    with pytest.raises(AssertionError):
+        od.clay('artelingo', 'held', 'style', 'A', out=o)
+
+
 def test_clay_refuses_a_corrupted_cache_file(clay_fake):
     o = clay_fake['tmp'] / 'o'
     od.clay('artelingo', 'held', 'style', 'A', out=o)
@@ -330,3 +357,50 @@ def test_temi_takes_the_same_form(parts):
     assert got.shape == (3, 12)
     with pytest.raises(FileNotFoundError):
         od.turtle_parts('artelingo', 'qwen', 'plain', 9, out=parts['out'])   # nothing under turtle
+
+
+# ------------------------------------------------------------------------------------------------ extra, check_part
+def test_extra_is_merged_into_the_sidecar(parts):
+    p = save_plain(parts, extra={'torch': '2.9.0', 'turtle': dict(op.TURTLE)})
+    side = json.loads(p.with_suffix('.json').read_text())
+    assert side['torch'] == '2.9.0' and side['turtle'] == op.TURTLE and side['K'] == 9
+
+
+def test_extra_refuses_a_standard_sidecar_key(parts):
+    for key in ('loss', 'sha256', 'K', 'device'):
+        with pytest.raises(AssertionError):
+            save_plain(parts, extra={key: 1})
+    assert not list(parts['out'].rglob('*.npz'))                  # refused before anything is written
+
+
+def _chk(parts, **kw):
+    return od.check_part('artelingo', 'qwen', 'plain', 9, start=0, out=parts['out'], **kw)
+
+
+def test_check_part_accepts_a_good_fit_and_expect_keys(parts):
+    save_plain(parts, start=0)
+    assert _chk(parts) is None
+    assert _chk(parts, expect={'input_sha256': 'ab' * 32}) is None
+    assert _chk(parts, expect={'input_sha256': 'ee' * 32}) is not None      # input changed: refit
+
+
+def test_check_part_reports_missing_npz_alone_and_corrupt_files(parts):
+    assert _chk(parts) is not None                                           # nothing written
+    p = save_plain(parts, start=0)
+    p.with_suffix('.json').unlink()
+    assert _chk(parts) is not None                                           # npz alone (crash before the sidecar)
+    p2 = save_plain(parts, start=0, overwrite=True)                          # the resume rewrite
+    assert _chk(parts) is None
+    with np.load(p2, allow_pickle=False) as z:
+        k, y = z['keys'], z['labels'].copy()
+    y[0] = (y[0] + 1) % 9
+    np.savez(p2, keys=k, labels=y)
+    assert 'sha256' in _chk(parts)                                           # npz changed under its sidecar
+
+
+def test_check_part_cstar_and_refuses_a_nonfit(parts):
+    save_cstar(parts, 2)
+    assert od.check_part('artelingo', 'qwen', 'cstar', 9, aspect='emotion', start=0, seed=2, out=parts['out']) is None
+    assert od.check_part('artelingo', 'qwen', 'cstar', 9, aspect='emotion', start=0, seed=3, out=parts['out']) is not None
+    with pytest.raises(AssertionError):
+        od.check_part('artelingo', 'qwen', 'plain', 7, start=0, out=parts['out'])   # K not in plain_ks

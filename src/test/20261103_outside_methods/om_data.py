@@ -43,6 +43,8 @@ FACTORS = tuple(op.TPIPS_FACTORS.values())
 HELD_SPLIT = op.HELD_SPLIT
 METHODS = ('turtle', 'temi', 'replay')           # 'replay': ticket 07's gate (iii) b
 ARMS = ('plain', 'cstar')
+STANDARD_SIDECAR = ('method', 'set', 'split', 'enc', 'arm', 'aspect', 'K', 'start', 'seed', 'n', 'sha256', 'input_sha256',
+                    'loss', 'entropy', 'n_clusters', 'seconds', 'device')
 
 assert {k: v for k, v in ns_data.ns_paths.N_ROWS.items() if k[0] in op.SETS} == op.N_ROWS
 
@@ -173,9 +175,10 @@ def _check_labels(y, n, k, what):
 
 
 def save_parts(labels_, *, method, set_, enc, arm, k, aspect=None, start, seed=None, input_sha256, loss, entropy,
-               n_clusters, seconds, device, out=None, overwrite=False):
+               n_clusters, seconds, device, out=None, overwrite=False, extra=None):
     """Write one fit's partition (`labels_` int [n] in `keys(set, held split)` order) and its sidecar; returns the npz
-    path. Refuses an existing file unless `overwrite`."""
+    path. Refuses an existing file unless `overwrite`. `extra` (dict) is merged into the sidecar (torch version,
+    TURTLE settings); a key that is already a standard sidecar key is refused."""
     assert method in METHODS, method
     arm = _arm(arm, method)
     _check_fit(set_, enc, arm, k, aspect, start, seed)
@@ -185,6 +188,9 @@ def save_parts(labels_, *, method, set_, enc, arm, k, aspect=None, start, seed=N
     assert y.ndim == 1 and np.issubdtype(y.dtype, np.integer), (y.shape, y.dtype)
     y = y.astype(np.int32)
     _check_labels(y, len(ks), k, f'{method}/{set_}/{enc}/{arm}')
+    extra = dict(extra or {})
+    clash = sorted(set(extra) & set(STANDARD_SIDECAR))
+    assert not clash, f'extra sidecar keys collide with standard keys: {clash}'
     path = _path(out, method, set_, enc, arm, _name(arm, k, aspect, start, seed))
     assert overwrite or not (path.exists() or path.with_suffix('.json').exists()), f'{path}: exists'
     _atomic(path, lambda f: np.savez(f, keys=np.array(ks), labels=y))
@@ -192,6 +198,7 @@ def save_parts(labels_, *, method, set_, enc, arm, k, aspect=None, start, seed=N
                 seed=None if seed is None else int(seed), n=len(ks), sha256=op.sha256_file(path),
                 input_sha256=input_sha256, loss=float(loss), entropy=float(entropy), n_clusters=int(n_clusters),
                 seconds=float(seconds), device=device)
+    side.update(extra)
     _write_json(path.with_suffix('.json'), side)
     return path
 
@@ -211,6 +218,25 @@ def _read_one(path, expect, ks):
     assert file_keys == ks, f'{path}: keys differ from keys({expect["set"]}, {expect["split"]}) in value or order'
     _check_labels(y, len(ks), expect['K'], str(path))
     return y
+
+
+def check_part(set_, enc, arm, k, aspect=None, start=0, seed=None, method='turtle', out=None, expect=None):
+    """Check one fit's files (the resume check): None when the npz and its sidecar exist and pass every check of
+    `turtle_parts` (sidecar identity, sha256, keys in value and order, labels in [0, K)), else the reason as text.
+    `expect` {sidecar key: value} adds checks (for example `input_sha256`). An npz alone (a crash before the sidecar)
+    gives a reason; the caller rewrites it with `save_parts(..., overwrite=True)`."""
+    assert method in METHODS, method
+    arm = _arm(arm, method)
+    _check_fit(set_, enc, arm, k, aspect, start, seed)
+    split = HELD_SPLIT[set_]
+    path = _path(out, method, set_, enc, arm, _name(arm, k, aspect, start, seed))
+    want = dict(method=method, set=set_, split=split, enc=enc, arm=arm, aspect=aspect, K=int(k), start=int(start),
+                seed=seed, **(expect or {}))
+    try:
+        _read_one(path, want, keys(set_, split))
+    except (FileNotFoundError, AssertionError, ValueError, OSError, KeyError) as e:
+        return f'{type(e).__name__}: {e}'
+    return None
 
 
 def turtle_parts(set_, enc, arm, k, aspect=None, method='turtle', out=None):
