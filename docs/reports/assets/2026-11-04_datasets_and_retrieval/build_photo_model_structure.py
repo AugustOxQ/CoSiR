@@ -12,7 +12,7 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from matplotlib.patches import Circle, FancyArrowPatch, FancyBboxPatch, Rectangle
+from matplotlib.patches import Circle, FancyArrowPatch, FancyBboxPatch
 
 INK, SECONDARY, GRID = "#0b0b0b", "#52514e", "#e4e3df"
 GREY, BLUE = "#a6a49e", "#1d6fd1"
@@ -47,9 +47,9 @@ def main():
             color=color, linewidth=lw, shrinkA=0, shrinkB=0,
         ))
 
-    def chip(x, y, w, h, label, edge, fill="white", color=INK):
+    def chip(x, y, w, h, label, edge, fill="white", color=INK, size=14):
         rounded(x, y, w, h, edge=edge, fill=fill, radius=10)
-        text(x + w / 2, y + h / 2, label, color=color)
+        text(x + w / 2, y + h / 2, label, color=color, size=size)
 
     text(1200, 58,
          "Our photo model: the emotion path, fine-tuned on unlabelled photos",
@@ -71,12 +71,16 @@ def main():
         text(mid, 420, label, size=12, color=SECONDARY)
         arrow((x + bw + 10, 480), (next_x - 10, 480))
 
-    # The inherited painting model: one small trunk and its emotion head.
+    # Each inherited side keeps its own trunk and emotion output.
     x = xs[0]
     text(x + bw / 2, 420, "image encoder fixed", color=SECONDARY)
-    chip(x + 160, 590, 175, 55, "trunk", BLUE, BLUE, "white")
-    arrow((x + bw / 2, 645), (x + bw / 2, 700), BLUE, scale=8)
-    chip(x + 145, 710, 205, 55, "emotion", BLUE, BLUE, "white")
+    chip(x + 20, 540, 215, 105, "image\ntrunk", BLUE, BLUE, "white")
+    chip(x + 260, 540, 215, 105, "explanation\ntrunk", BLUE, BLUE, "white", size=12)
+    arrow((x + 127.5, 645), (x + 127.5, 712), BLUE, scale=8)
+    arrow((x + 367.5, 645), (x + 367.5, 712), BLUE, scale=8)
+    chip(x + 20, 715, 215, 90, "emotion\nhead", BLUE, BLUE, "white", size=12)
+    chip(x + 260, 715, 215, 90, "emotion\nhead", BLUE, BLUE, "white", size=12)
+    text(x + bw / 2, 870, "style and genre heads\nnot used")
 
     # Teal identifies the newly introduced photo/explanation data.
     x = xs[1]
@@ -91,24 +95,22 @@ def main():
     text(x + bw / 2, 520, "content similarity\nsubtracted", color=CHANGED)
     text(x + bw / 2, 650, "buddy terms\non the graph", color=CHANGED)
     text(x + bw / 2, 780, "teacher:\ninstructed image", color=CHANGED)
+    text(x + bw / 2, 865, "full training loop, stopped\non validation loss", size=12)
     nodes = [(-65, -10), (-22, -50), (55, -28), (58, 42), (-30, 50)]
     for a, b in [(0, 1), (1, 2), (2, 3), (3, 4), (4, 0), (1, 4)]:
         pa, pb = nodes[a], nodes[b]
         ax.plot([x + bw / 2 + pa[0], x + bw / 2 + pb[0]],
-                [940 + pa[1], 940 + pb[1]], color=CHANGED, lw=1.6, zorder=1)
+                [975 + pa[1], 975 + pb[1]], color=CHANGED, lw=1.6, zorder=1)
     for dx, dy in nodes:
-        ax.add_patch(Circle((x + bw / 2 + dx, 940 + dy), 10,
+        ax.add_patch(Circle((x + bw / 2 + dx, 975 + dy), 10,
                             fc=CHANGED, ec="white", lw=0.8))
 
     # A plain image produces a single emotion representation.
     x = xs[3]
     text(x + bw / 2, 410, "plain image in")
     text(x + bw / 2, 510, "emotion output out", color=CHANGED)
-    chip(x + 30, 615, 175, 145, "plain\nimage", GREY, "#f0efed")
-    arrow((x + 217, 688), (x + 280, 688))
-    ax.add_patch(Rectangle((x + 300, 672), 165, 31,
-                           facecolor=BLUE, edgecolor="none"))
-    text(x + bw / 2, 875, "k-means or retrieval")
+    text(x + bw / 2, 690, "clustering: new k-means\non the test photos", size=13)
+    text(x + bw / 2, 870, "retrieval: rank\nthe test photos")
 
     text(30, 1070, "orange: changed; teal: new", size=12, color=SECONDARY, ha="left")
     text(1200, 1118,

@@ -196,6 +196,12 @@ The old frozen confirmation stayed failed.
   Validation picked the settings and retrieval read-out. Near-copies of validation or test photos were excluded from training.
 - **Result:** the photo model was a WIN over plain Qwen, the teacher and CRL in the scored tasks below.
 - **What it changed:** we kept c* for paintings and a separate photo model. We did not establish one model for both domains.
+- **How it trained:** the emotion pathway of c*: its image side and its caption side, each a trunk with an emotion output, started from c*'s ArtELingo weights.
+  Backbone features stayed fixed; the style and genre heads were unused. Graphs were mutual nearest neighbours of the photos' explanations
+  under the emotion instruction (80 per photo, content similarity subtracted). The loss was the four buddy terms (a photo's image and
+  explanation outputs pulled toward its buddies' image and explanation outputs) plus the teacher term toward the instructed image at weight 0.25.
+  No emotion label entered. AdamW, batches of 512 graph pairs, at most 200 epochs, stopped on validation loss with patience 15.
+  All five final runs kept epoch 1. At test the photo model read one default image; k-means ran new on the test photos and retrieval ranked them.
 
 | Affection task | Photo model | Plain Qwen | Teacher | Photo minus teacher [95%] |
 |---|---:|---:|---:|---|
@@ -221,6 +227,17 @@ It supplied no claim of transfer without photo training.
 
 The exact sweep pick was uncertain. Its lead over the next row was smaller than half the new AMI seed range, and CPU/GPU differences approached the tie margin.
 Removing content correction failed both validation teacher gaps. Random initialization was only a validation row, so it supplied no from-scratch test claim.
+
+Start point, validation, seed 0 (sweep rows 1, 8 and 5; each run took about 1 to 3 minutes):
+
+| Row | Start, neighbours | AMI | mAP | Best epoch | Run time |
+|---|---|---:|---:|---:|---:|
+| 1 | c*, 40 | 0.1769 | 0.3227 | 2 | 61 s |
+| 8 | Random weights, 40 | 0.1801 | 0.3227 | 2 | 65 s |
+| 5 (pick) | c*, 80 | 0.1905 | 0.3280 | 3 | 151 s |
+
+The two starts scored about the same on one seed. The random start was not picked and has no test score. The pick (80 neighbours) was not run from random weights.
+Epochs and seconds come from the sweep runs' `run.json` files.
 Plain cosine, untied labels and every photo source supported the final ordering; contentment remained slightly below the teacher per class.
 
 The independent comparison followed the written verdict, rather than preceding it. It matched all checked values, and the verdict counted only after that check passed.

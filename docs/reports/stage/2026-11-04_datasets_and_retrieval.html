@@ -1917,7 +1917,7 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
 <h3 id="task-and-data">Task and data</h3>
 <p>The aspects are emotion, style and genre. Our networks learn from <strong>buddy graphs</strong>: pairs of paintings that are among each other's 40 nearest neighbours (80 for the photo model). The neighbours are found in an instructed view: Qwen's embeddings made when Qwen is told to look at one aspect.</p>
 <p>The networks take the <strong>plain image</strong> as input: Qwen image features (Qwen3-VL-Embedding-2B) with no aspect instruction, in one encoder run per painting. Earlier pages and the structure figure call it the default image. Only training uses instructed views.</p>
-<p>The data is ArtELingo: WikiArt paintings with captions written by viewers. A painting's emotion is the most common emotion label among its captions. Claims use the <strong>held</strong> split, the ArtELingo test split: 12,281 paintings (genre on 9,949). Training never used it, but earlier recipe choices read its clustering scores, so it is no longer unseen evidence.</p>
+<p>The data is ArtELingo: WikiArt paintings with captions written by viewers. A painting's emotion is the most common emotion label among its captions. Tests use the <strong>held</strong> split, the ArtELingo test split: 12,281 paintings (genre on 9,949). Training never used it, but earlier recipe choices read its clustering scores, so it is no longer unseen evidence.</p>
 <h3 id="the-new-test-sets">The new test sets</h3>
 <p>This stage adds three test sets, each with validation data for picks.</p>
 <doc-mock frame="none" w="560" label="Test sets. MMArt labelled paintings: emotion 16,218, style 16,384, genre 13,420. MMArt validation: ArtELingo validation paintings that carry MMArt labels."><template>
@@ -1933,7 +1933,8 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
 <p>The <strong>near-copy cut</strong> removes images too close to others, by cosine similarity. MMArt keeps paintings below 0.95 to ArtELingo train and validation paintings. Two photo cuts drop photos at 0.85 or more: EmoSet photos to Affection train photos, and Affection train photos to its validation and test photos.</p>
 <p>Three more encoders join Qwen: SigLIP 2, SigLIP 1 and CLIP L/14. They replace only the plain image input.</p>
 <h3 id="scores">Scores</h3>
-<p><strong>AMI</strong>, adjusted mutual information, measures how well clusters agree with aspect labels; zero means chance. We group the image outputs into 20 clusters with k-means and score them against the labels. Results average 5 model seeds, each a separate training run.</p>
+<p><strong>AMI</strong>, adjusted mutual information, measures how well clusters agree with aspect labels; zero means chance.</p>
+<p>k-means runs fresh on each method's outputs for each test set, with 20 clusters and three random states; no clusters are saved in a model or carried from training. The AMI is the mean over the three states, and results average 5 model seeds, each a separate training run.</p>
 <p><strong>Retrieval</strong> is the second task. A query is a painting plus an aspect name. The head of that aspect, the network's output layer for it, ranks the other paintings. A hit has the same label as the query. <strong>mAP</strong>, mean average precision, is the mean over queries of average precision, which is high when hits sit near the top. A guess from class shares alone gives emotion mAP 0.2007 on held paintings.</p>
 <p>A <strong>comparison method</strong> sets how saved embeddings are compared at retrieval, with no new training. Each model picks one on validation. The up to 25 candidates combine centering (subtract the mean embedding), PCA whitening and query expansion, which averages the query with its nearest neighbours.</p>
 <p>A <strong>seed range</strong> is the largest minus the smallest validation score across model seeds for one aspect, fixed for the tests. On painting mAP it is 0.0014 for emotion and 0.0022 for style. For genre it is 0.0038.</p>
@@ -1941,7 +1942,7 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
 <p><strong>PercepT core</strong> is our repaired implementation of PercepT on our features, with 40 topics fixed. It groups image-caption pairs into topics, and a classifier predicts those topics from an image. Each painting's top topic is its cluster.</p>
 <p>For each aspect, the strongest eligible PercepT entry is the comparator. <strong>PercepT on the same encoder</strong> uses the encoder of the network under test.</p>
 <p>The <strong>instructed Qwen image</strong> uses an aspect instruction, with one encoder run per aspect. It is also the teacher: in training, each head is pulled toward it. A network that matches it keeps the label agreement with one encoder run, not three (one per aspect). On held genre AMI it scores 0.5062, above the strongest PercepT entry's 0.4269.</p>
-<p><strong>CRL</strong> is an outside method whose image similarity depends on a named aspect. We use our re-implementation; validation picked its CLIP L/14 version with painting wording from four. It is strong on style: mAP 0.2816 beside the plain Qwen image's 0.1924. On genre it is below that image. Beating it shows that one uninstructed read ranks better than a method that is given the aspect.</p>
+<p><strong>CRL</strong> is an outside method whose image similarity depends on a named aspect. We use our re-implementation; validation picked its CLIP L/14 version with painting wording from four. It is strong on style: mAP 0.2816 beside the plain Qwen image's 0.1924. On genre it is below that image. Being above it shows that one uninstructed read ranks better than a method that is given the aspect.</p>
 <doc-mock frame="none" w="560" label="Held retrieval comparators, mAP, 12,281 paintings (genre on 9,949), comparison method picked on validation."><template>
 <table>
   <thead><tr><th>Method</th><th class="n">Emotion</th><th class="n">Style</th><th class="n">Genre</th></tr></thead>
@@ -1952,56 +1953,58 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
   </tbody>
 </table></template></doc-mock>
 <h3 id="the-held-tests">The held tests</h3>
-<p>Each test was set before its scores were read, unless an entry says otherwise. It takes our network's score minus one comparator's, with a 95% interval from a bootstrap over images and seeds. A test has three outcomes:</p>
+<p>Each test was set before its scores were read, unless an entry says otherwise. It takes our network's score minus one comparator's, with a 95% interval from a bootstrap over images and seeds. A difference counts as above zero when its whole interval is above zero. Otherwise a test has two outcomes:</p>
 <ul>
-<li><strong>Win:</strong> the whole interval is above zero.</li>
-<li><strong>Level:</strong> no win, but the lower end of the interval is above minus one seed range. A level result is a match, never a win; its interval can lie wholly below zero.</li>
+<li><strong>Level:</strong> the interval is not wholly above zero, but its lower end is above minus one seed range. A level result is a match, not a gain; its interval can lie wholly below zero.</li>
 <li><strong>Below:</strong> the lower end is under minus one seed range.</li>
 </ul>
 </section>
 </details>
 <details class="part" open><summary><h2 id="experiments">Experiments</h2></summary>
 <section>
-<p>Each model picked its comparison method on validation. Then our painting model matched the instructed Qwen image on emotion and style retrieval and beat it on genre. Photos needed a fine-tune. Emotion retrieval against the instructed Qwen image stayed the main limit.</p>
-<p>A method must win over its plain image and, in clustering, over PercepT on the same encoder. Against the instructed Qwen image it must be level or win, and some tests asked for a win. A <strong>Positive finding</strong> beat a test set in advance, a <strong>Negative finding</strong> missed it, and a <strong>Check</strong> measures one step or a comparator.</p>
+<p>Each model picked its comparison method on validation. Then our painting model matched the instructed Qwen image on emotion and style retrieval and was above it on genre. Photos needed a fine-tune. Emotion retrieval against the instructed Qwen image stayed the main limit.</p>
+<p>A method must be above its plain image and, in clustering, above PercepT on the same encoder. Against the instructed Qwen image it must be level or above, and some tests asked for above. A <strong>Positive finding</strong> met a test set in advance, a <strong>Negative finding</strong> missed it, and a <strong>Check</strong> measures one step or a comparator.</p>
+<doc-shot src="../assets/2026-11-04_datasets_and_retrieval/retrieval_process.png" caption="How one retrieval query works: the aspect name picks the head, and that head ranks the other paintings."></doc-shot>
 <div class="exp">
   <h3 id="exp-plain-cosine">Retrieval with plain cosine</h3>
-  <p><span class="pill neg">Negative finding.</span> We ranked held paintings by plain cosine in the head of the named aspect. Every aspect was above the plain image, but emotion missed its test: mAP 0.2642 beside the instructed Qwen image's 0.2665. The interval's lower end was under minus one seed range, so the result is below. Contentment, one of nine emotion classes, carried the loss. Style and genre won.</p>
+  <p><span class="pill neg">Negative finding.</span> We ranked held paintings by plain cosine in the head of the named aspect. Every aspect was above the plain image, but emotion missed its test: mAP 0.2642 beside the instructed Qwen image's 0.2665. The interval's lower end was under minus one seed range, so the result is below. Contentment, one of nine emotion classes, carried the loss. Style and genre were above the instructed image.</p>
 </div>
 <div class="exp">
   <h3 id="exp-comparison-method">Retrieval with a comparison method picked on validation</h3>
   <p><span class="pill pos">Positive finding.</span> Plain cosine is one way to compare embeddings, so we let each model pick its own way on validation. All three picked centering plus query expansion over ten neighbours. Our model stayed above the plain image on every aspect, for example emotion 0.2691 beside 0.2483.</p>
-  <p>Against the instructed image, emotion was now level, 0.2691 beside 0.2684. Style was level, 0.3235 beside 0.3217. Genre won, with its whole interval above zero: 0.6151 beside 0.6124. Results cover Qwen queries on ArtELingo only. Every pick used the largest neighbour count offered, so we did not show that the menu covers all gains.</p>
+  <p>Against the instructed image, emotion was now level, 0.2691 beside 0.2684. Style was level, 0.3235 beside 0.3217. Genre was above it, with its whole interval above zero: 0.6151 beside 0.6124. Results cover Qwen queries on ArtELingo only. Every pick used the largest neighbour count offered, so we did not show that the menu covers all gains.</p>
   <doc-shot src="../assets/2026-10-28_recipe_sweep/model_structure.png" caption="One read of the plain image gives emotion, style and genre spaces; retrieval ranks in the space of the named aspect"></doc-shot>
 </div>
 <div class="exp">
   <h3 id="exp-own-head">Does each head retrieve its own aspect?</h3>
-  <p><span class="pill chk">Check.</span> We queried each label through all three heads with plain cosine, to see whether the named head matters. Each named head beat both wrong heads; for style, mAP was 0.3110 beside 0.2167 for the better wrong head. A descriptive look shows the same for the instructed image and CRL.</p>
+  <p><span class="pill chk">Check.</span> We queried each label through all three heads with plain cosine, to see whether the named head matters. Each named head scored above both wrong heads; for style, mAP was 0.3110 beside 0.2167 for the better wrong head. A descriptive look shows the same for the instructed image and CRL.</p>
 </div>
 <div class="exp">
   <h3 id="exp-frozen-affection">The frozen painting model on Affection photos</h3>
-  <p><span class="pill neg">Negative finding.</span> We ran our painting model on Affection photos with no training on them, to test transfer from paintings to photos. The test asked for level or better against the instructed Qwen image. Our model beat the plain image but fell below the instructed image, so the test failed.</p>
+  <p><span class="pill neg">Negative finding.</span> We ran our painting model on Affection photos with no training on them, to test transfer from paintings to photos. The test asked for level or better against the instructed Qwen image. Our model was above the plain image but fell below the instructed image, so the test failed.</p>
   <p>AMI was 0.1384 beside 0.1666. mAP was 0.2755 beside 0.2945. Painting-only training is a possible cause we did not check.</p>
 </div>
 <div class="exp">
   <h3 id="exp-crl">The comparison with CRL on paintings and photos</h3>
-  <p><span class="pill chk">Check.</span> We compared our Qwen model with the CLIP L/14 version of CRL on retrieval. On held paintings ours won on every aspect, for example style 0.3235 beside 0.2816. On Affection the frozen model was level with CRL, 0.2755 beside 0.2739, and missed the win that test asked for. The painting tests came after earlier CRL scores, so they are weaker evidence. Two CRL versions that validation did not pick scored higher than the picked one, so stronger CRL scores exist.</p>
+  <p><span class="pill chk">Check.</span> We compared our Qwen model with the CLIP L/14 version of CRL on retrieval. On held paintings ours was above CRL on every aspect, for example style 0.3235 beside 0.2816. On Affection the frozen model was level with CRL, 0.2755 beside 0.2739, but that test asked for a result above CRL. The painting tests came after earlier CRL scores, so they are weaker evidence. Two CRL versions that validation did not pick scored higher than the picked one, so stronger CRL scores exist.</p>
 </div>
 <div class="exp">
   <h3 id="exp-photo-finetune">The photo fine-tune</h3>
   <p><span class="pill pos">Positive finding.</span> To close the frozen model's gap, we fine-tuned the emotion path of our painting model on Affection's train photos and their free-text explanations. The emotion path is the part that makes the emotion output. It used no emotion labels and a fixed image encoder. The near-copy cut left 69,927 of 72,255 train photos.</p>
-  <p>Our photo model was above the instructed image: AMI 0.1838 beside 0.1666. On mAP it was 0.3172 beside 0.2945. That test asked for level or better, so the claim is level or better. Its mAP also won over CRL's 0.2739, and it won over the plain image. We chose photo training after the failed test on these same photos, so this is no unseen test. Painting and photo remain two separate models.</p>
+  <p>The fine-tune trains the emotion path of the painting model: its image side and its explanation side, each a trunk with an emotion head, from their ArtELingo weights. Encoder features stay fixed, and the style and genre heads are unused. Graphs link photos that are mutual nearest neighbours by explanation under the emotion instruction, 80 per photo, with content similarity subtracted. Four buddy terms pull a photo's image and explanation outputs toward those of its buddies; a teacher term (weight 0.25) pulls toward the instructed image. No emotion label enters. AdamW uses batches of 512 graph pairs, for up to 200 epochs. It stops early on the validation loss, with a patience of 15. All five final runs kept epoch 1. At test, the photo model reads one plain image, k-means runs new on the test photos, and retrieval ranks them.</p>
+  <p>Our photo model was above the instructed image: AMI 0.1838 beside 0.1666. On mAP it was 0.3172 beside 0.2945. That test asked for level or better. Its mAP was also above CRL's 0.2739, and both scores were above the plain image. We chose photo training after the failed test on these same photos, so this is no unseen test. Painting and photo remain two separate models.</p>
+  <p>A run from random weights, with the same settings as the painting start, scored about the same on validation on one seed: AMI 0.1801 beside 0.1769. Its mAP was 0.3227, the same as the painting start's. It was not picked, so it has no test score. The picked setting (80 neighbours) was not tried from random weights.</p>
   <doc-shot src="../assets/2026-11-04_datasets_and_retrieval/photo_model_structure.png" caption="The emotion path is fine-tuned on unlabelled photos and their explanations; at test the photo model reads one plain image"></doc-shot>
 </div>
 <div class="exp">
   <h3 id="exp-encoders">Three more encoders</h3>
-  <p><span class="pill pos">Positive finding.</span> We trained our painting model and its photo fine-tune on SigLIP 2, SigLIP 1 and CLIP L/14. This tested whether the recipe works on other encoders. Each won over its own plain image on paintings and on Affection, for example Affection AMI 0.1941 beside 0.1127 on CLIP L/14. Each painting model also won over PercepT on the same encoder in clustering.</p>
+  <p><span class="pill pos">Positive finding.</span> We trained our painting model and its photo fine-tune on SigLIP 2, SigLIP 1 and CLIP L/14. This tested whether the recipe works on other encoders. Each was above its own plain image on paintings and on Affection, for example Affection AMI 0.1941 beside 0.1127 on CLIP L/14. Each painting model was also above PercepT on the same encoder in clustering.</p>
   <p>One comparison fell below the instructed image: painting emotion retrieval on CLIP L/14, mAP 0.2671 beside 0.2684. Painting genre clustering was level with it on each of the three. An earlier model passed an emotion test on the same held paintings before we picked these encoders, and Affection photos were scored before. So the tests are not fresh. Training still used instructed Qwen views.</p>
 </div>
 <div class="exp">
   <h3 id="exp-emoset">The frozen photo model on EmoSet</h3>
-  <p><span class="pill pos">Positive finding.</span> We froze our photo model and tested it on EmoSet, a photo test set that shaped no earlier choice. EmoSet validation picked only the evaluation wording, seed ranges and comparison method. The model won over the instructed Qwen image: AMI 0.4571 beside 0.4390. On mAP it was 0.4838 beside 0.4519. It also won over the plain image.</p>
-  <p>The near-copy cut removed 368 test photos. With them put back, the AMI gain over the plain image fell from +0.0653 to +0.0390, still a win. The result covers Qwen and emotion only. One class, amusement, stayed below the instructed image.</p>
+  <p><span class="pill pos">Positive finding.</span> We froze our photo model and tested it on EmoSet, a photo test set that shaped no earlier choice. EmoSet validation picked only the evaluation wording, seed ranges and comparison method. The model was above the instructed Qwen image: AMI 0.4571 beside 0.4390. On mAP it was 0.4838 beside 0.4519. It was also above the plain image.</p>
+  <p>The near-copy cut removed 368 test photos. With them put back, the AMI gain over the plain image fell from +0.0653 to +0.0390, still above zero. The result covers Qwen and emotion only. One class, amusement, stayed below the instructed image.</p>
 </div>
 <div class="exp">
   <h3 id="exp-analysis-sheets">The analysis sheets</h3>
@@ -2009,8 +2012,8 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
 </div>
 <div class="exp">
   <h3 id="exp-mmart">MMArt on four encoders</h3>
-  <p><span class="pill pos">Positive finding.</span> We tested our frozen painting model on MMArt's new paintings and labels, on all four encoders. On every aspect it won over the plain image in both tasks, and over PercepT on the same encoder in clustering. On Qwen, emotion AMI was 0.0609 beside the plain image's 0.0407, and low in every method.</p>
-  <p>Against the instructed Qwen image, 18 comparisons won and 4 were level. Two were below: emotion retrieval on Qwen and on CLIP L/14. The encoders were picked earlier, so the tests are not fresh. MMArt shares WikiArt and most artists with ArtELingo, so it shows new paintings and labels, not a new source. Only 15 test paintings have new artists, too few to score.</p>
+  <p><span class="pill pos">Positive finding.</span> We tested our frozen painting model on MMArt's new paintings and labels, on all four encoders. On every aspect it was above the plain image in both tasks, and above PercepT on the same encoder in clustering. On Qwen, emotion AMI was 0.0609 beside the plain image's 0.0407, and low in every method.</p>
+  <p>Against the instructed Qwen image, 18 comparisons were above it and 4 were level. Two were below: emotion retrieval on Qwen and on CLIP L/14. The encoders were picked earlier, so the tests are not fresh. MMArt shares WikiArt and most artists with ArtELingo, so it shows new paintings and labels, not a new source. Only 15 test paintings have new artists, too few to score.</p>
 </div>
 <div class="exp">
   <h3 id="exp-coverage">What we have and what is missing</h3>
