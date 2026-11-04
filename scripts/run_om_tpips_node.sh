@@ -174,6 +174,9 @@ for p in man['image'][:3]:
     try:
         with Image.open(q) as im: im.convert('RGB').load(); print('image ok', q, im.size)
     except Exception as e: problems.append(f'image {q}: {e!r}')
+import hashlib
+for p in man['image']:                               # the node's bytes, against the local files (round log, build 4)
+    print('imgsha', hashlib.sha256(open(new + p[len(old):], 'rb').read()).hexdigest(), p[len(old):])
 for s in ('artelingo', 'mmart'):                     # every image the shard jobs will open, not only the three above
     paths = json.loads(Path(os.environ['LOCAL_IN'], s + '.json').read_text())['image']
     gone = [p for p in paths if not (p.startswith(old) and os.path.exists(new + p[len(old):]))]
