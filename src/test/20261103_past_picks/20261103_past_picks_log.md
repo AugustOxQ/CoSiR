@@ -49,6 +49,10 @@ Run sheet: `pp_run_sheet.md`. Spec: `docs/superpowers/specs/2026-11-03-past-pick
 | 13:40 | Controller: imports and file reads clean. Sonnet `high` review: no way for a wrong result to pass; one must-fix (gates (vi), (viii) not cross-checked) | fix list written |
 | 14:06 | Fix round by `resume` (nine items): 108 tests pass; Affection subset `C13 PASS items=394 failed=0 max_abs=1.1e-16` | cause of the 27 failures closed for Affection; ArtELingo's own check waits for the full derive |
 | 14:13 | Sonnet `high` re-review: all nine fixed, independence holds; one new must-fix (digits in encoder names false-fail `check-outcomes`) | Claude fixed it (the one fix round was used), added slot-order checks for the cost sentence; 116 tests pass |
+| 19:00 | C13 full derive started: 56 sections, one `res-queue cpu` reservation each, 3 at once (`pp_c13_queue.sh`) | running |
+| 20:23 | Full derive ended, 83 min, 56 of 56 sections | merged |
+| 20:25 | `compare`: `C13 FAIL items=18778 failed=6 max_abs=1.85e-09` | all six are one label, Affection's SC6 comparator: `teacher_emotion_focus` in the derive, `teacher_artwork` in the round. Numbers agree |
+| 20:26 | Label fixed in `compare` and `check-outcomes` only (layout; spec §3.2 says r12's artwork wording; r12's record confirms), 119 tests. `C13 PASS items=18778 failed=0 max_abs=1.85393241037e-09 scope=full`; `records/c13.json` written | ok |
 
 ## Choices of the run chat (agent default)
 
@@ -65,5 +69,8 @@ Run sheet: `pp_run_sheet.md`. Spec: `docs/superpowers/specs/2026-11-03-past-pick
 - **The end-to-end pass has no warm-up batches.** `pp_probe.py:487` records `warmup_batches=0`; its docstring and §3.4 name 3
   warm-up batches. It ran right after the three model-time repeats, so the model was warm. It touches only <c> and <d> of the cost
   sentence, not SC15, so the probe was not rerun (the handoff says not to without a reason). The report says so.
+- **The six C13 label failures were C13's, not the round's.** C13 copied r14's name for Affection's teacher; the round uses r12's
+  wording name, which is what the spec says. Both name one arm, and the values match, so only the name check gained an alias, read
+  from r12's record. Any other label still fails.
 - **C13's full derive waits for 19:00.** The user's limit for CPU scoring is about 13:00, and the code is not written yet. The
   report's date (about 11-06) allows this.

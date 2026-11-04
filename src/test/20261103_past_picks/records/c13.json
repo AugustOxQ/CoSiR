@@ -1,0 +1,389 @@
+{
+ "n_items": 18778,
+ "failed": 0,
+ "max_abs": 1.8539324103672428e-09,
+ "scope": "full",
+ "per_section": {
+  "cells:clip_b16:aff": {
+   "items": 68,
+   "failed": 0,
+   "max_abs": 0.0
+  },
+  "cells:clip_b16:art:clu": {
+   "items": 162,
+   "failed": 0,
+   "max_abs": 0.0
+  },
+  "cells:clip_b16:art:ret": {
+   "items": 120,
+   "failed": 0,
+   "max_abs": 0.0
+  },
+  "cells:clip_b16:mm:clu": {
+   "items": 162,
+   "failed": 0,
+   "max_abs": 0.0
+  },
+  "cells:clip_b16:mm:ret": {
+   "items": 120,
+   "failed": 0,
+   "max_abs": 0.0
+  },
+  "cells:clip_b16:sem:clu": {
+   "items": 54,
+   "failed": 0,
+   "max_abs": 0.0
+  },
+  "cells:clip_b16:sem:ret": {
+   "items": 40,
+   "failed": 0,
+   "max_abs": 5.941773635609326e-10
+  },
+  "cells:clip_b32:aff": {
+   "items": 68,
+   "failed": 0,
+   "max_abs": 1.1102230246251565e-16
+  },
+  "cells:clip_b32:art:clu": {
+   "items": 162,
+   "failed": 0,
+   "max_abs": 0.0
+  },
+  "cells:clip_b32:art:ret": {
+   "items": 120,
+   "failed": 0,
+   "max_abs": 0.0
+  },
+  "cells:clip_b32:mm:clu": {
+   "items": 162,
+   "failed": 0,
+   "max_abs": 0.0
+  },
+  "cells:clip_b32:mm:ret": {
+   "items": 120,
+   "failed": 0,
+   "max_abs": 0.0
+  },
+  "cells:clip_b32:sem:clu": {
+   "items": 54,
+   "failed": 0,
+   "max_abs": 0.0
+  },
+  "cells:clip_b32:sem:ret": {
+   "items": 40,
+   "failed": 0,
+   "max_abs": 1.8539324103672428e-09
+  },
+  "cells:clip_l14:sem:clu": {
+   "items": 54,
+   "failed": 0,
+   "max_abs": 0.0
+  },
+  "cells:clip_l14:sem:ret": {
+   "items": 40,
+   "failed": 0,
+   "max_abs": 8.663606221315234e-10
+  },
+  "cells:dinov2_large:aff": {
+   "items": 68,
+   "failed": 0,
+   "max_abs": 5.551115123125783e-17
+  },
+  "cells:dinov2_large:art:clu": {
+   "items": 162,
+   "failed": 0,
+   "max_abs": 0.0
+  },
+  "cells:dinov2_large:art:ret": {
+   "items": 120,
+   "failed": 0,
+   "max_abs": 0.0
+  },
+  "cells:dinov2_large:mm:clu": {
+   "items": 162,
+   "failed": 0,
+   "max_abs": 0.0
+  },
+  "cells:dinov2_large:mm:ret": {
+   "items": 120,
+   "failed": 0,
+   "max_abs": 0.0
+  },
+  "cells:dinov2_large:sem:clu": {
+   "items": 54,
+   "failed": 0,
+   "max_abs": 0.0
+  },
+  "cells:dinov2_large:sem:ret": {
+   "items": 40,
+   "failed": 0,
+   "max_abs": 4.998027547387096e-10
+  },
+  "cells:qwen:sem:clu": {
+   "items": 54,
+   "failed": 0,
+   "max_abs": 0.0
+  },
+  "cells:qwen:sem:ret": {
+   "items": 40,
+   "failed": 0,
+   "max_abs": 4.998027547387096e-10
+  },
+  "cells:siglip1:sem:clu": {
+   "items": 54,
+   "failed": 0,
+   "max_abs": 0.0
+  },
+  "cells:siglip1:sem:ret": {
+   "items": 40,
+   "failed": 0,
+   "max_abs": 9.325705763174597e-10
+  },
+  "cells:siglip2:sem:clu": {
+   "items": 54,
+   "failed": 0,
+   "max_abs": 0.0
+  },
+  "cells:siglip2:sem:ret": {
+   "items": 40,
+   "failed": 0,
+   "max_abs": 1.2331147491995154e-09
+  },
+  "cost": {
+   "items": 601,
+   "failed": 0,
+   "max_abs": 1.4210854715202004e-14
+  },
+  "coverage": {
+   "items": 3,
+   "failed": 0,
+   "max_abs": 0.0
+  },
+  "gates": {
+   "items": 2,
+   "failed": 0,
+   "max_abs": 0.0
+  },
+  "integrity": {
+   "items": 12090,
+   "failed": 0,
+   "max_abs": 0.0
+  },
+  "picks:clip_b16:aff": {
+   "items": 254,
+   "failed": 0,
+   "max_abs": 0.0
+  },
+  "picks:clip_b16:art": {
+   "items": 368,
+   "failed": 0,
+   "max_abs": 0.0
+  },
+  "picks:clip_b16:mm": {
+   "items": 368,
+   "failed": 0,
+   "max_abs": 0.0
+  },
+  "picks:clip_b32:aff": {
+   "items": 254,
+   "failed": 0,
+   "max_abs": 0.0
+  },
+  "picks:clip_b32:art": {
+   "items": 368,
+   "failed": 0,
+   "max_abs": 0.0
+  },
+  "picks:clip_b32:mm": {
+   "items": 368,
+   "failed": 0,
+   "max_abs": 0.0
+  },
+  "picks:dinov2_large:aff": {
+   "items": 254,
+   "failed": 0,
+   "max_abs": 0.0
+  },
+  "picks:dinov2_large:art": {
+   "items": 368,
+   "failed": 0,
+   "max_abs": 0.0
+  },
+  "picks:dinov2_large:mm": {
+   "items": 368,
+   "failed": 0,
+   "max_abs": 0.0
+  },
+  "ranges:clip_b16:aff": {
+   "items": 24,
+   "failed": 0,
+   "max_abs": 0.0
+  },
+  "ranges:clip_b16:art": {
+   "items": 48,
+   "failed": 0,
+   "max_abs": 0.0
+  },
+  "ranges:clip_b16:mm": {
+   "items": 48,
+   "failed": 0,
+   "max_abs": 0.0
+  },
+  "ranges:clip_b32:aff": {
+   "items": 24,
+   "failed": 0,
+   "max_abs": 0.0
+  },
+  "ranges:clip_b32:art": {
+   "items": 48,
+   "failed": 0,
+   "max_abs": 0.0
+  },
+  "ranges:clip_b32:mm": {
+   "items": 48,
+   "failed": 0,
+   "max_abs": 0.0
+  },
+  "ranges:dinov2_large:aff": {
+   "items": 24,
+   "failed": 0,
+   "max_abs": 0.0
+  },
+  "ranges:dinov2_large:art": {
+   "items": 48,
+   "failed": 0,
+   "max_abs": 0.0
+  },
+  "ranges:dinov2_large:mm": {
+   "items": 48,
+   "failed": 0,
+   "max_abs": 0.0
+  },
+  "semval:clip_b16": {
+   "items": 7,
+   "failed": 0,
+   "max_abs": 0.0
+  },
+  "semval:clip_b32": {
+   "items": 7,
+   "failed": 0,
+   "max_abs": 0.0
+  },
+  "semval:clip_l14": {
+   "items": 7,
+   "failed": 0,
+   "max_abs": 0.0
+  },
+  "semval:dinov2_large": {
+   "items": 7,
+   "failed": 0,
+   "max_abs": 0.0
+  },
+  "semval:qwen": {
+   "items": 7,
+   "failed": 0,
+   "max_abs": 0.0
+  },
+  "semval:siglip1": {
+   "items": 7,
+   "failed": 0,
+   "max_abs": 0.0
+  },
+  "semval:siglip2": {
+   "items": 7,
+   "failed": 0,
+   "max_abs": 0.0
+  },
+  "set": {
+   "items": 91,
+   "failed": 0,
+   "max_abs": 0
+  },
+  "status": {
+   "items": 58,
+   "failed": 0,
+   "max_abs": 0.0
+  }
+ },
+ "draws_clu": 2000,
+ "draws_ret": 10000,
+ "kmeans_threads": 8,
+ "pass": true,
+ "sha256": {
+  "stage2/cells_mmart_clu.json": "bd18e6e5fc8ab617b808d15872ec7264e88111ecdbc499dc656397d15fdcb8c5",
+  "stage2/cells_artelingo_clu.json": "b84e53e73f3721186b8cd1c6af19d994b99ec92f1ec45ce6dec8ff83c8f38578",
+  "stage2/cells_semart_ret.json": "134b388a36ba8674db687eb96b33b44788fdc29b2b5853209692e62f608b0e11",
+  "stage2/cells_affection.json": "19213732d811e557382598742b64b03a97a5c9134bdaff3bd6eb28de2c3486e7",
+  "stage2/cells_artelingo_ret.json": "7776fefcd659bfa708b96fe91e3851d36c708c0b660543b119fc93ae9f9bb0d6",
+  "stage2/cells_semart_clu.json": "dea77ce9e2cd49c48fd187d4ff605249a016769c60532a8c8b4c0341c3fd9d03",
+  "stage2/cells_mmart_ret.json": "09d6c985531507d8389e5b11a97d4abd67e03d5f389d164e90f41b815d19662e",
+  "stage3/cells_cost.json": "14f5b08af56b55a4e55ac6fb35b7bfa34d5a5a3a9737df97d8e02a04346f02d8",
+  "probe/passes.json": "a53f829ae065141d2b256b8fa87290201d98a05abb108f1db7a1ece0fa257147",
+  "probe/batches/siglip2__r1.json": "90bec83cf6d1f0841609cf51e800be4b25adecfb7c8abd23acf016b71cb7d7d9",
+  "probe/batches/heads_siglip1__r1.json": "7d0cd8b8f372ea6bcf7556bc090a46129a363f27ee121aa51fc92ac3399b8306",
+  "probe/batches/siglip1__r2.json": "c6967fead57b5563514b58c6f4262a5b6e5f3d73f7e64fbe152c14bc4c97fdef",
+  "probe/batches/qwen_emotion_focus__r2.json": "cbc64b7fa12fbf2d402352875149fc2435d50ad2540db5ea68054a9ec1a0329d",
+  "probe/batches/heads_clip_b32__r0.json": "68c9638d3767d611fffe2a1497ba2b34ef2493ac978605183e065204f94383b2",
+  "probe/batches/siglip2__e2e.json": "82c926608e3acf92973e2617c41f94713a23ab2cbc0c31608ef17fb2ed83680f",
+  "probe/batches/heads_clip_l14__r0.json": "820298ec2e5b3526e1bcb7733db4e0a1adab5d5a720c66140971f0f67ca16d40",
+  "probe/batches/dinov2_large__e2e.json": "61eef6a50f211400fdc5a498040067ea2a832b0a54627545231c99ee7e46496d",
+  "probe/batches/heads_siglip1__r0.json": "ca90c9c34ae8cc9b371f6612f522b8dad4510a4bcb541686a879c61d7d192660",
+  "probe/batches/heads_dinov2_large__r2.json": "ef539673ba2126530e24a369cfb5757bdb8371769c20ae2c94e7ae9c4ec3fe56",
+  "probe/batches/clip_b32__r2.json": "274d6b369b1ab3bffa8f6f2b07f45abc9936e479285c2dd3487947a34c1f4520",
+  "probe/batches/dinov2_large__r1.json": "6afb2ffad0633d7ccb1e65d2e0a6c625b22490d2e6a78e5ab704a379346a6cb4",
+  "probe/batches/dinov2_large__r0.json": "9d72e4fd0b338db9f2c608fdbaf430f3d635608a372bb22e68826fb5596c2469",
+  "probe/batches/heads_clip_b16__r2.json": "d3504dbc5a5b6b14ff53c16dd07ce4ffdc766e3eb0b608fa285ea75a73152681",
+  "probe/batches/clip_b32__e2e.json": "c0a9c845fb63735eb405db4eb8667ef39faa5e3b4f616a0ae895f4a477123fdc",
+  "probe/batches/heads_qwen__r0.json": "66d4accd205169bc38a8584be5744c1333943761410007ca29e552fb1823c41d",
+  "probe/batches/heads_clip_b32__r1.json": "4d0d0bc40c40fa1b3bdf4190f14fd15d9b2828616f7bbc3d90ab40a9f78662bf",
+  "probe/batches/clip_l14__r1.json": "01f2179012cbcbd68a325201ba2a341c29dcfda5eb07d373e8cfdd973f9725d2",
+  "probe/batches/heads_clip_b16__r1.json": "4b7a12e75e26a5e6a0c68d22ecd29fe9359ba9c86792c60b87950560bf18fd78",
+  "probe/batches/clip_l14__r2.json": "46f534ba50790200fe4f932cbff453a5d98c790e7a8ddd5ddc166fc73f4dfc70",
+  "probe/batches/qwen_genre_word__r2.json": "54d922d6fbd5a9f570ee5359bc0b78f88ba58c7058e0c147ecb4347a38026ee1",
+  "probe/batches/clip_b16__e2e.json": "b2bb5265e780451ca6aa5db51cff533f48b1636aa384ab601e552cae23fc4c12",
+  "probe/batches/siglip2__r2.json": "c7fd89544d5da235285923181620ed926d348a8b2facfd82c2366c23f5b7ffc9",
+  "probe/batches/teacher__e2e.json": "c810c3aec34e7d016fd78004ec884c8cffffcf2e7e7504da0bfa075e777757cb",
+  "probe/batches/qwen_emotion_focus__r0.json": "ce8d1c6cdae781f9e4b17a8c5f85a5ed52627c85e5caa7df68600b3da8705242",
+  "probe/batches/siglip1__e2e.json": "001d9aa2e43cc78912ef2461886cd349483bbc2f422e95ce705d61d40bb4b9ff",
+  "probe/batches/siglip1__r0.json": "be396c4175a8d520fb0b068b8091d53746a3038886b17d5ce4dde09892b22699",
+  "probe/batches/clip_b32__r0.json": "462b17c88ebde5fc4e0d139d03c2c2ecd2e46936e78193bd3ef9db589174b070",
+  "probe/batches/heads_dinov2_large__r0.json": "9947c61fa2a88b8c05dd2b2eb816bad7126b1acb37db19ba02b2f5be046d2ada",
+  "probe/batches/heads_dinov2_large__r1.json": "cb9f6174052b91c4c689980fdf4655fb33df2001512c70bc1a73b2976faf2c9a",
+  "probe/batches/clip_b32__r1.json": "22e2ecea7ca34226f9c3c3dd9f2c31455f19497fa70899ad02f7a4c848f19913",
+  "probe/batches/qwen__r1.json": "0e500bc2dd9bfc23c03df031cd13f3233cc09d5505aca2ded2fbe70ceec43dab",
+  "probe/batches/dinov2_large__r2.json": "07c61b29e07ebe97f2c4ab5bf8dae80afe74a36c898a228cb8d4db9db3ccc617",
+  "probe/batches/siglip1__r1.json": "0e0ac4ceb382baaf08e5e5572cca4067eb28d8bed53052e7dec877e5b61e97d1",
+  "probe/batches/clip_b16__r1.json": "8523a0eb8e2ab8c8a2fdd45a64966bcf9c6a9ff6402982966f3e069ca83bf2e2",
+  "probe/batches/qwen_emotion_focus__r1.json": "88bb7c91feda9cf4e572fb278eaa3009fb12d5272ed49a862fe62a34f8ddb2f3",
+  "probe/batches/heads_siglip2__r0.json": "2ab050ec0caa7a5fe36b75513cc600739d62671e928fe44e26c0dc212e224b00",
+  "probe/batches/clip_l14__e2e.json": "ab8e03e3c97c3a652bc345880663b7062be3028f273886cf95f6e048f5e6635f",
+  "probe/batches/qwen__r2.json": "693b2272425100aa084715f815ba37e297462b02d3e6ca69b4536a7d5babcce8",
+  "probe/batches/heads_clip_b16__r0.json": "13634c6f6fca1122e8e49dbbe992d2f0fc8dd1ccac684e37fae1e3aa4604f203",
+  "probe/batches/qwen__e2e.json": "d5a1f4f9e83647d0444056f92968e1b184d738102bde2f53bf1931b579b15dc8",
+  "probe/batches/heads_clip_l14__r2.json": "18ddaf02835569a3f6af65d75c953306e211696acb24b8494c35f36ae089a81f",
+  "probe/batches/heads_clip_b32__r2.json": "3ff03ff698d7513defb761616701932b3fb6840b069cb925e1319d5f11f9be70",
+  "probe/batches/clip_b16__r0.json": "5727e322b0a3e2e0510eaa80660a8f2f5bee4c490c73909f683498ca1f3dd98b",
+  "probe/batches/heads_clip_l14__r1.json": "0a5baca1c8f3a888acd8f3480ce33c2378b895d32ba097a1a73e6681fb05d65c",
+  "probe/batches/heads_qwen__r2.json": "69afc1f9212f6a6803a910151371792bdd26293a4e5f5055646176ed3fab5ad3",
+  "probe/batches/qwen_genre_word__r0.json": "ab6b6885f2ec7936a402d52d60440b7a799e7329e0c7d837104f9f263cc08396",
+  "probe/batches/heads_qwen__r1.json": "c704ba8dd7ba5e1b5dce9ad6e81827ddd6de5d2f54f68a9979ec6cbcd5bf8587",
+  "probe/batches/clip_b16__r2.json": "97e6b5818e22d4c5344b6c94d5a2e278ef5089b5153b7e465e2045b808df9a97",
+  "probe/batches/qwen_style_word__r2.json": "10a2e2306e247df6a3da7a7fac22040f02ed5ce04190d66881ea211f744026a3",
+  "probe/batches/qwen_genre_word__r1.json": "12a8340ee333797a4b878ee9c2443a02358c04d82da0dd28d8a4f083e49cc571",
+  "probe/batches/qwen__r0.json": "2ce0abdccf20394982d217a07334eab50d2dcc27cebe49a5e5bc26ed71d77189",
+  "probe/batches/qwen_style_word__r1.json": "c94b39e90549b22acb4e31bb51d02225219044850714347e806c05c5962e80de",
+  "probe/batches/heads_siglip1__r2.json": "520400fbdd116f7929fd07b0e2d6d9d4b882a0475d6b49831bd09bff26b4261c",
+  "probe/batches/siglip2__r0.json": "15375d72732f0b6086f169ac10f62f2cfcd8c08d1150c105645c879b7f4a2837",
+  "probe/batches/clip_l14__r0.json": "33aeec64649598237610674783ff89e0bba2ea9ae1eeff6fac9e42318edf9014",
+  "probe/batches/qwen_style_word__r0.json": "fa8f3508d117540d8042d1d4a9ee7569fc8cdde7023ab38fd633ba718114295b",
+  "probe/batches/heads_siglip2__r2.json": "9d7b954b278b9185874f35d65b30713dc7acfa72fd901d41755e7e403b09e698",
+  "probe/batches/heads_siglip2__r1.json": "0dcc08194514832816f6f05bb1057b96e79194c70b0ec349235a3dde91b71bcb",
+  "records/status.json": "fdfdb121ced821a14cf8ea88b697c653495231b3ae1582ef626d3b7811581569",
+  "records/semart_set.json": "9adb160bd55c3865bd815588c40540d196eb2382215383329345ac6075c9f0cd",
+  "records/stage1_clip_b16.json": "799d032d5c87121b631756bd5ae634f569c7d63c8e21a8c508ce53bd2cb85c2b",
+  "records/stage1_dinov2_large.json": "7784f0c58c27ed2d0355e0997c35b0ab97a948015db04a1fbd2efd4fb97d742c",
+  "records/stage1_semart.json": "c42a2a22f4a08afa28e4b88aad78c59d706374a7402928a26d9382311cc04d85",
+  "records/stage1_clip_b32.json": "cd0fa16d31019e98e86f2a8968e7c27c1b063de3ff5727b8bf60238b4d08946b"
+ },
+ "record": "written"
+}

@@ -639,6 +639,18 @@ def test_gate_failed_true_gate_and_ok_status_void_nothing():
     assert c.gate_failed(status,'viii',dict(viii=False))
 
 
+@pytest.mark.parametrize('recorded,passes',[('teacher_artwork',True),('teacher_emotion_focus',True),('teacher_photo',False)])
+def test_outcomes_affection_teacher_label(recorded,passes,scratch):
+    actual,root,out=golden_outcomes_fixture(scratch)
+    derived=json.loads((out/'derived.json').read_text())
+    cell=derived['decisions']['cells'][0];claim=derived['decisions']['claims'][0]
+    for x in (cell,claim):x.update(sc='SC6',aspect='emotion',task='clu',data='affection_test',candidate='photo_qwen',comparator='teacher_emotion_focus')
+    c.atomic_json(out/'derived.json',derived)
+    for x in (actual['cells'][0],actual['claims'][0]):x.update(sc='SC6',aspect='emotion',task='clu',data='affection_test',candidate='photo_qwen',comparator=recorded)
+    (root/'stage4/outcomes.json').write_text(json.dumps(actual))
+    assert c.check_outcomes(root,out)['pass'] is passes
+
+
 def test_golden_outcomes_sentences_round_to_printed_decimal(scratch):
     actual,root,out=golden_outcomes_fixture(scratch)
     (root/'stage4/outcomes.json').write_text(json.dumps(actual))

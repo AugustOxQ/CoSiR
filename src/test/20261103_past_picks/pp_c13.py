@@ -921,6 +921,7 @@ def record_refusal(doc,report,round_cells):
 
 
 def compare(root=DEFAULT_ROOT,records=RECORDS,out=DEFAULT_OUT,write_record=False,sections=None):
+    wording=read_json(R12/'stage1/picks.json')['affection']['teacher_wording'];assert wording['clustering']==wording['retrieval'];r12_teacher='teacher_'+wording['retrieval']
     root,records,out=Path(root).resolve(),Path(records).resolve(),check_output(out)
     doc=assemble(out,False) if sections is None else assemble(out,False,sections)
     atomic_json(out/('derived.json' if doc['scope']=='full' else 'derived_subset.json'),doc)
@@ -1013,6 +1014,8 @@ def compare(root=DEFAULT_ROOT,records=RECORDS,out=DEFAULT_OUT,write_record=False
         for field in ('candidate','comparator'):
             rec=other.get(field)
             if field=='comparator' and rec==MATCHED[c['encoder']]:rec='matched_'+rec
+            # The round names Affection's teacher by r12's wording (spec §3.2); C13 by the view, as r14 did.
+            if field=='comparator' and c['sc']=='SC6' and c['data']=='affection_test' and rec==r12_teacher:rec='teacher_emotion_focus'
             cmp.add(prefix+'/'+field,c[field],rec,False,section)
         if 'lo' in other:cmp.add(prefix+'/outcome',c['outcome'],cell_outcome(other['lo'],other['r']),False,section)
         else:cmp.add(prefix+'/outcome',c['outcome'],None,False,section)
@@ -1033,7 +1036,8 @@ def compare(root=DEFAULT_ROOT,records=RECORDS,out=DEFAULT_OUT,write_record=False
             if p.exists() and read_json(p).get('pass') is True:
                 p.write_text(json.dumps(dict(pass_=False,reason=refusal,remove_requested=str(p))).replace('"pass_"','"pass"')+'\n')
         else:
-            certificate={**report,'sha256':{name:hashes[name] for name in result_paths(root,records)}}
+            # The item list stays in <out>/compare.json; the committed record is the summary and the hashes.
+            certificate={**{k:v for k,v in report.items() if k!='items'},'sha256':{name:hashes[name] for name in result_paths(root,records)}}
             p.write_text(json.dumps(certificate,indent=1)+'\n')
     atomic_json(out/'compare.json',report);print(summary(report),flush=True)
     if refusal:raise ValueError(refusal)
@@ -1066,6 +1070,7 @@ def check_outcomes(root=DEFAULT_ROOT,out=DEFAULT_OUT):
     independently derived cell, population and timing values. Unknown numeric
     fields fail closed, so additions to the outcome layout cannot be skipped.
     """
+    wording=read_json(R12/'stage1/picks.json')['affection']['teacher_wording'];assert wording['clustering']==wording['retrieval'];r12_teacher='teacher_'+wording['retrieval']
     root,out=Path(root),check_output(out);doc=read_json(out/'derived.json')
     assert doc['scope']=='full','check-outcomes requires a full derive'
     path=root/'stage4/outcomes.json';data=path.read_bytes();actual=json.loads(data)
@@ -1092,6 +1097,7 @@ def check_outcomes(root=DEFAULT_ROOT,out=DEFAULT_OUT):
                         elif k in node or k in ('candidate_value','comparator_value','d','lo','hi','r','outcome','status'):
                             recorded=node.get(k)
                             if k=='comparator' and recorded==MATCHED[node['encoder']]:recorded='matched_'+recorded
+                            if k=='comparator' and node['sc']=='SC6' and node['data']=='affection_test' and recorded==r12_teacher:recorded='teacher_emotion_focus'
                             cmp.tree(label+'/'+k,v,recorded,'outcomes')
                     if 'claim' in node and key in claims:
                         seen_claims.add(key);cmp.add(label+'/claim',claims[key]['claim'],node['claim'],False,'outcomes')
