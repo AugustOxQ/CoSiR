@@ -25,6 +25,7 @@ Steps (CLI; OUT = `om_paths.OUT`):
 r of a cell: `records/stage1_om_ranges.json[range_key(cell)]['r']`; r null (or r17's own range failed) gives
 `inconclusive` for a cell that is not WIN; WIN stands. A void (failed gate, missing pick, a cell not scored) keeps
 numbers if there are any but no label and no sentence.
+At assembly, every supplied numeric r17-family range must match r17's records/stage1_ranges.json within 1e-12.
 
 c13_cells.json (written by the C13 code, from the saved outputs): {"picks": {<key>: str}, "cells": [{id, cand, comp, d, lo,
 hi, label (null for a void cell), candidate_readout, comparator_readout (retrieval cells)}]}. `pick_summary` names the keys.
@@ -46,6 +47,7 @@ import ns_clu  # noqa: E402  (om_paths put r17's folder and the older rounds on 
 import ns_clu_cells  # noqa: E402
 import ns_metrics  # noqa: E402
 import ns_outcome  # noqa: E402
+import ns_paths  # noqa: E402
 import ns_ret  # noqa: E402
 
 ENCODERS, ASPECTS, SETS, SEEDS = op.ENCODERS, op.ASPECTS, op.SETS, op.SEEDS
@@ -478,6 +480,22 @@ def check_fresh(cell, picks):
         assert cell.get(key) == v, f'{cell["id"]}: parts have {key} {cell.get(key)!r}, the committed picks say {v!r}; rescore the unit'
 
 
+def check_r17_ranges(ranges, family):
+    """Check supplied numeric r17 margins against its record; missing margins retain their inconclusive rule."""
+    entries = [(k, v['r']) for k, v in ranges.items() if family.get(k) == 'r17' and v.get('r') is not None]
+    if not entries:
+        return
+    path = ns_paths.RECORDS / 'stage1_ranges.json'
+    reference = json.loads(path.read_text()) if path.exists() else {}
+    for key, r in entries:
+        set_, enc, aspect, metric, _ = key.split('/')
+        rkey = f'cstar/{set_}/{enc}/{aspect}/{metric}'
+        ref = reference.get(rkey, {}).get('r')
+        if ref is None or not math.isfinite(float(r)) or abs(float(r) - float(ref)) > 1e-12:
+            raise SystemExit(f'assemble refuses: r17 range {key} ({r!r}) differs from {path}:{rkey} ({ref!r}); '
+                             'rebuild and commit the stage 1 ranges')
+
+
 def assemble(raw, ranges, picks, status, r17, expected=None):
     """r17's cell form plus label, void, sentence, for every expected cell (default all 337), in order. `raw`: score_unit's
     cells (any subset; an id outside `expected` or twice is refused); a cell not scored is void ('not scored')."""
@@ -491,6 +509,7 @@ def assemble(raw, ranges, picks, status, r17, expected=None):
     stray = sorted(set(by) - ids)
     assert not stray, f'cells outside the list: {stray[:3]}'
     family = {k['key']: k['source'] for k in s1.range_keys()}
+    check_r17_ranges(ranges, family)
     out = []
     for spec in expected:
         c = dict(by.get(spec['id']) or _blank(spec, 'not scored'))

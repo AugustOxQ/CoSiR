@@ -1,5 +1,6 @@
 """Tests of om_cells (ticket 10): the cell list, the repeated TURTLE candidate, labels, voids, pins, sentences, the C13 guard.
 Synthetic data only; nothing reads a real store, `records/` or `om_paths.DEFAULT_OUT`.
+Includes C13 stub/refusal cleanup and r17 range consistency checks at assembly.
 
 Run: PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 /root/miniconda3/envs/CoSiR/bin/python -m pytest -q
      src/test/20261103_outside_methods/test_om_cells.py
@@ -26,6 +27,17 @@ import ns_ret  # noqa: E402
 @pytest.fixture(autouse=True)
 def _one_worker(monkeypatch):
     monkeypatch.setattr(ns_clu, 'WORKERS', 1)
+
+
+@pytest.fixture(autouse=True)
+def r17_ranges(tmp_path, monkeypatch):
+    """A fake r17 record, independent of our ranges; keep all assembly tests off real r17 files."""
+    monkeypatch.setattr(ns_paths, 'RECORDS', tmp_path / 'r17_reference')
+    ns_paths.RECORDS.mkdir()
+    path = ns_paths.RECORDS / 'stage1_ranges.json'
+    keys = {f"cstar/{k['set']}/{k['enc']}/{k['aspect']}/{k['metric']}" for k in s1.range_keys() if k['source'] == 'r17'}
+    path.write_text(json.dumps({k: {'r': 0.01} for k in keys}))
+    return path
 
 
 # ------------------------------------------------------------------------------------------------ the cell list
@@ -407,6 +419,26 @@ def test_assemble_r17_failed_range_status_makes_r_missing():
     c = assemble_specs([sp], r17=r17, lo=-0.001)[0]
     assert c['label'] == 'inconclusive' and c['r'] is None
     assert assemble_specs([sp], r17=r17, lo=0.5)[0]['label'] == 'WIN'
+
+
+@pytest.mark.parametrize('r,ref,refuse', [(0.005, 0.01, True), (0.01, 0.02, True),
+                                        (0.01, 0.01 + 5e-13, False), (0.01, None, True)])
+def test_assemble_compares_r17_family_with_its_record(r17_ranges, r, ref, refuse):
+    sp = spec_of('SC1', metric='ami', k=9)
+    key = 'cstar/artelingo/qwen/emotion/ami'
+    doc = json.loads(r17_ranges.read_text())
+    if ref is None:
+        doc.pop(key)
+    else:
+        doc[key]['r'] = ref
+    r17_ranges.write_text(json.dumps(doc))
+    ranges = ranges_record()
+    ranges[oc.range_key(sp)]['r'] = r
+    if refuse:
+        with pytest.raises(SystemExit, match='assemble.*' + oc.range_key(sp)):
+            assemble_specs([sp], ranges=ranges)
+    else:
+        assert assemble_specs([sp], ranges=ranges)[0]['r'] == r
 
 
 def test_failed_gate_voids_exactly_its_cells():
