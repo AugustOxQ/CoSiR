@@ -1863,3 +1863,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-04-r19-run-4-handoff.md
 - New chat: tab 'r19 run 4', session 0aec155f-907f-4ab0-9f9b-e4e1204a6f80
 
+[brief] CoSiR: r19 run 4 -> r19 run 5 (2026-11-04 22:12 Amsterdam)
+- Done: the auto report is written, claim-reviewed and pushed on `r19-past-picks` (2a6515aa). No number was wrong.
+- State: 23 of 23 verdicts hold. Against the teacher: 0 "better than", 15 "level with or better than", 41 no claim.
+- Next: the user-read report, its two checks, the index row, the merge into main, the wrap-up.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-04-r19-run-5-handoff.md
+- New chat: tab 'r19 run 5', session 95f6797e-5c93-4325-a646-554756c300ec
+
