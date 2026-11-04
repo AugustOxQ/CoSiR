@@ -583,6 +583,10 @@ def run_labels(cells_path, c13_path, out_path, picks, rebuild, expected=None):
     if json.loads(json.dumps(rebuild())) != cells:
         raise SystemExit(f'labels refuses: {cells_path} differs from the cells assembled now from the committed records; '
                          'run assemble again')
+    unscored = [c['id'] for c in cells if 'not scored' in (c.get('void') or '')]
+    if unscored:
+        raise SystemExit(f'labels refuses: {len(unscored)} cells were never scored, a failed or unrun unit, not a missing '
+                         f'input; first {unscored[0]}. Run cells again')
     bad = c13_disagreements(cells, picks, json.loads(c13_path.read_text()))
     if bad:
         raise SystemExit(f'labels refuses: C13 disagrees on {len(bad)} items, first: {bad[:5]}')
@@ -608,8 +612,9 @@ def unit_done(path):
 
 
 def run_cells(todo, picks, ld, draws, force, out=None, score=None):
-    """Score every unit of `todo` not done. A unit that raises is logged and left without a parts file (its cells read 'not
-    scored'); the run goes on (D24). Returns the units that failed."""
+    """Score every unit of `todo` not done. A unit that raises is logged and left without a parts file, an older one
+    removed (its cells read 'not scored', which `run_labels` refuses); the run goes on (D24). Returns the units that
+    failed."""
     score = score or score_unit
     failed = []
     for sc, set_, enc in todo:
@@ -622,6 +627,7 @@ def run_cells(todo, picks, ld, draws, force, out=None, score=None):
         except Exception as e:                          # noqa: BLE001  (any failure of one unit)
             print(f'FAILED {sc}/{set_}/{enc}: {type(e).__name__}: {e}', file=sys.stderr)
             failed.append((sc, set_, enc))
+            path.unlink(missing_ok=True)                # an older result must not stand in for this failure
             continue
         op.write_json(path, raw)
         print(f'{path.name}: {len(raw)} cells, {sum(c["missing"] is not None for c in raw)} without numbers')

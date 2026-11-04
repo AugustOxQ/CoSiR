@@ -1247,3 +1247,27 @@ def test_loaders_ap_of_the_unseeded_arms(stub, set_, arm, ts):
 def test_labels_step_never_defaults_to_the_real_records_in_tests():
     # the labels path comes from om_paths.record_path; under OM_SMOKE it is OUT/records, else RECORDS (committed)
     assert oc.labels_path().name == 'labels.json'
+
+
+def test_labels_step_refuses_a_cell_that_was_never_scored(tmp_path):
+    cells, picks = _cells_for_c13(), good_picks()
+    cells[1] = dict(cells[1], void='not scored', label=None, cand=None, comp=None, d=None, lo=None, hi=None)
+    specs = [{'id': c['id']} for c in cells]
+    cells_path, c13_path, out_path = tmp_path / 'cells.json', tmp_path / 'c13_cells.json', tmp_path / 'labels.json'
+    cells_path.write_text(json.dumps(cells))
+    c13_path.write_text(json.dumps(_c13_doc(cells, picks)))
+    with pytest.raises(SystemExit) as e:
+        oc.run_labels(cells_path, c13_path, out_path, picks, _rebuild_of(cells), expected=specs)
+    assert 'never scored' in str(e.value) and not out_path.exists()
+
+
+def test_a_failed_rerun_removes_the_older_parts_file(tmp_path):
+    todo = [('SC1', 'artelingo', 'qwen')]
+    path = oc.parts_dir(tmp_path) / 'SC1__artelingo__qwen.json'
+    path.parent.mkdir(parents=True)
+    path.write_text('[]')
+
+    def score(*a):
+        raise AssertionError('arms were scored on other queries')
+
+    assert oc.run_cells(todo, {}, None, 5, True, out=tmp_path, score=score) == todo and not path.exists()
