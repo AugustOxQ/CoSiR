@@ -53,6 +53,9 @@ Run sheet: `pp_run_sheet.md`. Spec: `docs/superpowers/specs/2026-11-03-past-pick
 | 20:23 | Full derive ended, 83 min, 56 of 56 sections | merged |
 | 20:25 | `compare`: `C13 FAIL items=18778 failed=6 max_abs=1.85e-09` | all six are one label, Affection's SC6 comparator: `teacher_emotion_focus` in the derive, `teacher_artwork` in the round. Numbers agree |
 | 20:26 | Label fixed in `compare` and `check-outcomes` only (layout; spec §3.2 says r12's artwork wording; r12's record confirms), 119 tests. `C13 PASS items=18778 failed=0 max_abs=1.85393241037e-09 scope=full`; `records/c13.json` written | ok |
+| 20:29 | Stage 4 started: `decide` under one minute, rc 0, then diagnostics | every verdict holds; decide refused nothing |
+| 20:30 | `check-outcomes`: `C13 FAIL items=3987 failed=59 max_abs=1.85e-09` | 58 items: stage 4's file has no `status` key. One item: claims never compared, since claim rows have no `encoder` field. No number differs |
+| 20:31 | Both fixed inside `check_outcomes`, 121 tests. `C13 PASS items=4211 failed=0 max_abs=1.85393241037e-09 scope=outcomes`; `source_identity` still equals the derive | six alterations of a copy of the real file (claim word, claim row, claim outcome, verdict, cell d, sentence number) each fail one item |
 
 ## Choices of the run chat (agent default)
 
@@ -72,5 +75,10 @@ Run sheet: `pp_run_sheet.md`. Spec: `docs/superpowers/specs/2026-11-03-past-pick
 - **The six C13 label failures were C13's, not the round's.** C13 copied r14's name for Affection's teacher; the round uses r12's
   wording name, which is what the spec says. Both name one arm, and the values match, so only the name check gained an alias, read
   from r12's record. Any other label still fails.
+- **`check-outcomes` failed first on its own layout, and the claims had never been compared.** Stage 4 writes `outcomes.json`
+  from `pp_run.py`, which leaves out `status` (only `pp_outcome.py`'s own command adds it), and files claim rows per encoder with no
+  `encoder` field. The checker's unit fixture had neither shape. It now reads the committed `records/status.json` when the key is
+  absent, and takes the encoder from the path, so all 56 claims and their sentence numbers are compared. Fix inside `check_outcomes`
+  only; stage 4 and its outcomes were not rerun.
 - **C13's full derive waits for 19:00.** The user's limit for CPU scoring is about 13:00, and the code is not written yet. The
   report's date (about 11-06) allows this.

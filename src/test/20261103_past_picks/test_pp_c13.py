@@ -651,6 +651,39 @@ def test_outcomes_affection_teacher_label(recorded,passes,scratch):
     assert c.check_outcomes(root,out)['pass'] is passes
 
 
+def real_layout_fixture(scratch):
+    """The layout stage 4 writes: no status key, and claim rows filed per encoder without an encoder field."""
+    actual,root,out=golden_outcomes_fixture(scratch)
+    derived=json.loads((out/'derived.json').read_text())
+    records=scratch/'records';records.mkdir()
+    c.atomic_json(records/'status.json',derived['status'])
+    claim=dict(actual['claims'][0]);encoder=claim.pop('encoder')
+    claim.update(sentence='c* on Qwen3-VL-Embedding-2B is better than the Qwen image instructed for genre on 11,159 paintings.')
+    actual['claims']={encoder:[claim]};actual.pop('status',None)
+    return actual,root,out,records,claim
+
+
+def test_outcomes_real_layout_passes_and_compares_claims(scratch):
+    actual,root,out,records,claim=real_layout_fixture(scratch)
+    path=root/'stage4/outcomes.json';path.write_text(json.dumps(actual))
+    report=c.check_outcomes(root,out,records)
+    assert report['pass'] and any(x['name'].endswith('/0/claim') for x in report['items'])
+    claim['claim']='level with or better than';path.write_text(json.dumps(actual))
+    assert not c.check_outcomes(root,out,records)['pass']
+    claim['claim']='better than';claim['sentence']=claim['sentence'].replace('11,159','11,160');path.write_text(json.dumps(actual))
+    assert not c.check_outcomes(root,out,records)['pass']
+    claim['sentence']=claim['sentence'].replace('11,160','11,159');actual['claims']['qwen']=[];path.write_text(json.dumps(actual))
+    assert not c.check_outcomes(root,out,records)['pass']
+
+
+def test_outcomes_without_status_key_reads_the_committed_record(scratch):
+    actual,root,out,records,_=real_layout_fixture(scratch)
+    (root/'stage4/outcomes.json').write_text(json.dumps(actual))
+    status=json.loads((records/'status.json').read_text());status['gates']['vi']='failed'
+    c.atomic_json(records/'status.json',status)
+    assert not c.check_outcomes(root,out,records)['pass']
+
+
 def test_golden_outcomes_sentences_round_to_printed_decimal(scratch):
     actual,root,out=golden_outcomes_fixture(scratch)
     (root/'stage4/outcomes.json').write_text(json.dumps(actual))

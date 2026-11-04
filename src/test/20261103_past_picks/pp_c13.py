@@ -1063,7 +1063,7 @@ def strip_display_names(text):
     return text
 
 
-def check_outcomes(root=DEFAULT_ROOT,out=DEFAULT_OUT):
+def check_outcomes(root=DEFAULT_ROOT,out=DEFAULT_OUT,records=RECORDS):
     """Compare later stage 4 by cell identity, set/encoder and teacher identity.
 
     Sentence prose is not a numerical input: its numbers are checked against
@@ -1074,7 +1074,9 @@ def check_outcomes(root=DEFAULT_ROOT,out=DEFAULT_OUT):
     root,out=Path(root),check_output(out);doc=read_json(out/'derived.json')
     assert doc['scope']=='full','check-outcomes requires a full derive'
     path=root/'stage4/outcomes.json';data=path.read_bytes();actual=json.loads(data)
-    expected=doc['decisions'];cmp=Comparison();cmp.tree('status',doc['status'],actual.get('status'),'outcomes')
+    # Stage 4 decides from the committed status record and does not copy it into outcomes.json.
+    recorded_status=actual['status'] if 'status' in actual else read_json(Path(records)/'status.json')
+    expected=doc['decisions'];cmp=Comparison();cmp.tree('status',doc['status'],recorded_status,'outcomes')
     seen_cells=set();seen_cost=set();seen_verdicts=set();seen_claims=set()
     idx=index_cells(expected['cells']);claims={cell_key(c):c for c in expected['claims']};cost={c['encoder']:c for c in doc['cost']}
     aliases=dict(artelingo='art',paintings='art',artelingo_held='art',photos='aff',affection='aff',affection_test='aff',mmart='mm',mmart_test='mm',semart='sem',semart_new='sem',cost='cost')
@@ -1082,6 +1084,8 @@ def check_outcomes(root=DEFAULT_ROOT,out=DEFAULT_OUT):
         label='/'.join(map(str,parts));e=next((str(p) for p in parts if str(p) in ENCODERS),context_e)
         d=next((aliases[str(p)] for p in reversed(parts) if str(p) in aliases),context_d)
         if isinstance(node,dict):
+            # outcomes.json files claims per encoder, so a claim row has no encoder field of its own.
+            if 'encoder' not in node and e in ENCODERS and all(k in node for k in ('sc','aspect','task','data')):node={**node,'encoder':e}
             if all(k in node for k in ('sc','encoder','aspect','task','data')):
                 key=cell_key(node);target=idx.get(key)
                 if 'claim' in node and 'candidate_value' not in node:
@@ -1089,6 +1093,7 @@ def check_outcomes(root=DEFAULT_ROOT,out=DEFAULT_OUT):
                     if target is None:cmp.add(label+'/expected claim',True,False,False,'outcomes');return
                     for k in ('outcome','claim','status'):cmp.add(label+'/'+k,target[k],node.get(k),False,'outcomes')
                     cmp.add(label+'/void',bool(target['void']),bool(node.get('void')),False,'outcomes')
+                    if isinstance(node.get('sentence'),str):descend(node['sentence'],parts+('sentence',),e,d)
                 else:
                     seen_cells.add(key)
                     if target is None:cmp.add(label+'/expected cell',True,False,False,'outcomes');return
