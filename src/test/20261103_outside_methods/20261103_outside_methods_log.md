@@ -177,3 +177,38 @@ by the 200 W line; Qwen alone means 199.6 W.
   compiles on the GPU, one full fit (MMArt Qwen plain, K 20, start 0) 119.3 s, loss 2.9114, 20 clusters, against 105 s locally. The
   loss and AMI comparison with a local fit is open: the build's next chat does it. Gate (iv) does not apply to TURTLE, since
   nothing compares its vectors across machines.
+
+## Build 6 (2026-11-04, unattended)
+
+- **Ticket 11 merged** (Sonnet `medium`; Codex had no room at 03:17): `om_run.py`, `om_queue.sh`, `om_smoke_inputs.py`. Controller read the diff.
+  The worker ran two CPU jobs outside `res-queue` at nice 19 with 2 threads after the queue answered busy; the rest of the smoke went through the queue.
+- **End-to-end smoke passes:** stage 0, the real `ranges` step (140 keys, 4.7 min), CLAY and TPIPS picks on both sets, stage 2 on 9 units (all six
+  criteria on MMArt Qwen; SC2, SC4, SC5 on ArtELingo Qwen), `assemble` (83 cells, each with numbers), `labels`, `om_diag all` for one aspect and
+  encoder. Synthetic: TPIPS stores (random rows), TURTLE partitions (random labels, one short real fit), gate (iii) and (iv) stubs, the C13 file.
+  Real: CLAY vectors, set B, r17's ranges, c* heads. So the labels in the smoke mean nothing; the paths are what it proves. A stale hash on gate
+  (iii) part c voided its 12 cells and the run went on (D24). Stage 2 refused a changed record. Times per unit on 8 threads, smoke draws: SC1 18 min,
+  SC3 15, SC6 12, SC2 5, SC4 4 to 14, SC5 1.
+- **TURTLE reference fit:** the local 3090 and node402 give the same partition for MMArt Qwen plain, K 20, start 0: every row equal, loss 2.911379 on
+  both, AMI against style 0.22189, genre 0.43461, emotion 0.0408 on both. 140 s locally (under queue load), 119 s on the node. So the 16 jobs stay on node402.
+- **Final review.** The first Opus `xhigh` reviewer passed 200k tokens in 36 calls and gave no verdict. Two fresh ones, A (rule, cells, records) and B
+  (methods, gates, diagnostics): each APPROVE with notes, no blocker. Each stopped at the 200k meter with its list of what it did not check.
+  Re-derived: the 337 ids and 28 units from the spec's text by independent code; SC4 and SC2 cells on MMArt Qwen emotion by own code at the same
+  draws (largest difference 6e-11; SC4 cand 0.20107, comp 0.19168, d +0.00939); CLAY vectors to 1.5e-8; gate (i) (P 2.2e-7, mu 6.0e-8, query 6.6e-7,
+  tolerance 1e-5); gate (ii) hash and CPU part; gate (iii) hash from the 8 files, 36 of 36 r15 retrieval expected values found exactly in r15's
+  `verdicts.json`. Sabotages: 19 on the rule, 2 missed and now tested (the SC4 text pin; the comparator read-out in `check_fresh`); gate (i), gate (ii),
+  merge, gate (iv) and `check-pulled` sabotages in B. D12 clean: shared lines are only `if __name__`, `torch.no_grad`, seeds.
+- **Gate reach for the report:** gate (i) cannot see the log map's arccos scale at rank 49. On set B that scale matters (up to 0.011), so set B's path rests on
+  reading and on the reviewer's own restatement of the official math (largest difference 7.2e-7, 0.001 degrees; the clone was not run). Gate (ii) at
+  100 steps cannot see batch draws; the oracle test carries that claim, proved by sabotage. Gate (ii)'s GPU part ran on the 3090 and the fits run on
+  node402; the reference fit above closes that gap for one fit. Gate (iv) compares no store row with the reference, hence `om_tpips_check.py`.
+- **Fix wave** (Codex `gpt-6.1-sol` `high`, 12 items, one session, 21% of the five-hour window): `assemble` and `labels` refuse a status that differs from the gate and
+  stage 1 files; `labels` refuses a stub C13 file outside smoke and removes an older `labels.json` on refusal; `om_env` refuses OM_OUTPUTS without
+  OM_SMOKE and the reverse in `om_run` and `om_cells`; r17-family r must equal r17's record at assemble (an r17 rerun could keep r 0.003668 against r17's
+  0.007336 under a rebuilt pin); `stage1_records` asserts 140 keys; `sweep` keeps the spread over starts; `adds` says its pair is on rows only;
+  `check-pulled` refuses a mixed host, torch version, device or settings; new `om_tpips_check.py` compares the 48 probe rows per shard with the
+  reference and lists changed packages. No hashed file, `om_tpips.py`, `om_turtle.py` or `om_clay.py` changed.
+- **Re-review** (Sonnet `high`): APPROVE with notes, 168 tests pass, 3 sabotages caught. Left as they are, all low: `check-pulled`'s guard has no repo test
+  (plumbing; proved by 7 synthetic cases); a status refusal comes before `labels` removes an old file; `om_tpips_check.py` exits 0 while shards are
+  pending, so read `complete`; `OM_SMOKE=2` reads as smoke in `om_paths` but not in `om_env`.
+- **Left for later builds or the report:** parts files bind no input hash, so pass `--force` after any re-extraction or refit; gates (i) and (iv) carry no code
+  hash; `sweep` has no TEMI rows; `r17_kmeans` stays empty until r17's stage 3 files exist; in `adds`, the interval's widening is not measured.
