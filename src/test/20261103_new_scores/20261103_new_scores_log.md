@@ -1,0 +1,46 @@
+# r17 run log: new scores from saved outputs
+
+Spec: `docs/superpowers/specs/2026-11-03-new-scores-design.md`. Handoff: `docs/superpowers/handoffs/2026-11-04-r17-run-handoff.md`.
+Code on main at 8cf743b2 (run chat opened at daba7948). Outputs: `/data/SSD2/cosir_r17/20261103_new_scores/outputs`.
+Times are Amsterdam time.
+
+## 2026-11-04 00:22: start and end-time estimate
+
+- Machine: run mode night; queue idle, 4 CPU slots free; load 3; 51 GB RAM available; 1.8 TB free on SSD2. r19 build 4
+  is open and may take slots.
+- Estimate at the start, in three chains (three of the four CPU slots): stages 0 to 2 about 16 to 17 slot-hours, so
+  about 06:00; C13 about 10 slot-hours (r15's rate, not measured), so about 09:30; stage 3 about 12 slot-hours, so
+  about 13:30.
+- Choice (agent, `shared-resources.md`): the run goes on past 11:00 if it must. It is CPU only, so the local GPU stays
+  free and the machine is not loud. The report is due 18:00, a split over two nights would miss it, and the spec (§3.6)
+  has its own cut: if 12:00 passes with stage 3 unfinished, the photo sets run last and may be cut. The expected end is
+  told to the main chat through the handoff brief.
+
+## 2026-11-04 00:56: stage 0 done, all gates pass
+
+16 gates, about 34 min of wall time in three chains (2.1 slot-hours were estimated at load 30 to 60; the load was low).
+No failed or missing gate. Status after stage 0: ok 29, failed 0, missing 132 (the stage 1 items).
+
+| Gate | Result |
+|---|---|
+| (i) a, r14 SigLIP 2 ArtELingo SC1, SC6; r15 CLIP L/14 MMArt SC1, SC4; r10 stage 4 partitions | pass, max abs diff 0.0 |
+| (i) b, matched-arm interval | pass, 0.0 |
+| (i) c, Affection; EmoSet | pass, 0.0 |
+| (i) d, EmoSet K = 8; r15 class count | pass, 0.0 |
+| (ii) r15 SC2 and r11 SC10 to SC15; CRL; PercepT | pass, 0.0 |
+| (iii) metrics; class counts | ok, 0.0; all eight counts equal §3.3's |
+| (iv) 20 mappers on CPU; Qwen validation | ok, max 8.3e-7 (bar 1e-5) |
+| (v) untold join | ok on four encoders, max unit deviation 4.5e-5 (bar 1e-3) |
+| (vi) read-out rule | pass, 0.0, picks and flags equal |
+
+Record note (build 3's §3): at build time `a_r15` failed first on one cell (SC4 genre teacher, 1.3e-5). r17's replay
+normalised r15's rows a second time, which flipped one row in k-means. That was r17's own wiring slip, fixed in 86c3cc0;
+the re-run and this real run pass 30 of 30. The real cells were never affected: `ns_clu_cells` feeds rows as `ns_data`
+returns them.
+
+## 2026-11-04 02:31: stage 1 done, ranges and picks committed before any new test number
+
+About 95 min of wall time (r18 and a review job took CPU slots from about 01:40). 116 class-count ranges and 16 new picks; status ok 161, failed 0,
+missing 0. Picks (all `kept`): CRL on MMArt `none+k10`; matched ArtELingo SigLIP 2 `center+k3`, SigLIP 1 and CLIP L/14
+`center+k10`; matched MMArt Qwen and CLIP L/14 `center+k10`, SigLIP 2 and SigLIP 1 `center+k0`; untold ArtELingo
+`center+k10` on all four; untold MMArt Qwen and SigLIP 2 `none+k10`, SigLIP 1 `none+k1`, CLIP L/14 `none+k3`.

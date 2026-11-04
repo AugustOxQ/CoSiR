@@ -1759,3 +1759,51 @@
 - Handoff: docs/superpowers/handoffs/2026-11-04-r19-build4-handoff.md
 - New chat: tab 'r19 build 4', session f230deb2-5b4b-4531-9369-0d454a9ed956
 
+[brief] CoSiR: r17 build 4 -> r17 run (2026-11-04 00:21 Amsterdam)
+- Done: the fix wave closed all 9 review items; the re-review passed; 524 tests pass; the code is on main (8cf743b2).
+- State: nothing has run on the real output folder yet; it is empty. CPU idle at 00:20, GPU check passes.
+- Next: open the round log, run stage 0, then stages 1 and 2 in three chains, with C13 code written beside them.
+- Blocked: nothing. Stages 0 to 2 end about 06:30; stage 3 likely ends about 13:30, past 11:00.
+- Handoff: docs/superpowers/handoffs/2026-11-04-r17-run-handoff.md
+- New chat: tab 'r17 run', session 798d271f-5359-4d24-a39c-67752de65187
+
+[brief] CoSiR: r18 build 2 -> r18 build 3 (2026-11-04 00:33 Amsterdam)
+- Done: build 2 wrote all 12 tickets after r17's merge. Tickets 01, 03 and 05 are merged; gate (i) passes at 6.6e-7 against 1e-5.
+- State: ticket 02 is built, gate (ii) CPU part 2.5e-7 against 1e-5, not reviewed. No GPU job has run yet.
+- Next: Opus review of 02, the short GPU jobs, then tickets 04 and 06.
+- Blocked: nothing. GPU check passes.
+- Handoff: docs/superpowers/handoffs/2026-11-04-r18-build-3-handoff.md
+- New chat: tab 'r18 build 3', session 07584f99-6245-4d34-ae35-880507dd3358
+
+[brief] CoSiR: r19 build 4 -> r19 build 5 (2026-11-04 00:47 Amsterdam)
+- Done: tickets 12 and 13 merged (integration tip d2e87d7); node402 probe (59 inputs, 0 failures) and node smoke pass.
+- State: tickets 01 to 13 are merged; ticket 14 is unblocked because r17's code is now on main.
+- Next: merge main into the branch, ticket 14, final review on Opus `xhigh`, one fix wave, merge into main, run chat.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-04-r19-build5-handoff.md
+- New chat: tab 'r19 build 5', session bade26c5-7a42-4fc8-81cd-8d7cd60d4e18
+
+[brief] CoSiR: r18 build 3 -> r18 build 4 (2026-11-04 00:52 Amsterdam)
+- Done: tickets 02 (after one fix round), 04 and 06 merged; gate (i) passes; gate (ii) passes, 2.54e-7 against 1e-5 and GPU against CPU AMI 1.0; text set B frozen; D20 set to batch 1.
+- State: 6 of 12 tickets merged. Node route works, only the probe's own weight check failed; it is fixed, rerun due.
+- Next: node probe, node gate probe, then tickets 07, 08, 09.
+- Blocked: nothing. GPU check passes.
+- Handoff: docs/superpowers/handoffs/2026-11-04-r18-build-4-handoff.md
+- New chat: tab 'r18 build 4', session 80de1fc3-2c7a-4bd6-8e4a-f235d3c5cc1c
+
+[brief] CoSiR: r18 build 4 -> r18 build 5 (2026-11-04 02:01 Amsterdam)
+- Done: tickets 08 and 09 merged; ticket 07 reviewed, 3 fixes open. TPIPS gate (iv) fails on node402.
+- State: 8 of 12 tickets merged. Node vectors do not count: lowest row cosine 0.9987 against 0.999, with identical packages and images. The threshold stays.
+- Next: ticket 07 fixes, then gate (iii), then tickets 10, 12, 11. TPIPS stores now extract on the local 3090, shard 0 of 6 running since 01:38.
+- Blocked: nothing. TURTLE time is 12.3 h, not the spec's 1 to 2 h: the route is open, recommendation in the handoff. GPU check passes.
+- Handoff: docs/superpowers/handoffs/2026-11-04-r18-build-5-handoff.md
+- New chat: tab 'r18 build 5', session 59a6344c-3df3-46f5-858d-ca2260a5f5a5
+
+[brief] CoSiR: r19 build 5 -> r19 run (2026-11-04 02:23 Amsterdam)
+- Done: tickets 01 to 14, final review, fix wave and re-review; build merged into main (dd7e7c0b), 499 tests pass, smoke passes stages 0 to 4.
+- State: review found two blockers, both fixed; every SC bar equals §6; r14's and r15's 117 stored outcomes reproduce.
+- Next: run chat starts parity and node402's jobs from worktree r19-int, then follows the run sheet.
+- Blocked: nothing. The local GPU is held by r18 until about 04:08; node402 does not wait for it.
+- Handoff: docs/superpowers/handoffs/2026-11-04-r19-run-handoff.md
+- New chat: tab 'r19 run', session a099d7c5-4802-4dcd-8fb1-ce1b19e1e932
+
