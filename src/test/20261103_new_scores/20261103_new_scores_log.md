@@ -70,3 +70,12 @@ with cells absent; 4, an old pass survives a later refusal. Left: 5, a missing r
 has none, so it does not apply today); 6, minor notes (`rb_matched` and `ct_percept` not in the fingerprint; both frozen).
 All fixes stay inside `compare`, `certify` and `Comparison`, so the fingerprint and the running derive stay valid. Codex has
 no room (12% left, reset 04:35), so a Sonnet `high` worker makes the fixes (routing: Claude takes it).
+
+## 2026-11-04 04:09: C13 compare fixes merged, re-review passes
+
+bbd4f4f9: `compare` now checks the numbers, `licensed`, `summary`, `status`, `smoke`, the row count and id uniqueness of
+`outcomes.json`; `certify` refuses a bare absent cell; a refusal or an unfinished compare replaces an older pass with
+`pass: false`. Fingerprint unchanged (c278e4a2...), so the running derive stays valid. 62 tests pass, each fix sabotaged
+once and caught. Sonnet `high` re-review: pass. Left as notes: an inherited false FAIL if a stage 1 range were not ok (all
+116 are ok, so it does not fire), and hand-edited `sentence` text, `present`, `r_source` or the void reason list would not
+be seen (`ns_outcome` writes those).
