@@ -621,3 +621,155 @@ def test_semart_inputs_score_equals_the_float32_fake(world, production_readers):
     got = S.score_clu(ENC, S.SemartInputs('clu'), world.keys, UNIT_CLU, n_draws=40, workers=2)
     want = S.score_clu(ENC, Rounded(world, 'clu'), world.keys, UNIT_CLU, n_draws=40, workers=2)
     assert [c['candidate_value'] for c in got] == [c['candidate_value'] for c in want]
+
+
+# ================================================================================================ fix wave A (findings 3 and 12)
+from test_pp_outcome import ok_status, failed  # noqa: E402
+
+NEW3 = ('dinov2_large', 'clip_b32', 'clip_b16')
+ALL7 = NEW3 + ('qwen', 'siglip2', 'siglip1', 'clip_l14')
+
+
+class NoTeacher(FakeInputs):
+    """The teacher store is absent (gate (i) genre_word failed): any read of it fails the test."""
+
+    def teacher_val(self):
+        raise AssertionError('the teacher was read (val)')
+
+    def teacher_eval(self, keys):
+        raise AssertionError('the teacher was read (eval)')
+
+
+class NoMatched(FakeInputs):
+    def matched(self, enc, keys):
+        raise AssertionError('the matched arm was read')
+
+
+def by_sc(cells):
+    return {c['sc']: c for c in cells}
+
+
+def test_clu_without_the_teacher_is_the_other_cells_of_the_full_list(world, clu_cells):
+    got = S.score_clu(ENC, NoTeacher(world), world.keys, UNIT_CLU, n_draws=40, workers=2, use_teacher=False)
+    assert [c['sc'] for c in got] == ['SC11', 'SC13']
+    assert got == [c for c in clu_cells if c['sc'] != 'SC14']
+
+
+def test_ret_without_the_teacher_is_the_other_cell_of_the_full_list(world, ret_cells):
+    arms = S.ret_arms(ENC, NoTeacher(world), world.keys, dict(cstar=PICKS['cstar'], frozen=PICKS['frozen']), workers=2,
+                      use_teacher=False)
+    assert arms['teacher'] is None and arms['cstar'] is not None
+    got = S.score_ret(ENC, NoTeacher(world), world.keys, UNIT_RET, dict(cstar=PICKS['cstar'], frozen=PICKS['frozen']),
+                      n_draws=60, workers=2, use_teacher=False)
+    assert [c['sc'] for c in got] == ['SC12']
+    assert got[0] == ret_cells[0]
+
+
+def test_clu_without_the_matched_arm_is_the_other_cells_of_the_full_list(world, clu_cells):
+    got = S.score_clu(ENC, NoMatched(world), world.keys, UNIT_CLU, n_draws=40, workers=2, use_matched=False)
+    assert [c['sc'] for c in got] == ['SC11', 'SC14']
+    assert got == [c for c in clu_cells if c['sc'] != 'SC13']
+    only = S.score_clu(ENC, NoTeacher(world), world.keys, UNIT_CLU, n_draws=40, workers=2, use_matched=False,
+                       use_teacher=False)
+    assert only == [c for c in clu_cells if c['sc'] == 'SC11']
+
+
+def test_without_the_teacher_the_arms_are_still_asserted_without_a_pick_for_it(world):
+    with pytest.raises(AssertionError):
+        S.ret_arms(ENC, FakeInputs(world), world.keys, dict(cstar=PICKS['cstar']), workers=2)
+    with pytest.raises(AssertionError):
+        S.ret_arms(ENC, FakeInputs(world), world.keys, dict(cstar=PICKS['cstar'], frozen=PICKS['frozen']), workers=2)
+
+
+@pytest.fixture
+def stage2(world, monkeypatch, tmp_path):
+    """Smoke `score()`: the SemArt set, the units and picks, and the cells writer are stand-ins; OUT/records is empty."""
+    monkeypatch.setattr(PP, 'SMOKE', 1)
+    monkeypatch.setattr(PP, 'OUT', tmp_path)
+    written = []
+    monkeypatch.setattr(S, 'production_order', lambda: list(world.keys))
+    monkeypatch.setattr(S, 'stage1_for', lambda enc: (dict(clu=UNIT_CLU, ret=UNIT_RET), dict(PICKS)))
+    monkeypatch.setattr(S, 'write_cells', lambda part, enc, cells, *a, **k: written.append((part, enc, cells)))
+    return written
+
+
+def run_score(world, enc, inputs_cls=FakeInputs, **kw):
+    out = []
+    for part in ('semart_clu', 'semart_ret'):
+        out += S.score(part, enc, n_draws=40 if part == 'semart_clu' else 60, workers=2, inputs=inputs_cls(world, **{}), **kw)
+    return out
+
+
+@pytest.mark.parametrize('enc', ALL7)
+def test_score_with_genre_word_failed_writes_sc11_to_sc13_and_never_reads_the_teacher(world, stage2, enc):
+    status = failed('gates', 'i_semart_genre_word')
+    cells = run_score(world, enc, NoTeacher, status=status)
+    assert [(c['sc'], c['task']) for c in cells] == [('SC11', 'clu'), ('SC13', 'clu'), ('SC12', 'ret')]
+    assert [w[0] for w in stage2] == ['semart_clu', 'semart_ret']
+    got = {pp_outcome.cell_key(c) for c in cells}
+    missing = [k for k in pp_outcome.required_cell_keys(enc) if k[4] == 'semart_new' and k not in got]
+    assert sorted(missing) == [('SC14', enc, 'genre', 'clu', 'semart_new'), ('SC14', enc, 'genre', 'ret', 'semart_new')]
+    voids = pp_outcome.Voids(status)
+    assert all(voids.cell(k) for k in missing)
+    assert not [k for k in got if voids.cell(k)]
+
+
+@pytest.mark.parametrize('enc', NEW3)
+@pytest.mark.parametrize('how', [('runs', 'matched'), ('gates', 'v')])
+def test_score_with_a_failed_matched_arm_writes_everything_but_sc13(world, stage2, enc, how):
+    status = ok_status()
+    if how[0] == 'runs':
+        status['runs'][enc]['matched'] = 'failed'
+    else:
+        status['gates']['v'][enc] = 'failed'
+    cells = run_score(world, enc, NoMatched, status=status)
+    assert [(c['sc'], c['task']) for c in cells] == [('SC11', 'clu'), ('SC14', 'clu'), ('SC12', 'ret'), ('SC14', 'ret')]
+    got = {pp_outcome.cell_key(c) for c in cells}
+    missing = [k for k in pp_outcome.required_cell_keys(enc) if k[4] == 'semart_new' and k not in got]
+    assert missing == [('SC13', enc, 'genre', 'clu', 'semart_new')]
+    assert pp_outcome.Voids(status).cell(missing[0])
+
+
+def test_score_with_both_failed_writes_sc11_and_sc12(world, stage2):
+    status = failed('gates', 'i_semart_genre_word')
+    status['runs']['clip_b32']['matched'] = 'failed'
+
+    class Neither(NoTeacher, NoMatched):
+        pass
+    cells = run_score(world, 'clip_b32', Neither, status=status)
+    assert [c['sc'] for c in cells] == ['SC11', 'SC12']
+
+
+def test_old_encoders_have_no_run_record_and_keep_their_matched_cells(world, stage2):
+    status = ok_status()
+    for e in NEW3:
+        status['runs'][e]['matched'] = 'failed'
+    cells = run_score(world, 'qwen', status=status)
+    assert [c['sc'] for c in cells] == ['SC11', 'SC13', 'SC14', 'SC12', 'SC14']
+
+
+@pytest.mark.parametrize('enc', ['clip_l14', 'clip_b32', 'qwen'])
+def test_a_healthy_status_gives_the_cells_of_a_run_without_a_status(world, stage2, clu_cells, ret_cells, enc):
+    """The pair: healthy status and (under smoke) no status file give the same five cells as the scorers alone."""
+    plain = run_score(world, enc)
+    assert [c['sc'] for c in plain] == ['SC11', 'SC13', 'SC14', 'SC12', 'SC14']
+    assert run_score(world, enc, status=ok_status()) == plain
+    if enc == ENC:
+        assert plain == clu_cells + ret_cells
+    for c in plain:
+        assert c['encoder'] == enc
+
+
+def test_other_failed_gates_do_not_drop_the_teacher_or_matched_cells(world, stage2):
+    status = failed('gates', 'vii', 'artelingo')
+    assert len(run_score(world, 'clip_b32', status=status)) == 5
+
+
+def test_a_missing_status_outside_smoke_raises_before_any_row(world, monkeypatch, tmp_path):
+    monkeypatch.setattr(PP, 'SMOKE', 0)
+    monkeypatch.setattr(PP, 'RECORDS', tmp_path)
+    monkeypatch.setattr(S, 'stage1_for', lambda enc: (dict(clu=UNIT_CLU, ret=UNIT_RET), dict(PICKS)))
+    monkeypatch.setattr(S, 'production_order', lambda: pytest.fail('rows were asked for before the status was read'))
+    for part in ('semart_clu', 'semart_ret'):
+        with pytest.raises(FileNotFoundError):
+            S.score(part, 'clip_b32', inputs=NoTeacher(world))

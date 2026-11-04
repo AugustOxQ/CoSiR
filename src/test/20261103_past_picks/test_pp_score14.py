@@ -395,7 +395,7 @@ def test_stage2_reads_stage1_only_through_read_committed_record(monkeypatch, par
 def test_stage2_refuses_draw_counts_other_than_the_protocols_outside_smoke(monkeypatch, part, tmp_path):
     """A committed record is read, then a 5-draw run is refused before any held row (ticket 11 refuses such cells anyway)."""
     tripwires(monkeypatch)
-    monkeypatch.setattr(S, 'committed_record', lambda enc: record_for(enc))
+    monkeypatch.setattr(S, 'committed_record', lambda enc, part=None: record_for(enc))
     monkeypatch.setattr(PP, 'SMOKE', 0)
     monkeypatch.setattr(PP, 'OUT', tmp_path)
     with pytest.raises(AssertionError, match='only smoke runs'):
@@ -750,3 +750,191 @@ def test_stage1_artelingo_refuses_a_frozen_pick_made_with_x_c_stars_own_ranges(m
     monkeypatch.setattr(bs_artret, 'pick_frozen', lambda view, workers=8: dict(pick='none+k0', table={}, ranges=dict(own)))
     with pytest.raises(AssertionError, match='D21'):
         S.stage1_artelingo('clip_b32')
+
+
+# ================================================================================================ fix wave A (findings 2 and 3)
+import pp_outcome  # noqa: E402
+from test_pp_outcome import ok_status, failed  # noqa: E402
+
+AE_DATA = 'artelingo_held'
+
+
+def strip_affection(rec):
+    rec = dict(rec)
+    del rec['affection']
+    return rec
+
+
+# ---- finding 2: `affection` is required only for the affection part
+def test_check_record_requires_affection_only_for_the_affection_part():
+    rec = strip_affection(record_for('clip_b32'))                  # X's photo runs failed: no affection block
+    for part in ('artelingo_clu', 'artelingo_ret'):
+        S.check_record('clip_b32', rec, part=part)
+    with pytest.raises(AssertionError, match="lacks 'affection'"):
+        S.check_record('clip_b32', rec, part='affection')
+    with pytest.raises(AssertionError, match="lacks 'affection'"):
+        S.check_record('clip_b32', rec)                           # the gates' form (no part): the full record, as before
+
+
+def test_check_record_affection_part_does_not_need_the_artelingo_blocks():
+    rec = record_for('clip_b16')
+    for k in ('artclu', 'artret_ranges', 'artret_picks'):
+        del rec[k]
+    S.check_record('clip_b16', rec, part='affection')
+    with pytest.raises(AssertionError, match='lacks'):
+        S.check_record('clip_b16', rec, part='artelingo_clu')
+
+
+@pytest.mark.parametrize('part', S.PARTS)
+def test_check_record_with_a_part_still_checks_what_it_reads(part):
+    bad = record_for('clip_b32')
+    if part == 'affection':
+        bad['affection']['frozen']['r'] = None
+    else:
+        bad['artret_picks']['cstar']['ranges']['style'] += 1e-6
+    with pytest.raises(AssertionError):
+        S.check_record('clip_b32', bad, part=part)
+
+
+def stage2_world(monkeypatch, tmp_path, spy, rec, status=None):
+    """Smoke world: OUT/records holds the stage 1 record (and a status when given); synthetic held readers."""
+    monkeypatch.setattr(PP, 'SMOKE', 1)
+    monkeypatch.setattr(PP, 'OUT', tmp_path)
+    (tmp_path / 'records').mkdir(parents=True, exist_ok=True)
+    (tmp_path / 'records' / f'stage1_{rec["encoder"]}.json').write_text(json.dumps(rec))
+    if status is not None:
+        (tmp_path / 'records' / 'status.json').write_text(json.dumps(status))
+    return install_clu_world(monkeypatch, spy)
+
+
+def test_score_artelingo_clu_without_the_affection_block(monkeypatch, tmp_path):
+    """X's photo failure (record without `affection`, status says nothing about the c* runs): the ArtELingo cells are written."""
+    spy = Spy()
+    stage2_world(monkeypatch, tmp_path, spy, strip_affection(record_for('clip_b32')))
+    cells = S.score('artelingo_clu', 'clip_b32', n_draws=10, workers=2, out=tmp_path)
+    assert len(cells) == 9
+    assert len(json.loads(S.cells_path('artelingo_clu', out=tmp_path).read_text())) == 9
+
+
+# ---- finding 3: a failed matched arm is not read
+def clu_inputs(enc='clip_b32'):
+    y, c, f, m, t = fixed_world(2)
+    return enc, 'style', y, c, f, m, t
+
+
+def test_clu_cells_without_the_matched_arm_are_the_other_cells_of_the_full_list():
+    enc, aspect, y, c, f, m, t = clu_inputs()
+    full = S.clu_cells(enc, aspect, y, c, f, m, t, RANGES, n_draws=20, workers=2)
+    part = S.clu_cells(enc, aspect, y, c, f, None, t, RANGES, n_draws=20, workers=2, skip_matched=True)
+    assert [x['sc'] for x in full] == ['SC1', 'SC3', 'SC6'] and [x['sc'] for x in part] == ['SC1', 'SC6']
+    assert part == [x for x in full if x['sc'] != 'SC3']
+
+
+def test_clu_cells_still_raise_when_the_matched_arm_is_missing_and_nothing_voided_it():
+    enc, aspect, y, c, f, m, t = clu_inputs()
+    with pytest.raises(Exception):
+        S.clu_cells(enc, aspect, y, c, f, None, t, RANGES, n_draws=20, workers=2)
+
+
+@pytest.mark.parametrize('enc', NEW)
+@pytest.mark.parametrize('how', [('runs', 'matched'), ('gates', 'v')])
+def test_score_artelingo_clu_with_a_failed_matched_arm_writes_the_other_six_cells(monkeypatch, tmp_path, enc, how):
+    spy = Spy()
+    status = ok_status()
+    if how[0] == 'runs':
+        status['runs'][enc]['matched'] = 'failed'
+    else:
+        status['gates']['v'][enc] = 'failed'
+    stage2_world(monkeypatch, tmp_path, spy, record_for(enc), status)
+    cells = S.score('artelingo_clu', enc, n_draws=10, workers=2, out=tmp_path)
+    assert [(c['sc'], c['aspect']) for c in cells] == [(sc, a) for a in ASPECTS for sc in ('SC1', 'SC6')]
+    assert not [c for c in spy.calls if c[0] == 'matched_fixed']                   # the matched arm was never read
+    # exactly the missing required cells are the ones the status voids
+    voids = pp_outcome.Voids(status)
+    got = {pp_outcome.cell_key(c) for c in cells}
+    missing = [k for k in pp_outcome.required_cell_keys(enc) if k[4] == AE_DATA and k[3] == 'clu' and k not in got]
+    assert sorted(missing) == sorted(('SC3', enc, a, 'clu', AE_DATA) for a in ASPECTS)
+    assert all(voids.cell(k) for k in missing)
+
+
+def test_score_artelingo_clu_on_a_healthy_status_is_the_same_as_without_one(monkeypatch, tmp_path):
+    spy = Spy()
+    stage2_world(monkeypatch, tmp_path / 'a', spy, record_for('clip_b32'))
+    plain = S.score('artelingo_clu', 'clip_b32', n_draws=10, workers=2, out=tmp_path / 'a')
+    spy = Spy()
+    stage2_world(monkeypatch, tmp_path / 'b', spy, record_for('clip_b32'), ok_status())
+    with_status = S.score('artelingo_clu', 'clip_b32', n_draws=10, workers=2, out=tmp_path / 'b')
+    assert [(c['sc'], c['aspect']) for c in plain] == [(sc, a) for a in ASPECTS for sc in ('SC1', 'SC3', 'SC6')]
+    assert with_status == plain
+    assert any(c[0] == 'matched_fixed' for c in spy.calls)
+
+
+def test_score_artelingo_clu_other_failed_gates_do_not_drop_the_matched_cells(monkeypatch, tmp_path):
+    spy = Spy()
+    stage2_world(monkeypatch, tmp_path, spy, record_for('clip_b32'), failed('gates', 'vii', 'artelingo'))
+    assert len(S.score('artelingo_clu', 'clip_b32', n_draws=10, workers=2, out=tmp_path)) == 9
+
+
+def test_stage2_without_a_committed_status_raises_outside_smoke(monkeypatch, tmp_records, tmp_path):
+    """No status file on a real stage 2: the scorer raises before any held row (stage 2's refusal needs the file too)."""
+    tripwires(monkeypatch)
+    monkeypatch.setattr(S, 'committed_record', lambda enc, part=None: record_for(enc))
+    monkeypatch.setattr(PP, 'SMOKE', 0)
+    monkeypatch.setattr(PP, 'OUT', tmp_path)
+    with pytest.raises(FileNotFoundError):
+        S.score('artelingo_clu', 'clip_b32')
+
+
+def test_check_cells_expects_no_matched_cells_when_told_the_matched_arm_is_void():
+    cells = [c for c in good('artelingo_clu') if c['sc'] != 'SC3']
+    S.check_cells('artelingo_clu', 'clip_b32', cells, smoke=True, skip_matched=True)
+    with pytest.raises(AssertionError):
+        S.check_cells('artelingo_clu', 'clip_b32', cells, smoke=True)
+    with pytest.raises(AssertionError):
+        S.check_cells('artelingo_clu', 'clip_b32', good('artelingo_clu'), smoke=True, skip_matched=True)
+
+
+# ---- the status mapping the three scorers share (pp_void_scope)
+import pp_void_scope as V  # noqa: E402
+
+
+@pytest.mark.parametrize('enc', NEW)
+def test_matched_void_follows_the_matched_rules_of_the_voids_table(enc):
+    assert not V.matched_void(None, enc, 'artelingo')
+    assert not V.matched_void(ok_status(), enc, 'mmart')
+    for kind in ('artelingo', 'mmart', 'semart'):
+        for path in (('runs', enc, 'matched'), ('gates', 'v', enc)):
+            status = failed(*path)
+            assert V.matched_void(status, enc, kind), (kind, path)
+            assert not V.matched_void(status, next(e for e in NEW if e != enc), kind)
+    # failures that void other things leave the matched arm alone
+    for path in (('runs', enc, 'photo'), ('gates', 'vii', 'artelingo'), ('gates', 'i_semart_genre_word'), ('gates', 'vi')):
+        assert not V.matched_void(failed(*path), enc, 'artelingo'), path
+
+
+def test_teacher_void_is_the_genre_word_gate_only():
+    assert not V.teacher_void(None, 'clip_b32') and not V.teacher_void(ok_status(), 'qwen')
+    for enc in NEW + ('qwen', 'siglip2', 'siglip1', 'clip_l14'):
+        assert V.teacher_void(failed('gates', 'i_semart_genre_word'), enc)
+        assert not V.teacher_void(failed('gates', 'i_semart_parity', 'qwen'), enc)
+        assert not V.teacher_void(failed('runs', 'clip_b32', 'matched'), enc)
+
+
+def test_committed_status_none_only_under_smoke_without_a_file(monkeypatch, tmp_path):
+    monkeypatch.setattr(PP, 'OUT', tmp_path)
+    monkeypatch.setattr(PP, 'SMOKE', 1)
+    assert V.committed_status() is None
+    (tmp_path / 'records').mkdir()
+    (tmp_path / 'records' / 'status.json').write_text(json.dumps(failed('runs', 'clip_b32', 'matched')))
+    assert V.committed_status()['runs']['clip_b32']['matched'] == 'failed'
+    monkeypatch.setattr(PP, 'SMOKE', 0)
+    monkeypatch.setattr(PP, 'RECORDS', tmp_path / 'nowhere')
+    with pytest.raises(FileNotFoundError):
+        V.committed_status()
+
+
+def test_a_malformed_status_is_refused_not_ignored():
+    bad = ok_status()
+    del bad['runs']['clip_b32']
+    with pytest.raises(AssertionError):
+        V.resolve(bad)

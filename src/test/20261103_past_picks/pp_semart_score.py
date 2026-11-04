@@ -36,6 +36,7 @@ CLI (`python pp_semart_score.py -h`): stage1 | score | gate-iv. Smoke: PP_OUTPUT
 """
 import pp_paths as PP  # noqa: I001  (first: sets the older rounds' output roots)
 import pp_register  # noqa: F401  (all seven encoders in r14's and r15's tables)
+import pp_void_scope
 
 import argparse
 import json
@@ -204,35 +205,40 @@ class SemartInputs(Inputs):
 
 
 # ============================================================================================ scoring
-def score_clu(enc, inputs, order, unit, n_draws, workers=8, subset=None, data=DATA, matched_name=None):
+def score_clu(enc, inputs, order, unit, n_draws, workers=8, subset=None, data=DATA, matched_name=None, use_matched=True,
+              use_teacher=True):
     """SC11, SC13, SC14 (clustering) of encoder `enc` on the rows `order` (or its `subset`): the cells of
-    `mt_clu.score_aspect` relabelled. `unit`: X-c*'s genre AMI range (the LEVEL unit of SC14)."""
+    `mt_clu.score_aspect` relabelled. `unit`: X-c*'s genre AMI range (the LEVEL unit of SC14).
+    `use_matched=False` (the status voids the matched arm, §3.5 row (v)): the matched arm is not read, no SC13.
+    `use_teacher=False` (gate (i) genre_word failed, row (i)): the teacher is not read, no SC14."""
     keys = restrict(order, subset)
     n = len(keys)
     y = np.asarray(inputs.labels(keys))
     assert y.shape == (n,) and np.issubdtype(y.dtype, np.integer) and (y >= 0).any(), f'labels {y.shape} for {n} keys'
     c_fixed = mt_clu.cstar_fixed({s: _rows(inputs.cstar_eval(enc, s, keys), n, f'{enc} c* s{s}') for s in SEEDS})
     frozen = mt_clu.single_fixed(_rows(inputs.frozen_eval(enc, keys), n, f'{enc} frozen'))
-    teacher = mt_clu.single_fixed(_rows(inputs.teacher_eval(keys), n, 'teacher'))
-    matched = _matched(inputs.matched(enc, keys), n, f'{enc} matched')
+    teacher = mt_clu.single_fixed(_rows(inputs.teacher_eval(keys), n, 'teacher')) if use_teacher else None
+    matched = _matched(inputs.matched(enc, keys), n, f'{enc} matched') if use_matched else None
+    scs = tuple(sc for sc in SC_CLU if (use_matched or sc != 'SC3') and (use_teacher or sc != 'SC4'))
     cells = mt_clu.score_aspect(enc, ASPECT, y.astype(np.int64), c_fixed, frozen=frozen, matched=matched, teacher=teacher,
-                                scs=tuple(SC_CLU), r=unit, r_source=R_SOURCE_CLU, n_draws=n_draws, workers=workers,
+                                scs=scs, r=unit, r_source=R_SOURCE_CLU, n_draws=n_draws, workers=workers,
                                 data=data, matched_name=matched_name or PP.MATCHED[enc])
     for c in cells:
         c['sc'] = SC_CLU[c['sc']]
     return cells
 
 
-def ret_arms(enc, inputs, order, picks, workers=8, subset=None):
+def ret_arms(enc, inputs, order, picks, workers=8, subset=None, use_teacher=True):
     """Per-query AP of the three arms on the scored rows (`mt_ret.arm_ap`): each arm at its own pick, the map fitted on all
     ArtELingo validation rows of the arm (c*: seed s's own export), query expansion on the scored gallery with the pick's k.
-    Returns {'cstar': ap [5, nq], 'frozen': ap [nq], 'teacher': ap [nq]} as `arm_ap` dicts (ap, rows, dropped, point, per_seed)."""
+    Returns {'cstar': ap [5, nq], 'frozen': ap [nq], 'teacher': ap [nq]} as `arm_ap` dicts (ap, rows, dropped, point, per_seed).
+    `use_teacher=False` (gate (i) genre_word failed): the teacher's rows and pick are not read; 'teacher' is None."""
     keys = restrict(order, subset)
     n = len(keys)
     y = np.asarray(inputs.labels(keys))
     assert y.shape == (n,) and np.issubdtype(y.dtype, np.integer) and (y >= 0).any()
     y = y.astype(np.int64)
-    assert set(picks) >= set(ARMS)
+    assert set(picks) >= set(ARMS if use_teacher else ARMS[:2])
 
     def fit_rows(x, name):
         x = np.asarray(x)
@@ -243,18 +249,20 @@ def ret_arms(enc, inputs, order, picks, workers=8, subset=None):
                          lambda s: _rows(inputs.cstar_eval(enc, s, keys), n, f'{enc} c* s{s}'), picks['cstar'], y, True, workers)
     fz_val, fz_eval = fit_rows(inputs.frozen_val(enc), f'{enc} frozen val'), _rows(inputs.frozen_eval(enc, keys), n, f'{enc} frozen')
     frozen = mt_ret.arm_ap(lambda s: fz_val, lambda s: fz_eval, picks['frozen'], y, False, workers)
-    t_val, t_eval = fit_rows(inputs.teacher_val(), 'teacher val'), _rows(inputs.teacher_eval(keys), n, 'teacher')
-    teacher = mt_ret.arm_ap(lambda s: t_val, lambda s: t_eval, picks['teacher'], y, False, workers)
+    teacher = None
+    if use_teacher:
+        t_val, t_eval = fit_rows(inputs.teacher_val(), 'teacher val'), _rows(inputs.teacher_eval(keys), n, 'teacher')
+        teacher = mt_ret.arm_ap(lambda s: t_val, lambda s: t_eval, picks['teacher'], y, False, workers)
     return dict(cstar=cand, frozen=frozen, teacher=teacher)
 
 
-def score_ret(enc, inputs, order, unit, picks, n_draws, workers=8, subset=None, data=DATA):
+def score_ret(enc, inputs, order, unit, picks, n_draws, workers=8, subset=None, data=DATA, use_teacher=True):
     """SC12, SC14 (retrieval) of encoder `enc`: `mt_ret.aspect_cells` on `ret_arms`, relabelled. `unit`: X-c*'s genre mAP
-    range at R0 (the LEVEL unit of SC14)."""
+    range at R0 (the LEVEL unit of SC14). `use_teacher=False` (gate (i) genre_word failed): no teacher read, no SC14."""
     keys = restrict(order, subset)
-    arms = ret_arms(enc, inputs, order, picks, workers, subset)
+    arms = ret_arms(enc, inputs, order, picks, workers, subset, use_teacher)
     cells = mt_ret.aspect_cells(enc, ASPECT, arms['cstar'], arms['frozen'], arms['teacher'], unit, n_draws, dict(picks),
-                                len(keys), data, tuple(SC_RET))
+                                len(keys), data, tuple(sc for sc in SC_RET if use_teacher or sc != 'SC4'))
     for c in cells:
         c['sc'] = SC_RET[c['sc']]
         if c['sc'] == 'SC14':
@@ -416,19 +424,26 @@ def stage1_for(enc):
 
 
 # ============================================================================================ stage 2
-def score(part, enc, n_draws=None, workers=8, inputs=None, subset=None):
+def score(part, enc, n_draws=None, workers=8, inputs=None, subset=None, status=None):
     """Production: the cells of `part` ('semart_clu' | 'semart_ret') for `enc` on the SemArt set in sha256 order, units and
     picks from the committed stage 1 record; written to `OUT/stage2/cells_<part>.json`. `subset`: keys (ticket 13 passes it
-    and writes its own cells; this function then returns the cells without writing)."""
+    and writes its own cells; this function then returns the cells without writing).
+    The committed status is read next (`pp_void_scope.committed_status`; `status` overrides it for tests; a missing file raises
+    outside smoke), before any row: gate (i) genre_word failed -> the teacher is not read and SC14 is not written (row (i));
+    the matched arm void for `enc` (runs.<enc>.matched or gate (v)) -> the matched arm is not read and SC13 is not written."""
     task = PARTS[part]
     n_draws = draws(task, n_draws)
     units, picks = stage1_for(enc)
+    status = pp_void_scope.resolve(status)
+    use_teacher = not pp_void_scope.teacher_void(status, enc, 'semart')
+    use_matched = not pp_void_scope.matched_void(status, enc, 'semart')
     order = production_order()
     inputs = SemartInputs(task) if inputs is None else inputs
     if task == 'clu':
-        cells = score_clu(enc, inputs, order, units['clu'], n_draws, workers, subset)
+        cells = score_clu(enc, inputs, order, units['clu'], n_draws, workers, subset, use_matched=use_matched,
+                          use_teacher=use_teacher)
     else:
-        cells = score_ret(enc, inputs, order, units['ret'], picks, n_draws, workers, subset)
+        cells = score_ret(enc, inputs, order, units['ret'], picks, n_draws, workers, subset, use_teacher=use_teacher)
     if subset is None:
         write_cells(part, enc, cells)
     return cells

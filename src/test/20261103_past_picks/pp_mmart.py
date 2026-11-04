@@ -27,6 +27,7 @@ CLI (`python pp_mmart.py -h`): stage1 | score | replay-iv | replay-vii.
 """
 import pp_paths as PP  # first: sets the older rounds' output roots
 import pp_register  # noqa: F401  (the new three in r14's and r15's tables, store readers on pp_stores)
+import pp_void_scope
 
 import argparse
 import contextlib
@@ -180,18 +181,26 @@ def _n_draws(n_draws, task):
     return n_draws or (PP.SMOKE_DRAWS[task] if PP.SMOKE else PP.N_DRAWS[task])
 
 
-def score_clu(enc, *, block=None, matched=None, n_draws=None, workers=8, aspects=ASPECTS, expect_n=N_TEST):
+def score_clu(enc, *, block=None, matched=None, n_draws=None, workers=8, aspects=ASPECTS, expect_n=N_TEST, status=None):
     """SC7, SC9, SC10 (AMI) cells of X-c* on MMArt test, aspect by aspect. A copy, line for line, of `mt_clu.score_encoder`
     (mt_clu.py:247) for keyset 'test' with three changes: the stage 1 record is r19's (`read_block`, committed in HEAD, read
     before any row), the matched arm is `matched(enc, keys)` (default `matched_new`), and the cells carry r19's labels.
-    SC10's LEVEL unit is X-c*'s own MMArt validation AMI range from the record. Explicit blocks are for smoke/tests only."""
+    SC10's LEVEL unit is X-c*'s own MMArt validation AMI range from the record. Explicit blocks are for smoke/tests only.
+    After the record, the committed status is read (`pp_void_scope.committed_status`; `status` overrides it for tests; a
+    missing file raises outside smoke): when it voids the matched arm (runs.<enc>.matched or gate (v) failed, §3.5 row (v))
+    the matched partitions are not read and SC9 is not written."""
     if block is not None:
         assert PP.SMOKE, 'stage 1 is read from the committed records; passing block is for smoke runs and tests'
-    return _score_clu(enc, block=block, matched=matched, n_draws=n_draws, workers=workers, aspects=aspects, expect_n=expect_n)
+    block = read_block(enc) if block is None else check_block(enc, block)       # §3.5: before any test row
+    skip_matched = pp_void_scope.matched_void(pp_void_scope.resolve(status), enc, 'mmart')
+    return _score_clu(enc, block=block, matched=matched, n_draws=n_draws, workers=workers, aspects=aspects, expect_n=expect_n,
+                      skip_matched=skip_matched)
 
 
-def _score_clu(enc, *, block=None, matched=None, n_draws=None, workers=8, aspects=ASPECTS, expect_n=N_TEST):
-    """Shared loop; replay supplies records read through r15's committed-record reader."""
+def _score_clu(enc, *, block=None, matched=None, n_draws=None, workers=8, aspects=ASPECTS, expect_n=N_TEST,
+               skip_matched=False):
+    """Shared loop; replay supplies records read through r15's committed-record reader. `skip_matched`: the matched arm is
+    not read and `mt_clu.score_aspect` is asked for SC1 and SC4 only (-> SC7, SC10)."""
     assert enc in mt_paths.ENCODERS and set(aspects) <= set(ASPECTS)
     n_draws = _n_draws(n_draws, 'clu')
     block = read_block(enc) if block is None else check_block(enc, block)       # §3.5: before any test row
@@ -200,7 +209,8 @@ def _score_clu(enc, *, block=None, matched=None, n_draws=None, workers=8, aspect
     keys = mt_clu._ordered_keys('test')
     assert expect_n is None or len(keys) == expect_n, f'test set has {len(keys)} keys, expected {expect_n}'
     frozen = mt_clu.single_fixed(md.features(mt_paths.DEFAULT_VIEW[enc], keys))
-    matched_fixed = (matched or matched_new)(enc, keys)
+    matched_fixed = None if skip_matched else (matched or matched_new)(enc, keys)
+    scs = tuple(sc for sc in mt_clu.SCS if not (skip_matched and sc == 'SC3'))
     cells = []
     for aspect in aspects:
         y = np.asarray(md.labels(keys, aspect))
@@ -208,7 +218,7 @@ def _score_clu(enc, *, block=None, matched=None, n_draws=None, workers=8, aspect
         c_fixed = mt_clu.cstar_fixed({s: ex.load(mt_clu.EXPORT_SET['test'], enc, aspect, s, keys) for s in SEEDS})
         teacher = mt_clu.single_fixed(md.features(mt_paths.TEACHER_VIEW[aspect], keys))
         got = mt_clu.score_aspect(enc, aspect, y, c_fixed, frozen=frozen, matched=matched_fixed, teacher=teacher,
-                                  scs=mt_clu.SCS, r=ranges[aspect], n_draws=n_draws, workers=workers,
+                                  scs=scs, r=ranges[aspect], n_draws=n_draws, workers=workers,
                                   data=mt_clu.DATA_NAME['test'], matched_name=mt_paths.MATCHED[enc])
         cells += got
         print(f'{enc} {aspect}: ' + ', '.join(f'{SC_NEW[c["sc"]]} d={c["d"]:+.4f}' for c in got), flush=True)
