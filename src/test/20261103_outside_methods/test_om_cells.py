@@ -1,6 +1,7 @@
 """Tests of om_cells (ticket 10): the cell list, the repeated TURTLE candidate, labels, voids, pins, sentences, the C13 guard.
 Synthetic data only; nothing reads a real store, `records/` or `om_paths.DEFAULT_OUT`.
-Includes C13 stub/refusal cleanup, r17 range consistency at assembly and SC3/SC4 text pin guards at scoring.
+Includes C13 stub/refusal cleanup, r17 range consistency at assembly, stale CLAY read-outs in parts files,
+and SC3/SC4 text pin guards at scoring.
 
 Run: PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 /root/miniconda3/envs/CoSiR/bin/python -m pytest -q
      src/test/20261103_outside_methods/test_om_cells.py
@@ -1143,6 +1144,20 @@ def test_cmd_assemble_then_cmd_labels_writes_the_record(labelled):
     rec = json.loads(labelled.labels.read_text())
     assert [c['id'] for c in rec['cells']] == [s['id'] for s in labelled.specs]
     assert {c['label'] for c in rec['cells']} == {'WIN'}
+
+
+@pytest.mark.parametrize('changed', ['parts', 'committed_pick'])
+def test_cmd_assemble_refuses_stale_clay_comparator_readout(labelled, changed):
+    assert oc.cmd_assemble(None) == 0
+    if changed == 'parts':
+        path = oc.parts_dir() / 'SC4__mmart__qwen.json'
+        cells = json.loads(path.read_text())
+        cells[0]['comparator_readout'] = 'none+k0'
+        path.write_text(json.dumps(cells))
+    else:
+        labelled.store['stage1_om_picks.json']['clay/mmart']['pick'] = 'none+k0'
+    with pytest.raises(AssertionError, match='comparator_readout.*committed picks.*rescore'):
+        oc.cmd_assemble(None)
 
 
 def test_cmd_labels_refuses_without_the_c13_file(labelled):
