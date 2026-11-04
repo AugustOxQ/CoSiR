@@ -1855,3 +1855,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-04-r19-run-3-handoff.md
 - New chat: tab 'r19 run 3', session 099d1a86-2fa6-4a11-8ea9-7a7173f4b4c4
 
+[brief] CoSiR: r19 run 3 -> r19 run 4 (2026-11-04 21:52 Amsterdam)
+- Done: stage 4 ran, all 12 diagnostics ok; `check-outcomes` passes, 4,211 items, none failed, largest difference 1.9e-09.
+- State: every r19 verdict holds (23 of 23). Against the teacher: 0 "better than", 15 "level with or better than", 41 no claim.
+- Next: the auto report, the user-read report, the merge, the wrap-up.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-04-r19-run-4-handoff.md
+- New chat: tab 'r19 run 4', session 0aec155f-907f-4ab0-9f9b-e4e1204a6f80
+
