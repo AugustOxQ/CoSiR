@@ -421,6 +421,15 @@ def test_assemble_r17_failed_range_status_makes_r_missing():
     assert assemble_specs([sp], r17=r17, lo=0.5)[0]['label'] == 'WIN'
 
 
+def test_absent_r17_range_status_is_missing_even_with_a_numeric_range():
+    sp = spec_of('SC1', metric='ami', k=9)
+    r17 = ok_r17()
+    del r17['stage1']['ranges']['cstar/artelingo/qwen/emotion/ami']
+    cell = assemble_specs([sp], r17=r17, lo=-0.001)[0]
+    assert cell['r'] is None and cell['label'] == 'inconclusive'
+    assert 'r17 range cstar/artelingo/qwen/emotion/ami missing' in cell['r_source']
+
+
 @pytest.mark.parametrize('r,ref,refuse', [(0.005, 0.01, True), (0.01, 0.02, True),
                                         (0.01, 0.01 + 5e-13, False), (0.01, None, True)])
 def test_assemble_compares_r17_family_with_its_record(r17_ranges, r, ref, refuse):
@@ -710,6 +719,33 @@ def test_labels_stub_only_allowed_in_smoke(tmp_path, monkeypatch, smoke):
         with pytest.raises(SystemExit, match='stub'):
             call()
         assert not out.exists()
+
+
+@pytest.mark.parametrize('reason', ['absent_c13', 'stub', 'partial', 'stale', 'unscored', 'disagrees'])
+def test_labels_refusal_removes_an_older_record(tmp_path, monkeypatch, reason):
+    monkeypatch.setattr(op, 'SMOKE', 0)
+    cells, picks = _cells_for_c13(), good_picks()
+    expected = copy.deepcopy(cells)
+    fresh = copy.deepcopy(cells)
+    c13 = _c13_doc(cells, picks)
+    if reason == 'stub':
+        c13['stub'] = True
+    elif reason == 'partial':
+        cells = cells[:-1]
+    elif reason == 'stale':
+        fresh[0]['r'] = 0.5
+    elif reason == 'unscored':
+        cells[0]['void'] = fresh[0]['void'] = 'not scored'
+    elif reason == 'disagrees':
+        c13['cells'][0]['d'] += 0.1
+    cells_path, c13_path, out = tmp_path / 'cells.json', tmp_path / 'c13.json', tmp_path / 'labels.json'
+    cells_path.write_text(json.dumps(cells))
+    if reason != 'absent_c13':
+        c13_path.write_text(json.dumps(c13))
+    out.write_text('{"old": true}')
+    with pytest.raises(SystemExit):
+        oc.run_labels(cells_path, c13_path, out, picks, _rebuild_of(fresh), expected=expected)
+    assert not out.exists()
 
 
 def test_labels_step_refuses_a_cells_file_that_is_not_what_assemble_gives_now(tmp_path):

@@ -1,5 +1,6 @@
 """Runner guards: current committed status, isolated smoke environments and complete range records. Synthetic only."""
 import copy
+import json
 from argparse import Namespace
 
 import pytest
@@ -7,6 +8,7 @@ import pytest
 import om_cells
 import om_paths as op
 import om_run as run
+import om_stage1 as s1
 
 
 @pytest.mark.parametrize('command', ['assemble', 'labels'])
@@ -64,3 +66,19 @@ def test_cli_accepts_real_or_isolated_smoke(monkeypatch, tmp_path, entry, smoke)
         monkeypatch.setenv('OM_SMOKE', '1')
         monkeypatch.setenv('OM_OUTPUTS', str(tmp_path))
     assert entry(['list']) == 0
+
+
+@pytest.mark.parametrize('count', [1, 139, 140, 141])
+def test_stage1_records_requires_complete_range_count(monkeypatch, tmp_path, count):
+    monkeypatch.setattr(op, 'OUT', tmp_path)
+    monkeypatch.setattr(op, 'record_path', lambda name: tmp_path / 'committed' / name)
+    (tmp_path / 'stage1').mkdir()
+    doc = {str(i): {'r': 0.01} for i in range(count)}
+    (tmp_path / 'stage1' / 'om_ranges.json').write_text(json.dumps(doc))
+    if count == len(s1.range_keys()):
+        run.stage1_records()
+        assert json.loads((tmp_path / 'committed' / 'stage1_om_ranges.json').read_text()) == doc
+    else:
+        with pytest.raises(AssertionError, match='range.*keys'):
+            run.stage1_records()
+        assert not (tmp_path / 'committed').exists()

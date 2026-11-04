@@ -11,7 +11,8 @@ any time; a thing never run is `missing`. Smoke (OM_SMOKE=1, OM_OUTPUTS=<scratch
   stage1   [--step all|ranges|tpips|clay|records] [--set S] [--workers W]
                           om_stage1's steps (ranges; tpips and clay per set), then `records`: copies
                           OUT/stage1/om_ranges.json, om_picks.json to records/stage1_om_ranges.json, stage1_om_picks.json
-                          and rebuilds status. The controller commits the three records before stage 2.
+                          and rebuilds status; ranges must have exactly len(om_stage1.range_keys()) keys.
+                          The controller commits the three records before stage 2.
   stage2   [--sc --set --enc --draws --force]
                           refuses unless records/stage1_om_ranges.json, stage1_om_picks.json and status.json are committed
                           unchanged in git HEAD (om_paths.read_committed_record; smoke has no git check there); then om_cells
@@ -253,6 +254,7 @@ def cmd_stage1(args):
 
 
 def stage1_records():
+    import om_stage1 as s1
     allowed = set(pick_keys()) | {'clay_text_sha256'}
     for src, dst in (('om_ranges.json', 'stage1_om_ranges.json'), ('om_picks.json', 'stage1_om_picks.json')):
         path = op.OUT / 'stage1' / src
@@ -260,6 +262,8 @@ def stage1_records():
             print(f'{src}: absent, {dst} not written')
             continue
         doc = json.loads(path.read_text())
+        if src == 'om_ranges.json':
+            assert len(doc) == len(s1.range_keys()), f'ranges: {len(doc)} keys, expected {len(s1.range_keys())}'
         if src == 'om_picks.json':
             extra = sorted(set(doc) - allowed)
             assert not extra, f'{src}: keys no cell uses: {extra[:5]}'

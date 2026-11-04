@@ -19,6 +19,7 @@ Steps (CLI; OUT = `om_paths.OUT`):
              record, voids from the committed `records/status.json` and r17's status (§3.5's table), label by §3.4's rule
     labels   -> records/labels.json; refuses unless OUT/c13/c13_cells.json exists and agrees with cells.json on every pick,
              value, d, lo, hi and label within `om_paths.TOL_C13`; a C13 stub is allowed only in smoke.
+             Removes an older labels.json before checking, so a refusal cannot leave old labels standing.
              The only writer of labels.json.
     list     counts
 
@@ -593,7 +594,9 @@ def labels_path():
 def run_labels(cells_path, c13_path, out_path, picks, rebuild, expected=None):
     """The guarded step: refuses (SystemExit) unless the C13 file exists, `cells.json` holds exactly the expected cells
     (default all 337, in order) and equals what `rebuild()` assembles now (the status or ranges may have changed since),
-    and C13 agrees (a stub is allowed only in smoke); then writes the labels record."""
+    and C13 agrees (a stub is allowed only in smoke); then writes the labels record. An older record is removed first."""
+    out_path = Path(out_path)
+    out_path.unlink(missing_ok=True)
     cells_path, c13_path = Path(cells_path), Path(c13_path)
     if not c13_path.exists():
         raise SystemExit(f'labels refuses: {c13_path} does not exist (C13 must re-derive the cells first)')
@@ -616,7 +619,6 @@ def run_labels(cells_path, c13_path, out_path, picks, rebuild, expected=None):
         raise SystemExit(f'labels refuses: C13 disagrees on {len(bad)} items, first: {bad[:5]}')
     rec = dict(cells_sha256=op.sha256_file(cells_path), c13_sha256=op.sha256_file(c13_path), tol=op.TOL_C13,
                picks=pick_summary(picks), cells=[{k: c.get(k) for k in CELL_KEYS} for c in cells])
-    out_path = Path(out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     op.write_json(out_path, rec)
     return out_path
