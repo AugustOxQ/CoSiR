@@ -1839,3 +1839,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-04-weekly-report-handoff.md
 - New chat: tab 'weekly report', session 75c21a4e-03b5-4e27-9d68-777aef64644c
 
+[brief] CoSiR: r19 run -> r19 run 2 (2026-11-04 12:33 Amsterdam)
+- Done: node training (15 c*, 15 photo, M5), 8 stores, cost probe, stages 0, 1, 2 and 3; 137 cells and 7 cost cells saved.
+- State: every gate (i) to (viii) passes; stage 1 records frozen at a617831b; no verdict written, no test number read.
+- Next: launch Codex with the ready C13 brief, review its code, run the full derive from 19:00, then stage 4 and the reports.
+- Blocked: nothing. CPU work over the user's 13:00 limit waits for 19:00.
+- Handoff: docs/superpowers/handoffs/2026-11-04-r19-run-2-handoff.md
+- New chat: tab 'r19 run 2', session 74fc410f-b4e2-462a-a1d3-fc17b6e8bf16
+
