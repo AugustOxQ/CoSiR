@@ -425,12 +425,15 @@ def test_gate_part_refuses_a_missing_item():
         E.gate_part('r14', items(drop='artelingo_held/emotion__s0'))
 
 
-def test_write_gate_keeps_the_other_part(tmp_path):
+def test_each_gate_part_writes_its_own_file(tmp_path):
     E.write_gate_part(tmp_path, 'r10', {'pass': True, 'marker': 1})
-    doc = E.write_gate_part(tmp_path, 'r14', {'pass': False, 'marker': 2})
-    assert doc['r10']['marker'] == 1 and doc['r14']['marker'] == 2 and doc['pass'] is False
-    on_disk = json.loads((tmp_path / 'stage0/gate_iii.json').read_text())
-    assert on_disk == doc
+    E.write_gate_part(tmp_path, 'r14', {'pass': False, 'marker': 2})
+    one = json.loads((tmp_path / 'stage0/gate_iii_r10.json').read_text())
+    two = json.loads((tmp_path / 'stage0/gate_iii_r14.json').read_text())
+    assert one == {'pass': True, 'marker': 1} and two == {'pass': False, 'marker': 2}
+    assert not (tmp_path / 'stage0/gate_iii.json').exists()           # no shared file to race on
+    E.write_gate_part(tmp_path, 'r10', {'pass': False, 'marker': 3})   # a rewrite of one part leaves the other as it was
+    assert json.loads((tmp_path / 'stage0/gate_iii_r14.json').read_text()) == two
 
 
 def test_gate_stored_reads_nothing_from_the_wrong_root(tmp_path):

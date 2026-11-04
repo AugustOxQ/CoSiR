@@ -5,8 +5,9 @@
                                                      end one repeat; peak memory, parameters, Qwen vision tower share
   pp_probe.py heads  [--enc X ...] [--keys N] [--standin]   the three seed-0 trunk-and-head networks of X on the stored
                                                      default embeddings, three repeats
-  pp_probe.py cells  [--enc X ...]                   OUT/stage3/cells_cost.json (index form), OUT/stage3/cost_table.json
-                                                     and gate (viii) in OUT/stage0/gate_viii.json
+  pp_probe.py cells  [--enc X ...]                   gate (viii) in OUT/stage0/gate_viii.json first, then OUT/stage3/cells_cost.json
+                                                     (index form) and OUT/stage3/cost_table.json for every encoder whose default and
+                                                     heads passes exist (an encoder left out is printed); `--enc` is for smoke runs
 
 What is timed (spec §3.4 Cost). Keys: the first 2,000 of `mt_data.keys('test')` (r15's test cut in sha256 order); batch 32
 for every pass; 3 warm-up batches (the first three batches, run again afterwards as timed batches) run before every repeat
@@ -693,13 +694,23 @@ def cmd_heads(encs, n, standin):
 
 # ------------------------------------------------------------------------------------------------ cells
 def cmd_cells(encs):
+    """Gate (viii) first, then the SC15 cells of every wanted encoder (`encs`; None = all seven) whose default and heads passes
+    exist. An encoder without them is printed as left out and gets no cell: `pp_outcome.decide` excuses a missing cost cell
+    only when `runs[X].cstar` failed (or gate (ii), (iii) or (viii) did), so any other gap stays loud there. The Qwen teacher
+    passes stay required."""
     smoke = bool(PP.SMOKE)
     root = PP.OUT
-    cells = build_cells(root, encoders=encs, smoke=smoke)
     doc = _read(root / 'probe' / 'passes.json')
     gate = gate_viii(_e2e(root, doc['passes'], default_pass('qwen'), doc['meta']['n_images'], smoke))
     gate.update(smoke=smoke, n_images=doc['meta']['n_images'])
     write_json(root / 'stage0' / 'gate_viii.json', gate)
+    wanted = list(ENCODERS if encs is None else encs)
+    have = [e for e in wanted if default_pass(e) in doc['passes'] and heads_pass(e) in doc['passes']]
+    for e in wanted:
+        if e not in have:
+            print(f'SC15 {e}: LEFT OUT, no {default_pass(e)} or {heads_pass(e)} pass in passes.json (no cell; the outcome step '
+                  f'refuses unless runs.{e}.cstar failed)', flush=True)
+    cells = build_cells(root, encoders=have, smoke=smoke)
     write_json(root / 'stage3' / 'cells_cost.json', cells)
     write_json(root / 'stage3' / 'cost_table.json', cost_table(root, cells, smoke))
     for c in cells:

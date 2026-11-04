@@ -77,7 +77,7 @@ def run_step(stage, name, argv, outputs=(), ok_rcs=(0,)):
             rc = subprocess.run(argv, stdout=fh, stderr=subprocess.STDOUT, env=env, cwd=str(ROUND)).returncode
         if rc in ok_rcs:
             problems = [p for p in (finite_json(o) for o in outputs) if p]
-            if name.startswith('gate_'):
+            if name.startswith('gate_') or tuple(ok_rcs) != (0,):     # a step whose exit 1 is a result must have rewritten its outputs
                 problems += [f'{o}: stale gate output was not rewritten' for o in outputs
                              if Path(o).exists() and Path(o).stat().st_mtime_ns == before[str(o)]]
             problem = '; '.join(problems)
@@ -157,7 +157,7 @@ def collect_gates():
         part = doc.get(sub) if doc is not None and sub else doc
         ok = flag(part, key)
         step = Path(name).stem
-        step = {'gate_iii': f'gate_iii_{sub}', 'gate_iv_r14': 'gate_iv_r14_merge',
+        step = {'gate_iv_r14': 'gate_iv_r14_merge',
                 'gate_vii_r14': 'gate_vii_r14_merge', 'gate_vi': 'semart_set'}.get(step, step)
         latest = last_step(0, step)
         if latest and latest['failed']:
@@ -176,7 +176,7 @@ def collect_gates():
              i_semart_parity={e: read(f'gate_i/semart_{e}.json') for e in ('clip_b32', 'qwen', 'siglip2')},
              i_semart_genre_word=read('gate_i/genre_word.json'),
              i_aff_l14_parity=read('gate_i/aff_clip_l14.json'), ii=read('gate_ii.json'),
-             iii={p: read('gate_iii.json', sub=p) for p in ('r10', 'r14')},
+             iii={p: read(f'gate_iii_{p}.json') for p in ('r10', 'r14')},     # one file per part (pp_export.write_gate_part)
              iv=all_ok(read(f'gate_iv_{p}.json', 'passed') for p in ('r14', 'r15', 'semart')),
              v={e: read(f'gate_v_{e}.json') for e in PP.NEW_ENCODERS}, vi=read('gate_vi.json'),
              vii={}, viii=read('gate_viii.json'))
@@ -188,10 +188,12 @@ def collect_gates():
         if rec and rec['failed']:
             g['iv'] = 'failed'
     g['i_semart_genre_word'] = all_ok((g['i_semart_genre_word'], read('gate_i/store_semart_genre_word.json', 'ok')))
-    v14 = read('gate_vii_r14.json', 'passed')
+    # r14's part is split by path (pp_gate14.merge_vii): an Affection pick that misses 1e-9 voids the photos only. A merged
+    # file without a path's result fails that path; a crashed replay step fails both.
+    v14 = {p: read('gate_vii_r14.json', 'passed', sub=p) for p in ('artelingo', 'affection')}
     if any((last_step(0, f'gate_vii_r14_{e}') or {}).get('failed') for e in ('siglip1', 'clip_l14')):
-        v14 = 'failed'
-    g['vii'] = dict(artelingo=v14, affection=v14, mmart=read('gate_vii_r15.json', 'passed'))
+        v14 = dict.fromkeys(v14, 'failed')
+    g['vii'] = dict(artelingo=v14['artelingo'], affection=v14['affection'], mmart=read('gate_vii_r15.json', 'passed'))
     runs = {}
     for e in PP.NEW_ENCODERS:
         runs[e] = {}
@@ -220,9 +222,10 @@ def write_status():
     print(evidence['notes'][0])
 
 
-def assert_semart_stores(doc):
+def missing_semart_stores(doc):
+    """The SemArt store folders (relative to SEMART_PRE) that `doc['stores_checked']` does not hold."""
     required = {str(p.relative_to(PP.SEMART_PRE)) for (s, _), p in PP.NEW_STORE.items() if s == 'semart'}
-    assert required <= set(doc['stores_checked']), f'missing SemArt stores: {sorted(required - set(doc["stores_checked"]))}'
+    return sorted(required - set(doc['stores_checked']))
 
 
 def merge_records(encs, announce=True):
@@ -269,9 +272,7 @@ def merge_records(encs, announce=True):
         print(f'Smoke records: {PP.record_path("")}')
     else:
         rel = [str(p.relative_to(PP.REPO)) for p in paths]
-        msg = ('r19 stage 1: freeze validation ranges, picks, set and status before scoring\n\n'
-               'Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n'
-               'Claude-Session: https://claude.ai/code/session_013nwCnEBnr7Jcqn7rpm899u')
+        msg = 'r19 stage 1: freeze validation ranges, picks, set and status before scoring'     # the run chat adds its attribution
         print(f'git -C {shlex.quote(str(PP.REPO))} add -f {shlex.join(rel)} && '
               f'git -C {shlex.quote(str(PP.REPO))} commit -m {shlex.quote(msg)} -- {shlex.join(rel)}')
 
@@ -319,9 +320,12 @@ def internal(action, enc=None, encs=PP.ENCODERS):
     elif action == 'semart-set':
         import pp_semart as s
         doc = s.record()
-        assert_semart_stores(doc)
+        # Write gate (vi) and the set first: a missing store voids its own gate (i) cells (the store checks read it as
+        # failed), never the set or the other encoders' SemArt verdicts (§3.5).
+        doc['missing_stores'] = missing_semart_stores(doc)
         jdump(OUT / 'stage0/gate_vi.json', doc['gate'])
         jdump(PP.record_path('semart_set.json'), doc)
+        print(f'SemArt stores missing from the index check: {doc["missing_stores"] or "none"}', flush=True)
     elif action == 'semart-entry':
         import pp_semart_score as s
         # Development only: no held rows; new records need not be committed until ALL picks are ready.
@@ -366,7 +370,7 @@ def tasks(stage, encs):
     if stage == 0:
         own('gate_ii', 'gate-ii', est='2m', gate=True, outputs=['stage0/gate_ii.json'])
         for p in ('r10', 'r14'):
-            add(f'gate_iii_{p}', 'pp_export', 'gate-iii', '--part', p, gate=True, outputs=['stage0/gate_iii.json'])
+            add(f'gate_iii_{p}', 'pp_export', 'gate-iii', '--part', p, gate=True, outputs=[f'stage0/gate_iii_{p}.json'])
         for p in ('clu', 'ret', 'affection'):
             add(f'gate_iv_r14_{p}', 'pp_gate14', 'iv', p, gate=True, outputs=[f'stage0/gate_iv_r14_{p}.json'])
         add('gate_iv_r14_merge', 'pp_gate14', 'iv', 'merge', est='1m', gate=True, outputs=['stage0/gate_iv_r14.json'])
@@ -407,7 +411,8 @@ def tasks(stage, encs):
                     add(f'score_mmart_{p}_{e}', 'pp_mmart', 'score', '--enc', e, '--parts', p)
             own(f'score_semart_{e}', 'semart-score', e)
     elif stage == 3:
-        add('cells_cost', 'pp_probe', 'cells', '--enc', *encs, est='1m', outputs=['stage3/cells_cost.json'], gate=True)
+        # `cells` takes a subset (`--enc`) only in smoke; outside smoke it builds every encoder whose passes exist.
+        add('cells_cost', 'pp_probe', 'cells', *(['--enc', *encs] if PP.SMOKE else []), est='1m', outputs=['stage3/cells_cost.json'], gate=True)
     else:
         own('decide', 'decide', est='1m', outputs=['stage4/outcomes.json'])
         add('diagnostics', 'pp_diag', 'run', est='1h', deps=('decide',))

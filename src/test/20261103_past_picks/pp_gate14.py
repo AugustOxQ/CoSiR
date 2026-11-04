@@ -228,8 +228,28 @@ def gate_vii(enc, workers=8):
     return doc
 
 
+VII_PATHS = dict(artelingo=('artclu', 'artret_ranges', 'artret_picks'), affection=('affection',))
+
+
+def _path_passed(blocks):
+    """Per path (ArtELingo, Affection): every encoder file is present, compared the intervals and has at least one item of the
+    path's blocks, all ok. The voids table treats the two paths apart (§3.5); a path with no result fails closed."""
+    for e in VII_ENCODERS:
+        path = Path(PP.OUT) / 'stage0' / f'gate_vii_r14_{e}.json'
+        if not path.exists():
+            return False
+        d = json.loads(path.read_text())
+        items = [i for k, i in d['items'].items() if k.split('/')[0] in blocks]
+        if not (items and d['intervals_compared'] and all(i['ok'] for i in items)):
+            return False
+    return True
+
+
 def merge_vii():
+    """`gate_vii_r14.json`: `passed` as before (all items of both encoders); `artelingo` and `affection` each hold the result
+    of that path alone, which is what the voids table reads."""
     doc = _merge('vii_r14', VII_ENCODERS, lambda e: f'gate_vii_r14_{e}.json')
+    doc.update({p: dict(passed=_path_passed(blocks), blocks=list(blocks)) for p, blocks in VII_PATHS.items()})
     _write('gate_vii_r14.json', doc)
     return doc
 

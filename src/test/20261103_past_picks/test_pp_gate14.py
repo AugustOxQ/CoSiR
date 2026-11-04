@@ -355,3 +355,31 @@ def test_gate_vii_merge_fails_when_one_encoder_failed(vii):
     vii['state']['perturb'] = None
     G.gate_vii('clip_l14')
     assert not G.merge_vii()['passed']
+
+
+def test_gate_vii_merge_splits_the_result_by_path(vii, monkeypatch):
+    def aff(enc, root=None, workers=8):
+        block = stored_stage1(enc)['affection']
+        block['frozen']['pick'] = 'center'                      # an Affection pick that differs
+        return block
+    monkeypatch.setattr(S, 'stage1_affection', aff)
+    G.gate_vii('siglip1')
+    G.gate_vii('clip_l14')
+    res = G.merge_vii()
+    assert not res['passed'] and res['affection']['passed'] is False and res['artelingo']['passed'] is True
+    assert json.loads((vii['out'] / 'stage0' / 'gate_vii_r14.json').read_text())['artelingo']['passed'] is True
+
+
+def test_gate_vii_merge_artelingo_failure_leaves_affection_and_a_missing_encoder_fails_both(vii):
+    vii['state']['perturb'] = lambda o: o['artret_ranges']['ranges'].update(style=1.0)
+    G.gate_vii('siglip1')
+    res = G.merge_vii()                                           # clip_l14 has no result yet
+    assert res['artelingo']['passed'] is False and res['affection']['passed'] is False
+    G.gate_vii('clip_l14')
+    res = G.merge_vii()
+    assert res['artelingo']['passed'] is False and res['affection']['passed'] is True
+    vii['state']['perturb'] = None
+    G.gate_vii('siglip1')
+    G.gate_vii('clip_l14')
+    res = G.merge_vii()
+    assert res['passed'] and res['artelingo']['passed'] and res['affection']['passed']
