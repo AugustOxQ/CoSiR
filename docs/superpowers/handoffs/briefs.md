@@ -1823,3 +1823,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-04-r18-run-handoff.md
 - New chat: tab 'r18 run', session 1e814de2-074b-4d23-9283-442d5ce2fdad
 
+[brief] CoSiR: r17 run -> r20 decide (2026-11-04 09:32 Amsterdam)
+- Done: r17 ran every stage, and the independent re-derivation passed for all 412 cells. The auto and user-read reports are committed.
+- State: c* WINs all 96 plain-image clustering cells. Against the teacher, AMI and NMI WIN 46 of 48, ARI and ACC 22 of 48, with 5 BELOW, all emotion.
+- Next: step 1: show the results brief without our reading and record the user's reading. Then wrap up r17 and go to step 2.
+- Blocked: nothing. r18 and r19 run in their own chats.
+- Handoff: docs/superpowers/handoffs/2026-11-04-r20-decide-handoff.md
+- New chat: tab 'r20 decide', session e55f8816-2621-413c-95f9-3682406c474a
+
