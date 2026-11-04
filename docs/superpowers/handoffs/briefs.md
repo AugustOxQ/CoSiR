@@ -1799,3 +1799,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-04-r18-build-5-handoff.md
 - New chat: tab 'r18 build 5', session 59a6344c-3df3-46f5-858d-ca2260a5f5a5
 
+[brief] CoSiR: r19 build 5 -> r19 run (2026-11-04 02:23 Amsterdam)
+- Done: tickets 01 to 14, final review, fix wave and re-review; build merged into main (dd7e7c0b), 499 tests pass, smoke passes stages 0 to 4.
+- State: review found two blockers, both fixed; every SC bar equals §6; r14's and r15's 117 stored outcomes reproduce.
+- Next: run chat starts parity and node402's jobs from worktree r19-int, then follows the run sheet.
+- Blocked: nothing. The local GPU is held by r18 until about 04:08; node402 does not wait for it.
+- Handoff: docs/superpowers/handoffs/2026-11-04-r19-run-handoff.md
+- New chat: tab 'r19 run', session a099d7c5-4802-4dcd-8fb1-ce1b19e1e932
+
