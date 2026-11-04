@@ -111,7 +111,7 @@ All 21 steps ok, 412 cells, rows decided 412, missing 0 (2.4 h of wall time, oth
 - Nothing was cut: photo sets all ran. The run's CPU use ended at 08:53, before 11:00.
 - Outputs: `/data/SSD2/cosir_r17/20261103_new_scores/outputs/stage3/` (2.0 MB, 39 files).
 
-## 2026-11-04 09:12: fix of the Qwen c* against CRL diagnostic
+## 2026-11-04 09:02: fix of the Qwen c* against CRL diagnostic
 
 - Found when I read stage 3's output: `qwen_crl_mmart.json` had clustering rows for emotion and genre only. In `ns_diag.qwen_crl`
   the skip of the 20-cluster row also skipped the class-count row at K = 20, so MMArt style was lost.
