@@ -9,6 +9,10 @@
 # --est values are guesses marked '~' unless a ticket measured them; correct them from the first runs.
 # Order that matters: stage0 -> stage1 -> THE CONTROLLER COMMITS records/stage1_om_ranges.json, stage1_om_picks.json and
 # status.json -> stage2 -> assemble -> C13 writes OUT/c13/c13_cells.json -> labels -> diag.
+# Gate (iv) runs before s1_records. If any gate file changes after the records are committed, rebuild status and
+# recommit; assemble and labels refuse stale status. The store audit below is a report, not a status gate.
+# stage2 skips finished units: pass --force after any re-extraction or refit. Gate (i) runs in stage0: rerun stage0
+# if om_clay.py changes.
 set -u
 PHASE=${1:-all}
 RUNIT=no
@@ -38,20 +42,26 @@ want() { [ "$PHASE" = all ] || [ "$PHASE" = "$1" ]; }
 
 if want stage0; then
   note "stage 0: gates (i) and (ii) CPU run here; (ii) CUDA, (iii), (iv) are separate steps; status reads all four files"
+  note "gate (i) runs in stage0; rerun stage0 if om_clay.py changes"
   q cpu stage0        5m  --short -- $RUN stage0
   q gpu gate_ii_cuda  5m  --short -- $GPUENV $PY $D/om_turtle.py gate-ii --device cuda
   q cpu gate_iii      1h        -- $ENVV $PY $D/om_gate_iii.py           # parts a, b, c; ~45 min (ticket 07); a code edit afterwards means a rerun
   note "TPIPS stores (GPU, 6 shards of ~2.5 h, one res-queue job each; the script queues them; not on weekdays 06:00 to 19:00):"
   note "  bash $D/om_tpips_local.sh 0 5          (run detached)"
   note "  after all 6, in the tpips venv: om_tpips.py merge --set artelingo --factor all --of 6 ; om_tpips.py merge --set mmart --factor all --of 6"
+  note "  beside the merges (CPU report, not a status gate): $ENVV $PY $D/om_tpips_check.py"
   note "  then gate (iv): om_tpips.py gate-iv --path local=$OUTD/stage0/probe_b1_rerun"
+  note "  after gate (iv), before s1_records: $RUN status"
+  note "  if any gate file changes after committing records, rebuild status and recommit; assemble and labels refuse otherwise"
   if [ "$RUNIT" = yes ]; then
     echo "TPIPS: not started by this script; start om_tpips_local.sh by hand"
   else
     echo "bash $D/om_tpips_local.sh 0 5"
     echo "res-queue cpu --est 20m --label r18:tpips_merge -- env PYTHONDONTWRITEBYTECODE=1 /root/venvs/tpips/bin/python $D/om_tpips.py merge --set artelingo --factor all --of 6   # ~ guess"
     echo "res-queue cpu --est 20m --label r18:tpips_merge_mmart -- env PYTHONDONTWRITEBYTECODE=1 /root/venvs/tpips/bin/python $D/om_tpips.py merge --set mmart --factor all --of 6   # ~ guess"
+    echo "$ENVV $PY $D/om_tpips_check.py"
     echo "res-queue cpu --est 10m --label r18:gate_iv -- env PYTHONDONTWRITEBYTECODE=1 /root/venvs/tpips/bin/python $D/om_tpips.py gate-iv --path local=$OUTD/stage0/probe_b1_rerun   # ~ guess"
+    echo "$RUN status"
   fi
   note "text set B is frozen (generated); the GPU line, only if it must be redone (it refuses to overwrite):"
   note "  res-queue gpu --est 20m --label r18:textset_b -- $GPUENV $PY $D/om_textset_b.py all"
@@ -62,6 +72,7 @@ fi
 
 if want stage1; then
   note "stage 1 (validation only); TPIPS picks need the merged stores"
+  note "gate (iv) must finish before s1_records; after any later gate-file change, rebuild status and recommit"
   q cpu s1_ranges      30m -- $RUN stage1 --step ranges                     # ~ guess
   for s in artelingo mmart; do
     q cpu s1_clay_$s   40m -- $RUN stage1 --step clay --set $s              # ~ guess
@@ -73,6 +84,7 @@ fi
 
 if want stage2; then
   note "stage 2: 28 units (SC, set, encoder), each its own process (k-means opens a pool)"
+  note "om_run.py stage2 skips finished units; after any re-extraction or refit pass --force"
   for s in artelingo mmart; do
     for sc in SC1 SC2; do q cpu cells_${sc}_${s}_qwen 40m -- $RUN stage2 --sc $sc --set $s --enc qwen; done   # ~ guess
     for e in qwen clip_l14; do for sc in SC3 SC4; do q cpu cells_${sc}_${s}_$e 40m -- $RUN stage2 --sc $sc --set $s --enc $e; done; done

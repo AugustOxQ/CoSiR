@@ -1,4 +1,4 @@
-"""Runner guards: current committed status, isolated smoke environments and complete range records. Synthetic only."""
+"""Runner guards, isolated stage 2 smoke and complete range records. Synthetic only, no real records or stores."""
 import copy
 import json
 from argparse import Namespace
@@ -82,3 +82,23 @@ def test_stage1_records_requires_complete_range_count(monkeypatch, tmp_path, cou
         with pytest.raises(AssertionError, match='range.*keys'):
             run.stage1_records()
         assert not (tmp_path / 'committed').exists()
+
+
+def test_stage2_cli_scores_and_resumes_in_isolated_smoke(monkeypatch, tmp_path):
+    from test_om_cells import FakeLoaders, good_picks
+    monkeypatch.setenv('OM_SMOKE', '1')
+    monkeypatch.setenv('OM_OUTPUTS', str(tmp_path))
+    monkeypatch.setattr(op, 'SMOKE', 1)
+    monkeypatch.setattr(op, 'OUT', tmp_path)
+    monkeypatch.setattr(op, 'read_committed_record', lambda name: good_picks() if 'picks' in name else {})
+    monkeypatch.setattr(om_cells, 'Loaders', FakeLoaders)
+    monkeypatch.setattr(om_cells.ns_clu, 'WORKERS', 1)
+    args = ['stage2', '--sc', 'SC5', '--set', 'mmart', '--enc', 'qwen', '--draws', '3']
+    assert run.main(args) == 0
+    part = tmp_path / 'stage2/parts/SC5__mmart__qwen.json'
+    cells = json.loads(part.read_text())
+    assert len(cells) == 14 and all(c['n_draws'] == 3 and c['missing'] is None for c in cells)
+    before = part.stat().st_mtime_ns
+    assert run.main(args) == 0
+    assert part.stat().st_mtime_ns == before
+    assert json.loads((tmp_path / 'steps/stage2_SC5_mmart_qwen.json').read_text())['status'] == 'ok'
