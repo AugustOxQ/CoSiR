@@ -1807,3 +1807,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-04-r19-run-handoff.md
 - New chat: tab 'r19 run', session a099d7c5-4802-4dcd-8fb1-ce1b19e1e932
 
+[brief] CoSiR: r18 build 5 -> r18 build 6 (2026-11-04 03:17 Amsterdam)
+- Done: tickets 07, 10, 12 merged, gate (iii) passes (largest difference 5.55e-17), TURTLE route settled on node402.
+- State: 11 of 12 tickets merged. One node fit takes 119 s against 105 s locally; loss and AMI against a local fit are not compared yet.
+- Next: ticket 11 with its smoke, then the local reference fit, the final review, the merge, the cut to run.
+- Blocked: nothing. GPU check passes. TPIPS stores still extract locally, shard 0 of 6.
+- Handoff: docs/superpowers/handoffs/2026-11-04-r18-build-6-handoff.md
+- New chat: tab 'r18 build 6', session 11fc0fcc-c6dd-4c71-86ed-728ca26e43c8
+
