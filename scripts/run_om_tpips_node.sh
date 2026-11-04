@@ -96,6 +96,7 @@ R=$(mktemp -d -p "$JOB" om-root.XXXXXX)
 export NODE_RES LOCAL_OUT NODE_IN LOCAL_IN NODE_LIBS LOCAL_LIBS CODE JOB R TPIPS_PY HUB IMG_MAP ROUND
 export TMPDIR="$JOB/om-tmp" MPLCONFIGDIR="$JOB/om-mpl" HOME="$JOB/om-home" XDG_CACHE_HOME="$JOB/om-cache"
 export PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 PYTHONPATH="$LOCAL_LIBS"
+export LD_LIBRARY_PATH="$LOCAL_LIBS/nvidia/cu13/lib:${LD_LIBRARY_PATH:-}"    # keeps the node's driver path; torch's run-time kernels need libnvrtc-builtins (index, build 3)
 # hf-fetch --revision writes no refs/main, and tpips loads the backbone by repo name: offline that name needs the ref.
 # A job-local hub links the real snapshots and pins refs/main to the two om_paths hashes; the probe checks them.
 HUB_JOB="$JOB/om-hub"
@@ -173,6 +174,9 @@ for p in man['image'][:3]:
     try:
         with Image.open(q) as im: im.convert('RGB').load(); print('image ok', q, im.size)
     except Exception as e: problems.append(f'image {q}: {e!r}')
+import hashlib
+for p in man['image']:                               # the node's bytes, against the local files (round log, build 4)
+    print('imgsha', hashlib.sha256(open(new + p[len(old):], 'rb').read()).hexdigest(), p[len(old):])
 for s in ('artelingo', 'mmart'):                     # every image the shard jobs will open, not only the three above
     paths = json.loads(Path(os.environ['LOCAL_IN'], s + '.json').read_text())['image']
     gone = [p for p in paths if not (p.startswith(old) and os.path.exists(new + p[len(old):]))]
@@ -187,9 +191,10 @@ PY
     echo PROBE_EMBED_OK
     ;;
 gate-probe)
+    # A rerun skips finished chunks, so a new package set needs a new folder: probe_full (probe holds the node's own packages' run).
     $T extract --set probe --factor all --shard 0 --of 1 --batch "$OM_BATCH" --device cuda \
-        --manifest "$(MAN probe)" --store-root "$OM_OUTPUTS/tpips_store/probe" --image-root-map "$IMG_MAP" --snapshot-dir "$TPIPS_SNAP"
-    $T merge --set probe --factor all --of 1 --manifest "$(MAN probe)" --store-root "$OM_OUTPUTS/tpips_store/probe"
+        --manifest "$(MAN probe)" --store-root "$OM_OUTPUTS/tpips_store/probe_full" --image-root-map "$IMG_MAP" --snapshot-dir "$TPIPS_SNAP"
+    $T merge --set probe --factor all --of 1 --manifest "$(MAN probe)" --store-root "$OM_OUTPUTS/tpips_store/probe_full"
     ;;
 extract)
     for s in $OM_SETS; do
