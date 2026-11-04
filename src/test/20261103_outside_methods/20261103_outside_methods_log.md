@@ -212,3 +212,17 @@ by the 200 W line; Qwen alone means 199.6 W.
   pending, so read `complete`; `OM_SMOKE=2` reads as smoke in `om_paths` but not in `om_env`.
 - **Left for later builds or the report:** parts files bind no input hash, so pass `--force` after any re-extraction or refit; gates (i) and (iv) carry no code
   hash; `sweep` has no TEMI rows; `r17_kmeans` stays empty until r17's stage 3 files exist; in `adds`, the interval's widening is not measured.
+
+## Run (2026-11-04, unattended)
+
+- **Checks before the fits:** the whole round's suite, run once after the fix wave through `res-queue cpu`: 314 passed in 2 min 13 s. Stage 0 (`om_run.py
+  stage0`): gate (i) pass, largest difference 6.6e-07; gate (ii) CPU pass. Status: i, ii, iii a, b, c `ok`; iv `failed` until the local rerun after shard 5.
+- **TURTLE:** 16 jobs on node402 at c29073c9, one GPU each, 05:50 to 10:17. All three GPUs were free: r19's 8 node jobs had ended by 03:59. Each job took 32 to
+  57 min, mean 44.5, so the whole set ended about an hour before the handoff's estimate. 0 failures.
+- **Pulls ran after the last job, not per job.** All 16 share `/local/wding/res/r18_turtle`, and a tagged pull's verifying dry run would find another job's new
+  files. All 16 pulls verified and marked; each code copy removed.
+- **`check-pulled res/r18_turtle`:** 412 of 412 fits good, 0 bad; hosts node402 412; torch 2.11.0+cu130 412. The printed rsync line ran; its dry run showed no
+  overwrite. `OUT/parts/turtle` holds 412 npz and 412 json, 3.0 GB, and a repeat dry run finds nothing left.
+- **TPIPS:** shard 1 ended 08:02 after 151.7 min, not the 3.9 h the handoff expected; the store check at 10:29 finds every probe row equal, cosine 1.0, and no
+  package changed. The loop (pid 2887562) waits for 19:00. At 2.5 h a shard, shards 2 to 5 end about Thursday 05:00; at 3.9 h, shard 5 still ends Thursday 23:00.
+- **Git:** `*.json` is gitignored at the repo root, so stage 1's three records need `git add -f`, as r17's did.
