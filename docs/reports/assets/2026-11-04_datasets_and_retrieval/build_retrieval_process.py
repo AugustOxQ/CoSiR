@@ -90,7 +90,7 @@ def main():
     text(x+bw/2, 385, "other paintings,\nsame head")
     for dx in [50, 205, 360]:
         painting(x+dx, 505, 115, 135)
-    text(x+bw/2, 820, "compare with cosine,\nor a comparison method\npicked on validation", size=13)
+    text(x+bw/2, 820, "compare with cosine,\nor post-processing\npicked on validation", size=13)
 
     x = xs[3]
     for y, hit in zip([345, 450, 555, 660, 765], [True, False, True, True, False]):

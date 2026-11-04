@@ -75,7 +75,7 @@ def main():
     x = xs[0]
     text(x + bw / 2, 420, "image encoder fixed", color=SECONDARY)
     chip(x + 20, 540, 215, 105, "image\ntrunk", BLUE, BLUE, "white")
-    chip(x + 260, 540, 215, 105, "explanation\ntrunk", BLUE, BLUE, "white", size=12)
+    chip(x + 260, 540, 215, 105, "text\ntrunk", BLUE, BLUE, "white")
     arrow((x + 127.5, 645), (x + 127.5, 712), BLUE, scale=8)
     arrow((x + 367.5, 645), (x + 367.5, 712), BLUE, scale=8)
     chip(x + 20, 715, 215, 90, "emotion\nhead", BLUE, BLUE, "white", size=12)
