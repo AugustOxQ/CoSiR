@@ -22,6 +22,8 @@ any time; a thing never run is `missing`. Smoke (OM_SMOKE=1, OM_OUTPUTS=<scratch
 
 A gate counts as `ok` only when its file says pass true AND its code hash is current: gate (ii) parts against om_turtle.py,
 gate (iii) parts against `om_gate_iii.code_sha256()` (a part from older code is `failed`, as the gate files say themselves).
+Assemble and labels also require committed status to match current gates, stage 1 states and r17's status hash,
+including smoke subsets; a changed status must be rebuilt with `status` and committed first (r17's path is ignored).
 """
 import argparse
 import hashlib
@@ -182,6 +184,21 @@ def cmd_status(args):
     return 0
 
 
+def require_current_status():
+    """Refuse a stale committed status, comparing states and the r17 hash, never its checkout-specific path."""
+    committed = op.read_committed_record('status.json')
+    current = build_status(write=False)
+    different = []
+    for section in ('gates', 'stage1'):
+        old, now = committed.get(section, {}), current[section]
+        different.extend(f'{section}.{k}' for k in sorted(old.keys() | now.keys()) if old.get(k) != now.get(k))
+    if committed.get('r17', {}).get('sha256') != current['r17']['sha256']:
+        different.append('r17.sha256')
+    if different:
+        raise SystemExit(f'{len(different)} status keys differ from committed status.json: {different[:5]}; '
+                         'run status and commit the rebuilt status.json before assemble or labels')
+
+
 # ------------------------------------------------------------------------------------------------ stage 0
 def cmd_stage0(args):
     ok = True
@@ -302,6 +319,7 @@ def build_subset(expected):
 
 
 def cmd_assemble(args):
+    require_current_status()
     import om_cells
     expected = _expected(args.only)
     if expected is None:
@@ -315,6 +333,7 @@ def cmd_assemble(args):
 
 
 def cmd_labels(args):
+    require_current_status()
     import om_cells
     expected = _expected(args.only)
     if expected is None:
