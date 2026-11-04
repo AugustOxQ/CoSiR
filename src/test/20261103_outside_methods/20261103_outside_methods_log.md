@@ -125,3 +125,36 @@ Tickets in `.scratch/r18-outside-methods/` (outside git); the list goes into the
   `load_profiles` refuses a shared `REPO_URL`. The node's versions differ from the local ones (torch 2.14 against
   2.11, transformers 5.16.1 against 5.6.2 when last read); gate (iv) compares its vectors with the local batch-1 run.
   Two `DATA_MAP` pairs added to `cluster.conf`. The dry-run line must give node paths, not local ones.
+
+## Build 4 (2026-11-04, unattended)
+
+**Gate (iv) on node402 fails; the stores come from the local 3090.** The route was: the probe failed offline, since
+`hf-fetch --revision` writes no `refs/main` and tpips loads the backbone by repo name (fixed by a job-local hub with the ref
+pinned). The gate probe then ran. All numbers are the lowest row cosine against the local batch-1 reference, in the order
+emotion, style, genre; the gate needs 0.999.
+
+| Run | Lowest row cosine | Median or mean | Reading |
+|---|---|---|---|
+| Local rerun, stock packages | 1.000000 all three | median 1.000000 | no noise locally |
+| Node, its own packages (transformers 5.16.1, torch 2.14) | 0.997342, 0.996178, 0.989027 | median about 0.9988 | fails |
+| Local, transformers 5.16.1 in place of 5.6.2 | 0.997342, 0.996178, 0.989027 | median about 0.9988 | transformers is the main cause: it reproduces the node to six digits |
+| Node against local 5.16.1 | 0.998936, 0.998810, 0.998623 | median 1.000000 | 13 of 48 rows off, the rest exact |
+| Node, exact copy of the local packages | 0.998909, 0.998737, 0.998698 | mean 0.9998 | fails narrowly |
+
+The 48 images are byte-identical on the node (sha256). Versions were checked in the job. So the last gap is the hardware
+(RTX A6000 and its CPU against the 3090 and a Ryzen 5950X); which part was not checked. The off rows are not simply the
+large images: they overlap the exact rows in token count. The threshold stays 0.999, as the spec sets it. Two side facts for
+the report: TPIPS vectors move with the transformers version (median row cosine 0.9988 between 5.6.2 and 5.16.1), and a node
+rerun skips finished chunks, so two runs in this list first looked like results and were not (a run with the same six digits
+as the last and no `probe shard` line).
+
+**Local stores.** `om_tpips_local.sh`, 6 shards. Shard 0 started 01:38. The job draws 256 W at 77% GPU, so it counts as heavy:
+the loop starts no shard on a weekday from 06:00 to 19:00. Rate so far: 512 of 3,073 rows in 938 s, about 1.8 s per row
+(the estimate assumed 1.6). The CPU was loaded by r17's picks. Whether later rows of a shard are slower: not checked.
+
+**TURTLE timing** (`OUT/smoke/turtle_timing.json`): 105 to 114 s per fit at K 20 on MMArt test, 12.3 h for 412 fits on one
+3090 (the spec said 1 to 2 h; the estimate errs high, since held ArtELingo has fewer rows). Mean 186 W, max 291 W, so light
+by the 200 W line; Qwen alone means 199.6 W.
+
+**Tickets.** 09 merged (31 data tests). 08 merged after an Opus `high` review, one fix round, Sonnet `high` re-review APPROVE;
+47 tests. 07 has an Opus `high` review, APPROVE with notes; its three should-fixes are open (`.scratch/.../notes/t07_review.md`).
