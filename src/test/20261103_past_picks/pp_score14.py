@@ -36,6 +36,7 @@ import numpy as np
 import pp_paths as PP
 import pp_register  # noqa: F401  (registers the new three; second, before r14's and r15's modules are used)
 import pp_outcome
+import pp_void_scope
 
 import ac_data
 import ac_stats
@@ -60,6 +61,7 @@ EXPECT = {                                          # part -> the cells it holds
     'affection': sorted([('SC4', 'emotion', 'clu', AF), ('SC5', 'emotion', 'ret', AF), ('SC6', 'emotion', 'clu', AF),
                          ('SC6', 'emotion', 'ret', AF)]),
 }
+BLOCKS_ARTELINGO = ('artclu', 'artret_ranges', 'artret_picks')
 STAGE1_FILES = dict(artclu='artclu_ranges_{enc}.json', artret_ranges='artret_ranges_{enc}.json',
                     artret_picks='artret_picks_{enc}.json', affection='affection_ranges_{enc}.json')
 
@@ -173,13 +175,22 @@ def check_artelingo_blocks(enc, blocks):
         assert picks['r11_ranges_sha256'] == bs_artret.sha_file(bs_artret.R11_RANGES_FILE), 'r11 ranges file changed'
 
 
-def check_record(enc, rec):
+def check_record(enc, rec, part=None):
     """The stage 1 record's blocks agree with each other and with the rules of D21: encoder names, picks made with the
-    ranges they say, a new encoder's frozen picks made with r11's / r12's ranges (never X-c*'s own)."""
+    ranges they say, a new encoder's frozen picks made with r11's / r12's ranges (never X-c*'s own).
+    `part` (stage 2 of one part): only the blocks that part reads are required and checked (§3.5 stage 1: X's photo failure
+    leaves a record without `affection`, and its ArtELingo parts go on). `part=None` (the gates' replays, which hand over a
+    full record): all four blocks, as before."""
+    assert part is None or part in PARTS, part
     assert rec['encoder'] == enc, (enc, rec['encoder'])
-    for key in ('artclu', 'artret_ranges', 'artret_picks', 'affection'):
+    need = {'artelingo_clu': BLOCKS_ARTELINGO, 'artelingo_ret': BLOCKS_ARTELINGO, 'affection': ('affection',),
+            None: BLOCKS_ARTELINGO + ('affection',)}[part]
+    for key in need:
         assert key in rec, f'stage 1 record of {enc} lacks {key!r}'
-    check_artelingo_blocks(enc, rec)
+    if part != 'affection':
+        check_artelingo_blocks(enc, rec)
+    if part in ('artelingo_clu', 'artelingo_ret'):
+        return rec
     aff = rec['affection']
     assert aff['encoder'] == enc, ('affection', aff['encoder'], enc)
     assert aff['kind'] == 'affection_validation_ranges_and_readouts'
@@ -195,10 +206,10 @@ def check_record(enc, rec):
     return rec
 
 
-def committed_record(enc):
-    """Stage 1 of `enc` as committed (`PP.read_committed_record`: refuses unless equal to git HEAD), checked."""
+def committed_record(enc, part=None):
+    """Stage 1 of `enc` as committed (`PP.read_committed_record`: refuses unless equal to git HEAD), checked for `part`."""
     rec = PP.read_committed_record(f'stage1_{enc}.json')
-    return check_record(enc, rec)
+    return check_record(enc, rec, part)
 
 
 # ============================================================================================ matched arm (SC3)
@@ -244,35 +255,43 @@ def _unit32(x):
     return (x / norm).astype(np.float32)
 
 
-def clu_cells(enc, aspect, labels, c_fixed, frozen, matched, teacher, ranges, n_draws, workers=8):
+def clu_cells(enc, aspect, labels, c_fixed, frozen, matched, teacher, ranges, n_draws, workers=8, skip_matched=False):
     """SC1, SC3, SC6 cells of one aspect on arrays: r14's three margins and `bs_artclu.aspect_cells` (the same cell dicts),
-    arm labels F<k> and M<k> as the older rounds name them. + `n_rows`, `n_labelled`."""
+    arm labels F<k> and M<k> as the older rounds name them. + `n_rows`, `n_labelled`.
+    `skip_matched` (the committed status voids the matched arm, §3.5 row (v)): `matched` is not read and SC3 is not written.
+    `aspect_cells` reads the matched margin only for SC3, so it is given the frozen margin in its place (never used for a
+    cell we keep) and its SC3 cell is dropped; SC1 and SC6 are the cells it returns, unchanged."""
     spec = bs_artclu.ENC[enc]
     frozen_name = bs_paths.FROZEN_ARM[enc]
-    margins = dict(frozen=bs_artclu.frozen_margin(c_fixed, frozen, labels, n_draws, workers, 'C', frozen_name),
-                   matched=bs_artclu.matched_margin(c_fixed, matched, labels, n_draws, workers, 'C', spec['matched']),
-                   teacher=bs_artclu.teacher_margin(c_fixed, teacher, labels, n_draws, workers))
+    margins = dict(frozen=bs_artclu.frozen_margin(c_fixed, frozen, labels, n_draws, workers, 'C', frozen_name))
+    margins['matched'] = margins['frozen'] if skip_matched else \
+        bs_artclu.matched_margin(c_fixed, matched, labels, n_draws, workers, 'C', spec['matched'])
+    margins['teacher'] = bs_artclu.teacher_margin(c_fixed, teacher, labels, n_draws, workers)
     cells = bs_artclu.aspect_cells(enc, aspect, 'C', margins, ranges, n_draws, spec['matched'], frozen_name)
+    if skip_matched:
+        cells = [c for c in cells if c['sc'] != 'SC3']
     for c in cells:
         c['n_rows'] = int(len(labels))
         c['n_labelled'] = int((np.asarray(labels) >= 0).sum())
     return cells
 
 
-def run_artelingo_clu(enc, rec, n_draws=None, workers=8, root=None):
-    """The nine ArtELingo clustering cells (held) of `enc`. `rec`: the stage 1 record (ranges for SC6's unit)."""
+def run_artelingo_clu(enc, rec, n_draws=None, workers=8, root=None, skip_matched=False):
+    """The nine ArtELingo clustering cells (held) of `enc`. `rec`: the stage 1 record (ranges for SC6's unit).
+    `skip_matched`: the committed status voids the matched arm (§3.5 row (v)): its outputs are not read, six cells (no SC3)."""
     n_draws = draws('clu', n_draws)
     ranges = rec['artclu']['ranges']
     held_dir = Path(root or PP.CSTAR_ROOT[enc]) / 'held' / PP.CSTAR_ARM
     names, sha, labels = bs_artclu.held_setup()
     frozen = mt_clu.single_fixed(bs_artclu.store_loader(enc, names))
-    matched = matched_fixed(enc)
+    matched = None if skip_matched else matched_fixed(enc)
     cand = bs_artclu.S0.Candidate('C', held_dir, PP.CSTAR_ARM)
     cells = []
     for aspect in ASPECTS:
         c_fixed = mt_clu.cstar_fixed({s: bs_artclu.S0.load_candidate(cand, 'full', aspect, s)[0] for s in SEEDS})
         teacher = mt_clu.single_fixed(_unit32(rt_data._instructed('held', aspect, names)))
-        got = clu_cells(enc, aspect, labels[aspect], c_fixed, frozen, matched, teacher, ranges, n_draws, workers)
+        got = clu_cells(enc, aspect, labels[aspect], c_fixed, frozen, matched, teacher, ranges, n_draws, workers,
+                        skip_matched=skip_matched)
         cells += got
         print(f'{enc} {aspect}: ' + ', '.join(f'{c["sc"]} d={c["d"]:+.4f}' for c in got), flush=True)
     return cells
@@ -318,13 +337,15 @@ def cells_path(part, out=None):
     return Path(PP.OUT if out is None else out) / 'stage2' / f'cells_{part}.json'
 
 
-def check_cells(part, enc, cells, smoke=None):
+def check_cells(part, enc, cells, smoke=None, skip_matched=False):
     """The cells of one part and encoder: exactly the expected (sc, aspect, task, data) set, once each; r14's labels; `data`
-    values of the index; one draw count per task; every cell through ticket 11's `pp_outcome.check_cell`."""
+    values of the index; one draw count per task; every cell through ticket 11's `pp_outcome.check_cell`.
+    `skip_matched`: the matched arm is void (§3.5 row (v)), so the expected set has no SC3 cell."""
     smoke = bool(PP.SMOKE) if smoke is None else smoke
     assert part in PARTS and enc in NEW, (part, enc)
     got = sorted((c['sc'], c['aspect'], c['task'], c['data']) for c in cells)
-    assert got == EXPECT[part], f'{part}: cells {got} differ from the expected {EXPECT[part]}'
+    want = [k for k in EXPECT[part] if not (skip_matched and k[0] in pp_outcome.MATCHED_SC)]
+    assert got == want, f'{part}: cells {got} differ from the expected {want}'
     for c in cells:
         assert c['encoder'] == enc, (c['encoder'], enc)
         assert c['data'] in PP.DATA
@@ -343,20 +364,25 @@ def write_cells(part, enc, cells, out=None):
         return bs_artclu.write_cells(path, cells, [enc])
 
 
-def score(part, enc, n_draws=None, workers=8, root=None, out=None):
-    """Stage 2 of one part and encoder. The committed stage 1 record is read first: nothing else is touched before it."""
+def score(part, enc, n_draws=None, workers=8, root=None, out=None, status=None):
+    """Stage 2 of one part and encoder. The committed stage 1 record is read first: nothing else is touched before it.
+    `artelingo_clu` then reads the committed status (`pp_void_scope.committed_status`; `status` overrides it for tests): when
+    it voids the matched arm (runs.<enc>.matched or gate (v) failed) the matched outputs are not read and SC3 is not written
+    (§3.5 row (v)). A missing status file raises outside smoke."""
     assert part in PARTS and enc in NEW, (part, enc)
-    rec = committed_record(enc)
+    rec = committed_record(enc, part)
     require_protocol_draws(part, n_draws)
     out = Path(PP.OUT if out is None else out)
+    skip_matched = False
     if part == 'artelingo_clu':
-        cells = run_artelingo_clu(enc, rec, n_draws, workers, root)
+        skip_matched = pp_void_scope.matched_void(pp_void_scope.resolve(status), enc, 'artelingo')
+        cells = run_artelingo_clu(enc, rec, n_draws, workers, root, skip_matched=skip_matched)
     elif part == 'artelingo_ret':
         cells = run_artelingo_ret(enc, rec, out / 'stage2' / 'artret', n_draws, workers, root)
     else:
         cells = run_affection(enc, rec, root=root, cache=out / 'stage2' / 'partitions_affection', n_clu=n_draws,
                               n_ret=n_draws, workers=workers)['cells']
-    check_cells(part, enc, cells)
+    check_cells(part, enc, cells, skip_matched=skip_matched)
     write_cells(part, enc, cells, out)
     return cells
 

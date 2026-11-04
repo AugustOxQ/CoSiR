@@ -286,12 +286,13 @@ def test_scoring_reads_a_committed_record_and_refuses_an_edited_one(world, match
     record.write_text(json.dumps({'mmart': block}))
     subprocess.run(['git', '-C', str(git_records), 'add', '-f', 'records'], check=True)
     subprocess.run(['git', '-C', str(git_records), 'commit', '-qm', 'stage 1'], check=True)
-    cells = score_clu()
+    status = __import__('test_pp_outcome').ok_status()         # outside smoke the committed status is read after the record
+    cells = score_clu(status=status)
     assert len(cells) == 9 and all(c['r'] == 0.01 for c in cells if c['sc'] == 'SC10')
     edited = dict(block, clu_ranges=ranges_doc(ENC, 0.5))
     record.write_text(json.dumps({'mmart': edited}))
     with pytest.raises(RuntimeError, match='not committed'):
-        score_clu()
+        score_clu(status=status)
 
 
 @pytest.mark.parametrize('scorer, overrides', [
@@ -629,3 +630,63 @@ def test_gate_iv_accepts_committed_records_outside_smoke(r15_files, monkeypatch)
     assert reads == [f'stage1_{ENC}.json', 'stage1_teacher.json']
     assert res['values_ok'] and not res['passed'] and not res['complete']
     assert all(not d['intervals_compared'] for d in res['draws'].values())
+
+
+# ================================================================================================ fix wave A (finding 3)
+from test_pp_outcome import ok_status  # noqa: E402
+
+
+def matched_failed(how, enc=ENC):
+    status = ok_status()
+    if how == 'run':
+        status['runs'][enc]['matched'] = 'failed'
+    else:
+        status['gates']['v'][enc] = 'failed'
+    return status
+
+
+@pytest.mark.parametrize('how', ['run', 'gate'])
+def test_a_failed_matched_arm_is_not_read_and_sc9_is_not_written(world, matched, block, teacher, how):
+    """§3.5 row (v): X's other rows are reported. The matched arm's partitions are never asked for, SC7 and SC10 are written,
+    and the missing required cells are exactly the ones the status voids."""
+    status = matched_failed(how)
+    cells = score_clu(block=block, status=status)
+    assert [(c['sc'], c['aspect']) for c in cells] == [(sc, a) for a in PP.ASPECTS for sc in ('SC7', 'SC10')]
+    assert matched.calls == []
+    got = {pp_outcome.cell_key(c) for c in cells}
+    missing = [k for k in pp_outcome.required_cell_keys(ENC) if k[4] == 'mmart_test' and k[3] == 'clu' and k not in got]
+    assert sorted(missing) == sorted(('SC9', ENC, a, 'clu', 'mmart_test') for a in PP.ASPECTS)
+    voids = pp_outcome.Voids(status)
+    assert all(voids.cell(k) for k in missing)
+
+
+def test_the_cells_kept_without_the_matched_arm_equal_the_healthy_ones(world, matched, block, teacher):
+    healthy = score_clu(block=block, status=ok_status())
+    assert [c['sc'] for c in healthy[:3]] == ['SC7', 'SC9', 'SC10'] and len(healthy) == 9 and matched.calls
+    matched.calls.clear()
+    part = score_clu(block=block, status=matched_failed('run'))
+    assert part == [c for c in healthy if c['sc'] != 'SC9'] and matched.calls == []
+
+
+def test_a_healthy_status_gives_the_cells_of_a_run_without_a_status(world, matched, block, teacher):
+    """The pair: on a healthy status (and under smoke with no status file) the nine cells are the same as before."""
+    plain = score_clu(block=block)                                       # smoke, no status file: nothing is voided
+    assert len(plain) == 9
+    assert score_clu(block=block, status=ok_status()) == plain
+
+
+def test_other_failed_gates_do_not_drop_the_matched_cells(world, matched, block, teacher):
+    status = ok_status()
+    status['gates']['vii']['mmart'] = 'failed'
+    assert len(score_clu(block=block, status=status)) == 9
+
+
+def test_a_missing_status_outside_smoke_raises_before_any_test_row(world, matched, block, teacher, git_records, monkeypatch):
+    record = git_records / 'records' / f'stage1_{ENC}.json'
+    record.write_text(json.dumps({'mmart': block}))
+    subprocess.run(['git', '-C', str(git_records), 'add', '-f', 'records'], check=True)
+    subprocess.run(['git', '-C', str(git_records), 'commit', '-qm', 'stage 1'], check=True)
+    forbid_reads(monkeypatch)
+    with pytest.raises(FileNotFoundError):
+        M.score_clu(ENC, n_draws=10, expect_n=None)
+    assert matched.calls == []
