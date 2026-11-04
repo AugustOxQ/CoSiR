@@ -269,6 +269,8 @@ def _score_clu(sc, set_, enc, ld, picks, draws):
         y = ld.labels(set_, aspect)
         for k, metrics in s1.class_ks(set_, aspect):
             group = [_cell(sc, set_, enc, aspect, m, k) for m in metrics]
+            if is_class_count(group[0]):                  # r17's guard (`ns_clu_cells`): the class-count K is the labels' count
+                assert ns_metrics.class_count(y) == k, f'{set_}/{aspect}: {ns_metrics.class_count(y)} classes in the labels, not {k}'
             try:
                 cand, comp, extra = _clu_parts(sc, ld, set_, enc, aspect, k, picks)
             except (MissingInput, FileNotFoundError) as e:
@@ -340,7 +342,15 @@ def check_status(status):
     assert set(status['gates']) == set(OUR_GATES), f'status gates {sorted(status["gates"])}, need {sorted(OUR_GATES)}'
     for name, v in {**status['gates'], **status['stage1']}.items():
         assert v in STATUS_VALUES, f'status {name}: {v!r} is not one of {STATUS_VALUES}'
+    extra = set(status['stage1']) - stage1_status_keys()
+    assert not extra, f'status stage1: keys no cell uses: {sorted(extra)[:5]} (r17 refuses these too)'
     return status
+
+
+def stage1_status_keys():
+    """The stage 1 keys a status may name: the picks the cells read and every range key."""
+    picks = {f'{kind}/{s}' for s in SETS for kind in ('tpips', 'clay', 'clay_textset/ret', 'clay_textset/clu')}
+    return picks | {k['key'] for k in s1.range_keys()}
 
 
 def load_r17_status(status):
@@ -380,14 +390,18 @@ def void_reasons(cell, status, picks, r17):
             rules.append((f'r17 iii_count[{s}/{cell["aspect"]}]', g['iii_count'].get(f'{s}/{cell["aspect"]}')))
     if cell['sc'] in R17_SCORER_RET:
         rules.append(('r17 ii_scorer', g['ii_scorer']))
+        rules.append(('r17 vi', g['vi']))          # r17's read-out rule: a cell with a new pick is void when it fails (§3.5, "the same cells here")
     out.extend(f'{name} {v}' for name, v in rules if v != OK)
     return out
 
 
-def r_of(cell, ranges, r17, family):
-    """(r, source) of a cell from the stage 1 range record; None when the range is missing, absent or (class count) r17's own
-    range failed in its status."""
+def r_of(cell, ranges, r17, family, status):
+    """(r, source) of a cell from the stage 1 range record; None when the range is missing, absent, not `ok` in our status
+    (a range key in `status['stage1']`) or (class count) r17's own range failed in its status."""
     key = range_key(cell)
+    st = status['stage1'].get(key, OK)
+    if st != OK:
+        return None, f'missing:{key}: stage 1 status {st}'
     entry = ranges.get(key)
     if entry is None:
         return None, f'missing:{key}'
@@ -437,6 +451,31 @@ def sentence_of(cell, label):
     return f'On {S}, c* on {X} {verb} paintings by {a} {word} {arm}{tail}.'
 
 
+def check_fresh(cell, picks):
+    """A scored cell must come from this protocol and these picks (a parts file can be older than the stage 1 record):
+    n_draws as r17's `check_cell` (outside smoke), the read-outs and the text set equal the committed picks. Picks that are
+    absent void the cell anyway and are not compared."""
+    if cell.get('missing') or cell.get('d') is None:
+        return
+    if not op.SMOKE:
+        assert cell['n_draws'] == op.N_DRAWS[cell['task']], \
+            f'{cell["id"]}: n_draws {cell["n_draws"]} != {op.N_DRAWS[cell["task"]]}; rescore the unit (cells --force)'
+    s, sc = cell['set'], cell['sc']
+    want = {}
+    if sc == 'SC2' and f'tpips/{s}' in picks:
+        want['comparator_readout'] = picks[f'tpips/{s}']['pick']
+    if sc == 'SC4' and f'clay/{s}' in picks:
+        want['comparator_readout'] = picks[f'clay/{s}']['pick']
+    if sc == 'SC4' and f'clay_textset/ret/{s}' in picks:
+        want['text_set'] = picks[f'clay_textset/ret/{s}']['set']
+    if sc == 'SC3' and f'clay_textset/clu/{s}' in picks:
+        want['text_set'] = picks[f'clay_textset/clu/{s}']['set']
+    if cell['task'] == 'ret':
+        want['candidate_readout'] = ns_ret.reused_pick('cstar', s, cell['encoder'])
+    for key, v in want.items():
+        assert cell.get(key) == v, f'{cell["id"]}: parts have {key} {cell.get(key)!r}, the committed picks say {v!r}; rescore the unit'
+
+
 def assemble(raw, ranges, picks, status, r17, expected=None):
     """r17's cell form plus label, void, sentence, for every expected cell (default all 337), in order. `raw`: score_unit's
     cells (any subset; an id outside `expected` or twice is refused); a cell not scored is void ('not scored')."""
@@ -455,7 +494,8 @@ def assemble(raw, ranges, picks, status, r17, expected=None):
         c = dict(by.get(spec['id']) or _blank(spec, 'not scored'))
         for key in ('n_draws', 'n_rows', 'missing'):
             c.setdefault(key, None)
-        c['r'], c['r_source'] = r_of(spec, ranges, r17, family)
+        check_fresh(c, picks)
+        c['r'], c['r_source'] = r_of(spec, ranges, r17, family, status)
         void = void_reasons(spec, status, picks, r17)
         if c.get('missing'):
             void.append(f'missing input: {c["missing"]}' if c['missing'] != 'not scored' else 'not scored')
@@ -529,12 +569,20 @@ def labels_path():
     return op.record_path('labels.json')
 
 
-def run_labels(cells_path, c13_path, out_path, picks):
-    """The guarded step: refuses (SystemExit) unless the C13 file exists and agrees; then writes the labels record."""
+def run_labels(cells_path, c13_path, out_path, picks, rebuild, expected=None):
+    """The guarded step: refuses (SystemExit) unless the C13 file exists, `cells.json` holds exactly the expected cells
+    (default all 337, in order) and equals what `rebuild()` assembles now (the status or ranges may have changed since),
+    and C13 agrees; then writes the labels record."""
     cells_path, c13_path = Path(cells_path), Path(c13_path)
     if not c13_path.exists():
         raise SystemExit(f'labels refuses: {c13_path} does not exist (C13 must re-derive the cells first)')
     cells = json.loads(cells_path.read_text())
+    want = [c['id'] for c in (cell_specs() if expected is None else expected)]
+    if [c['id'] for c in cells] != want:
+        raise SystemExit(f'labels refuses: {cells_path} holds {len(cells)} cells, not the {len(want)} expected, in order')
+    if json.loads(json.dumps(rebuild())) != cells:
+        raise SystemExit(f'labels refuses: {cells_path} differs from the cells assembled now from the committed records; '
+                         'run assemble again')
     bad = c13_disagreements(cells, picks, json.loads(c13_path.read_text()))
     if bad:
         raise SystemExit(f'labels refuses: C13 disagrees on {len(bad)} items, first: {bad[:5]}')
@@ -551,22 +599,46 @@ def parts_dir(out=None):
     return Path(op.OUT if out is None else out) / 'stage2' / 'parts'
 
 
+def unit_done(path):
+    """A parts file is done when it exists and no cell lacks its input (`missing`): a unit whose input arrives later is
+    scored again."""
+    if not path.exists():
+        return False
+    return not any(c.get('missing') for c in json.loads(path.read_text()))
+
+
+def run_cells(todo, picks, ld, draws, force, out=None, score=None):
+    """Score every unit of `todo` not done. A unit that raises is logged and left without a parts file (its cells read 'not
+    scored'); the run goes on (D24). Returns the units that failed."""
+    score = score or score_unit
+    failed = []
+    for sc, set_, enc in todo:
+        path = parts_dir(out) / f'{sc}__{set_}__{enc}.json'
+        if unit_done(path) and not force:
+            print(f'skip {path.name} (exists)')
+            continue
+        try:
+            raw = score(sc, set_, enc, ld, picks, draws)
+        except Exception as e:                          # noqa: BLE001  (any failure of one unit)
+            print(f'FAILED {sc}/{set_}/{enc}: {type(e).__name__}: {e}', file=sys.stderr)
+            failed.append((sc, set_, enc))
+            continue
+        op.write_json(path, raw)
+        print(f'{path.name}: {len(raw)} cells, {sum(c["missing"] is not None for c in raw)} without numbers')
+    if failed:
+        print(f'{len(failed)} units failed: {failed}', file=sys.stderr)
+    return failed
+
+
 def cmd_cells(args):
     op.read_committed_record('stage1_om_ranges.json')     # refuses uncommitted stage 1 (§3.5); r is read at assembly
     picks = op.read_committed_record('stage1_om_picks.json')
-    ld, todo = Loaders(), [u for u in units() if (args.sc in (None, u[0])) and (args.set in (None, u[1])) and (args.enc in (None, u[2]))]
-    for sc, set_, enc in todo:
-        path = parts_dir() / f'{sc}__{set_}__{enc}.json'
-        if path.exists() and not args.force:
-            print(f'skip {path.name} (exists)')
-            continue
-        raw = score_unit(sc, set_, enc, ld, picks, args.draws)
-        op.write_json(path, raw)
-        print(f'{path.name}: {len(raw)} cells, {sum(c["missing"] is not None for c in raw)} without numbers')
-    return 0
+    todo = [u for u in units() if (args.sc in (None, u[0])) and (args.set in (None, u[1])) and (args.enc in (None, u[2]))]
+    return 1 if run_cells(todo, picks, Loaders(), args.draws, args.force) else 0
 
 
-def cmd_assemble(args):
+def build_cells():
+    """The cells assembled from the parts files and the committed records (what `assemble` writes)."""
     ranges = op.read_committed_record('stage1_om_ranges.json')
     picks = op.read_committed_record('stage1_om_picks.json')
     status = check_status(op.read_committed_record('status.json'))
@@ -576,7 +648,11 @@ def cmd_assemble(args):
         path = parts_dir() / f'{sc}__{set_}__{enc}.json'
         if path.exists():
             raw += json.loads(path.read_text())
-    cells = assemble(raw, ranges, picks, status, r17)
+    return assemble(raw, ranges, picks, status, r17)
+
+
+def cmd_assemble(args):
+    cells = build_cells()
     dst = Path(op.OUT) / 'stage2' / 'cells.json'
     op.write_json(dst, cells)
     from collections import Counter
@@ -586,7 +662,8 @@ def cmd_assemble(args):
 
 def cmd_labels(args):
     picks = op.read_committed_record('stage1_om_picks.json')
-    out = run_labels(Path(op.OUT) / 'stage2' / 'cells.json', Path(op.OUT) / 'c13' / 'c13_cells.json', labels_path(), picks)
+    out = run_labels(Path(op.OUT) / 'stage2' / 'cells.json', Path(op.OUT) / 'c13' / 'c13_cells.json', labels_path(), picks,
+                     rebuild=build_cells)
     print(f'labels -> {out}')
     return 0
 
