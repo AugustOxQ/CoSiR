@@ -84,3 +84,17 @@ Run sheet: `pp_run_sheet.md`. Spec: `docs/superpowers/specs/2026-11-03-past-pick
   only; stage 4 and its outcomes were not rerun.
 - **C13's full derive waits for 19:00.** The user's limit for CPU scoring is about 13:00, and the code is not written yet. The
   report's date (about 11-06) allows this.
+
+## User-read report (run chat 5, 2026-11-04)
+
+- **Draft:** Codex, by resume of the report session, told to read the committed report again. The controller then rewrote it: a table of
+  the smallest differences replaced a table of nine "It holds." cells, and prefetch and warm-up detail stayed in the full report.
+- **Figure:** SemArt genre mAP per encoder, built from `records/outcomes.json` by the script beside it.
+- **Checks:** cold read on Haiku, fidelity check on Sonnet `high`. No number was wrong. One fix wave, then the humanizer pass.
+- **Findings applied:** "the teacher stays ahead" now says "in most new-encoder cells" (4 WIN and 4 LEVEL among the 48 new-encoder
+  cells); SigLIP 2's LEVEL in the figure's caption; "matched by name" in the new-artist heading; exact copies stated as inside SemArt;
+  the cost table marked as model time, with the with-decoding pass named; "a small output layer" dropped, since each head is a
+  trunk-and-head network.
+- **Findings not applied:** "published method" stays, since PercepT's published paper is the project's own definition. "The gates cover
+  those" stays, since the claim review fixed that wording. D17's reason for the unset cells stays out: it explains the design and
+  changes no result's meaning.
