@@ -162,9 +162,19 @@ def cstar_range(data, set_, enc, aspect, k, metric, partitions=ns_metrics.partit
     return dict(r=float(rng['r']), per_seed=rng['per_seed'], k=int(k), n_val=int(len(y)), n_labelled=int((y >= 0).sum()))
 
 
+MISSING_SOURCE = (FileNotFoundError, KeyError)    # a source that is not there; anything else is a bug and crashes
+
+
 def qwen_ami20(data, partitions=ns_metrics.partitions):
-    """{aspect: cstar_range} for Qwen on ArtELingo, AMI at 20 (no recorded range exists)."""
-    return {a: cstar_range(data, 'artelingo', 'qwen', a, op.K20, 'ami', partitions) for a in ASPECTS}
+    """{aspect: cstar_range} for Qwen on ArtELingo, AMI at 20 (no recorded range exists). An aspect whose c* export is
+    missing gives {r: None, missing: why} instead of losing the other aspects."""
+    out = {}
+    for a in ASPECTS:
+        try:
+            out[a] = cstar_range(data, 'artelingo', 'qwen', a, op.K20, 'ami', partitions)
+        except MISSING_SOURCE as e:
+            out[a] = dict(r=None, missing=f'{type(e).__name__}: {e}')
+    return out
 
 
 def _recorded(round_, enc, inner, kind, aspect):
@@ -194,17 +204,25 @@ def map_range(set_, enc, aspect):
 
 def r17_record(path=None):
     """r17's committed class-count ranges {key: {r, ...}}, or None when its file is absent (r17's run has not happened)."""
-    path = Path(ns_paths.RECORDS / R17_FILE if path is None else path)
-    if not path.exists():
-        return None
-    doc = json.loads(path.read_text())
+    if path is None:
+        try:
+            doc = ns_paths.read_committed_record(R17_FILE)       # refuses a file that differs from git HEAD (§3.5)
+        except FileNotFoundError:
+            return None
+        path = ns_paths.record_path(R17_FILE)
+    else:                                                        # a given path (tests): read as is
+        path = Path(path)
+        if not path.exists():
+            return None
+        doc = json.loads(path.read_text())
     for key, v in doc.items():
         assert np.isfinite(v['r']) and v['r'] >= 0, (path, key, v['r'])
     return doc
 
 
 def build_ranges(qwen20, r17_path=None):
-    """The whole r table: {key: {r, source, ...}}. `qwen20` is `qwen_ami20`'s result. A missing source gives r null."""
+    """The whole r table: {key: {r, source, ...}}. `qwen20` is `qwen_ami20`'s result. A missing source (absent file or key:
+    FileNotFoundError, KeyError) gives r null and a `missing:` source; any other error crashes."""
     r17 = r17_record(r17_path)
     out = {}
     for k in range_keys():
@@ -218,16 +236,22 @@ def build_ranges(qwen20, r17_path=None):
             else:
                 e = dict(r=float(r17[rkey]['r']), source=f'r17 records/{R17_FILE}:{rkey}')
         elif fam == 'ours':
-            q = qwen20[k['aspect']]
-            e = dict(r=float(q['r']), source='om_stage1: k-means as r10 on Qwen c* validation exports, seeds 0 to 4, '
-                                             'mean over states 0 to 2, max minus min', per_seed=q['per_seed'],
-                     n_val=q['n_val'], n_labelled=q['n_labelled'])
-        elif fam in ('r14', 'r15'):
-            r, src = recorded_ami20(k['set'], k['enc'], k['aspect'])
-            e = dict(r=r, source=src)
+            q = qwen20.get(k['aspect'])
+            if q is None or q['r'] is None:
+                e = dict(r=None, source=f"missing:{key}: Qwen c* validation exports: {'not computed' if q is None else q['missing']}")
+            else:
+                e = dict(r=float(q['r']), source='om_stage1: k-means as r10 on Qwen c* validation exports, seeds 0 to 4, '
+                                                 'mean over states 0 to 2, max minus min', per_seed=q['per_seed'],
+                         n_val=q['n_val'], n_labelled=q['n_labelled'])
         else:
-            r, src = map_range(k['set'], k['enc'], k['aspect'])
-            e = dict(r=float(r), source=src)
+            try:
+                if fam in ('r14', 'r15'):
+                    r, src = recorded_ami20(k['set'], k['enc'], k['aspect'])
+                else:
+                    r, src = map_range(k['set'], k['enc'], k['aspect'])
+                e = dict(r=float(r), source=src)
+            except MISSING_SOURCE as exc:
+                e = dict(r=None, source=f'missing:{key}: {fam} source: {type(exc).__name__}: {exc}')
         out[key] = e
     assert len(out) == len(range_keys())
     return out
@@ -301,7 +325,7 @@ def tpips_pick(data, set_, unit=None, source=None, workers=8, out=None):
 
 def unit_score(record, unit):
     """D7's text-set score: the mean over the aspects of validation mAP at the pick divided by the unit (CLIP c*'s range)."""
-    return float(np.mean([record['scores']['map'][a] / unit[a] for a in ASPECTS]))
+    return float(ac_select.version_score(record['scores']['map'], unit))   # r12's: mean over aspects of mAP / range
 
 
 def clay_pick(data, set_, text_set, unit=None, source=None, workers=8, out=None):

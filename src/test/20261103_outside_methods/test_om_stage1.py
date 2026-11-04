@@ -77,6 +77,12 @@ class FakeVal:
         return None if self.text_count(text_set, aspect) is None else f'sha-{text_set}-{aspect}'
 
 
+@pytest.fixture(autouse=True)
+def never_write_the_real_out(tmp_path, monkeypatch):
+    """Every writer here defaults to `om_paths.OUT`: point it at a scratch folder so no test can touch the real outputs."""
+    monkeypatch.setattr(op, 'OUT', tmp_path / 'guard_out')
+
+
 @pytest.fixture
 def small(monkeypatch):
     for key in (('artelingo', 'val'), ('mmart', 'val')):
@@ -186,6 +192,21 @@ def test_table_routes_every_family_to_its_source(tmp_path, monkeypatch):
     assert t['artelingo/qwen/style/ami/27']['r'] == 0.5
 
 
+def test_mmart_qwen_ami20_is_r15s_record_not_the_computed_artelingo_range():
+    """MMArt's AMI at 20 comes from r15 for every encoder, Qwen too; `qwen_ami20` is ArtELingo's and must not reach it."""
+    rec = json.loads((s1.RECORD_DIRS['r15'] / 'stage1_qwen.json').read_text())['clu_ranges']['ranges']
+    t = s1.build_ranges(computed_qwen(), r17_path=tmp_none())
+    for a in ASPECTS:
+        e = t[f'mmart/qwen/{a}/ami/20']
+        assert e['r'] == float(rec[a]) and 'r15' in e['source'] and 'per_seed' not in e
+        assert e['r'] not in {v['r'] for v in computed_qwen().values()}
+    assert t['artelingo/qwen/emotion/ami/20']['r'] == computed_qwen()['emotion']['r']      # ArtELingo's is the computed one
+
+
+def tmp_none():
+    return '/nonexistent/stage1_ranges.json'
+
+
 def test_missing_r17_record_gives_null_with_source_and_no_crash(tmp_path, monkeypatch):
     dirs, f17 = write_fake_sources(tmp_path, r17=False)
     monkeypatch.setattr(s1, 'RECORD_DIRS', dirs)
@@ -204,6 +225,37 @@ def test_one_missing_r17_key_gives_null_for_that_key_only(tmp_path, monkeypatch)
     t = s1.build_ranges(computed_qwen(), r17_path=f17)
     assert t['artelingo/siglip1/emotion/acc/9']['r'] is None and drop in t['artelingo/siglip1/emotion/acc/9']['source']
     assert sum(v['r'] is None for v in t.values()) == 1
+
+
+def test_missing_r14_r15_r11_source_gives_null_for_that_key_only(tmp_path, monkeypatch):
+    dirs, f17 = write_fake_sources(tmp_path)
+    (dirs['r14'] / 'stage1_siglip2.json').unlink()                                         # file absent
+    p = dirs['r15'] / 'stage1_siglip1.json'
+    doc = json.loads(p.read_text())
+    del doc['clu_ranges']
+    p.write_text(json.dumps(doc))                                                          # key absent
+    monkeypatch.setattr(s1, 'RECORD_DIRS', dirs)
+    real_map = s1.map_range
+
+    def map_range(set_, enc, aspect):
+        if (set_, enc) == ('mmart', 'clip_l14'):
+            raise FileNotFoundError('r15 stage1_clip_l14.json')                            # r11 / r14 / r15 mAP record absent
+        return real_map(set_, enc, aspect)
+    monkeypatch.setattr(s1, 'map_range', map_range)
+    t = s1.build_ranges(computed_qwen(), r17_path=f17)
+    nulls = {k for k, v in t.items() if v['r'] is None}
+    want = ({f'artelingo/siglip2/{a}/ami/20' for a in ASPECTS} | {f'mmart/siglip1/{a}/ami/20' for a in ASPECTS}
+            | {f'mmart/clip_l14/{a}/map' for a in ASPECTS})
+    assert nulls == want and all(t[k]['source'].startswith('missing:') for k in nulls)
+    assert t['artelingo/siglip1/style/ami/20']['r'] is not None and t['mmart/siglip2/style/ami/20']['r'] is not None
+
+
+def test_a_bug_in_a_source_still_crashes(tmp_path, monkeypatch):
+    dirs, f17 = write_fake_sources(tmp_path)
+    monkeypatch.setattr(s1, 'RECORD_DIRS', dirs)
+    monkeypatch.setattr(s1, 'map_range', lambda *a: (_ for _ in ()).throw(ValueError('bug')))
+    with pytest.raises(ValueError):
+        s1.build_ranges(computed_qwen(), r17_path=f17)
 
 
 def test_rerun_picks_up_r17_when_it_arrives(tmp_path, monkeypatch):
@@ -280,7 +332,7 @@ def test_menu_follows_the_smallest_aspect_rank():
     assert {ro.size for ro in s1.clay_menu(100) if ro.w == 'whiten'} == {64, 100}
 
 
-def test_the_clay_pick_is_scored_on_the_clipped_menu(small, monkeypatch):
+def test_the_clay_pick_is_scored_on_the_clipped_menu(small, monkeypatch, tmp_path):
     seen = {}
     real = ac_select.arm_table
 
@@ -290,10 +342,10 @@ def test_the_clay_pick_is_scored_on_the_clipped_menu(small, monkeypatch):
     monkeypatch.setattr(ac_select, 'arm_table', spy)
     monkeypatch.setattr(rt_readout, 'crossfit_all', lambda xs, labels, ros, workers=8: {
         ro: {a: 0.3 for a in ASPECTS} for ro in ros})
-    s1.clay_pick(FakeVal(), 'artelingo', 'A', unit={a: 0.01 for a in ASPECTS})
+    s1.clay_pick(FakeVal(), 'artelingo', 'A', unit={a: 0.01 for a in ASPECTS}, out=tmp_path)
     assert seen['ros'] is not None and len(seen['ros']) == 15
     assert max(ro.size for ro in seen['ros'] if ro.w == 'whiten') == 49
-    s1.clay_pick(FakeVal(), 'artelingo', 'B', unit={a: 0.01 for a in ASPECTS})
+    s1.clay_pick(FakeVal(), 'artelingo', 'B', unit={a: 0.01 for a in ASPECTS}, out=tmp_path)
     assert max(ro.size for ro in seen['ros'] if ro.w == 'whiten') == 50
 
 
@@ -536,6 +588,81 @@ def test_audit_refuses_a_wrong_row_count(monkeypatch):
     d = FakeVal()
     with pytest.raises(AssertionError):
         s1.audit_validation_only(d, 'artelingo')                               # N=40 against the real 6,152
+
+
+# ------------------------------------------------------------------------------------------------ the steps
+class Unsorted(FakeVal):
+    """Validation keys not in the evaluation order of the set."""
+
+    def keys(self, set_):
+        k = super().keys(set_)
+        return k[::-1]
+
+
+def stub_clay_step(monkeypatch, tmp_path):
+    ret_pick_stub(monkeypatch, {'A': ('center+k10', 0.02), 'B': ('whiten50+k5', 0.0005)})
+    monkeypatch.setattr(s1, 'units', lambda arm, set_: ({a: 0.01 for a in ASPECTS}, 'stub'))
+    monkeypatch.setattr(s1, 'clay_ami20', stub_ami({**{('A', a): 0.30 for a in ASPECTS}, **{('B', a): 0.40 for a in ASPECTS}}))
+
+
+def test_step_clay_writes_every_key_and_the_pins(small, monkeypatch, tmp_path):
+    stub_clay_step(monkeypatch, tmp_path)
+    recs = s1.step_clay(FakeVal(), 'mmart', 2, out=tmp_path)
+    keys = {'clay/mmart', 'clay_textset/ret/mmart', 'clay_textset/clu/mmart'}
+    assert set(recs) == keys
+    doc = json.loads((tmp_path / 'stage1' / 'om_picks.json').read_text())
+    assert set(doc) == keys | {s1.PIN_KEY}
+    assert doc[s1.PIN_KEY] == s1.text_pins(FakeVal()) and doc[s1.PIN_KEY]['A']['style'] == 'sha-A-style'
+    assert doc['clay_textset/clu/mmart']['set'] == 'B' and doc['clay_textset/ret/mmart']['set'] == 'A'   # each its own rule
+    assert doc['clay/mmart']['pick'] == 'center+k10' and doc['clay/mmart']['text_set'] == 'A'
+    for ts in ('A', 'B'):
+        assert (tmp_path / 'stage1' / 'tables' / f'clay__mmart__{ts}.json').exists()
+
+
+def test_step_clay_refuses_validation_keys_in_the_held_split_in_both_places(small, monkeypatch, tmp_path):
+    stub_clay_step(monkeypatch, tmp_path)
+    bad = FakeVal(held_overlap=True)
+    with pytest.raises(AssertionError, match='held'):
+        s1.clay_pick(bad, 'artelingo', 'A', unit={a: 0.01 for a in ASPECTS}, out=tmp_path)      # the pick's own audit
+    with pytest.raises(AssertionError, match='held'):
+        s1.clay_clustering_choice(bad, 'artelingo')                                              # the choice's own audit
+    with pytest.raises(AssertionError, match='held'):
+        s1.step_clay(bad, 'artelingo', 2, out=tmp_path)
+    assert not list(tmp_path.rglob('om_picks.json'))
+
+
+@pytest.mark.parametrize('set_', ['artelingo', 'mmart'])
+def test_step_clay_refuses_keys_out_of_the_evaluation_order(small, monkeypatch, tmp_path, set_):
+    stub_clay_step(monkeypatch, tmp_path)
+    with pytest.raises(AssertionError, match='order'):
+        s1.step_clay(Unsorted(), set_, 2, out=tmp_path)
+    assert not list(tmp_path.rglob('om_picks.json'))
+
+
+class NoQwenGenre(FakeVal):
+    """c* exports of Qwen on the `genre` aspect are missing; the others are random rows (k-means as r10 runs on them)."""
+
+    def cstar(self, set_, enc, aspect, seed):
+        if aspect == 'genre':
+            raise FileNotFoundError(f'cstar {set_} {enc} {aspect} {seed}')
+        return unit(np.random.default_rng(seed).normal(size=(N, 4)))
+
+
+def test_step_ranges_carries_a_null_qwen_entry_when_its_export_is_missing(small, tmp_path, monkeypatch):
+    (tmp_path / 'src').mkdir()
+    dirs, _ = write_fake_sources(tmp_path / 'src', r17=False)
+    monkeypatch.setattr(s1, 'RECORD_DIRS', dirs)
+    monkeypatch.setattr(s1, 'R17_FILE', 'no_such_stage1_ranges.json')                  # absent: r17 keys null as well
+    path, table = s1.step_ranges(NoQwenGenre(), out=tmp_path)
+    assert json.loads(path.read_text()) == table and path == tmp_path / 'stage1' / 'om_ranges.json'
+    g = table['artelingo/qwen/genre/ami/20']
+    assert g['r'] is None and g['source'].startswith('missing:') and 'FileNotFoundError' in g['source']
+    e = table['artelingo/qwen/emotion/ami/20']
+    assert e['r'] is not None and np.isfinite(e['r']) and len(e['per_seed']) == 5      # the other aspects survive
+    assert table['artelingo/qwen/style/ami/20']['r'] is not None
+    assert table['artelingo/siglip2/genre/ami/20']['r'] is not None                    # r14 untouched
+    with pytest.raises(AssertionError, match='held'):
+        s1.step_ranges(FakeVal(held_overlap=True), out=tmp_path)
 
 
 # ------------------------------------------------------------------------------------------------ TPIPS store missing
