@@ -103,3 +103,18 @@ All 21 steps ok, 412 cells, rows decided 412, missing 0 (2.4 h of wall time, oth
   the painting diagnostics. With this order a cut can lose photo rows only. No step changes.
 - End estimate: about 11:30 if the CPU slots stay free (r18 and r19 may take slots). This is past 11:00; the choice made at
   stage 0 holds (CPU only, go on; §3.6's 12:00 cut applies).
+
+## 2026-11-04 08:53: stage 3 done
+
+- 39 of 39 steps exit 0 (`run_logs/stage3.log`), 07:00 to 08:53, about 1 h 53 min in three chains. CPU was free all the way.
+- Much faster than the estimate (about 11:30): painting sweeps took 11 to 34 min, not 55 min; photo sweeps about 2 to 3 min.
+- Nothing was cut: photo sets all ran. The run's CPU use ended at 08:53, before 11:00.
+- Outputs: `/data/SSD2/cosir_r17/20261103_new_scores/outputs/stage3/` (2.0 MB, 39 files).
+
+## 2026-11-04 09:12: fix of the Qwen c* against CRL diagnostic
+
+- Found when I read stage 3's output: `qwen_crl_mmart.json` had clustering rows for emotion and genre only. In `ns_diag.qwen_crl`
+  the skip of the 20-cluster row also skipped the class-count row at K = 20, so MMArt style was lost.
+- Fix bd8717c2, with a test that failed before the fix. Rerun through the queue: the old rows came back identical, and 4 style
+  rows are new. No verdict reads this step. Change log: `.claude/20261104_log.md`.
+- `ns_nonwin_cells.md` written from `records/verdicts.json`: 39 of 412 cells, the rest are WIN.
