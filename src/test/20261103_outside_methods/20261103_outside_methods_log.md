@@ -158,3 +158,22 @@ by the 200 W line; Qwen alone means 199.6 W.
 
 **Tickets.** 09 merged (31 data tests). 08 merged after an Opus `high` review, one fix round, Sonnet `high` re-review APPROVE;
 47 tests. 07 has an Opus `high` review, APPROVE with notes; its three should-fixes are open (`.scratch/.../notes/t07_review.md`).
+
+## Build 5 (2026-11-04, unattended)
+
+- **Ticket 07 merged.** Fix round on the three should-fixes, then a Sonnet `high` re-review (approve with notes). The controller
+  applied its two low notes: the code hash is taken before part a, and it covers `rg_held`. 41 tests.
+- **Gate (iii) passes**, 45 min on the CPU, not the 2.5 h expected: a 60 items, max difference 0; b 63 items, 0; c 42 items, 5.55e-17.
+  The hash covers `om_gate_iii`, `om_data`, `om_paths`, `ns_clu`, `ns_metrics`, `ns_ret`, `ns_data`, `rg_held`. Main's r17 records
+  and the r19 build touch none of them, so merging main kept the hash valid (checked).
+- **Ticket 10 merged.** Opus `high` review: CHANGES NEEDED, one blocker (r17's gate (vi) voided nothing; §3.5 says the same cells
+  here), five should-fixes, each proved by a run, among them a stale parts file reaching `cells.json` and 13 of 25 sabotages
+  surviving. Fix round: 102 tests, all 13 caught. Sonnet `high` re-review found one more: a failed unit read as a void and could
+  reach `labels.json`. The controller fixed it: `labels` refuses a cell `not scored`, and a failed unit leaves no older parts file.
+  104 tests. r17's gate (vi) is `ok` today, so the blocker changes no label.
+- **Ticket 12 merged**, Sonnet `medium`; partial smoke on what exists. Its TURTLE and TPIPS paths have not run.
+- **TURTLE route settled (agent default): node402**, ticket 09b, as `shared-resources.md` says for a reserved node. The 128 inputs
+  are exported once to `OUT/turtle_pack` (14 GB) and synced through a new `DATA_MAP` pair. Probe on the node: torch 2.11, `entr`
+  compiles on the GPU, one full fit (MMArt Qwen plain, K 20, start 0) 119.3 s, loss 2.9114, 20 clusters, against 105 s locally. The
+  loss and AMI comparison with a local fit is open: the build's next chat does it. Gate (iv) does not apply to TURTLE, since
+  nothing compares its vectors across machines.
