@@ -187,9 +187,10 @@ PY
     echo PROBE_EMBED_OK
     ;;
 gate-probe)
+    # A rerun skips finished chunks, so a new package set needs a new folder: probe_full (probe holds the node's own packages' run).
     $T extract --set probe --factor all --shard 0 --of 1 --batch "$OM_BATCH" --device cuda \
-        --manifest "$(MAN probe)" --store-root "$OM_OUTPUTS/tpips_store/probe" --image-root-map "$IMG_MAP" --snapshot-dir "$TPIPS_SNAP"
-    $T merge --set probe --factor all --of 1 --manifest "$(MAN probe)" --store-root "$OM_OUTPUTS/tpips_store/probe"
+        --manifest "$(MAN probe)" --store-root "$OM_OUTPUTS/tpips_store/probe_full" --image-root-map "$IMG_MAP" --snapshot-dir "$TPIPS_SNAP"
+    $T merge --set probe --factor all --of 1 --manifest "$(MAN probe)" --store-root "$OM_OUTPUTS/tpips_store/probe_full"
     ;;
 extract)
     for s in $OM_SETS; do
