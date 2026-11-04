@@ -44,6 +44,11 @@ Run sheet: `pp_run_sheet.md`. Spec: `docs/superpowers/specs/2026-11-03-past-pick
 | 11:50 | Stage 1 records committed before any test number; the printed command plus attribution lines | committed |
 | 11:49 | Stage 2 started, `PP_CPU_JOBS` 3 | running |
 | 12:30 | Stage 2 ended, 22 of 22 steps rc 0, 41 min | 137 cells in 7 files; no number read yet |
+| 12:34 | C13 by Codex started (`gpt-6.1-sol`, high) | running |
+| 13:27 | Codex ended: 65 tests pass; subset smoke `C13 FAIL items=13538 failed=27 max_abs=1.58e-05` | all 27 are frozen-image pick `score` fields on ArtELingo (10) and Affection (17); every claim cell passes |
+| 13:40 | Controller: imports and file reads clean. Sonnet `high` review: no way for a wrong result to pass; one must-fix (gates (vi), (viii) not cross-checked) | fix list written |
+| 14:06 | Fix round by `resume` (nine items): 108 tests pass; Affection subset `C13 PASS items=394 failed=0 max_abs=1.1e-16` | cause of the 27 failures closed for Affection; ArtELingo's own check waits for the full derive |
+| 14:13 | Sonnet `high` re-review: all nine fixed, independence holds; one new must-fix (digits in encoder names false-fail `check-outcomes`) | Claude fixed it (the one fix round was used), added slot-order checks for the cost sentence; 116 tests pass |
 
 ## Choices of the run chat (agent default)
 
@@ -54,5 +59,11 @@ Run sheet: `pp_run_sheet.md`. Spec: `docs/superpowers/specs/2026-11-03-past-pick
   counts probes as short work that can stay local, and the spec calls this one short.
 - **The stage 1 commit landed second.** A shell error stopped the first attempt, so the run log commit 35db5c7d came before the
   records commit a617831b. Both came before stage 2 started.
+- **The C13 brief's normalisation fact did not carry over.** Fact 1 (twice) came from r15. On ArtELingo and Affection r14 normalises
+  a frozen row once (`bs_c13.py:373`, `:411`, `:530`), and D21 reuses r14's rule, so the derive was wrong and the round's tables
+  right. The effect on the 27 scores was at most 1.6e-5, on scores of size 1 to 40.
+- **The end-to-end pass has no warm-up batches.** `pp_probe.py:487` records `warmup_batches=0`; its docstring and §3.4 name 3
+  warm-up batches. It ran right after the three model-time repeats, so the model was warm. It touches only <c> and <d> of the cost
+  sentence, not SC15, so the probe was not rerun (the handoff says not to without a reason). The report says so.
 - **C13's full derive waits for 19:00.** The user's limit for CPU scoring is about 13:00, and the code is not written yet. The
   report's date (about 11-06) allows this.
