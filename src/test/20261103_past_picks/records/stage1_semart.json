@@ -1,0 +1,121 @@
+{
+ "qwen": {
+  "units": {
+   "clu": 0.01390536109142726,
+   "ret": 0.0038237977312404192
+  },
+  "units_source": "computed with bs_artclu.clustering_ranges and bs_artret.validation_ranges on the five ArtELingo validation exports of /data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full, genre entry; the mAP unit equals r11's stored range (stage0a_ranges.json, map, genre, r = 0.0038237977312404192) within 1e-9",
+  "picks": {
+   "cstar": "center+k10",
+   "frozen": "center+k10",
+   "teacher": "center+k10"
+  },
+  "picks_source": {
+   "cstar": "r11 stored pick, arm cstar (r10's c*)",
+   "frozen": "r11 stored pick, arm plain",
+   "teacher": "r11 stored pick, arm instructed"
+  }
+ },
+ "siglip2": {
+  "units": {
+   "clu": 0.0069549551644224605,
+   "ret": 0.004259334686874894
+  },
+  "units_source": "computed with bs_artclu.clustering_ranges and bs_artret.validation_ranges on the five ArtELingo validation exports of /data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/siglip2, genre entry; equal within 1e-9 to r14 committed records/stage1_siglip2.json",
+  "picks": {
+   "cstar": "center+k10",
+   "frozen": "center+k10",
+   "teacher": "center+k10"
+  },
+  "picks_source": {
+   "cstar": "records/stage1_siglip2.json (r14), artret_picks.cstar (X-c*'s own ranges)",
+   "frozen": "r11 stored pick, arm siglip2; in records/stage1_siglip2.json (r14)",
+   "teacher": "r11 stored pick, arm instructed; in records/stage1_siglip2.json (r14)"
+  }
+ },
+ "siglip1": {
+  "units": {
+   "clu": 0.011503544326430415,
+   "ret": 0.004102472623162656
+  },
+  "units_source": "computed with bs_artclu.clustering_ranges and bs_artret.validation_ranges on the five ArtELingo validation exports of /data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/siglip1, genre entry; equal within 1e-9 to r14 committed records/stage1_siglip1.json",
+  "picks": {
+   "cstar": "center+k10",
+   "frozen": "center+k10",
+   "teacher": "center+k10"
+  },
+  "picks_source": {
+   "cstar": "records/stage1_siglip1.json (r14), artret_picks.cstar (X-c*'s own ranges)",
+   "frozen": "records/stage1_siglip1.json (r14), artret_picks.frozen (computed: r11's stage 4 rule with r11's r_a)",
+   "teacher": "r11 stored pick, arm instructed; in records/stage1_siglip1.json (r14)"
+  }
+ },
+ "clip_l14": {
+  "units": {
+   "clu": 0.015928465148856708,
+   "ret": 0.0016564163854410063
+  },
+  "units_source": "computed with bs_artclu.clustering_ranges and bs_artret.validation_ranges on the five ArtELingo validation exports of /data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/clip_l14, genre entry; equal within 1e-9 to r14 committed records/stage1_clip_l14.json",
+  "picks": {
+   "cstar": "center+k10",
+   "frozen": "center+k10",
+   "teacher": "center+k10"
+  },
+  "picks_source": {
+   "cstar": "records/stage1_clip_l14.json (r14), artret_picks.cstar (X-c*'s own ranges)",
+   "frozen": "r11 stored pick, arm clip; in records/stage1_clip_l14.json (r14)",
+   "teacher": "r11 stored pick, arm instructed; in records/stage1_clip_l14.json (r14)"
+  }
+ },
+ "dinov2_large": {
+  "units": {
+   "clu": 0.011575743677948391,
+   "ret": 0.004379166551728653
+  },
+  "units_source": "computed with bs_artclu.clustering_ranges and bs_artret.validation_ranges on the five ArtELingo validation exports of /data/SSD2/cosir_r19/20261103_past_picks/outputs/cstar/dinov2_large, genre entry; equal within 1e-9 to this round's committed records/stage1_dinov2_large.json",
+  "picks": {
+   "cstar": "center+k10",
+   "frozen": "center+k10",
+   "teacher": "center+k10"
+  },
+  "picks_source": {
+   "cstar": "this round's committed records/stage1_dinov2_large.json, artret_picks.cstar (X-c*'s own ranges)",
+   "frozen": "this round's committed records/stage1_dinov2_large.json, artret_picks.frozen (computed: r11's stage 4 rule with r11's r_a)",
+   "teacher": "r11 stored pick, arm instructed; in this round's committed records/stage1_dinov2_large.json"
+  }
+ },
+ "clip_b32": {
+  "units": {
+   "clu": 0.010763830057222534,
+   "ret": 0.0025437481496900505
+  },
+  "units_source": "computed with bs_artclu.clustering_ranges and bs_artret.validation_ranges on the five ArtELingo validation exports of /data/SSD2/cosir_r19/20261103_past_picks/outputs/cstar/clip_b32, genre entry; equal within 1e-9 to this round's committed records/stage1_clip_b32.json",
+  "picks": {
+   "cstar": "center+k10",
+   "frozen": "center+k10",
+   "teacher": "center+k10"
+  },
+  "picks_source": {
+   "cstar": "this round's committed records/stage1_clip_b32.json, artret_picks.cstar (X-c*'s own ranges)",
+   "frozen": "this round's committed records/stage1_clip_b32.json, artret_picks.frozen (computed: r11's stage 4 rule with r11's r_a)",
+   "teacher": "r11 stored pick, arm instructed; in this round's committed records/stage1_clip_b32.json"
+  }
+ },
+ "clip_b16": {
+  "units": {
+   "clu": 0.012119374163286234,
+   "ret": 0.0026673553284370932
+  },
+  "units_source": "computed with bs_artclu.clustering_ranges and bs_artret.validation_ranges on the five ArtELingo validation exports of /data/SSD2/cosir_r19/20261103_past_picks/outputs/cstar/clip_b16, genre entry; equal within 1e-9 to this round's committed records/stage1_clip_b16.json",
+  "picks": {
+   "cstar": "center+k10",
+   "frozen": "center+k10",
+   "teacher": "center+k10"
+  },
+  "picks_source": {
+   "cstar": "this round's committed records/stage1_clip_b16.json, artret_picks.cstar (X-c*'s own ranges)",
+   "frozen": "this round's committed records/stage1_clip_b16.json, artret_picks.frozen (computed: r11's stage 4 rule with r11's r_a)",
+   "teacher": "r11 stored pick, arm instructed; in this round's committed records/stage1_clip_b16.json"
+  }
+ }
+}

@@ -1,0 +1,25 @@
+{
+ "n_items": 4211,
+ "failed": 0,
+ "max_abs": 1.8539324103672428e-09,
+ "scope": "outcomes",
+ "per_section": {
+  "coverage": {
+   "items": 4,
+   "failed": 0,
+   "max_abs": 0.0
+  },
+  "outcomes": {
+   "items": 4207,
+   "failed": 0,
+   "max_abs": 1.8539324103672428e-09
+  }
+ },
+ "draws_clu": 2000,
+ "draws_ret": 10000,
+ "kmeans_threads": 8,
+ "pass": true,
+ "sha256": {
+  "stage4/outcomes.json": "118e77a1816122a19b131b743d5117a8074b59fa0db4343cd64eb02c0ce97477"
+ }
+}

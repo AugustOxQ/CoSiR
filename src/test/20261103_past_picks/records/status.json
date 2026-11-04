@@ -1,0 +1,75 @@
+{
+ "gates": {
+  "i_store": {
+   "dinov2_large": {
+    "mmart": "ok",
+    "affection": "ok",
+    "semart": "ok"
+   },
+   "clip_b32": {
+    "mmart": "ok",
+    "affection": "ok"
+   },
+   "clip_b16": {
+    "mmart": "ok",
+    "affection": "ok",
+    "semart": "ok"
+   },
+   "siglip1": {
+    "semart": "ok"
+   },
+   "clip_l14": {
+    "semart": "ok"
+   }
+  },
+  "i_art_parity": {
+   "dinov2_large": "ok",
+   "clip_b32": "ok",
+   "clip_b16": "ok",
+   "siglip1": "ok",
+   "clip_l14": "ok"
+  },
+  "i_semart_parity": {
+   "clip_b32": "ok",
+   "qwen": "ok",
+   "siglip2": "ok"
+  },
+  "i_semart_genre_word": "ok",
+  "i_aff_l14_parity": "ok",
+  "ii": "ok",
+  "iii": {
+   "r10": "ok",
+   "r14": "ok"
+  },
+  "iv": "ok",
+  "v": {
+   "dinov2_large": "ok",
+   "clip_b32": "ok",
+   "clip_b16": "ok"
+  },
+  "vi": "ok",
+  "vii": {
+   "artelingo": "ok",
+   "affection": "ok",
+   "mmart": "ok"
+  },
+  "viii": "ok"
+ },
+ "runs": {
+  "dinov2_large": {
+   "cstar": "ok",
+   "photo": "ok",
+   "matched": "ok"
+  },
+  "clip_b32": {
+   "cstar": "ok",
+   "photo": "ok",
+   "matched": "ok"
+  },
+  "clip_b16": {
+   "cstar": "ok",
+   "photo": "ok",
+   "matched": "ok"
+  }
+ }
+}

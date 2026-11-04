@@ -1,0 +1,1796 @@
+{
+ "encoder": "clip_b32",
+ "kind": "stage1_record",
+ "artclu": {
+  "encoder": "clip_b32",
+  "kind": "artelingo_clustering_validation_ranges",
+  "ranges": {
+   "emotion": 0.006282290503781984,
+   "style": 0.009079567758171647,
+   "genre": 0.010763830057222534
+  },
+  "per_seed": {
+   "emotion": {
+    "0": 0.09383414088355739,
+    "1": 0.09119586643870738,
+    "2": 0.09747815694248936,
+    "3": 0.09298221666701807,
+    "4": 0.0920224720623315
+   },
+   "style": {
+    "0": 0.3815318717794541,
+    "1": 0.3903320063815914,
+    "2": 0.3868038916611811,
+    "3": 0.38125243862341973,
+    "4": 0.3857623662858553
+   },
+   "genre": {
+    "0": 0.4996338980573726,
+    "1": 0.49977456551513244,
+    "2": 0.4926397955187966,
+    "3": 0.5034036255760191,
+    "4": 0.5031758370876949
+   }
+  },
+  "sources": {
+   "emotion": {
+    "0": {
+     "path": "/data/SSD2/cosir_r19/20261103_past_picks/outputs/cstar/clip_b32/train/k11=40/R6-5/emotion__Gres__s0.npz",
+     "sha256": "5cfa6a04cd50bd4b55d8cec36b05c99891f99b5fe40c35d77dde65991617bafa"
+    },
+    "1": {
+     "path": "/data/SSD2/cosir_r19/20261103_past_picks/outputs/cstar/clip_b32/train/k11=40/R6-5/emotion__Gres__s1.npz",
+     "sha256": "03ad9694f2662f88c86281905c351ed19841d5cf713bf73bed270b194227ee15"
+    },
+    "2": {
+     "path": "/data/SSD2/cosir_r19/20261103_past_picks/outputs/cstar/clip_b32/train/k11=40/R6-5/emotion__Gres__s2.npz",
+     "sha256": "62971b232b7093db234626d0a2a7470f0b9c72258d622014d4769ed3f8938711"
+    },
+    "3": {
+     "path": "/data/SSD2/cosir_r19/20261103_past_picks/outputs/cstar/clip_b32/train/k11=40/R6-5/emotion__Gres__s3.npz",
+     "sha256": "9a18144598aad6d2d494f8b494df6cd21df3e20cbb22a2b0603919afec378f6d"
+    },
+    "4": {
+     "path": "/data/SSD2/cosir_r19/20261103_past_picks/outputs/cstar/clip_b32/train/k11=40/R6-5/emotion__Gres__s4.npz",
+     "sha256": "cd1614ba3d09fb6978075e3b038ca87fa29681830973bf2ced15f9ad49749df3"
+    }
+   },
+   "style": {
+    "0": {
+     "path": "/data/SSD2/cosir_r19/20261103_past_picks/outputs/cstar/clip_b32/train/k11=40/R6-5/style__Fres05__s0.npz",
+     "sha256": "4d8351af4f9c1ff51c8e5d38c40a69043d15832333db54181bccfd3879aea2ca"
+    },
+    "1": {
+     "path": "/data/SSD2/cosir_r19/20261103_past_picks/outputs/cstar/clip_b32/train/k11=40/R6-5/style__Fres05__s1.npz",
+     "sha256": "c9801f316f29aee747720c4a1fd9a8b0335d4ec812ecdfe86bf78d1a57403e12"
+    },
+    "2": {
+     "path": "/data/SSD2/cosir_r19/20261103_past_picks/outputs/cstar/clip_b32/train/k11=40/R6-5/style__Fres05__s2.npz",
+     "sha256": "c91fcbbed6fae3eb91e9ebf395eabcafc4dfe523afad8c5df4259a3f1749b7bd"
+    },
+    "3": {
+     "path": "/data/SSD2/cosir_r19/20261103_past_picks/outputs/cstar/clip_b32/train/k11=40/R6-5/style__Fres05__s3.npz",
+     "sha256": "cb6e123f6cf3c68fa89f73c5903e89e61db279cc46f686da2002505a95bf5e61"
+    },
+    "4": {
+     "path": "/data/SSD2/cosir_r19/20261103_past_picks/outputs/cstar/clip_b32/train/k11=40/R6-5/style__Fres05__s4.npz",
+     "sha256": "15efd220a5fbbb27986adfd9cced308677c2ac0e74c3c72bfeb424004f547672"
+    }
+   },
+   "genre": {
+    "0": {
+     "path": "/data/SSD2/cosir_r19/20261103_past_picks/outputs/cstar/clip_b32/train/k11=40/R6-5/genre__R0o__s0.npz",
+     "sha256": "47ab7d0add2494e6756163a889ed8bdba572320858cc1ed1e2d712ba15249dd1"
+    },
+    "1": {
+     "path": "/data/SSD2/cosir_r19/20261103_past_picks/outputs/cstar/clip_b32/train/k11=40/R6-5/genre__R0o__s1.npz",
+     "sha256": "e77cf1add0102ae28f1a9bf8baa95d573b96832a717a46f69e291b6280f5e920"
+    },
+    "2": {
+     "path": "/data/SSD2/cosir_r19/20261103_past_picks/outputs/cstar/clip_b32/train/k11=40/R6-5/genre__R0o__s2.npz",
+     "sha256": "b95ec8a71ac37241e19ea50132d19cafabfb9f81b945cb85d88eeebf67ca19a4"
+    },
+    "3": {
+     "path": "/data/SSD2/cosir_r19/20261103_past_picks/outputs/cstar/clip_b32/train/k11=40/R6-5/genre__R0o__s3.npz",
+     "sha256": "cea354100b63343f9872de0a9b4801184954d7971eddc107448ca9bb521045f4"
+    },
+    "4": {
+     "path": "/data/SSD2/cosir_r19/20261103_past_picks/outputs/cstar/clip_b32/train/k11=40/R6-5/genre__R0o__s4.npz",
+     "sha256": "72cb454a0ec58ed42a791f9b572974cb864f38b82118dfe7cc07b28e6b71d51d"
+    }
+   }
+  },
+  "n_val": 6152,
+  "labelled": {
+   "emotion": 6152,
+   "style": 6152,
+   "genre": 4960
+  }
+ },
+ "artret_ranges": {
+  "encoder": "clip_b32",
+  "kind": "artelingo_retrieval_validation_ranges",
+  "ranges": {
+   "emotion": 0.0019142083150722189,
+   "style": 0.0030216985729736856,
+   "genre": 0.0025437481496900505
+  },
+  "per_seed": {
+   "emotion": {
+    "0": 0.256804843555995,
+    "1": 0.2572175953593119,
+    "2": 0.2574056144247653,
+    "3": 0.25732812118957105,
+    "4": 0.25549140610969306
+   },
+   "style": {
+    "0": 0.28230782042028185,
+    "1": 0.2848213324204993,
+    "2": 0.2823323148824915,
+    "3": 0.28355759483544807,
+    "4": 0.28532951899325554
+   },
+   "genre": {
+    "0": 0.5740190723793736,
+    "1": 0.5765628205290636,
+    "2": 0.5760787308006466,
+    "3": 0.5754279463715956,
+    "4": 0.5762275612124402
+   }
+  },
+  "sources": {
+   "emotion": {
+    "0": {
+     "path": "/data/SSD2/cosir_r19/20261103_past_picks/outputs/cstar/clip_b32/train/k11=40/R6-5/emotion__Gres__s0.npz",
+     "sha256": "5cfa6a04cd50bd4b55d8cec36b05c99891f99b5fe40c35d77dde65991617bafa"
+    },
+    "1": {
+     "path": "/data/SSD2/cosir_r19/20261103_past_picks/outputs/cstar/clip_b32/train/k11=40/R6-5/emotion__Gres__s1.npz",
+     "sha256": "03ad9694f2662f88c86281905c351ed19841d5cf713bf73bed270b194227ee15"
+    },
+    "2": {
+     "path": "/data/SSD2/cosir_r19/20261103_past_picks/outputs/cstar/clip_b32/train/k11=40/R6-5/emotion__Gres__s2.npz",
+     "sha256": "62971b232b7093db234626d0a2a7470f0b9c72258d622014d4769ed3f8938711"
+    },
+    "3": {
+     "path": "/data/SSD2/cosir_r19/20261103_past_picks/outputs/cstar/clip_b32/train/k11=40/R6-5/emotion__Gres__s3.npz",
+     "sha256": "9a18144598aad6d2d494f8b494df6cd21df3e20cbb22a2b0603919afec378f6d"
+    },
+    "4": {
+     "path": "/data/SSD2/cosir_r19/20261103_past_picks/outputs/cstar/clip_b32/train/k11=40/R6-5/emotion__Gres__s4.npz",
+     "sha256": "cd1614ba3d09fb6978075e3b038ca87fa29681830973bf2ced15f9ad49749df3"
+    }
+   },
+   "style": {
+    "0": {
+     "path": "/data/SSD2/cosir_r19/20261103_past_picks/outputs/cstar/clip_b32/train/k11=40/R6-5/style__Fres05__s0.npz",
+     "sha256": "4d8351af4f9c1ff51c8e5d38c40a69043d15832333db54181bccfd3879aea2ca"
+    },
+    "1": {
+     "path": "/data/SSD2/cosir_r19/20261103_past_picks/outputs/cstar/clip_b32/train/k11=40/R6-5/style__Fres05__s1.npz",
+     "sha256": "c9801f316f29aee747720c4a1fd9a8b0335d4ec812ecdfe86bf78d1a57403e12"
+    },
+    "2": {
+     "path": "/data/SSD2/cosir_r19/20261103_past_picks/outputs/cstar/clip_b32/train/k11=40/R6-5/style__Fres05__s2.npz",
+     "sha256": "c91fcbbed6fae3eb91e9ebf395eabcafc4dfe523afad8c5df4259a3f1749b7bd"
+    },
+    "3": {
+     "path": "/data/SSD2/cosir_r19/20261103_past_picks/outputs/cstar/clip_b32/train/k11=40/R6-5/style__Fres05__s3.npz",
+     "sha256": "cb6e123f6cf3c68fa89f73c5903e89e61db279cc46f686da2002505a95bf5e61"
+    },
+    "4": {
+     "path": "/data/SSD2/cosir_r19/20261103_past_picks/outputs/cstar/clip_b32/train/k11=40/R6-5/style__Fres05__s4.npz",
+     "sha256": "15efd220a5fbbb27986adfd9cced308677c2ac0e74c3c72bfeb424004f547672"
+    }
+   },
+   "genre": {
+    "0": {
+     "path": "/data/SSD2/cosir_r19/20261103_past_picks/outputs/cstar/clip_b32/train/k11=40/R6-5/genre__R0o__s0.npz",
+     "sha256": "47ab7d0add2494e6756163a889ed8bdba572320858cc1ed1e2d712ba15249dd1"
+    },
+    "1": {
+     "path": "/data/SSD2/cosir_r19/20261103_past_picks/outputs/cstar/clip_b32/train/k11=40/R6-5/genre__R0o__s1.npz",
+     "sha256": "e77cf1add0102ae28f1a9bf8baa95d573b96832a717a46f69e291b6280f5e920"
+    },
+    "2": {
+     "path": "/data/SSD2/cosir_r19/20261103_past_picks/outputs/cstar/clip_b32/train/k11=40/R6-5/genre__R0o__s2.npz",
+     "sha256": "b95ec8a71ac37241e19ea50132d19cafabfb9f81b945cb85d88eeebf67ca19a4"
+    },
+    "3": {
+     "path": "/data/SSD2/cosir_r19/20261103_past_picks/outputs/cstar/clip_b32/train/k11=40/R6-5/genre__R0o__s3.npz",
+     "sha256": "cea354100b63343f9872de0a9b4801184954d7971eddc107448ca9bb521045f4"
+    },
+    "4": {
+     "path": "/data/SSD2/cosir_r19/20261103_past_picks/outputs/cstar/clip_b32/train/k11=40/R6-5/genre__R0o__s4.npz",
+     "sha256": "72cb454a0ec58ed42a791f9b572974cb864f38b82118dfe7cc07b28e6b71d51d"
+    }
+   }
+  },
+  "n_val": 6152,
+  "labelled": {
+   "emotion": 6152,
+   "style": 6152,
+   "genre": 4960
+  }
+ },
+ "artret_picks": {
+  "encoder": "clip_b32",
+  "kind": "artelingo_retrieval_picks",
+  "cstar": {
+   "pick": "center+k10",
+   "table": {
+    "none+k0": {
+     "map": {
+      "emotion": 0.25798423420558925,
+      "style": 0.2849670412965663,
+      "genre": 0.5767754304144024
+     },
+     "score": 0.0,
+     "kept": true
+    },
+    "center+k0": {
+     "map": {
+      "emotion": 0.2605736743493095,
+      "style": 0.2862677043553103,
+      "genre": 0.587078437410504
+     },
+     "score": 1.9445044827478697,
+     "kept": true
+    },
+    "whiten1024+k0": {
+     "map": {
+      "emotion": 0.21442580092363225,
+      "style": 0.12760102475791163,
+      "genre": 0.24681809906903734
+     },
+     "score": -68.18234565493695,
+     "kept": false
+    },
+    "whiten256+k0": {
+     "map": {
+      "emotion": 0.21666163142230088,
+      "style": 0.1427072145465096,
+      "genre": 0.26184071688330685
+     },
+     "score": -64.15802634857043,
+     "kept": false
+    },
+    "whiten64+k0": {
+     "map": {
+      "emotion": 0.2261023234442038,
+      "style": 0.18608750517509948,
+      "genre": 0.3546939266666423
+     },
+     "score": -45.561132624864406,
+     "kept": false
+    },
+    "none+k1": {
+     "map": {
+      "emotion": 0.25865140833018774,
+      "style": 0.28995212803282955,
+      "genre": 0.5850222008659334
+     },
+     "score": 1.7467589886622565,
+     "kept": true
+    },
+    "none+k3": {
+     "map": {
+      "emotion": 0.25958478168255095,
+      "style": 0.29429544371142,
+      "genre": 0.5914478575316103
+     },
+     "score": 3.2304379491381785,
+     "kept": true
+    },
+    "none+k5": {
+     "map": {
+      "emotion": 0.2600012130083792,
+      "style": 0.29620215745221357,
+      "genre": 0.5946516380623581
+     },
+     "score": 3.933113678256601,
+     "kept": true
+    },
+    "none+k10": {
+     "map": {
+      "emotion": 0.26045218279743587,
+      "style": 0.2976151035206924,
+      "genre": 0.598551042625472
+     },
+     "score": 4.678489434075925,
+     "kept": true
+    },
+    "center+k1": {
+     "map": {
+      "emotion": 0.26177118682844636,
+      "style": 0.29114801274958596,
+      "genre": 0.5951867325346872
+     },
+     "score": 3.753910404357953,
+     "kept": true
+    },
+    "center+k3": {
+     "map": {
+      "emotion": 0.26287045713526513,
+      "style": 0.2954874874799963,
+      "genre": 0.6021075635332577
+     },
+     "score": 5.330942111521182,
+     "kept": true
+    },
+    "center+k5": {
+     "map": {
+      "emotion": 0.2635118809598532,
+      "style": 0.2971329647541133,
+      "genre": 0.6054908758159553
+     },
+     "score": 6.067505265713034,
+     "kept": true
+    },
+    "center+k10": {
+     "map": {
+      "emotion": 0.2641046123022548,
+      "style": 0.2984389164601634,
+      "genre": 0.6098073496142735
+     },
+     "score": 6.880416820385527,
+     "kept": true
+    },
+    "whiten1024+k1": {
+     "map": {
+      "emotion": 0.21509824625998936,
+      "style": 0.13516510862279735,
+      "genre": 0.26185734879629463
+     },
+     "score": -65.2600832280986,
+     "kept": false
+    },
+    "whiten256+k1": {
+     "map": {
+      "emotion": 0.21749066082664964,
+      "style": 0.15032764505668028,
+      "genre": 0.2786944490580573
+     },
+     "score": -60.96451096562404,
+     "kept": false
+    },
+    "whiten64+k1": {
+     "map": {
+      "emotion": 0.22705687306512146,
+      "style": 0.19367100721281816,
+      "genre": 0.37138616575940564
+     },
+     "score": -42.37099539317055,
+     "kept": false
+    },
+    "whiten1024+k3": {
+     "map": {
+      "emotion": 0.2163215339793741,
+      "style": 0.1418926487691937,
+      "genre": 0.27882788049308027
+     },
+     "score": -62.08110530921104,
+     "kept": false
+    },
+    "whiten256+k3": {
+     "map": {
+      "emotion": 0.21884688449076567,
+      "style": 0.15725474995463878,
+      "genre": 0.29650248906028775
+     },
+     "score": -57.63062215018615,
+     "kept": false
+    },
+    "whiten64+k3": {
+     "map": {
+      "emotion": 0.22864477634790065,
+      "style": 0.2003992369554736,
+      "genre": 0.38762646315349636
+     },
+     "score": -39.224138631608675,
+     "kept": false
+    },
+    "whiten1024+k5": {
+     "map": {
+      "emotion": 0.21717709613326647,
+      "style": 0.14588298398480246,
+      "genre": 0.2894277386894454
+     },
+     "score": -60.1029262122295,
+     "kept": false
+    },
+    "whiten256+k5": {
+     "map": {
+      "emotion": 0.21973145520637546,
+      "style": 0.16077574764082586,
+      "genre": 0.3072564240016003
+     },
+     "score": -55.67897549473741,
+     "kept": false
+    },
+    "whiten64+k5": {
+     "map": {
+      "emotion": 0.2295500306835328,
+      "style": 0.20367323396294057,
+      "genre": 0.3965111304472116
+     },
+     "score": -37.541086903800725,
+     "kept": false
+    },
+    "whiten1024+k10": {
+     "map": {
+      "emotion": 0.2184643782231074,
+      "style": 0.15051359849536386,
+      "genre": 0.3059182502714778
+     },
+     "score": -57.20702513142887,
+     "kept": false
+    },
+    "whiten256+k10": {
+     "map": {
+      "emotion": 0.22100171724872145,
+      "style": 0.1654601251158804,
+      "genre": 0.32405903665226843
+     },
+     "score": -52.73920966261969,
+     "kept": false
+    },
+    "whiten64+k10": {
+     "map": {
+      "emotion": 0.23081971511904623,
+      "style": 0.20745280845565878,
+      "genre": 0.4099273462247389
+     },
+     "score": -35.144987607440406,
+     "kept": false
+    }
+   },
+   "ranges": {
+    "emotion": 0.0019142083150722189,
+    "style": 0.0030216985729736856,
+    "genre": 0.0025437481496900505
+   },
+   "dropped": {
+    "emotion": [
+     0,
+     0
+    ],
+    "style": [
+     1,
+     0
+    ],
+    "genre": [
+     0,
+     0
+    ]
+   }
+  },
+  "frozen": {
+   "pick": "center+k10",
+   "table": {
+    "none+k0": {
+     "map": {
+      "emotion": 0.24311816225736224,
+      "style": 0.2175716958691754,
+      "genre": 0.43089573660116454
+     },
+     "score": 0.0,
+     "kept": true
+    },
+    "center+k0": {
+     "map": {
+      "emotion": 0.24862137183181882,
+      "style": 0.23085996126792446,
+      "genre": 0.46421547693852433
+     },
+     "score": 6.190985274756692,
+     "kept": true
+    },
+    "whiten512+k0": {
+     "map": {
+      "emotion": 0.21286145776082935,
+      "style": 0.121674167047263,
+      "genre": 0.21614732248813107
+     },
+     "score": -40.20380289864211,
+     "kept": false
+    },
+    "whiten256+k0": {
+     "map": {
+      "emotion": 0.2167248219715125,
+      "style": 0.13935391074032083,
+      "genre": 0.2467260713695613
+     },
+     "score": -33.98236684580652,
+     "kept": false
+    },
+    "whiten64+k0": {
+     "map": {
+      "emotion": 0.22570192143181877,
+      "style": 0.1761098740408486,
+      "genre": 0.31714860805789624
+     },
+     "score": -20.227768294783953,
+     "kept": false
+    },
+    "none+k1": {
+     "map": {
+      "emotion": 0.2432915644227458,
+      "style": 0.2208777153553546,
+      "genre": 0.43958209311133334
+     },
+     "score": 1.2924864136907634,
+     "kept": true
+    },
+    "none+k3": {
+     "map": {
+      "emotion": 0.24353780575209183,
+      "style": 0.22211472554186268,
+      "genre": 0.4462674273355113
+     },
+     "score": 2.118375727337488,
+     "kept": true
+    },
+    "none+k5": {
+     "map": {
+      "emotion": 0.24356269235299155,
+      "style": 0.22240378463441263,
+      "genre": 0.4491156786831011
+     },
+     "score": 2.4157645714232605,
+     "kept": true
+    },
+    "none+k10": {
+     "map": {
+      "emotion": 0.24345150939859544,
+      "style": 0.2217180937532331,
+      "genre": 0.45127980973583093
+     },
+     "score": 2.4756392843982926,
+     "kept": true
+    },
+    "center+k1": {
+     "map": {
+      "emotion": 0.24970392702000155,
+      "style": 0.23583768155353743,
+      "genre": 0.4762147300599357
+     },
+     "score": 8.236907703069944,
+     "kept": true
+    },
+    "center+k3": {
+     "map": {
+      "emotion": 0.25088853486223006,
+      "style": 0.2397424430874852,
+      "genre": 0.4868282142228405
+     },
+     "score": 10.025696033980703,
+     "kept": true
+    },
+    "center+k5": {
+     "map": {
+      "emotion": 0.25119758044354445,
+      "style": 0.24051307657174853,
+      "genre": 0.4920783423701809
+     },
+     "score": 10.671570678944144,
+     "kept": true
+    },
+    "center+k10": {
+     "map": {
+      "emotion": 0.2515696431114688,
+      "style": 0.24091446359727825,
+      "genre": 0.4976542880716769
+     },
+     "score": 11.305518331541734,
+     "kept": true
+    },
+    "whiten512+k1": {
+     "map": {
+      "emotion": 0.21358670979366268,
+      "style": 0.12810104063027375,
+      "genre": 0.2290292266012452
+     },
+     "score": -37.948629761471764,
+     "kept": false
+    },
+    "whiten256+k1": {
+     "map": {
+      "emotion": 0.21750265136401237,
+      "style": 0.1462560207106754,
+      "genre": 0.2634613055001941
+     },
+     "score": -31.307812463557656,
+     "kept": false
+    },
+    "whiten64+k1": {
+     "map": {
+      "emotion": 0.2266623819141621,
+      "style": 0.18252952596063443,
+      "genre": 0.337105181462506
+     },
+     "score": -17.301410805212118,
+     "kept": false
+    },
+    "whiten512+k3": {
+     "map": {
+      "emotion": 0.21466835224961656,
+      "style": 0.1346196461085155,
+      "genre": 0.24319854162582216
+     },
+     "score": -35.483355876997045,
+     "kept": false
+    },
+    "whiten256+k3": {
+     "map": {
+      "emotion": 0.21892969142496677,
+      "style": 0.15310403411399068,
+      "genre": 0.28163016124729723
+     },
+     "score": -28.363070483659243,
+     "kept": false
+    },
+    "whiten64+k3": {
+     "map": {
+      "emotion": 0.2277286125285617,
+      "style": 0.18875198770095614,
+      "genre": 0.3560824841534903
+     },
+     "score": -14.464927577143603,
+     "kept": false
+    },
+    "whiten512+k5": {
+     "map": {
+      "emotion": 0.21537688529780824,
+      "style": 0.13810665040219794,
+      "genre": 0.25255464513033526
+     },
+     "score": -33.97906012629729,
+     "kept": false
+    },
+    "whiten256+k5": {
+     "map": {
+      "emotion": 0.2198701126777307,
+      "style": 0.15633268392691618,
+      "genre": 0.2922398555903437
+     },
+     "score": -26.73336717810207,
+     "kept": false
+    },
+    "whiten64+k5": {
+     "map": {
+      "emotion": 0.2286006804557015,
+      "style": 0.19164270260547608,
+      "genre": 0.36643839355236907
+     },
+     "score": -12.924016814975802,
+     "kept": false
+    },
+    "whiten512+k10": {
+     "map": {
+      "emotion": 0.21664447751090893,
+      "style": 0.1419641449908079,
+      "genre": 0.2649302685692423
+     },
+     "score": -32.02413193008821,
+     "kept": false
+    },
+    "whiten256+k10": {
+     "map": {
+      "emotion": 0.22104483293369842,
+      "style": 0.1606063199187942,
+      "genre": 0.30797830363643536
+     },
+     "score": -24.444998658198518,
+     "kept": false
+    },
+    "whiten64+k10": {
+     "map": {
+      "emotion": 0.2297354648363147,
+      "style": 0.19541235634329734,
+      "genre": 0.38018106450489136
+     },
+     "score": -10.894413395435635,
+     "kept": false
+    }
+   },
+   "ranges": {
+    "emotion": 0.0014116107779215126,
+    "style": 0.002229334648849224,
+    "genre": 0.0038237977312404192
+   },
+   "source": "computed: r11's stage 4 rule with r11's r_a"
+  },
+  "teacher": {
+   "pick": "center+k10",
+   "source": "r11 stored pick, arm instructed"
+  },
+  "r11_ranges_sha256": "4271b536504173ac2483c61ee7d50b9e70cd91fcf019f70e5cbff0fcb21eaf44"
+ },
+ "affection": {
+  "encoder": "clip_b32",
+  "kind": "affection_validation_ranges_and_readouts",
+  "ranges": {
+   "clu": 0.012099387040661214,
+   "map": 0.005050070732945944,
+   "ndcg": 0.0008886420053972888
+  },
+  "ranges_doc": {
+   "clu": {
+    "per_seed": [
+     0.1814891362639517,
+     0.18296438430588338,
+     0.17086499726522217,
+     0.17236564749675176,
+     0.17272562884722686
+    ],
+    "r": 0.012099387040661214
+   },
+   "map": {
+    "per_seed": [
+     0.29997092574168693,
+     0.30127789430543184,
+     0.29940013586138,
+     0.30011737545191725,
+     0.2962278235724859
+    ],
+    "r": 0.005050070732945944
+   },
+   "ndcg": {
+    "per_seed": [
+     0.9287372690881178,
+     0.9289211413312434,
+     0.9286532928138678,
+     0.9287832062655909,
+     0.9280324993258461
+    ],
+    "r": 0.0008886420053972888
+   }
+  },
+  "photo_readout": {
+   "pick": "center+k10",
+   "scores": {
+    "none+k0": {
+     "map": {
+      "emotion": 0.30133450484988894
+     },
+     "score": 0.0,
+     "kept": true
+    },
+    "center+k0": {
+     "map": {
+      "emotion": 0.30486015314469095
+     },
+     "score": 0.6981383986963153,
+     "kept": true
+    },
+    "whiten1024+k0": {
+     "map": {
+      "emotion": 0.21581017579034056
+     },
+     "score": -16.935273500547193,
+     "kept": false
+    },
+    "whiten256+k0": {
+     "map": {
+      "emotion": 0.22001705284109194
+     },
+     "score": -16.10224020790313,
+     "kept": false
+    },
+    "whiten64+k0": {
+     "map": {
+      "emotion": 0.24205476926805874
+     },
+     "score": -11.738397087212586,
+     "kept": false
+    },
+    "none+k1": {
+     "map": {
+      "emotion": 0.3034007534558011
+     },
+     "score": 0.4091524089815682,
+     "kept": true
+    },
+    "none+k3": {
+     "map": {
+      "emotion": 0.3056681397091303
+     },
+     "score": 0.85813349721408,
+     "kept": true
+    },
+    "none+k5": {
+     "map": {
+      "emotion": 0.30679544822333177
+     },
+     "score": 1.0813597793425762,
+     "kept": true
+    },
+    "none+k10": {
+     "map": {
+      "emotion": 0.3082582799473039
+     },
+     "score": 1.3710253704458555,
+     "kept": true
+    },
+    "center+k1": {
+     "map": {
+      "emotion": 0.30763421368659555
+     },
+     "score": 1.2474496239445128,
+     "kept": true
+    },
+    "center+k3": {
+     "map": {
+      "emotion": 0.310481178837238
+     },
+     "score": 1.811197203175291,
+     "kept": true
+    },
+    "center+k5": {
+     "map": {
+      "emotion": 0.3120310912290597
+     },
+     "score": 2.1181062493615683,
+     "kept": true
+    },
+    "center+k10": {
+     "map": {
+      "emotion": 0.3137183236974021
+     },
+     "score": 2.4522070090469996,
+     "kept": true
+    },
+    "whiten1024+k1": {
+     "map": {
+      "emotion": 0.21716556860486289
+     },
+     "score": -16.666882643033073,
+     "kept": false
+    },
+    "whiten256+k1": {
+     "map": {
+      "emotion": 0.2218215044218784
+     },
+     "score": -15.744928067893985,
+     "kept": false
+    },
+    "whiten64+k1": {
+     "map": {
+      "emotion": 0.24514235144490906
+     },
+     "score": -11.127003239457668,
+     "kept": false
+    },
+    "whiten1024+k3": {
+     "map": {
+      "emotion": 0.21955549071416067
+     },
+     "score": -16.193637368723095,
+     "kept": false
+    },
+    "whiten256+k3": {
+     "map": {
+      "emotion": 0.2243139237811242
+     },
+     "score": -15.251386592725014,
+     "kept": false
+    },
+    "whiten64+k3": {
+     "map": {
+      "emotion": 0.2491129348154669
+     },
+     "score": -10.340760119207033,
+     "kept": false
+    },
+    "whiten1024+k5": {
+     "map": {
+      "emotion": 0.22113576703796967
+     },
+     "score": -15.880715746952633,
+     "kept": false
+    },
+    "whiten256+k5": {
+     "map": {
+      "emotion": 0.2260243394914891
+     },
+     "score": -14.912695156344451,
+     "kept": false
+    },
+    "whiten64+k5": {
+     "map": {
+      "emotion": 0.2510198884808691
+     },
+     "score": -9.963150820992356,
+     "kept": false
+    },
+    "whiten1024+k10": {
+     "map": {
+      "emotion": 0.2232495461138117
+     },
+     "score": -15.462151495554718,
+     "kept": false
+    },
+    "whiten256+k10": {
+     "map": {
+      "emotion": 0.22829838360223684
+     },
+     "score": -14.46239569897008,
+     "kept": false
+    },
+    "whiten64+k10": {
+     "map": {
+      "emotion": 0.2535518786571296
+     },
+     "score": -9.461773650224798,
+     "kept": false
+    }
+   }
+  },
+  "frozen": {
+   "pick": "center+k10",
+   "source": "r12's rule with r12's r_ret,mAP",
+   "r": 0.0010103233538674705,
+   "scores": {
+    "none+k0": {
+     "map": {
+      "emotion": 0.24761023471998023
+     },
+     "score": 0.0,
+     "kept": true
+    },
+    "center+k0": {
+     "map": {
+      "emotion": 0.255936081654921
+     },
+     "score": 8.24077450359809,
+     "kept": true
+    },
+    "whiten512+k0": {
+     "map": {
+      "emotion": 0.21146761785985446
+     },
+     "score": -35.77331625738781,
+     "kept": false
+    },
+    "whiten256+k0": {
+     "map": {
+      "emotion": 0.21903053852765147
+     },
+     "score": -28.287672538625394,
+     "kept": false
+    },
+    "whiten64+k0": {
+     "map": {
+      "emotion": 0.23400838089340198
+     },
+     "score": -13.462871836537271,
+     "kept": false
+    },
+    "none+k1": {
+     "map": {
+      "emotion": 0.2471134039378567
+     },
+     "score": -0.49175422919968276,
+     "kept": true
+    },
+    "none+k3": {
+     "map": {
+      "emotion": 0.246932094824597
+     },
+     "score": -0.6712107492985748,
+     "kept": true
+    },
+    "none+k5": {
+     "map": {
+      "emotion": 0.2465887259544285
+     },
+     "score": -1.0110711205887202,
+     "kept": false
+    },
+    "none+k10": {
+     "map": {
+      "emotion": 0.24568531911375024
+     },
+     "score": -1.9052470665569545,
+     "kept": false
+    },
+    "center+k1": {
+     "map": {
+      "emotion": 0.2572937379990995
+     },
+     "score": 9.584558490161855,
+     "kept": true
+    },
+    "center+k3": {
+     "map": {
+      "emotion": 0.25903475995916114
+     },
+     "score": 11.307790912135573,
+     "kept": true
+    },
+    "center+k5": {
+     "map": {
+      "emotion": 0.2599627876445064
+     },
+     "score": 12.226336130151996,
+     "kept": true
+    },
+    "center+k10": {
+     "map": {
+      "emotion": 0.26072660027588024
+     },
+     "score": 12.982344222462222,
+     "kept": true
+    },
+    "whiten512+k1": {
+     "map": {
+      "emotion": 0.21225980308434295
+     },
+     "score": -34.98922547946406,
+     "kept": false
+    },
+    "whiten256+k1": {
+     "map": {
+      "emotion": 0.2203136147948528
+     },
+     "score": -27.01770657942057,
+     "kept": false
+    },
+    "whiten64+k1": {
+     "map": {
+      "emotion": 0.23546029173536354
+     },
+     "score": -12.02579643250577,
+     "kept": false
+    },
+    "whiten512+k3": {
+     "map": {
+      "emotion": 0.21371678583106646
+     },
+     "score": -33.54712999474003,
+     "kept": false
+    },
+    "whiten256+k3": {
+     "map": {
+      "emotion": 0.22204343678349867
+     },
+     "score": -25.30555968899764,
+     "kept": false
+    },
+    "whiten64+k3": {
+     "map": {
+      "emotion": 0.2369795955215406
+     },
+     "score": -10.522016696680359,
+     "kept": false
+    },
+    "whiten512+k5": {
+     "map": {
+      "emotion": 0.21488287327086394
+     },
+     "score": -32.39295748617259,
+     "kept": false
+    },
+    "whiten256+k5": {
+     "map": {
+      "emotion": 0.22340031473408786
+     },
+     "score": -23.962546142497768,
+     "kept": false
+    },
+    "whiten64+k5": {
+     "map": {
+      "emotion": 0.23789008780903126
+     },
+     "score": -9.620827702082408,
+     "kept": false
+    },
+    "whiten512+k10": {
+     "map": {
+      "emotion": 0.2162467959879304
+     },
+     "score": -31.04297115571174,
+     "kept": false
+    },
+    "whiten256+k10": {
+     "map": {
+      "emotion": 0.22542452305982225
+     },
+     "score": -21.959020916652193,
+     "kept": false
+    },
+    "whiten64+k10": {
+     "map": {
+      "emotion": 0.23901462194999307
+     },
+     "score": -8.507783906096554,
+     "kept": false
+    }
+   },
+   "view": "clip_b32"
+  },
+  "sources": {
+   "val__s0": "ecb9a71fb44d2c175e698f6c0d88ea5b572028eed2ac6745ca217481e4c5014d",
+   "val__s1": "3aa8a61626537a588fc1dd2e1d7076daa57fcba448359a7c64e0d63020cca011",
+   "val__s2": "87c9c4232e797efd5de48692e532c8715b35e732c8f3a1c93e7d14d16ad2f002",
+   "val__s3": "ecf6ab67503dff283b9b4d73dd030fdfed7df4438c66d65d39559c442f8a2b64",
+   "val__s4": "4916f1f946d5f24b17c7d65c1f3cc4d193d04babd3c207617c71f6dc81657787"
+  }
+ },
+ "mmart": {
+  "encoder": "clip_b32",
+  "clu_ranges": {
+   "encoder": "clip_b32",
+   "kind": "mmart_clustering_validation_ranges",
+   "ranges": {
+    "emotion": 0.003658865147781451,
+    "style": 0.012210960354680223,
+    "genre": 0.014742374381490286
+   },
+   "per_seed": {
+    "emotion": {
+     "0": 0.05131284087610427,
+     "1": 0.04852581512959251,
+     "2": 0.051825378812577795,
+     "3": 0.05218468027737396,
+     "4": 0.05182903517712003
+    },
+    "style": {
+     "0": 0.3961205364745364,
+     "1": 0.4002719267188855,
+     "2": 0.40135650956539476,
+     "3": 0.39693942782144537,
+     "4": 0.4083314968292166
+    },
+    "genre": {
+     "0": 0.501986439817378,
+     "1": 0.4990399629151625,
+     "2": 0.5055051272159048,
+     "3": 0.5078216162162884,
+     "4": 0.5137823372966528
+    }
+   },
+   "sources": {
+    "emotion": {
+     "0": "72e76452b879103935f254ca5c52e4061e2bfd651494ad46462b0e6d8a523f3c",
+     "1": "0b50a056d8d0348b3a3d07abc0e67f82a4afc654a177283acc60c5b9ce387600",
+     "2": "ad76ed47984ee0f6fefd7c0a744484a465fb02ec8526f315d275a18f87f3dd11",
+     "3": "fe2e61c9b67379744b1264aba61150ee68bb89a23ce817a82547eac0b3738690",
+     "4": "9d210460646182cf7203763a5f39320a88fd38e94bdded9fb83c375c611c684e"
+    },
+    "style": {
+     "0": "7d5c118ababe1c8902edf281c80d8bb8b7381a332a9bcd6e3b8d11dedece4cdf",
+     "1": "db12357db87c07a911844f1e75876896f833f3b256aa70bf1bb5055f5bd2d928",
+     "2": "4fe007762a96ae72435b1a19ef67e31a2651ce73f74db68c7c29405525975432",
+     "3": "116a88a77e27e51ab0d48ec9ab26a9f782bed802e14fb36adba9948a145b7761",
+     "4": "66179ba7c9d5f7fd85562858f38108a1fd40cf7cb5293f9e64fc97775653f8af"
+    },
+    "genre": {
+     "0": "d824c5e72dc25d628658449920dd8442f51c23deb4489001a417719a966c19c2",
+     "1": "c1b3496d57e97870abc3aa70ec476e1712c115562753c8a2b1eb47a4a7b2e15a",
+     "2": "38f2a835d6be740ef589a3142b034fb0b65ceb247e09971a1c7add16b5085618",
+     "3": "fe50111fe68f46229a93d0181192f12f23e4687bba1f6c85f4e78a8c0fbffb63",
+     "4": "522c0a1545874a2ea75461960c08a2cbf37b5c9a54f25820e3caaf7aaf99e11e"
+    }
+   },
+   "n_val": 5769,
+   "labelled": {
+    "emotion": 5720,
+    "style": 5769,
+    "genre": 4679
+   }
+  },
+  "ret_ranges": {
+   "encoder": "clip_b32",
+   "kind": "mmart_retrieval_validation_ranges",
+   "ranges": {
+    "emotion": 0.0010055615883767244,
+    "style": 0.0038023507398098344,
+    "genre": 0.0025373639494710165
+   },
+   "per_seed": {
+    "emotion": {
+     "0": 0.19420490964770398,
+     "1": 0.19427152465070646,
+     "2": 0.1944024747483684,
+     "3": 0.19406801786822955,
+     "4": 0.19339691315999166
+    },
+    "style": {
+     "0": 0.3067259153907128,
+     "1": 0.3094473121213859,
+     "2": 0.30717546790078804,
+     "3": 0.3087239582537454,
+     "4": 0.31052826613052265
+    },
+    "genre": {
+     "0": 0.5795611154006485,
+     "1": 0.5820984793501195,
+     "2": 0.581737271482249,
+     "3": 0.581166210068672,
+     "4": 0.5819060943680052
+    }
+   },
+   "sources": {
+    "emotion": {
+     "0": {
+      "path": "/data/SSD2/cosir_r19/20261103_past_picks/outputs/mmart/exports/val/clip_b32/cstar/emotion__s0.npz",
+      "sha256": "72e76452b879103935f254ca5c52e4061e2bfd651494ad46462b0e6d8a523f3c"
+     },
+     "1": {
+      "path": "/data/SSD2/cosir_r19/20261103_past_picks/outputs/mmart/exports/val/clip_b32/cstar/emotion__s1.npz",
+      "sha256": "0b50a056d8d0348b3a3d07abc0e67f82a4afc654a177283acc60c5b9ce387600"
+     },
+     "2": {
+      "path": "/data/SSD2/cosir_r19/20261103_past_picks/outputs/mmart/exports/val/clip_b32/cstar/emotion__s2.npz",
+      "sha256": "ad76ed47984ee0f6fefd7c0a744484a465fb02ec8526f315d275a18f87f3dd11"
+     },
+     "3": {
+      "path": "/data/SSD2/cosir_r19/20261103_past_picks/outputs/mmart/exports/val/clip_b32/cstar/emotion__s3.npz",
+      "sha256": "fe2e61c9b67379744b1264aba61150ee68bb89a23ce817a82547eac0b3738690"
+     },
+     "4": {
+      "path": "/data/SSD2/cosir_r19/20261103_past_picks/outputs/mmart/exports/val/clip_b32/cstar/emotion__s4.npz",
+      "sha256": "9d210460646182cf7203763a5f39320a88fd38e94bdded9fb83c375c611c684e"
+     }
+    },
+    "style": {
+     "0": {
+      "path": "/data/SSD2/cosir_r19/20261103_past_picks/outputs/mmart/exports/val/clip_b32/cstar/style__s0.npz",
+      "sha256": "7d5c118ababe1c8902edf281c80d8bb8b7381a332a9bcd6e3b8d11dedece4cdf"
+     },
+     "1": {
+      "path": "/data/SSD2/cosir_r19/20261103_past_picks/outputs/mmart/exports/val/clip_b32/cstar/style__s1.npz",
+      "sha256": "db12357db87c07a911844f1e75876896f833f3b256aa70bf1bb5055f5bd2d928"
+     },
+     "2": {
+      "path": "/data/SSD2/cosir_r19/20261103_past_picks/outputs/mmart/exports/val/clip_b32/cstar/style__s2.npz",
+      "sha256": "4fe007762a96ae72435b1a19ef67e31a2651ce73f74db68c7c29405525975432"
+     },
+     "3": {
+      "path": "/data/SSD2/cosir_r19/20261103_past_picks/outputs/mmart/exports/val/clip_b32/cstar/style__s3.npz",
+      "sha256": "116a88a77e27e51ab0d48ec9ab26a9f782bed802e14fb36adba9948a145b7761"
+     },
+     "4": {
+      "path": "/data/SSD2/cosir_r19/20261103_past_picks/outputs/mmart/exports/val/clip_b32/cstar/style__s4.npz",
+      "sha256": "66179ba7c9d5f7fd85562858f38108a1fd40cf7cb5293f9e64fc97775653f8af"
+     }
+    },
+    "genre": {
+     "0": {
+      "path": "/data/SSD2/cosir_r19/20261103_past_picks/outputs/mmart/exports/val/clip_b32/cstar/genre__s0.npz",
+      "sha256": "d824c5e72dc25d628658449920dd8442f51c23deb4489001a417719a966c19c2"
+     },
+     "1": {
+      "path": "/data/SSD2/cosir_r19/20261103_past_picks/outputs/mmart/exports/val/clip_b32/cstar/genre__s1.npz",
+      "sha256": "c1b3496d57e97870abc3aa70ec476e1712c115562753c8a2b1eb47a4a7b2e15a"
+     },
+     "2": {
+      "path": "/data/SSD2/cosir_r19/20261103_past_picks/outputs/mmart/exports/val/clip_b32/cstar/genre__s2.npz",
+      "sha256": "38f2a835d6be740ef589a3142b034fb0b65ceb247e09971a1c7add16b5085618"
+     },
+     "3": {
+      "path": "/data/SSD2/cosir_r19/20261103_past_picks/outputs/mmart/exports/val/clip_b32/cstar/genre__s3.npz",
+      "sha256": "fe50111fe68f46229a93d0181192f12f23e4687bba1f6c85f4e78a8c0fbffb63"
+     },
+     "4": {
+      "path": "/data/SSD2/cosir_r19/20261103_past_picks/outputs/mmart/exports/val/clip_b32/cstar/genre__s4.npz",
+      "sha256": "522c0a1545874a2ea75461960c08a2cbf37b5c9a54f25820e3caaf7aaf99e11e"
+     }
+    }
+   },
+   "n_val": 5769,
+   "labelled": {
+    "emotion": 5720,
+    "style": 5769,
+    "genre": 4679
+   }
+  },
+  "picks": {
+   "encoder": "clip_b32",
+   "kind": "mmart_retrieval_picks",
+   "n_val": 5769,
+   "arms": {
+    "cstar": {
+     "pick": "center+k10",
+     "table": {
+      "none+k0": {
+       "map": {
+        "emotion": 0.1954946405767142,
+        "style": 0.31087869340310614,
+        "genre": 0.5825093546780848
+       },
+       "score": 0.0,
+       "kept": true
+      },
+      "center+k0": {
+       "map": {
+        "emotion": 0.19672400891865469,
+        "style": 0.31115657141001896,
+        "genre": 0.5922182941859316
+       },
+       "score": 1.7073459040532792,
+       "kept": true
+      },
+      "whiten1024+k0": {
+       "map": {
+        "emotion": 0.17776643713255458,
+        "style": 0.139607077534522,
+        "genre": 0.24902810650357682
+       },
+       "score": -64.70066438924668,
+       "kept": false
+      },
+      "whiten256+k0": {
+       "map": {
+        "emotion": 0.17918272761763415,
+        "style": 0.15649107981105634,
+        "genre": 0.2642443110621976
+       },
+       "score": -60.752089671078075,
+       "kept": false
+      },
+      "whiten64+k0": {
+       "map": {
+        "emotion": 0.18402924407647034,
+        "style": 0.2032261144771525,
+        "genre": 0.3586389958410192
+       },
+       "score": -42.64786584778551,
+       "kept": false
+      },
+      "none+k1": {
+       "map": {
+        "emotion": 0.19542369119163752,
+        "style": 0.31642937327933796,
+        "genre": 0.5907220553845991
+       },
+       "score": 1.541983678343823,
+       "kept": true
+      },
+      "none+k3": {
+       "map": {
+        "emotion": 0.19564250293056196,
+        "style": 0.3207931180988207,
+        "genre": 0.5978264434034796
+       },
+       "score": 2.9303684860301473,
+       "kept": true
+      },
+      "none+k5": {
+       "map": {
+        "emotion": 0.1957558915761885,
+        "style": 0.32297326725330533,
+        "genre": 0.6008034574312235
+       },
+       "score": 3.5501687140046756,
+       "kept": true
+      },
+      "none+k10": {
+       "map": {
+        "emotion": 0.19584266023668723,
+        "style": 0.32474797960340696,
+        "genre": 0.6044021167303968
+       },
+       "score": 4.207267543708615,
+       "kept": true
+      },
+      "center+k1": {
+       "map": {
+        "emotion": 0.19687611908230815,
+        "style": 0.31699248445136163,
+        "genre": 0.5999807721149389
+       },
+       "score": 3.289130778884289,
+       "kept": true
+      },
+      "center+k3": {
+       "map": {
+        "emotion": 0.19723805359081542,
+        "style": 0.3210641000623691,
+        "genre": 0.6073793632510153
+       },
+       "score": 4.737999231185153,
+       "kept": true
+      },
+      "center+k5": {
+       "map": {
+        "emotion": 0.19743704489427732,
+        "style": 0.322794434758687,
+        "genre": 0.610276950834279
+       },
+       "score": 5.336308599115985,
+       "kept": true
+      },
+      "center+k10": {
+       "map": {
+        "emotion": 0.19760789846879875,
+        "style": 0.32461055707474534,
+        "genre": 0.6138493010521919
+       },
+       "score": 6.02145469895138,
+       "kept": true
+      },
+      "whiten1024+k1": {
+       "map": {
+        "emotion": 0.178068973006622,
+        "style": 0.14724051207462546,
+        "genre": 0.2645982713919121
+       },
+       "score": -61.88573977740004,
+       "kept": false
+      },
+      "whiten256+k1": {
+       "map": {
+        "emotion": 0.17952834151767738,
+        "style": 0.16488519810664978,
+        "genre": 0.28199602988916134
+       },
+       "score": -57.569609147841284,
+       "kept": false
+      },
+      "whiten64+k1": {
+       "map": {
+        "emotion": 0.18426097673350988,
+        "style": 0.211781387523675,
+        "genre": 0.3752102622894881
+       },
+       "score": -39.6440840947499,
+       "kept": false
+      },
+      "whiten1024+k3": {
+       "map": {
+        "emotion": 0.1785997320438944,
+        "style": 0.1548276024044816,
+        "genre": 0.2818554431407319
+       },
+       "score": -58.777602321401424,
+       "kept": false
+      },
+      "whiten256+k3": {
+       "map": {
+        "emotion": 0.18015690945164348,
+        "style": 0.17271550776041045,
+        "genre": 0.2999968936540339
+       },
+       "score": -54.3100284385902,
+       "kept": false
+      },
+      "whiten64+k3": {
+       "map": {
+        "emotion": 0.1849014526888449,
+        "style": 0.21940399461447785,
+        "genre": 0.3917662437470348
+       },
+       "score": -36.58857835057692,
+       "kept": false
+      },
+      "whiten1024+k5": {
+       "map": {
+        "emotion": 0.17901758717294217,
+        "style": 0.15879672792596322,
+        "genre": 0.2929200970766031
+       },
+       "score": -56.837571132372965,
+       "kept": false
+      },
+      "whiten256+k5": {
+       "map": {
+        "emotion": 0.1805394340340384,
+        "style": 0.17683335842048004,
+        "genre": 0.31107618000985404
+       },
+       "score": -52.36674870340562,
+       "kept": false
+      },
+      "whiten64+k5": {
+       "map": {
+        "emotion": 0.18532247660217605,
+        "style": 0.22323219805822672,
+        "genre": 0.40093709727574256
+       },
+       "score": -34.90863911911408,
+       "kept": false
+      },
+      "whiten1024+k10": {
+       "map": {
+        "emotion": 0.17968990730914455,
+        "style": 0.1640279461580139,
+        "genre": 0.3093478047277723
+       },
+       "score": -53.99800195602602,
+       "kept": false
+      },
+      "whiten256+k10": {
+       "map": {
+        "emotion": 0.18106685279296872,
+        "style": 0.1823490351129154,
+        "genre": 0.32785874350474764
+       },
+       "score": -49.50365838595204,
+       "kept": false
+      },
+      "whiten64+k10": {
+       "map": {
+        "emotion": 0.18590110871074889,
+        "style": 0.22771336953041427,
+        "genre": 0.4148247297210763
+       },
+       "score": -32.49956897173194,
+       "kept": false
+      }
+     },
+     "ranges": {
+      "emotion": 0.0010055615883767244,
+      "style": 0.0038023507398098344,
+      "genre": 0.0025373639494710165
+     },
+     "dropped": {
+      "emotion": [
+       0,
+       0
+      ],
+      "style": [
+       0,
+       0
+      ],
+      "genre": [
+       0,
+       0
+      ]
+     }
+    },
+    "frozen": {
+     "pick": "center+k10",
+     "table": {
+      "none+k0": {
+       "map": {
+        "emotion": 0.1902130652202455,
+        "style": 0.23840969879116525,
+        "genre": 0.4381691165199081
+       },
+       "score": 0.0,
+       "kept": true
+      },
+      "center+k0": {
+       "map": {
+        "emotion": 0.19091956881010386,
+        "style": 0.25161415292975003,
+        "genre": 0.4713387773043831
+       },
+       "score": 5.749264171904819,
+       "kept": true
+      },
+      "whiten512+k0": {
+       "map": {
+        "emotion": 0.1769235800972001,
+        "style": 0.13306306522722156,
+        "genre": 0.21694544389247783
+       },
+       "score": -42.70268663516609,
+       "kept": false
+      },
+      "whiten256+k0": {
+       "map": {
+        "emotion": 0.17907692889340493,
+        "style": 0.1532637716794776,
+        "genre": 0.25024518987233463
+       },
+       "score": -35.84339193214853,
+       "kept": false
+      },
+      "whiten64+k0": {
+       "map": {
+        "emotion": 0.18273371505217118,
+        "style": 0.1916958970681801,
+        "genre": 0.31951136918414147
+       },
+       "score": -22.16255667021697,
+       "kept": false
+      },
+      "none+k1": {
+       "map": {
+        "emotion": 0.19009046511479166,
+        "style": 0.2415431794424873,
+        "genre": 0.44702071729241455
+       },
+       "score": 1.3968903218729514,
+       "kept": true
+      },
+      "none+k3": {
+       "map": {
+        "emotion": 0.19004514814298124,
+        "style": 0.24421443751082197,
+        "genre": 0.45475974147842585
+       },
+       "score": 2.632719322364992,
+       "kept": true
+      },
+      "none+k5": {
+       "map": {
+        "emotion": 0.18998199489936793,
+        "style": 0.2444033442571496,
+        "genre": 0.4574289341299428
+       },
+       "score": 2.9789968548514723,
+       "kept": true
+      },
+      "none+k10": {
+       "map": {
+        "emotion": 0.18974194618216816,
+        "style": 0.24385189359580978,
+        "genre": 0.4596557968061502
+       },
+       "score": 3.1436230142508865,
+       "kept": true
+      },
+      "center+k1": {
+       "map": {
+        "emotion": 0.19125591234333778,
+        "style": 0.25725281606425565,
+        "genre": 0.4841337306583632
+       },
+       "score": 8.035944551179886,
+       "kept": true
+      },
+      "center+k3": {
+       "map": {
+        "emotion": 0.19134631213746034,
+        "style": 0.26104664810996336,
+        "genre": 0.49450557267507517
+       },
+       "score": 9.761045891533897,
+       "kept": true
+      },
+      "center+k5": {
+       "map": {
+        "emotion": 0.1914175934880789,
+        "style": 0.2623463944469878,
+        "genre": 0.4996182463756077
+       },
+       "score": 10.570268880920919,
+       "kept": true
+      },
+      "center+k10": {
+       "map": {
+        "emotion": 0.19136200504804862,
+        "style": 0.2628160983872839,
+        "genre": 0.504973779735785
+       },
+       "score": 11.296574573235718,
+       "kept": true
+      },
+      "whiten512+k1": {
+       "map": {
+        "emotion": 0.17723733473503406,
+        "style": 0.1396916772143122,
+        "genre": 0.23026939882133335
+       },
+       "score": -40.26721540813191,
+       "kept": false
+      },
+      "whiten256+k1": {
+       "map": {
+        "emotion": 0.17923484946542328,
+        "style": 0.16089878433862148,
+        "genre": 0.2684268497883582
+       },
+       "score": -32.73319553279371,
+       "kept": false
+      },
+      "whiten64+k1": {
+       "map": {
+        "emotion": 0.1827464356380904,
+        "style": 0.19886601246901855,
+        "genre": 0.33909245497501095
+       },
+       "score": -18.957405339454965,
+       "kept": false
+      },
+      "whiten512+k3": {
+       "map": {
+        "emotion": 0.1777421121734596,
+        "style": 0.1464934904186236,
+        "genre": 0.2449164559773427
+       },
+       "score": -37.579422537699024,
+       "kept": false
+      },
+      "whiten256+k3": {
+       "map": {
+        "emotion": 0.17988214807618574,
+        "style": 0.16825462069412966,
+        "genre": 0.28678777709874276
+       },
+       "score": -29.461699006230955,
+       "kept": false
+      },
+      "whiten64+k3": {
+       "map": {
+        "emotion": 0.1830694167647479,
+        "style": 0.20604626641784327,
+        "genre": 0.35828539916028634
+       },
+       "score": -15.699507168123253,
+       "kept": false
+      },
+      "whiten512+k5": {
+       "map": {
+        "emotion": 0.17823594838917162,
+        "style": 0.14982397309335788,
+        "genre": 0.25382477630593775
+       },
+       "score": -35.953468469953705,
+       "kept": false
+      },
+      "whiten256+k5": {
+       "map": {
+        "emotion": 0.18021161066942634,
+        "style": 0.17234634804561927,
+        "genre": 0.2980036399716175
+       },
+       "score": -27.520356828821786,
+       "kept": false
+      },
+      "whiten64+k5": {
+       "map": {
+        "emotion": 0.18333347470012845,
+        "style": 0.2096485039729743,
+        "genre": 0.36910312614133467
+       },
+       "score": -13.875060204248141,
+       "kept": false
+      },
+      "whiten512+k10": {
+       "map": {
+        "emotion": 0.17871882892154767,
+        "style": 0.15400243706827405,
+        "genre": 0.2667886819027343
+       },
+       "score": -33.72402579391255,
+       "kept": false
+      },
+      "whiten256+k10": {
+       "map": {
+        "emotion": 0.18082805717735895,
+        "style": 0.17760773156345752,
+        "genre": 0.3141738365570295
+       },
+       "score": -24.730493955864727,
+       "kept": false
+      },
+      "whiten64+k10": {
+       "map": {
+        "emotion": 0.18385792518304278,
+        "style": 0.21321815975602904,
+        "genre": 0.3837048224656733
+       },
+       "score": -11.470052268883094,
+       "kept": false
+      }
+     },
+     "ranges": {
+      "emotion": 0.0010055615883767244,
+      "style": 0.0038023507398098344,
+      "genre": 0.0025373639494710165
+     },
+     "dropped": {
+      "emotion": [
+       0,
+       0
+      ],
+      "style": [
+       0,
+       0
+      ],
+      "genre": [
+       0,
+       0
+      ]
+     }
+    }
+   }
+  }
+ }
+}
