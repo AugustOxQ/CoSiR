@@ -61,7 +61,8 @@ sentence); a voided cell keeps its row with its outcome and status 'inconclusive
   vii[affection]           V: the new three's photos; C: their retrieval cells (SC5, SC6 ret)
   vii[mmart]               V: the new three's mmart; C: their retrieval cells (SC8, SC10 ret)
   viii                     V and C: SC15 of all seven
-  runs[X].cstar            V and C: X on all four sets (cost stands: it times the network, not a trained result)
+  runs[X].cstar            V and C: X on all four sets and SC15 of X (the heads pass times the seed-0 c* network, which a
+                           failed c* run does not leave)
   runs[X].photo            V and C: X's photos
 A required cell may be missing only when a row above voids it; otherwise `decide` raises.
 """

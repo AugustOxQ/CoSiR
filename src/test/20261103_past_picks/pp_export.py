@@ -25,7 +25,7 @@ sidecar names another encoder, aspect, seed, view or n, or whose checkpoint (pat
     load(set, enc, aspect, seed, keys)           float16 rows in the order of `keys`; sets: artelingo_held, affection_val,
                                                  affection_test, mmart_val, mmart_new, semart
     validation(enc, aspect, seed)                (names in `rt_data.names('val')` order, float32 [6152, 2048])
-    gate_iii(part)                               OUT/stage0/gate_iii.json, parts `r10` (Qwen c*, 15 held exports) and `r14`
+    gate_iii(part)                               OUT/stage0/gate_iii_<part>.json, parts `r10` (Qwen c*, 15 held exports) and `r14`
                                                  (CLIP L/14: 15 held exports and 5 Affection test exports), each within 1e-3
 
 CLI (CPU only):
@@ -371,17 +371,19 @@ def gate_work(out_root, part, enc, run=None):
     return out_root / 'stage0' / 'gate_iii' / part / enc / (run or time.strftime('run_%Y%m%d_%H%M%S'))
 
 
+def gate_part_path(out_root, part):
+    return Path(out_root) / 'stage0' / f'gate_iii_{part}.json'
+
+
 def write_gate_part(out_root, part, doc):
-    """Put `doc` under `part` in OUT/stage0/gate_iii.json (the other part is kept); top-level `pass` = all parts present pass."""
-    path = Path(out_root) / 'stage0' / 'gate_iii.json'
+    """Put `doc` in OUT/stage0/gate_iii_<part>.json. Each part owns its file: parts run as adjacent steps, and a read-modify-write
+    of one shared file could lose a part or hide the other part's crash behind a fresh rewrite. The collector reads both
+    files; a part with no file is failed."""
+    assert part in GATE_ITEMS, part
+    path = gate_part_path(out_root, part)
     path.parent.mkdir(parents=True, exist_ok=True)
-    whole = json.loads(path.read_text()) if path.exists() else {}
-    whole[part] = doc
-    parts = [p for p in ('r10', 'r14') if p in whole]
-    whole['parts'] = parts
-    whole['pass'] = all(whole[p]['pass'] for p in parts)
-    _atomic_json(path, whole)
-    return whole
+    _atomic_json(path, doc)
+    return doc
 
 
 def _held_items(enc, stored_root, work):
@@ -437,7 +439,7 @@ def gate_iii(part, out_root=None, run=None, log=print):
     held exports and its 5 photo-model Affection test exports against r14's stored ones). The export code runs from the
     stored checkpoints on CPU into a fresh folder under `out_root`; a difference above 1e-3 in any item, or any item run on
     other weights than the stored ones, fails the part. Each held item records `held_export_reused`.
-    Writes OUT/stage0/gate_iii.json (the other part is kept). Returns the part's dict."""
+    Writes OUT/stage0/gate_iii_<part>.json (its own file; the other part has another). Returns the part's dict."""
     assert part in GATE_ITEMS, part
     out_root = _root(out_root)
     enc = GATE_ENC[part]

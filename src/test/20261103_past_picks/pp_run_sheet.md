@@ -17,10 +17,10 @@ unset PP_SMOKE PP_OUTPUTS
 
 Affection extraction is ALREADY DONE. Skip it. Do not rerun `pp_extract_queue.sh affection` or `all`.
 The sealed stores refuse rewrites. Check the three successful Affection lines and the three store-check JSONs.
-Parity is next. `sh "$R/pp_extract_queue.sh" parity` runs in the background beside the node jobs (short local GPU steps), so it does not hold up the node's start. MMArt and SemArt follow the node jobs below. The queue script reserves each GPU step separately.
+Parity is next. Start `sh "$R/pp_extract_queue.sh" parity` with `run_in_background` (or add `&`): it runs beside the node jobs (short local GPU steps), and the node's start does not wait for it. MMArt and SemArt follow the node jobs below. The queue script reserves each GPU step separately.
 
 ```bash
-sh "$R/pp_extract_queue.sh" parity                  # up to 12 min per view
+sh "$R/pp_extract_queue.sh" parity &                # background (or run_in_background); up to 12 min per view
 grep -E 'extract-affection-(clip_b32|clip_b16|dinov2_large)' "$OUT/stage0/gate_i/extract_queue_status.txt"
 $PY -c 'import json, pathlib; p=pathlib.Path("/data/SSD2/cosir_r19/20261103_past_picks/outputs/stage0/gate_i"); print({e:json.loads((p/f"store_affection_{e}.json").read_text())["ok"] for e in ("clip_b32","clip_b16","dinov2_large")})'
 ```
@@ -82,6 +82,9 @@ $CLUSTER pull --node node402 --tag <m5-tag>
 
 M5 full takes about four minutes. Its sample gate rerun ran on the local 3090; the controller accepted the byte-equal
 weights. The runner records this in the collection log. Gate (v) has one file per new encoder.
+`OUT/matched_sample` (the sample M5 rerun, which gate (v) for DINOv2 reads) is already in place: the controller copied it
+in build 5 at 01:13 from build 3's local rerun (9 files; weights sha256 equal to the stored run's; controller accepted).
+Do not rerun it, and do not recreate it.
 Now finish extraction. The probe and extraction use the local GPU through res-queue.
 
 ```bash

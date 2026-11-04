@@ -145,7 +145,12 @@ def stage3():
             file=filename, ms_per_image=rec['ms_per_image'], total_seconds=rec['total_seconds'])
     R.jdump(PP.OUT / 'probe/passes.json', dict(meta=dict(n_images=64, batch_size=32, repeats=3, warmup_batches=3, smoke=True),
                                             passes=passes, repeats_discarded=[]))
-    assert p.cmd_cells(ENCS) == 0
+    # The run chat's own route: the argv `pp_run.tasks(3)` queues (smoke form, with --enc), parsed by pp_probe's CLI in a
+    # child process and checked like any stage step (output rewritten, finite JSON). Calling `cmd_cells` directly hid a
+    # blocker in the production argv (r19 final review, finding 1).
+    (task,) = R.tasks(3, ENCS)
+    rec = R.run_step('stage3', task['name'], task['argv'], task['outputs'], task['ok_rcs'])
+    assert not rec['failed'], f'stage 3 step failed: {rec["log"]}'
 
 
 def stage4():

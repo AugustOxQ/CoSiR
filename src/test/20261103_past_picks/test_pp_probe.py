@@ -588,3 +588,83 @@ def test_teacher_checks_instructions_once_before_the_timed_loop(tmp_path, monkey
         assert raw['pass_seconds'][v] == pytest.approx([0.1, 0.1])
     entry = P._read(tmp_path / 'probe' / 'passes.json')['passes']['teacher']['e2e']
     assert entry['cpu_load_before'] == entry['cpu_load_after'] == [1, 2, 3]
+
+
+# ------------------------------------------------------------------------------------------------ cmd_cells (fix wave B)
+def clone_pass(root, src, dst):
+    """Give pass `dst` the raw files of pass `src` (same timings), in passes.json and on disk."""
+    doc = json.loads((root / 'probe' / 'passes.json').read_text())
+    entry = json.loads(json.dumps(doc['passes'][src]))
+    entry['encoder'] = dst.replace('heads_', '')
+    batches = root / 'probe' / 'batches'
+    for k, r in entry['repeats'].items():
+        raw = json.loads((batches / r['file']).read_text())
+        raw['pass'] = dst
+        r['file'] = f'{dst}__r{k}.json'
+        (batches / r['file']).write_text(json.dumps(raw))
+    if entry.get('e2e'):
+        raw = json.loads((batches / entry['e2e']['file']).read_text())
+        raw['pass'] = dst
+        entry['e2e']['file'] = f'{dst}__e2e.json'
+        (batches / entry['e2e']['file']).write_text(json.dumps(raw))
+    doc['passes'][dst] = entry
+    (root / 'probe' / 'passes.json').write_text(json.dumps(doc))
+
+
+def qwen_root(tmp_path, monkeypatch, others=('clip_b32',), heads_for=None):
+    """Raw files for Qwen (its default pass end to end at the prep log's 86.3 ms) and `others` (default and heads passes)."""
+    monkeypatch.setattr(PP, 'OUT', tmp_path)
+    monkeypatch.setattr(PP, 'SMOKE', 1)
+    write_raw(tmp_path, c_secs=[0.064] * 3, t_secs=T3, heads_secs=[Z] * 3, e2e={'x': 0.0863 * 64, 'teacher': 9.0}, enc='qwen')
+    for e in others:
+        clone_pass(tmp_path, 'qwen', e)
+        if heads_for is None or e in heads_for:
+            clone_pass(tmp_path, 'heads_qwen', f'heads_{e}')
+    return tmp_path
+
+
+def test_cells_writes_gate_viii_first_and_leaves_out_encoders_without_passes(tmp_path, monkeypatch, capsys):
+    root = qwen_root(tmp_path, monkeypatch, others=('clip_b32', 'dinov2_large'), heads_for=('clip_b32',))
+    assert P.cmd_cells(None) == 0
+    out = capsys.readouterr().out
+    assert json.loads((root / 'stage0' / 'gate_viii.json').read_text())['pass'] is True
+    got = json.loads((root / 'stage3' / 'cells_cost.json').read_text())
+    assert [c['encoder'] for c in got] == ['qwen', 'clip_b32']                     # in ENCODERS order
+    for e in ('siglip2', 'siglip1', 'clip_l14', 'dinov2_large', 'clip_b16'):
+        assert f'SC15 {e}: LEFT OUT' in out
+    assert 'SC15 qwen: LEFT OUT' not in out and 'SC15 clip_b32: LEFT OUT' not in out
+    assert (root / 'stage3' / 'cost_table.json').exists()
+
+
+def test_cells_gate_viii_is_written_even_when_the_cells_cannot_be_built(tmp_path, monkeypatch):
+    root = qwen_root(tmp_path, monkeypatch, others=())
+    doc = json.loads((root / 'probe' / 'passes.json').read_text())
+    del doc['passes']['qwen_style_word']                                  # a teacher pass is required
+    (root / 'probe' / 'passes.json').write_text(json.dumps(doc))
+    with pytest.raises(AssertionError, match='qwen_style_word'):
+        P.cmd_cells(None)
+    assert json.loads((root / 'stage0' / 'gate_viii.json').read_text())['pass'] is True
+    assert not (root / 'stage3' / 'cells_cost.json').exists()
+
+
+def test_cells_with_all_seven_present_equal_build_cells_byte_for_byte(tmp_path, monkeypatch):
+    others = tuple(e for e in PP.ENCODERS if e != 'qwen')
+    root = qwen_root(tmp_path, monkeypatch, others=others)
+    assert P.cmd_cells(None) == 0
+    expected = P.build_cells(root, encoders=None, smoke=True)
+    assert len(expected) == 7
+    P.write_json(root / 'expected.json', expected)
+    assert (root / 'stage3' / 'cells_cost.json').read_bytes() == (root / 'expected.json').read_bytes()
+
+
+def test_a_missing_cost_cell_is_excused_only_by_a_failed_cstar_run():
+    """The encoder left out of the cells stays loud in `decide` unless runs[X].cstar (or gate ii, iii, viii) failed."""
+    import test_pp_outcome as TO
+    with pytest.raises(AssertionError, match='cost cells missing that no failed gate excuses'):
+        TO.run(drop=[('SC15', 'clip_l14')])                              # an old encoder has no c* run to excuse it
+    with pytest.raises(AssertionError, match='cost cells missing that no failed gate excuses'):
+        TO.run(drop=[('SC15', 'dinov2_large')])
+    status = TO.failed('runs', 'dinov2_large', 'cstar')
+    status['runs']['dinov2_large']['photo'] = 'failed'
+    res = TO.run(drop=[('SC15', 'dinov2_large')], status=status, over=None)
+    assert res['verdicts']['cost']['dinov2_large']['verdict'] == 'inconclusive'
