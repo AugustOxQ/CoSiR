@@ -11,7 +11,16 @@ cd "$(dirname "$0")/../../.."
 PY=/root/venvs/tpips/bin/python
 T=src/test/20261103_outside_methods/om_tpips.py
 IN=/data/SSD2/cosir_r18/20261103_outside_methods/outputs/tpips_inputs
+# The job draws 256 W, so it is heavy (shared-resources.md): no shard starts on a weekday from 06:00 to 19:00. A shard may
+# take 4 h, so one that starts before 06:00 ends by 10:00. Waiting here holds no queue slot.
+allowed() {
+    local h d
+    h=$(TZ=Europe/Amsterdam date +%-H); d=$(TZ=Europe/Amsterdam date +%u)
+    [[ "$d" -ge 6 || "$h" -ge 19 || "$h" -lt 6 ]]
+}
 for i in $(seq "$1" "$2"); do
+    while res-queue status | grep -q 'r18:tpips_local'; do sleep 60; done     # one shard at a time, also over a restart of this loop
+    until allowed; do sleep 600; done
     echo "shard $i start $(TZ=Europe/Amsterdam date '+%F %H:%M')"
     res-queue gpu --est 2h30m --label "r18:tpips_local$i" -- env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 \
         bash -c "for s in artelingo mmart; do $PY $T extract --set \$s --factor all --shard $i --of 6 --batch 1 --device cuda --manifest $IN/\$s.json; done"
