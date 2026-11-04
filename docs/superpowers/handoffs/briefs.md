@@ -1791,3 +1791,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-04-r18-build-4-handoff.md
 - New chat: tab 'r18 build 4', session 80de1fc3-2c7a-4bd6-8e4a-f235d3c5cc1c
 
+[brief] CoSiR: r18 build 4 -> r18 build 5 (2026-11-04 02:01 Amsterdam)
+- Done: tickets 08 and 09 merged; ticket 07 reviewed, 3 fixes open. TPIPS gate (iv) fails on node402.
+- State: 8 of 12 tickets merged. Node vectors do not count: lowest row cosine 0.9987 against 0.999, with identical packages and images. The threshold stays.
+- Next: ticket 07 fixes, then gate (iii), then tickets 10, 12, 11. TPIPS stores now extract on the local 3090, shard 0 of 6 running since 01:38.
+- Blocked: nothing. TURTLE time is 12.3 h, not the spec's 1 to 2 h: the route is open, recommendation in the handoff. GPU check passes.
+- Handoff: docs/superpowers/handoffs/2026-11-04-r18-build-5-handoff.md
+- New chat: tab 'r18 build 5', session 59a6344c-3df3-46f5-858d-ca2260a5f5a5
+
