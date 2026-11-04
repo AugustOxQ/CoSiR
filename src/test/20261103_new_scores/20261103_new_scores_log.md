@@ -44,3 +44,10 @@ About 95 min of wall time (r18 and a review job took CPU slots from about 01:40)
 missing 0. Picks (all `kept`): CRL on MMArt `none+k10`; matched ArtELingo SigLIP 2 `center+k3`, SigLIP 1 and CLIP L/14
 `center+k10`; matched MMArt Qwen and CLIP L/14 `center+k10`, SigLIP 2 and SigLIP 1 `center+k0`; untold ArtELingo
 `center+k10` on all four; untold MMArt Qwen and SigLIP 2 `none+k10`, SigLIP 1 `none+k1`, CLIP L/14 `none+k3`.
+
+## 2026-11-04 02:32: stage 2 and the C13 job started
+
+Stage 1 committed at c0ed42d8. Stage 2: 21 queue steps in three chains (`run_logs/stage2_plan.txt`). C13: Codex
+`gpt-6.1-sol` high (`codex-usage --room rederivation`: room, 5h 57% left), brief `.scratch/r17-new-scores/c13/task.txt`,
+writing `ns_c13.py` and `test_ns_c13.py`. A smoke root at 40 and 100 draws (`c13_round_smoke`, EmoSet Qwen clustering and
+ArtELingo Qwen retrieval) gives its subset compare. The full derive runs after its review, section by section in the queue.
