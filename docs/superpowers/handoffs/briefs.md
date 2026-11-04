@@ -1871,3 +1871,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-04-r19-run-5-handoff.md
 - New chat: tab 'r19 run 5', session 95f6797e-5c93-4325-a646-554756c300ec
 
+[brief] CoSiR: r19 run 5 -> r19 read (2026-11-04 22:27 Amsterdam)
+- Done: the user-read report passed both checks; r19 is merged into main and pushed. No number was wrong.
+- State: 23 of 23 verdicts hold. Against the teacher: 0 "better than", 15 "level with or better than", 41 no claim.
+- Next: show the results brief without our reading, record the user's reading, wrap up r19.
+- Blocked: this chat waits for the user's reading. r20's decide chat still holds r17, so r19 has its own tab.
+- Handoff: docs/superpowers/handoffs/2026-11-04-r19-read-handoff.md
+- New chat: tab 'r19 read', session 53416e8e-e127-42a2-8dd7-9c89826c4a0a
+
