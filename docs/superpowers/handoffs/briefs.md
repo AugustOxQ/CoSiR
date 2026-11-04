@@ -1815,3 +1815,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-04-r18-build-6-handoff.md
 - New chat: tab 'r18 build 6', session 11fc0fcc-c6dd-4c71-86ed-728ca26e43c8
 
+[brief] CoSiR: r18 build 6 -> r18 run (2026-11-04 05:47 Amsterdam)
+- Done: build finished. All 12 tickets are merged into main, the final review and the fix wave passed, and the full smoke passes.
+- State: the node and the local GPU give the same TURTLE partition (every row equal, loss 2.911379). Gates (ii), (iii) pass. TPIPS shard 1 of 6 runs.
+- Next: launch the 16 TURTLE jobs on node402. TPIPS stores end about Thursday 23:00, so stage 1 runs after that.
+- Blocked: nothing. GPU check passes. No fit, cell or label exists yet.
+- Handoff: docs/superpowers/handoffs/2026-11-04-r18-run-handoff.md
+- New chat: tab 'r18 run', session 1e814de2-074b-4d23-9283-442d5ce2fdad
+
