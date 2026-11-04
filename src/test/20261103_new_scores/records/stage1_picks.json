@@ -1,0 +1,434 @@
+{
+ "crl/mmart/clip_l14": {
+  "k": 10,
+  "n_val": 5769,
+  "pick": "none+k10",
+  "scores": {
+   "kept": true,
+   "map": {
+    "emotion": 0.1943096780511255,
+    "genre": 0.515376225755912,
+    "style": 0.3115732780288196
+   },
+   "r0_map": {
+    "emotion": 0.19423055682191548,
+    "genre": 0.4847922720431186,
+    "style": 0.3039838656733228
+   },
+   "score": 5.9643939100615855
+  },
+  "table_path": "stage1/tables/crl__mmart__clip_l14.json",
+  "unit": {
+   "emotion": 0.000633751040052366,
+   "genre": 0.0019367407309804907,
+   "style": 0.0038390840430087003
+  },
+  "unit_source": "/project/CoSiR/src/test/20261102_mmart_test/records/stage1_clip_l14.json",
+  "w": "none"
+ },
+ "matched/artelingo/clip_l14": {
+  "k": 10,
+  "n_val": 6152,
+  "pick": "center+k10",
+  "scores": {
+   "kept": true,
+   "map": {
+    "emotion": 0.2475974179016359,
+    "genre": 0.533711103303127,
+    "style": 0.16843931133879114
+   },
+   "r0_map": {
+    "emotion": 0.2444495890399283,
+    "genre": 0.5223681092815211,
+    "style": 0.16782202879941438
+   },
+   "score": 2.957981539972844
+  },
+  "table_path": "stage1/tables/matched__artelingo__clip_l14.json",
+  "unit": {
+   "emotion": 0.0016892742932269056,
+   "genre": 0.0016564163854410063,
+   "style": 0.003796055065128312
+  },
+  "unit_source": "/project/CoSiR/src/test/20261102_backbones_sweep/records/stage1_clip_l14.json",
+  "w": "center"
+ },
+ "matched/artelingo/siglip1": {
+  "k": 10,
+  "n_val": 6152,
+  "pick": "center+k10",
+  "scores": {
+   "kept": true,
+   "map": {
+    "emotion": 0.24808211495471647,
+    "genre": 0.5488167607054653,
+    "style": 0.16968483645381785
+   },
+   "r0_map": {
+    "emotion": 0.24521691853222344,
+    "genre": 0.5386417080073185,
+    "style": 0.16871994341963323
+   },
+   "score": 1.3366998868776865
+  },
+  "table_path": "stage1/tables/matched__artelingo__siglip1.json",
+  "unit": {
+   "emotion": 0.0021643605637413077,
+   "genre": 0.004102472623162656,
+   "style": 0.004682403141340774
+  },
+  "unit_source": "/project/CoSiR/src/test/20261102_backbones_sweep/records/stage1_siglip1.json",
+  "w": "center"
+ },
+ "matched/artelingo/siglip2": {
+  "k": 3,
+  "n_val": 6152,
+  "pick": "center+k3",
+  "scores": {
+   "kept": true,
+   "map": {
+    "emotion": 0.2466495230290679,
+    "genre": 0.5445929283278653,
+    "style": 0.16850996456476852
+   },
+   "r0_map": {
+    "emotion": 0.24278679876099712,
+    "genre": 0.5352726404709607,
+    "style": 0.16629996909051728
+   },
+   "score": 1.8179150162541555
+  },
+  "table_path": "stage1/tables/matched__artelingo__siglip2.json",
+  "unit": {
+   "emotion": 0.0015141856668823839,
+   "genre": 0.004259334686874894,
+   "style": 0.003092987345707676
+  },
+  "unit_source": "/project/CoSiR/src/test/20261102_backbones_sweep/records/stage1_siglip2.json",
+  "w": "center"
+ },
+ "matched/mmart/clip_l14": {
+  "k": 10,
+  "n_val": 5769,
+  "pick": "center+k10",
+  "scores": {
+   "kept": true,
+   "map": {
+    "emotion": 0.18975176169561875,
+    "genre": 0.5390576505683534,
+    "style": 0.18452294954826548
+   },
+   "r0_map": {
+    "emotion": 0.18864381485462753,
+    "genre": 0.5280714044184636,
+    "style": 0.18387536390506545
+   },
+   "score": 2.5298208690095265
+  },
+  "table_path": "stage1/tables/matched__mmart__clip_l14.json",
+  "unit": {
+   "emotion": 0.000633751040052366,
+   "genre": 0.0019367407309804907,
+   "style": 0.0038390840430087003
+  },
+  "unit_source": "/project/CoSiR/src/test/20261102_mmart_test/records/stage1_clip_l14.json",
+  "w": "center"
+ },
+ "matched/mmart/qwen": {
+  "k": 10,
+  "n_val": 5769,
+  "pick": "center+k10",
+  "scores": {
+   "kept": true,
+   "map": {
+    "emotion": 0.19359351656982884,
+    "genre": 0.5073518119917176,
+    "style": 0.16978800053815218
+   },
+   "r0_map": {
+    "emotion": 0.1920331752214868,
+    "genre": 0.4981713135931244,
+    "style": 0.16667914389690727
+   },
+   "score": 1.5919800426279274
+  },
+  "table_path": "stage1/tables/matched__mmart__qwen.json",
+  "unit": {
+   "emotion": 0.0014573890029571657,
+   "genre": 0.00366990589956373,
+   "style": 0.00258267282747926
+  },
+  "unit_source": "/project/CoSiR/src/test/20261102_mmart_test/records/stage1_qwen.json",
+  "w": "center"
+ },
+ "matched/mmart/siglip1": {
+  "k": 0,
+  "n_val": 5769,
+  "pick": "center+k0",
+  "scores": {
+   "kept": true,
+   "map": {
+    "emotion": 0.19143527860650966,
+    "genre": 0.5492180122425913,
+    "style": 0.18767067923211922
+   },
+   "r0_map": {
+    "emotion": 0.18979043009897215,
+    "genre": 0.5449365915295192,
+    "style": 0.1840699718171793
+   },
+   "score": 1.501880254630964
+  },
+  "table_path": "stage1/tables/matched__mmart__siglip1.json",
+  "unit": {
+   "emotion": 0.0005943409765497565,
+   "genre": 0.004160257189950056,
+   "style": 0.005078570836115792
+  },
+  "unit_source": "/project/CoSiR/src/test/20261102_mmart_test/records/stage1_siglip1.json",
+  "w": "center"
+ },
+ "matched/mmart/siglip2": {
+  "k": 0,
+  "n_val": 5769,
+  "pick": "center+k0",
+  "scores": {
+   "kept": true,
+   "map": {
+    "emotion": 0.19055412349881906,
+    "genre": 0.5470738553730581,
+    "style": 0.18558348862525254
+   },
+   "r0_map": {
+    "emotion": 0.18888928806279834,
+    "genre": 0.5412613047108094,
+    "style": 0.18190702411507018
+   },
+   "score": 1.373189498463266
+  },
+  "table_path": "stage1/tables/matched__mmart__siglip2.json",
+  "unit": {
+   "emotion": 0.0010930056213613037,
+   "genre": 0.00436614529322954,
+   "style": 0.00290602226345571
+  },
+  "unit_source": "/project/CoSiR/src/test/20261102_mmart_test/records/stage1_siglip2.json",
+  "w": "center"
+ },
+ "untold/artelingo/clip_l14": {
+  "k": 10,
+  "n_val": 6152,
+  "pick": "center+k10",
+  "scores": {
+   "kept": true,
+   "map": {
+    "emotion": 0.2640603903804075,
+    "genre": 0.5583438602407117,
+    "style": 0.28005884847655194
+   },
+   "r0_map": {
+    "emotion": 0.26354761262640297,
+    "genre": 0.5243876661972378,
+    "style": 0.2730750875547771
+   },
+   "score": 7.547694828445734
+  },
+  "table_path": "stage1/tables/untold__artelingo__clip_l14.json",
+  "unit": {
+   "emotion": 0.0016892742932269056,
+   "genre": 0.0016564163854410063,
+   "style": 0.003796055065128312
+  },
+  "unit_source": "/project/CoSiR/src/test/20261102_backbones_sweep/records/stage1_clip_l14.json",
+  "w": "center"
+ },
+ "untold/artelingo/qwen": {
+  "k": 10,
+  "n_val": 6152,
+  "pick": "center+k10",
+  "scores": {
+   "kept": true,
+   "map": {
+    "emotion": 0.26425849563493353,
+    "genre": 0.5514245887911003,
+    "style": 0.27468999327748334
+   },
+   "r0_map": {
+    "emotion": 0.26499372977553065,
+    "genre": 0.5185681420166564,
+    "style": 0.2694152732570325
+   },
+   "score": 3.4792750507095476
+  },
+  "table_path": "stage1/tables/untold__artelingo__qwen.json",
+  "unit": {
+   "emotion": 0.0014116107779215126,
+   "genre": 0.0038237977312404192,
+   "style": 0.002229334648849224
+  },
+  "unit_source": "/project/CoSiR/src/test/20261029_retrieval/stage0a_ranges.json",
+  "w": "center"
+ },
+ "untold/artelingo/siglip1": {
+  "k": 10,
+  "n_val": 6152,
+  "pick": "center+k10",
+  "scores": {
+   "kept": true,
+   "map": {
+    "emotion": 0.2655646548461553,
+    "genre": 0.56226695640864,
+    "style": 0.2926261526812698
+   },
+   "r0_map": {
+    "emotion": 0.26573187121044306,
+    "genre": 0.5296699400298966,
+    "style": 0.2852307939041512
+   },
+   "score": 3.1492782543387157
+  },
+  "table_path": "stage1/tables/untold__artelingo__siglip1.json",
+  "unit": {
+   "emotion": 0.0021643605637413077,
+   "genre": 0.004102472623162656,
+   "style": 0.004682403141340774
+  },
+  "unit_source": "/project/CoSiR/src/test/20261102_backbones_sweep/records/stage1_siglip1.json",
+  "w": "center"
+ },
+ "untold/artelingo/siglip2": {
+  "k": 10,
+  "n_val": 6152,
+  "pick": "center+k10",
+  "scores": {
+   "kept": true,
+   "map": {
+    "emotion": 0.26589239067243875,
+    "genre": 0.5625364330925128,
+    "style": 0.28908625339997024
+   },
+   "r0_map": {
+    "emotion": 0.2658658819616558,
+    "genre": 0.5291388125045365,
+    "style": 0.28233301279823964
+   },
+   "score": 3.3473174756713626
+  },
+  "table_path": "stage1/tables/untold__artelingo__siglip2.json",
+  "unit": {
+   "emotion": 0.0015141856668823839,
+   "genre": 0.004259334686874894,
+   "style": 0.003092987345707676
+  },
+  "unit_source": "/project/CoSiR/src/test/20261102_backbones_sweep/records/stage1_siglip2.json",
+  "w": "center"
+ },
+ "untold/mmart/clip_l14": {
+  "k": 3,
+  "n_val": 5769,
+  "pick": "none+k3",
+  "scores": {
+   "kept": true,
+   "map": {
+    "emotion": 0.19769661872480265,
+    "genre": 0.5460957887226441,
+    "style": 0.30525271914175817
+   },
+   "r0_map": {
+    "emotion": 0.19820512920711825,
+    "genre": 0.5286168932359682,
+    "style": 0.2971560358371657
+   },
+   "score": 3.4438447841166426
+  },
+  "table_path": "stage1/tables/untold__mmart__clip_l14.json",
+  "unit": {
+   "emotion": 0.000633751040052366,
+   "genre": 0.0019367407309804907,
+   "style": 0.0038390840430087003
+  },
+  "unit_source": "/project/CoSiR/src/test/20261102_mmart_test/records/stage1_clip_l14.json",
+  "w": "none"
+ },
+ "untold/mmart/qwen": {
+  "k": 10,
+  "n_val": 5769,
+  "pick": "none+k10",
+  "scores": {
+   "kept": true,
+   "map": {
+    "emotion": 0.19855658471777704,
+    "genre": 0.546992502509725,
+    "style": 0.30161208042487886
+   },
+   "r0_map": {
+    "emotion": 0.19922932630404191,
+    "genre": 0.5221379791028028,
+    "style": 0.2932759890697697
+   },
+   "score": 3.179538418940161
+  },
+  "table_path": "stage1/tables/untold__mmart__qwen.json",
+  "unit": {
+   "emotion": 0.0014573890029571657,
+   "genre": 0.00366990589956373,
+   "style": 0.00258267282747926
+  },
+  "unit_source": "/project/CoSiR/src/test/20261102_mmart_test/records/stage1_qwen.json",
+  "w": "none"
+ },
+ "untold/mmart/siglip1": {
+  "k": 1,
+  "n_val": 5769,
+  "pick": "none+k1",
+  "scores": {
+   "kept": true,
+   "map": {
+    "emotion": 0.19838566499980606,
+    "genre": 0.5417094213751993,
+    "style": 0.31378481787332085
+   },
+   "r0_map": {
+    "emotion": 0.19879001194333326,
+    "genre": 0.533175929223398,
+    "style": 0.3102348693807474
+   },
+   "score": 0.6899568657238033
+  },
+  "table_path": "stage1/tables/untold__mmart__siglip1.json",
+  "unit": {
+   "emotion": 0.0005943409765497565,
+   "genre": 0.004160257189950056,
+   "style": 0.005078570836115792
+  },
+  "unit_source": "/project/CoSiR/src/test/20261102_mmart_test/records/stage1_siglip1.json",
+  "w": "none"
+ },
+ "untold/mmart/siglip2": {
+  "k": 10,
+  "n_val": 5769,
+  "pick": "none+k10",
+  "scores": {
+   "kept": true,
+   "map": {
+    "emotion": 0.19827551215830538,
+    "genre": 0.5586898647471057,
+    "style": 0.31734161994875565
+   },
+   "r0_map": {
+    "emotion": 0.1990891513905002,
+    "genre": 0.5330320103746031,
+    "style": 0.30684386852257833
+   },
+   "score": 2.914851136203142
+  },
+  "table_path": "stage1/tables/untold__mmart__siglip2.json",
+  "unit": {
+   "emotion": 0.0010930056213613037,
+   "genre": 0.00436614529322954,
+   "style": 0.00290602226345571
+  },
+  "unit_source": "/project/CoSiR/src/test/20261102_mmart_test/records/stage1_siglip2.json",
+  "w": "none"
+ }
+}
