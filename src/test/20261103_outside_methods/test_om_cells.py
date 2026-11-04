@@ -1,5 +1,7 @@
 """Tests of om_cells (ticket 10): the cell list, the repeated TURTLE candidate, labels, voids, pins, sentences, the C13 guard.
 Synthetic data only; nothing reads a real store, `records/` or `om_paths.DEFAULT_OUT`.
+Includes C13 stub/refusal cleanup, r17 range consistency at assembly, stale CLAY read-outs in parts files,
+and SC3/SC4 text pin guards at scoring.
 
 Run: PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 /root/miniconda3/envs/CoSiR/bin/python -m pytest -q
      src/test/20261103_outside_methods/test_om_cells.py
@@ -26,6 +28,17 @@ import ns_ret  # noqa: E402
 @pytest.fixture(autouse=True)
 def _one_worker(monkeypatch):
     monkeypatch.setattr(ns_clu, 'WORKERS', 1)
+
+
+@pytest.fixture(autouse=True)
+def r17_ranges(tmp_path, monkeypatch):
+    """A fake r17 record, independent of our ranges; keep all assembly tests off real r17 files."""
+    monkeypatch.setattr(ns_paths, 'RECORDS', tmp_path / 'r17_reference')
+    ns_paths.RECORDS.mkdir()
+    path = ns_paths.RECORDS / 'stage1_ranges.json'
+    keys = {f"cstar/{k['set']}/{k['enc']}/{k['aspect']}/{k['metric']}" for k in s1.range_keys() if k['source'] == 'r17'}
+    path.write_text(json.dumps({k: {'r': 0.01} for k in keys}))
+    return path
 
 
 # ------------------------------------------------------------------------------------------------ the cell list
@@ -258,6 +271,17 @@ def test_sc3_refuses_a_text_set_whose_pin_changed(patch_sha, monkeypatch):
         oc.score_unit('SC3', 'artelingo', 'qwen', FakeLoaders(), picks=picks, draws=5)
 
 
+@pytest.mark.parametrize('text_set', ['A', 'B'])
+@pytest.mark.parametrize('aspect', op.ASPECTS)
+def test_sc4_refuses_a_text_set_whose_pin_changed(patch_sha, text_set, aspect):
+    picks = good_picks()
+    picks['clay/artelingo']['text_set'] = text_set
+    picks['clay_textset/ret/artelingo']['set'] = text_set
+    picks[s1.PIN_KEY][text_set][aspect] = 'stale-sha256'
+    with pytest.raises(AssertionError, match='pin'):
+        oc.score_unit('SC4', 'artelingo', 'qwen', FakeLoaders(), picks=picks, draws=5)
+
+
 def test_check_pin_ignores_other_aspects_and_compares_exactly(monkeypatch):
     monkeypatch.setattr(oc, 'text_sha', lambda ts, aspect: 'abc' if aspect == 'emotion' else 'zzz')
     pins = {s1.PIN_KEY: {'A': {'emotion': 'abc', 'style': 'q', 'genre': 'q'}, 'B': {a: None for a in op.ASPECTS}}}
@@ -407,6 +431,35 @@ def test_assemble_r17_failed_range_status_makes_r_missing():
     c = assemble_specs([sp], r17=r17, lo=-0.001)[0]
     assert c['label'] == 'inconclusive' and c['r'] is None
     assert assemble_specs([sp], r17=r17, lo=0.5)[0]['label'] == 'WIN'
+
+
+def test_absent_r17_range_status_is_missing_even_with_a_numeric_range():
+    sp = spec_of('SC1', metric='ami', k=9)
+    r17 = ok_r17()
+    del r17['stage1']['ranges']['cstar/artelingo/qwen/emotion/ami']
+    cell = assemble_specs([sp], r17=r17, lo=-0.001)[0]
+    assert cell['r'] is None and cell['label'] == 'inconclusive'
+    assert 'r17 range cstar/artelingo/qwen/emotion/ami missing' in cell['r_source']
+
+
+@pytest.mark.parametrize('r,ref,refuse', [(0.005, 0.01, True), (0.01, 0.02, True),
+                                        (0.01, 0.01 + 5e-13, False), (0.01, None, True)])
+def test_assemble_compares_r17_family_with_its_record(r17_ranges, r, ref, refuse):
+    sp = spec_of('SC1', metric='ami', k=9)
+    key = 'cstar/artelingo/qwen/emotion/ami'
+    doc = json.loads(r17_ranges.read_text())
+    if ref is None:
+        doc.pop(key)
+    else:
+        doc[key]['r'] = ref
+    r17_ranges.write_text(json.dumps(doc))
+    ranges = ranges_record()
+    ranges[oc.range_key(sp)]['r'] = r
+    if refuse:
+        with pytest.raises(SystemExit, match='assemble.*' + oc.range_key(sp)):
+            assemble_specs([sp], ranges=ranges)
+    else:
+        assert assemble_specs([sp], ranges=ranges)[0]['r'] == r
 
 
 def test_failed_gate_voids_exactly_its_cells():
@@ -662,6 +715,49 @@ def test_labels_step_refuses_a_cells_file_that_changed_the_label(tmp_path):
     cells_path.write_text(json.dumps(tampered))
     with pytest.raises(SystemExit):
         oc.run_labels(cells_path, c13_path, tmp_path / 'labels.json', picks, _rebuild_of(cells), expected=[{'id': c['id']} for c in cells])
+
+
+@pytest.mark.parametrize('smoke', [0, 1])
+def test_labels_stub_only_allowed_in_smoke(tmp_path, monkeypatch, smoke):
+    monkeypatch.setattr(op, 'SMOKE', smoke)
+    cells, picks = _cells_for_c13(), good_picks()
+    cells_path, c13_path, out = tmp_path / 'cells.json', tmp_path / 'c13.json', tmp_path / 'labels.json'
+    cells_path.write_text(json.dumps(cells))
+    c13_path.write_text(json.dumps(dict(_c13_doc(cells, picks), stub=True)))
+    call = lambda: oc.run_labels(cells_path, c13_path, out, picks, _rebuild_of(cells), expected=cells)
+    if smoke:
+        assert call() == out
+    else:
+        with pytest.raises(SystemExit, match='stub'):
+            call()
+        assert not out.exists()
+
+
+@pytest.mark.parametrize('reason', ['absent_c13', 'stub', 'partial', 'stale', 'unscored', 'disagrees'])
+def test_labels_refusal_removes_an_older_record(tmp_path, monkeypatch, reason):
+    monkeypatch.setattr(op, 'SMOKE', 0)
+    cells, picks = _cells_for_c13(), good_picks()
+    expected = copy.deepcopy(cells)
+    fresh = copy.deepcopy(cells)
+    c13 = _c13_doc(cells, picks)
+    if reason == 'stub':
+        c13['stub'] = True
+    elif reason == 'partial':
+        cells = cells[:-1]
+    elif reason == 'stale':
+        fresh[0]['r'] = 0.5
+    elif reason == 'unscored':
+        cells[0]['void'] = fresh[0]['void'] = 'not scored'
+    elif reason == 'disagrees':
+        c13['cells'][0]['d'] += 0.1
+    cells_path, c13_path, out = tmp_path / 'cells.json', tmp_path / 'c13.json', tmp_path / 'labels.json'
+    cells_path.write_text(json.dumps(cells))
+    if reason != 'absent_c13':
+        c13_path.write_text(json.dumps(c13))
+    out.write_text('{"old": true}')
+    with pytest.raises(SystemExit):
+        oc.run_labels(cells_path, c13_path, out, picks, _rebuild_of(fresh), expected=expected)
+    assert not out.exists()
 
 
 def test_labels_step_refuses_a_cells_file_that_is_not_what_assemble_gives_now(tmp_path):
@@ -1048,6 +1144,20 @@ def test_cmd_assemble_then_cmd_labels_writes_the_record(labelled):
     rec = json.loads(labelled.labels.read_text())
     assert [c['id'] for c in rec['cells']] == [s['id'] for s in labelled.specs]
     assert {c['label'] for c in rec['cells']} == {'WIN'}
+
+
+@pytest.mark.parametrize('changed', ['parts', 'committed_pick'])
+def test_cmd_assemble_refuses_stale_clay_comparator_readout(labelled, changed):
+    assert oc.cmd_assemble(None) == 0
+    if changed == 'parts':
+        path = oc.parts_dir() / 'SC4__mmart__qwen.json'
+        cells = json.loads(path.read_text())
+        cells[0]['comparator_readout'] = 'none+k0'
+        path.write_text(json.dumps(cells))
+    else:
+        labelled.store['stage1_om_picks.json']['clay/mmart']['pick'] = 'none+k0'
+    with pytest.raises(AssertionError, match='comparator_readout.*committed picks.*rescore'):
+        oc.cmd_assemble(None)
 
 
 def test_cmd_labels_refuses_without_the_c13_file(labelled):

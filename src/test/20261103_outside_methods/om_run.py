@@ -11,7 +11,8 @@ any time; a thing never run is `missing`. Smoke (OM_SMOKE=1, OM_OUTPUTS=<scratch
   stage1   [--step all|ranges|tpips|clay|records] [--set S] [--workers W]
                           om_stage1's steps (ranges; tpips and clay per set), then `records`: copies
                           OUT/stage1/om_ranges.json, om_picks.json to records/stage1_om_ranges.json, stage1_om_picks.json
-                          and rebuilds status. The controller commits the three records before stage 2.
+                          and rebuilds status; ranges must have exactly len(om_stage1.range_keys()) keys.
+                          The controller commits the three records before stage 2.
   stage2   [--sc --set --enc --draws --force]
                           refuses unless records/stage1_om_ranges.json, stage1_om_picks.json and status.json are committed
                           unchanged in git HEAD (om_paths.read_committed_record; smoke has no git check there); then om_cells
@@ -22,6 +23,9 @@ any time; a thing never run is `missing`. Smoke (OM_SMOKE=1, OM_OUTPUTS=<scratch
 
 A gate counts as `ok` only when its file says pass true AND its code hash is current: gate (ii) parts against om_turtle.py,
 gate (iii) parts against `om_gate_iii.code_sha256()` (a part from older code is `failed`, as the gate files say themselves).
+Assemble and labels also require committed status to match current gates, stage 1 states and r17's status hash,
+including smoke subsets; a changed status must be rebuilt with `status` and committed first (r17's path is ignored).
+The CLI requires OM_OUTPUTS and OM_SMOKE=1 together, with a scratch output path different from DEFAULT_OUT.
 """
 import argparse
 import hashlib
@@ -182,6 +186,21 @@ def cmd_status(args):
     return 0
 
 
+def require_current_status():
+    """Refuse a stale committed status, comparing states and the r17 hash, never its checkout-specific path."""
+    committed = op.read_committed_record('status.json')
+    current = build_status(write=False)
+    different = []
+    for section in ('gates', 'stage1'):
+        old, now = committed.get(section, {}), current[section]
+        different.extend(f'{section}.{k}' for k in sorted(old.keys() | now.keys()) if old.get(k) != now.get(k))
+    if committed.get('r17', {}).get('sha256') != current['r17']['sha256']:
+        different.append('r17.sha256')
+    if different:
+        raise SystemExit(f'{len(different)} status keys differ from committed status.json: {different[:5]}; '
+                         'run status and commit the rebuilt status.json before assemble or labels')
+
+
 # ------------------------------------------------------------------------------------------------ stage 0
 def cmd_stage0(args):
     ok = True
@@ -235,6 +254,7 @@ def cmd_stage1(args):
 
 
 def stage1_records():
+    import om_stage1 as s1
     allowed = set(pick_keys()) | {'clay_text_sha256'}
     for src, dst in (('om_ranges.json', 'stage1_om_ranges.json'), ('om_picks.json', 'stage1_om_picks.json')):
         path = op.OUT / 'stage1' / src
@@ -242,6 +262,8 @@ def stage1_records():
             print(f'{src}: absent, {dst} not written')
             continue
         doc = json.loads(path.read_text())
+        if src == 'om_ranges.json':
+            assert len(doc) == len(s1.range_keys()), f'ranges: {len(doc)} keys, expected {len(s1.range_keys())}'
         if src == 'om_picks.json':
             extra = sorted(set(doc) - allowed)
             assert not extra, f'{src}: keys no cell uses: {extra[:5]}'
@@ -302,6 +324,7 @@ def build_subset(expected):
 
 
 def cmd_assemble(args):
+    require_current_status()
     import om_cells
     expected = _expected(args.only)
     if expected is None:
@@ -315,6 +338,7 @@ def cmd_assemble(args):
 
 
 def cmd_labels(args):
+    require_current_status()
     import om_cells
     expected = _expected(args.only)
     if expected is None:
@@ -348,6 +372,8 @@ def cmd_list(args):
 
 
 def main(argv=None):
+    from om_env import check_record_environment
+    check_record_environment()
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     sub = ap.add_subparsers(dest='cmd', required=True)
     p = sub.add_parser('stage0')

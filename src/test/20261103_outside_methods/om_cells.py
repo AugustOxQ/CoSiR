@@ -18,15 +18,19 @@ Steps (CLI; OUT = `om_paths.OUT`):
     assemble -> OUT/stage2/cells.json: r17's cell form plus `label`, `void`, `sentence`; r from the committed stage 1 range
              record, voids from the committed `records/status.json` and r17's status (§3.5's table), label by §3.4's rule
     labels   -> records/labels.json; refuses unless OUT/c13/c13_cells.json exists and agrees with cells.json on every pick,
-             value, d, lo, hi and label within `om_paths.TOL_C13`. The only writer of labels.json.
+             value, d, lo, hi and label within `om_paths.TOL_C13`; a C13 stub is allowed only in smoke.
+             Removes an older labels.json before checking, so a refusal cannot leave old labels standing.
+             The only writer of labels.json.
     list     counts
 
 r of a cell: `records/stage1_om_ranges.json[range_key(cell)]['r']`; r null (or r17's own range failed) gives
 `inconclusive` for a cell that is not WIN; WIN stands. A void (failed gate, missing pick, a cell not scored) keeps
 numbers if there are any but no label and no sentence.
+At assembly, every supplied numeric r17-family range must match r17's records/stage1_ranges.json within 1e-12.
 
 c13_cells.json (written by the C13 code, from the saved outputs): {"picks": {<key>: str}, "cells": [{id, cand, comp, d, lo,
 hi, label (null for a void cell), candidate_readout, comparator_readout (retrieval cells)}]}. `pick_summary` names the keys.
+The CLI requires OM_OUTPUTS and OM_SMOKE=1 together, with a scratch output path different from DEFAULT_OUT.
 """
 import argparse
 import json
@@ -44,6 +48,7 @@ import ns_clu  # noqa: E402  (om_paths put r17's folder and the older rounds on 
 import ns_clu_cells  # noqa: E402
 import ns_metrics  # noqa: E402
 import ns_outcome  # noqa: E402
+import ns_paths  # noqa: E402
 import ns_ret  # noqa: E402
 
 ENCODERS, ASPECTS, SETS, SEEDS = op.ENCODERS, op.ASPECTS, op.SETS, op.SEEDS
@@ -476,6 +481,22 @@ def check_fresh(cell, picks):
         assert cell.get(key) == v, f'{cell["id"]}: parts have {key} {cell.get(key)!r}, the committed picks say {v!r}; rescore the unit'
 
 
+def check_r17_ranges(ranges, family):
+    """Check supplied numeric r17 margins against its record; missing margins retain their inconclusive rule."""
+    entries = [(k, v['r']) for k, v in ranges.items() if family.get(k) == 'r17' and v.get('r') is not None]
+    if not entries:
+        return
+    path = ns_paths.RECORDS / 'stage1_ranges.json'
+    reference = json.loads(path.read_text()) if path.exists() else {}
+    for key, r in entries:
+        set_, enc, aspect, metric, _ = key.split('/')
+        rkey = f'cstar/{set_}/{enc}/{aspect}/{metric}'
+        ref = reference.get(rkey, {}).get('r')
+        if ref is None or not math.isfinite(float(r)) or abs(float(r) - float(ref)) > 1e-12:
+            raise SystemExit(f'assemble refuses: r17 range {key} ({r!r}) differs from {path}:{rkey} ({ref!r}); '
+                             'rebuild and commit the stage 1 ranges')
+
+
 def assemble(raw, ranges, picks, status, r17, expected=None):
     """r17's cell form plus label, void, sentence, for every expected cell (default all 337), in order. `raw`: score_unit's
     cells (any subset; an id outside `expected` or twice is refused); a cell not scored is void ('not scored')."""
@@ -489,6 +510,7 @@ def assemble(raw, ranges, picks, status, r17, expected=None):
     stray = sorted(set(by) - ids)
     assert not stray, f'cells outside the list: {stray[:3]}'
     family = {k['key']: k['source'] for k in s1.range_keys()}
+    check_r17_ranges(ranges, family)
     out = []
     for spec in expected:
         c = dict(by.get(spec['id']) or _blank(spec, 'not scored'))
@@ -572,10 +594,15 @@ def labels_path():
 def run_labels(cells_path, c13_path, out_path, picks, rebuild, expected=None):
     """The guarded step: refuses (SystemExit) unless the C13 file exists, `cells.json` holds exactly the expected cells
     (default all 337, in order) and equals what `rebuild()` assembles now (the status or ranges may have changed since),
-    and C13 agrees; then writes the labels record."""
+    and C13 agrees (a stub is allowed only in smoke); then writes the labels record. An older record is removed first."""
+    out_path = Path(out_path)
+    out_path.unlink(missing_ok=True)
     cells_path, c13_path = Path(cells_path), Path(c13_path)
     if not c13_path.exists():
         raise SystemExit(f'labels refuses: {c13_path} does not exist (C13 must re-derive the cells first)')
+    c13 = json.loads(c13_path.read_text())
+    if c13.get('stub') and not op.SMOKE:
+        raise SystemExit(f'labels refuses: {c13_path} is a C13 stub (allowed only in smoke)')
     cells = json.loads(cells_path.read_text())
     want = [c['id'] for c in (cell_specs() if expected is None else expected)]
     if [c['id'] for c in cells] != want:
@@ -587,12 +614,11 @@ def run_labels(cells_path, c13_path, out_path, picks, rebuild, expected=None):
     if unscored:
         raise SystemExit(f'labels refuses: {len(unscored)} cells were never scored, a failed or unrun unit, not a missing '
                          f'input; first {unscored[0]}. Run cells again')
-    bad = c13_disagreements(cells, picks, json.loads(c13_path.read_text()))
+    bad = c13_disagreements(cells, picks, c13)
     if bad:
         raise SystemExit(f'labels refuses: C13 disagrees on {len(bad)} items, first: {bad[:5]}')
     rec = dict(cells_sha256=op.sha256_file(cells_path), c13_sha256=op.sha256_file(c13_path), tol=op.TOL_C13,
                picks=pick_summary(picks), cells=[{k: c.get(k) for k in CELL_KEYS} for c in cells])
-    out_path = Path(out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     op.write_json(out_path, rec)
     return out_path
@@ -681,6 +707,8 @@ def cmd_list(args):
 
 
 def main(argv=None):
+    from om_env import check_record_environment
+    check_record_environment()
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     sub = ap.add_subparsers(dest='cmd', required=True)
     p = sub.add_parser('cells')

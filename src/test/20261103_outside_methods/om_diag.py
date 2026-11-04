@@ -8,9 +8,10 @@ still writes every file. Files: OUT/diag/<name>.json, one per diagnostic. Each i
 
   sweep   [--set S]   AMI and ARI at r17's counts (plain + TURTLE, c* + TURTLE where fits exist, TPIPS k-means, CLAY
           k-means) with mean, min, max over starts or seeds, beside r17's k-means rows (plain and c*, from r17's sweep
-          files) -> sweep_<set>.json
+          files); [3, n] arms retain all three start values -> sweep_<set>.json
   adds    [--set S]   X-c* + TURTLE against X-c* k-means, plain + TURTLE against plain k-means, at the class count (four
-          metrics) and 20 (AMI): d with its paired interval over r17's draws -> turtle_adds_<set>.json
+          metrics) and 20 (AMI): d with its paired interval over r17's draws; the note records independent c* seed draws
+          -> turtle_adds_<set>.json
   fits    non-empty clusters per TURTLE (and TEMI, where run) fit; TURTLE's final loss and entropy -> fits.json
   clay    text set picked per task, both sets' validation scores, class names found verbatim in each list (D22:
           listed, not removed) -> clay.json
@@ -104,6 +105,8 @@ def sweep(set_, aspects=None, encs=None, counts=None, ld=None):
     rows, missing, r17, plain_cache = [], [], {}, {}
 
     def add(arm, enc, aspect, k, parts, y, seeded):
+        if not seeded:
+            parts = np.asarray(parts)[:, None]
         for t in ns_clu.metric_table(arm, aspect, parts, y, k, metrics=op.SWEEP_METRICS):
             rows.append(dict(arm=arm, enc=enc, aspect=aspect, k=int(k), metric=t['metric'], seeded=seeded,
                              **_stat(t['per_seed'])))
@@ -183,7 +186,10 @@ def adds(set_, aspects=None, encs=None, counts=None, ld=None, draws=None):
                         missing.append(f'{arm}/{enc}/{aspect}/{k}')
                     cells.append(cell)
     return write(f'turtle_adds_{set_}.json', dict(set=set_, split=split, cells=cells, missing=missing, draws=draws,
-                                                  smoke=bool(op.SMOKE), sign='d = TURTLE minus k-means'))
+                                                  smoke=bool(op.SMOKE), sign='d = TURTLE minus k-means',
+                                                  note="For c* + TURTLE against c* k-means, c*'s seeds are drawn twice, "
+                                                       'so the pair is on rows only and the interval is probably wider '
+                                                       '(size not measured).'))
 
 
 # ================================================================================================ fits
