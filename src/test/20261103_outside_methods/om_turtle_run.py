@@ -23,6 +23,7 @@ CLI:
     python om_turtle_run.py pack [--pack DIR] [--limit N]   local: export every fit input once to DIR (default OUT/turtle_pack)
     python om_turtle_run.py fit --pack DIR ... [--only-k K --only-start S]   inputs and keys from the pack (node: no stores)
     python om_turtle_run.py check-pulled RESULTS_DIR [--pack DIR]            local: check the 412 pulled fits against the pack
+`check-pulled` also requires one non-null host, one non-null torch_version, CUDA devices and full default TURTLE settings.
 `--outer-steps` (other than 6000) and `--limit` are for the smoke and need OM_SMOKE=1. `--only-k`/`--only-start` keep
 only the fits with that K / start (the full fit is unchanged), so they need no OM_SMOKE.
 
@@ -184,7 +185,8 @@ def pack_build(pack=None, limit=None, set_=None, enc=None, arm=None):
 
 def check_pulled(results, pack=None):
     """Local, after a pull: the 412 fits under `results`/parts/turtle against the pack manifest (input sha256, n,
-    labels in [0, K), keys equal to om_data.keys) via om_data.check_part. Prints the counts; returns (ok, bad)."""
+    labels in [0, K), keys equal to om_data.keys) via om_data.check_part. Requires one host and torch version,
+    CUDA and default 6000-step settings throughout. Prints the counts; returns (ok, bad)."""
     import om_data
     pack = Path(pack or Path(P.OUT) / 'turtle_pack')
     man = _pack_manifest(pack)
@@ -202,8 +204,16 @@ def check_pulled(results, pack=None):
             side = json.loads(p.with_suffix('.json').read_text())
             hosts[side.get('host')] = hosts.get(side.get('host'), 0) + 1
             torch_v[side.get('torch_version')] = torch_v.get(side.get('torch_version'), 0) + 1
+            if side.get('device') != 'cuda':
+                bad.append((f, f'device {side.get("device")!r} is not cuda'))
+            if side.get('turtle') != dict(P.TURTLE, outer_steps=6000):
+                bad.append((f, 'turtle settings differ from the full default settings'))
         else:
             bad.append((f, why))
+    if len(hosts) != 1 or None in hosts:
+        bad.append((plan()[0], f'fits require one non-null host: {hosts}'))
+    if len(torch_v) != 1 or None in torch_v:
+        bad.append((plan()[0], f'fits require one non-null torch_version: {torch_v}'))
     for (s, e, a), (g, b) in sorted(jobs.items()):
         print(f'  {s}/{e}/{a}: {g} good, {b} bad')
     for f, why in bad[:10]:
