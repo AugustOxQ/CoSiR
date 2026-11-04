@@ -40,7 +40,7 @@ artists with the training paintings (r15).
    abstract (2026-11-10) and the paper (2026-11-16).
 2. Intervals at the other cluster counts, with a new spec or an amendment. About 8 CPU slot-hours (our estimate from this
    run, not measured). It could turn the point values of the sweep into claims across counts.
-3. Go on with the planned loops: the qualitative figure (r20, CPU minutes and design work), head variants (r21, about
+3. Go on with the planned loops, beside r18 (outside methods) and r19 (more encoders), which are still running: the qualitative figure (r20, CPU minutes and design work), head variants (r21, about
    2 h GPU), text queries (r22, under 1 h GPU). r21 could tell if another head closes the emotion gap to the teacher.
 
 **Your reading.**
@@ -194,7 +194,7 @@ The guard decided CRL's MMArt pick: centering plus ten-neighbour expansion score
 |Teacher|45/200|
 |CRL|9/160|
 
-The nine lower point value cases against CRL are ArtELingo ARI: emotion at five/eight clusters on every encoder, plus CLIP L/14 style at ten. None against plain images or PercepT. Counts include twenty clusters when different from the class count; no outcome word applies.
+The nine lower point value cases against CRL are ArtELingo ARI: emotion at five/eight clusters on every encoder, plus CLIP L/14 style at ten. The 160 CRL comparisons set c* on each encoder against CRL on CLIP L/14; on the same encoder it is 3 of 40, and CRL on other encoders stays unlicensed. None against plain images or PercepT. Counts include twenty clusters when different from the class count; no outcome word applies.
 
 ![MMArt count sweep](../../assets/2027-01-04_new_scores/sweep_mmart.png)
 

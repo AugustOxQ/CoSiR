@@ -12,7 +12,7 @@ ROWS = [
     ('Teacher, ARI and ACC', lambda c: c['sc'] == 'SC3' and c['metric'] in ('ari', 'acc')),
     ('Photo model, clustering', lambda c: c['sc'] == 'SC4'),
     ('CRL, clustering', lambda c: c['sc'] == 'SC5'),
-    ('Retrieval (CRL, PercepT, untold)', lambda c: c['sc'] in ('SC6', 'SC7', 'SC8')),
+    ('Retrieval (three comparisons)', lambda c: c['sc'] in ('SC6', 'SC7', 'SC8')),
 ]
 COL = {'WIN': '#1baf7a', 'LEVEL': '#b3b1ab', 'BELOW': '#eb6834'}
 fig, ax = plt.subplots(figsize=(8.4, 3.5))

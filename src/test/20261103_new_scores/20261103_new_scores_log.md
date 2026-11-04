@@ -118,3 +118,12 @@ All 21 steps ok, 412 cells, rows decided 412, missing 0 (2.4 h of wall time, oth
 - Fix bd8717c2, with a test that failed before the fix. Rerun through the queue: the old rows came back identical, and 4 style
   rows are new. No verdict reads this step. Change log: `.claude/20261104_log.md`.
 - `ns_nonwin_cells.md` written from `records/verdicts.json`: 39 of 412 cells, the rest are WIN.
+
+## 2026-11-04 09:31: reports done
+
+- Auto report `docs/reports/auto/percept/2027-01-04_new_scores.md`: Codex draft (`gpt-6.1-sol` medium), the controller rewrote the
+  results brief, then a Sonnet `high` claim review (about 330 numbers recomputed; two small errors, four wordings too strong,
+  caveats added). User-read report `docs/user_read/2026-11-04_new_scores.md`: Codex draft, a Haiku cold read and a Sonnet `high`
+  fidelity check (about 70 numbers, all matched), one fix wave. Time-box 18:00 met.
+- The report is about 18 KB against a target of about 15 KB: the many report items that no code writes take the room.
+- CPU use ended 09:02. No GPU. Nothing cut. Disk: 183 MB on SSD2.
