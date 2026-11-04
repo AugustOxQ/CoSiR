@@ -41,7 +41,7 @@ Run sheet: `pp_run_sheet.md`. Spec: `docs/superpowers/specs/2026-11-03-past-pick
 | 11:03 | Stage 0 ended, 44 of 44 steps rc 0, 40 min | gates (i) to (viii) all ok in `gate.json`; SemArt set 11,162 paintings, 2,717 artists, 11,159 after md5; D23 maximum difference 0.0; mapper replays at most 5.4e-07 |
 | 11:05 | Stage 1 started, `PP_CPU_JOBS` 3 | running |
 | 11:48 | Stage 1 ended, 19 of 19 steps rc 0, 42 min; `status.json` all ok; `missing_stores` empty | ok |
-| 11:50 | Stage 1 records committed before any test number; the printed command plus attribution lines | committed |
+| 11:48 | Stage 1 records committed before any test number; the printed command plus attribution lines | committed |
 | 11:49 | Stage 2 started, `PP_CPU_JOBS` 3 | running |
 | 12:30 | Stage 2 ended, 22 of 22 steps rc 0, 41 min | 137 cells in 7 files; no number read yet |
 | 12:34 | C13 by Codex started (`gpt-6.1-sol`, high) | running |
