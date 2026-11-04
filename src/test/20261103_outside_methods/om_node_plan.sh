@@ -32,9 +32,11 @@ OM_BATCH=$OM_BATCH   OM_EST_SHARD=$OM_EST_SHARD   OM_EST_PROBE=$OM_EST_PROBE   s
      \$CLUSTER hf-fetch sywang/TPIPS-Embed-Qwen3VL-8B --revision 86a1493c60121e656a1c075bc7aed88f25fcd4d4 --wait      (background)
      \$CLUSTER hf-fetch Qwen/Qwen3-VL-Embedding-8B --revision 2c4565515e0f265c6511776e7193b22c0968ddc7 --wait         (background)
      \$CLUSTER hf-fetch sywang/TPIPS-Embed-Qwen3VL-8B --status ; \$CLUSTER hf-fetch Qwen/Qwen3-VL-Embedding-8B --status
-2  Env: no new env. The job uses the node's CoSiR env (torch 2.14, transformers 5.16.1 when last read) with tpips 0.1.2 and
-   peft 0.19.1 from the input folder tpips_pylibs on PYTHONPATH (pure Python, copied from the local venv). A second CLI
-   profile cannot build an env: load_profiles refuses a shared REPO_URL. Gate (iv) compares node and local vectors.
+2  Env: no new env. The job uses only the interpreter of the node's CoSiR env. Every numeric package comes from the input
+   folder tpips_pylibs/full on PYTHONPATH, a copy of the local versions (7.5 GB; torch, torchvision, nvidia, transformers,
+   tokenizers, safetensors, huggingface_hub, accelerate, PIL, numpy, with their dist-info, plus tpips and peft). The node's
+   own transformers 5.16.1 and torch 2.14 failed gate (iv): round log, build 4. A second CLI profile cannot build an env:
+   load_profiles refuses a shared REPO_URL. Gate (iv) compares node and local vectors.
 3  DATA_MAP: these two pairs in cluster.conf (the images already map through wikiart_proj):
      /local/wding/r18_in/tpips_inputs:/data/SSD2/cosir_r18/20261103_outside_methods/outputs/tpips_inputs
      /local/wding/r18_in/tpips_pylibs:/data/SSD2/cosir_r18/20261103_outside_methods/node_inputs/tpips_pylibs

@@ -8,11 +8,13 @@
 # gate-probe  the 48 probe images, 3 factors, one shard, merged: the store gate (iv) compares with the local batch-1 run.
 #             Use the same --batch as the shard jobs (gate (iv) pairs host and batch).
 # extract     om_tpips.py extract for shard I of N on the sets (default: artelingo, then mmart); a rerun skips finished chunks.
-# Python: TPIPS_PY (default the node's CoSiR env). tpips 0.1.2 and peft 0.19.1 come from the input folder tpips_pylibs
-#         (pure Python, copied from the local venv) on PYTHONPATH; nothing is installed at run time.
+# Python: TPIPS_PY (default the node's CoSiR env, only its interpreter). All numeric packages come from the input folder
+#         tpips_pylibs/full on PYTHONPATH, a copy of the local versions (torch 2.11, torchvision 0.26, transformers 5.6.2,
+#         Pillow, numpy, nvidia libs, tpips, peft): the node's own transformers 5.16.1 fails gate (iv), and with it pinned
+#         alone 13 of 48 rows still miss 0.999. The probe refuses any other version. Nothing is installed at run time.
 # Hub: a job-local HF_HUB_CACHE with refs/main pinned to the om_paths hashes, over the real hub (see pin_ref).
-# Inputs: manifests (om_tpips.py prepare) at node /local/wding/r18_in/tpips_inputs and tpips_pylibs at
-#         /local/wding/r18_in/tpips_pylibs (both DATA_MAP), bound at their local paths;
+# Inputs: manifests (om_tpips.py prepare) at node /local/wding/r18_in/tpips_inputs and tpips_pylibs/full at
+#         /local/wding/r18_in/tpips_pylibs/full (both DATA_MAP), bound at their local paths;
 #         images through --image-root-map (local /data/PDD/wikiart_proj/wikiart -> node /var/scratch/wding/Dataset/...);
 #         weights from the node HF hub /var/scratch/wding/cache/hub (offline, pinned snapshots).
 # Results: node /local/wding/res/r18_tpips (probe: r18_tpips_probe), bound at the local node_out folder; stores under tpips_store/.
@@ -54,8 +56,8 @@ ROUND=src/test/20261103_outside_methods
 # One bound input: the manifests. NODE_IN is where DATA_MAP puts them, LOCAL_IN the path the code reads (om_paths.OUT / tpips_inputs).
 NODE_IN=/local/wding/r18_in/tpips_inputs
 LOCAL_IN=/data/SSD2/cosir_r18/20261103_outside_methods/outputs/tpips_inputs
-NODE_LIBS=/local/wding/r18_in/tpips_pylibs
-LOCAL_LIBS=/data/SSD2/cosir_r18/20261103_outside_methods/node_inputs/tpips_pylibs
+NODE_LIBS=/local/wding/r18_in/tpips_pylibs/full
+LOCAL_LIBS=/data/SSD2/cosir_r18/20261103_outside_methods/node_inputs/tpips_pylibs/full
 LOCAL_OUT=/data/SSD2/cosir_r18/20261103_outside_methods/node_out     # OM_OUTPUTS inside the job (not om_paths.DEFAULT_OUT)
 case "$mode" in
     probe) NODE_RES=/local/wding/res/r18_tpips_probe ;;
@@ -141,15 +143,15 @@ probe)
 import importlib.metadata as md, json, os, sys
 from pathlib import Path
 from PIL import Image
-def ver(p): return tuple(int(x) for x in md.version(p).split('.')[:2] if x.isdigit())
-problems = []
-v = {p: md.version(p) for p in ('torch', 'transformers', 'peft', 'tpips')}
+want = {'torch': '2.11.0+cu130', 'torchvision': '0.26.0+cu130', 'transformers': '5.6.2', 'pillow': '12.2.0', 'numpy': '2.2.6',
+        'tokenizers': '0.22.2', 'peft': '0.19.1', 'tpips': '0.1.2'}      # the local batch-1 reference's versions
+v = {p: md.version(p) for p in want}
 print('versions', v)
-if ver('transformers') < (5, 0): problems.append('transformers < 5.0')
-if ver('peft') < (0, 19): problems.append('peft < 0.19')
-if v['tpips'] != '0.1.2': problems.append('tpips != 0.1.2')
+problems = [f'{p} is {v[p]}, not {w}' for p, w in want.items() if v[p] != w]
 import torch, tpips                                  # noqa: F401  (importable)
+print('torch from', torch.__file__)
 print('cuda', torch.cuda.is_available(), torch.cuda.device_count(), torch.cuda.get_device_name(0) if torch.cuda.is_available() else '')
+if not torch.__file__.startswith(os.environ['LOCAL_LIBS']): problems.append(f'torch not from the input folder: {torch.__file__}')
 if not torch.cuda.is_available(): problems.append('no CUDA')
 sys.path.insert(0, os.environ['ROUND'])
 import om_paths as P
