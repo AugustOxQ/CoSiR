@@ -664,6 +664,22 @@ def test_labels_step_refuses_a_cells_file_that_changed_the_label(tmp_path):
         oc.run_labels(cells_path, c13_path, tmp_path / 'labels.json', picks, _rebuild_of(cells), expected=[{'id': c['id']} for c in cells])
 
 
+@pytest.mark.parametrize('smoke', [0, 1])
+def test_labels_stub_only_allowed_in_smoke(tmp_path, monkeypatch, smoke):
+    monkeypatch.setattr(op, 'SMOKE', smoke)
+    cells, picks = _cells_for_c13(), good_picks()
+    cells_path, c13_path, out = tmp_path / 'cells.json', tmp_path / 'c13.json', tmp_path / 'labels.json'
+    cells_path.write_text(json.dumps(cells))
+    c13_path.write_text(json.dumps(dict(_c13_doc(cells, picks), stub=True)))
+    call = lambda: oc.run_labels(cells_path, c13_path, out, picks, _rebuild_of(cells), expected=cells)
+    if smoke:
+        assert call() == out
+    else:
+        with pytest.raises(SystemExit, match='stub'):
+            call()
+        assert not out.exists()
+
+
 def test_labels_step_refuses_a_cells_file_that_is_not_what_assemble_gives_now(tmp_path):
     cells, picks = _cells_for_c13(), good_picks()
     cells_path, c13_path = tmp_path / 'cells.json', tmp_path / 'c13_cells.json'

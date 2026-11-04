@@ -24,6 +24,7 @@ A gate counts as `ok` only when its file says pass true AND its code hash is cur
 gate (iii) parts against `om_gate_iii.code_sha256()` (a part from older code is `failed`, as the gate files say themselves).
 Assemble and labels also require committed status to match current gates, stage 1 states and r17's status hash,
 including smoke subsets; a changed status must be rebuilt with `status` and committed first (r17's path is ignored).
+The CLI requires OM_OUTPUTS and OM_SMOKE=1 together, with a scratch output path different from DEFAULT_OUT.
 """
 import argparse
 import hashlib
@@ -367,6 +368,8 @@ def cmd_list(args):
 
 
 def main(argv=None):
+    from om_env import check_record_environment
+    check_record_environment()
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     sub = ap.add_subparsers(dest='cmd', required=True)
     p = sub.add_parser('stage0')

@@ -18,7 +18,8 @@ Steps (CLI; OUT = `om_paths.OUT`):
     assemble -> OUT/stage2/cells.json: r17's cell form plus `label`, `void`, `sentence`; r from the committed stage 1 range
              record, voids from the committed `records/status.json` and r17's status (§3.5's table), label by §3.4's rule
     labels   -> records/labels.json; refuses unless OUT/c13/c13_cells.json exists and agrees with cells.json on every pick,
-             value, d, lo, hi and label within `om_paths.TOL_C13`. The only writer of labels.json.
+             value, d, lo, hi and label within `om_paths.TOL_C13`; a C13 stub is allowed only in smoke.
+             The only writer of labels.json.
     list     counts
 
 r of a cell: `records/stage1_om_ranges.json[range_key(cell)]['r']`; r null (or r17's own range failed) gives
@@ -27,6 +28,7 @@ numbers if there are any but no label and no sentence.
 
 c13_cells.json (written by the C13 code, from the saved outputs): {"picks": {<key>: str}, "cells": [{id, cand, comp, d, lo,
 hi, label (null for a void cell), candidate_readout, comparator_readout (retrieval cells)}]}. `pick_summary` names the keys.
+The CLI requires OM_OUTPUTS and OM_SMOKE=1 together, with a scratch output path different from DEFAULT_OUT.
 """
 import argparse
 import json
@@ -572,10 +574,13 @@ def labels_path():
 def run_labels(cells_path, c13_path, out_path, picks, rebuild, expected=None):
     """The guarded step: refuses (SystemExit) unless the C13 file exists, `cells.json` holds exactly the expected cells
     (default all 337, in order) and equals what `rebuild()` assembles now (the status or ranges may have changed since),
-    and C13 agrees; then writes the labels record."""
+    and C13 agrees (a stub is allowed only in smoke); then writes the labels record."""
     cells_path, c13_path = Path(cells_path), Path(c13_path)
     if not c13_path.exists():
         raise SystemExit(f'labels refuses: {c13_path} does not exist (C13 must re-derive the cells first)')
+    c13 = json.loads(c13_path.read_text())
+    if c13.get('stub') and not op.SMOKE:
+        raise SystemExit(f'labels refuses: {c13_path} is a C13 stub (allowed only in smoke)')
     cells = json.loads(cells_path.read_text())
     want = [c['id'] for c in (cell_specs() if expected is None else expected)]
     if [c['id'] for c in cells] != want:
@@ -587,7 +592,7 @@ def run_labels(cells_path, c13_path, out_path, picks, rebuild, expected=None):
     if unscored:
         raise SystemExit(f'labels refuses: {len(unscored)} cells were never scored, a failed or unrun unit, not a missing '
                          f'input; first {unscored[0]}. Run cells again')
-    bad = c13_disagreements(cells, picks, json.loads(c13_path.read_text()))
+    bad = c13_disagreements(cells, picks, c13)
     if bad:
         raise SystemExit(f'labels refuses: C13 disagrees on {len(bad)} items, first: {bad[:5]}')
     rec = dict(cells_sha256=op.sha256_file(cells_path), c13_sha256=op.sha256_file(c13_path), tol=op.TOL_C13,
@@ -681,6 +686,8 @@ def cmd_list(args):
 
 
 def main(argv=None):
+    from om_env import check_record_environment
+    check_record_environment()
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     sub = ap.add_subparsers(dest='cmd', required=True)
     p = sub.add_parser('cells')
