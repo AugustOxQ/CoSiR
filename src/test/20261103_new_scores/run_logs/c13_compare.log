@@ -1,0 +1,4 @@
+res-queue: enqueued cpu short position 1, 0 ahead, estimated start 06:59
+res-queue: start cpu 06:59
+C13 PASS items=22615 failed=0 missing=0 max_abs=3.52218254562e-14 scope=full
+res-queue: end cpu exit 0, 0.07 minutes run

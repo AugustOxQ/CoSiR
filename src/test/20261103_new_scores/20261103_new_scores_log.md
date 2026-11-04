@@ -79,3 +79,18 @@ bbd4f4f9: `compare` now checks the numbers, `licensed`, `summary`, `status`, `sm
 once and caught. Sonnet `high` re-review: pass. Left as notes: an inherited false FAIL if a stage 1 range were not ok (all
 116 are ok, so it does not fire), and hand-edited `sentence` text, `present`, `r_source` or the void reason list would not
 be seen (`ns_outcome` writes those).
+
+## 2026-11-04 04:58: stage 2 done, outcomes written (pending C13)
+
+All 21 steps ok, 412 cells, rows decided 412, missing 0 (2.4 h of wall time, others' jobs held a slot part of it).
+`records/status.json` committed; `outcomes` wrote `records/outcomes.json`, sha256 f851da2e. No verdict before C13.
+
+## 2026-11-04 06:59: C13 passed, verdicts written
+
+- Derive: 52 of 52 sections ended exit 0 (`run_logs/c13_derive.log`), 02:32 code start, about 05:00 first full plan, 06:59 end.
+- Compare (`ns_c13.py compare --write-record`, `run_logs/c13_compare.log`):
+  `C13 PASS items=22615 failed=0 missing=0 max_abs=3.52218254562e-14 scope=full`.
+- `c13.json` names `outcomes_sha256` f851da2e...5b7f, which equals `sha256sum records/outcomes.json`.
+- `c13-check` ok, `verdicts` wrote `records/verdicts.json` (same bytes as `outcomes.json`). `status` rebuilt: ok 161, failed 0,
+  missing 0; `status.json` equals HEAD.
+- Machine at 06:59: CPU idle, 4 slots free. Stage 3 starts now in three chains.
