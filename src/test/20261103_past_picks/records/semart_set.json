@@ -1,0 +1,129 @@
+{
+ "rule": "nearest cosine < 0.95 and artist tier none and author not starting with UNKNOWN (sc_check.py)",
+ "gate": {
+  "pass": true,
+  "paintings": 11162,
+  "artists": 2717,
+  "types": {
+   "religious": 4101,
+   "portrait": 1686,
+   "landscape": 1548,
+   "mythological": 1175,
+   "genre": 885,
+   "still-life": 823,
+   "historical": 344,
+   "interior": 323,
+   "other": 253,
+   "study": 24
+  },
+  "expected": {
+   "paintings": 11162,
+   "artists": 2717,
+   "types": {
+    "religious": 4101,
+    "portrait": 1686,
+    "landscape": 1548,
+    "mythological": 1175,
+    "genre": 885,
+    "still-life": 823,
+    "historical": 344,
+    "interior": 323,
+    "other": 253,
+    "study": 24
+   }
+  },
+  "tiers_match_parquet": true,
+  "n_set": 11159,
+  "n_set_expected": 11159,
+  "n_set_as_expected": true,
+  "md5_groups": [
+   {
+    "md5": "a36ed180dbc7e2c98fb91612e839ec78",
+    "keep": "03597-1trinity.jpg",
+    "dropped": [
+     "03598-1trinity.jpg"
+    ]
+   },
+   {
+    "md5": "55b2e900589588b2696a952e95d8e48b",
+    "keep": "22768-blindman.jpg",
+    "dropped": [
+     "22767-blindman.jpg"
+    ]
+   },
+   {
+    "md5": "931844d6ae0a7e2e210d6ab9528590c8",
+    "keep": "28700-flowers3.jpg",
+    "dropped": [
+     "28701-flowers3.jpg"
+    ]
+   }
+  ]
+ },
+ "n_gate": 11162,
+ "n_set": 11159,
+ "artists_set": 2717,
+ "md5_groups": [
+  {
+   "md5": "a36ed180dbc7e2c98fb91612e839ec78",
+   "keep": "03597-1trinity.jpg",
+   "dropped": [
+    "03598-1trinity.jpg"
+   ]
+  },
+  {
+   "md5": "55b2e900589588b2696a952e95d8e48b",
+   "keep": "22768-blindman.jpg",
+   "dropped": [
+    "22767-blindman.jpg"
+   ]
+  },
+  {
+   "md5": "931844d6ae0a7e2e210d6ab9528590c8",
+   "keep": "28700-flowers3.jpg",
+   "dropped": [
+    "28701-flowers3.jpg"
+   ]
+  }
+ ],
+ "n_md5_dropped": 3,
+ "close_before_md5": 217,
+ "close": 217,
+ "far": 10942,
+ "close_cut": 0.93,
+ "set_types": {
+  "religious": 4100,
+  "portrait": 1686,
+  "landscape": 1548,
+  "mythological": 1175,
+  "genre": 884,
+  "still-life": 822,
+  "historical": 344,
+  "interior": 323,
+  "other": 253,
+  "study": 24
+ },
+ "inner_pairs_ge_0.95": {
+  "pairs": 472,
+  "paintings": 698,
+  "rows": "Qwen default image",
+  "n": 11159
+ },
+ "stores_checked": [
+  "clip_b16",
+  "clip_b32",
+  "clip_l14",
+  "dinov2_large",
+  "qwen3vl_emb_2b",
+  "qwen3vl_emb_2b_aspect_prompts/genre_word",
+  "siglip2_so400m",
+  "siglip_so400m"
+ ],
+ "keys_sha256": {
+  "gate": "7acd92671d942f7b88b93108c1bc2ce7c7c79c8488dd84c1a24aec89ed4289dc",
+  "set": "069538024582aee70764337addd9323d87e34d985472edac3c8bfb416052f1db",
+  "close": "4e206d613c7045666673ebd3e6092bd03f45d0a0e9bb52c36d6a12c9de562598",
+  "far": "cb005d00bf65605c7a850454be3b137588a3c19a23024c14f8026e6675d4ac24"
+ },
+ "missing_stores": []
+}
