@@ -42,3 +42,17 @@ Run sheet: `pp_run_sheet.md`. Spec: `docs/superpowers/specs/2026-11-03-past-pick
 | 11:05 | Stage 1 started, `PP_CPU_JOBS` 3 | running |
 | 11:48 | Stage 1 ended, 19 of 19 steps rc 0, 42 min; `status.json` all ok; `missing_stores` empty | ok |
 | 11:50 | Stage 1 records committed before any test number; the printed command plus attribution lines | committed |
+| 11:49 | Stage 2 started, `PP_CPU_JOBS` 3 | running |
+| 12:30 | Stage 2 ended, 22 of 22 steps rc 0, 41 min | 137 cells in 7 files; no number read yet |
+
+## Choices of the run chat (agent default)
+
+- **M5 ran before the last two photo jobs ended.** The spec's order puts M5 after the photo models. GPU 0 was free at 03:46, and
+  M5 reads no photo output. Result: no effect on any input.
+- **MMArt and SemArt extraction ran as two chains at once**, so each held a queue place. The queue serialized their steps.
+- **The probe ended at 10:22, past the sheet's 10:00 GPU limit.** It started at 09:19 on a quiet CPU. `shared-resources.md`
+  counts probes as short work that can stay local, and the spec calls this one short.
+- **The stage 1 commit landed second.** A shell error stopped the first attempt, so the run log commit 35db5c7d came before the
+  records commit a617831b. Both came before stage 2 started.
+- **C13's full derive waits for 19:00.** The user's limit for CPU scoring is about 13:00, and the code is not written yet. The
+  report's date (about 11-06) allows this.
