@@ -89,7 +89,7 @@ def test_gate_file_merges_parts_and_passes_only_with_all_three(tmp_path):
 # ------------------------------------------------------------------------------------------------ (b) files
 def test_b_files_give_the_same_cell_as_memory(fake):
     mem = g.clu_cell(fake['cand'], fake['comp'], fake['y'], 40)
-    got, back = g.replay_b_cell('artelingo', 'qwen', fake['cand'], fake['comp'], fake['y'], 40, fake['out'])
+    got, back, _ = g.replay_b_cell('artelingo', 'qwen', fake['cand'], fake['comp'], fake['y'], 40, fake['out'])
     assert np.array_equal(back, fake['comp'])
     for key in ('cand', 'comp', 'd', 'lo', 'hi'):
         assert abs(got[key] - mem[key]) <= op.TOL_REPLAY
@@ -122,7 +122,7 @@ def test_b_refuses_partitions_in_a_wrong_order(fake):
 def test_b_rows_in_a_wrong_order_change_the_values(fake):
     mem = g.clu_cell(fake['cand'], fake['comp'], fake['y'], 40)
     perm = np.random.default_rng(2).permutation(N)
-    got, _ = g.replay_b_cell('artelingo', 'qwen', fake['cand'], fake['comp'][:, perm], fake['y'], 40, fake['out'])
+    got, _, _ = g.replay_b_cell('artelingo', 'qwen', fake['cand'], fake['comp'][:, perm], fake['y'], 40, fake['out'])
     res = g.finish(g.cell_items('t', 'src', got, stored_from(mem), True), 2000, 2000)
     assert not res['wiring_ok']
 

@@ -25,7 +25,7 @@ full draws) and never pass.
 (b) writes replay partitions to `OUT/parts/replay/...` (`OUT` = `OM_OUTPUTS` or the real folder); the fields `loss`,
 `entropy` and `seconds` of the sidecars are 0.0 (no fit ran).
 
-CLI: python om_gate_iii.py [--part a|b|c] [--draws N] [--workers W] [--aspects A ...]
+CLI: python om_gate_iii.py [--part a|b|c] [--draws N] [--workers W] [--cells C ...] [--aspects A ...]
 Writes `OUT/stage0/gate_iii.json`: `a`, `b`, `c` (each `pass`, `max_abs_diff`, `items` with expected and got values) and
 `pass` (all three present, passing, from the same code hash). One run of the parts a and b together shares the k-means fits.
 """
@@ -42,6 +42,7 @@ import om_data as od
 import om_paths as op
 
 import ns_clu  # noqa: E402  (om_paths put r17's folder and the older rounds on sys.path)
+import ns_data  # noqa: E402
 import ns_metrics  # noqa: E402
 import ns_ret  # noqa: E402
 import rg_held  # noqa: E402  (r10: the stored partition reader, as r17's replay)
@@ -61,8 +62,19 @@ ALL_CELLS = tuple(':'.join(c) for c in CLU_CELLS) + ('r10', 'r11')
 
 
 # ------------------------------------------------------------------------------------------------ items and results
+def code_files():
+    """The source files a replay number depends on: this module and the loaders and scorer it calls (om_data, om_paths,
+    ns_clu, ns_metrics, ns_ret, ns_data)."""
+    mods = (sys.modules[__name__], od, op, ns_clu, ns_metrics, ns_ret, ns_data)
+    return [Path(m.__file__) for m in mods]
+
+
 def code_sha256():
-    return hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
+    """SHA-256 over the names and bytes of `code_files()`: a part computed before any of them changed does not count."""
+    h = hashlib.sha256()
+    for f in code_files():
+        h.update(f.name.encode() + b'\0' + f.read_bytes() + b'\0')
+    return h.hexdigest()
 
 
 def item(name, source, ours, theirs, kind='value'):
@@ -191,12 +203,13 @@ def read_replay_parts(set_, enc, out=None, aspect=None):
 
 def replay_b_cell(set_, enc, cand, comp, y, draws, out=None, aspect='emotion'):
     """Write the partitions, read them back and score the cell with the file array as comparator. Returns
-    (cell dict, the plain array read back). Raises when what was read back differs from what was written."""
+    (cell dict, the plain array read back, the c* array read back [5, 1, n]). Raises when what was read back differs from
+    what was written."""
     write_replay_parts(set_, enc, cand, comp, aspect, out)
     plain, cstar = read_replay_parts(set_, enc, out, aspect)
     assert np.array_equal(plain, comp), f'{set_}/{enc}: plain partitions read back differ from those written'
     assert np.array_equal(cstar[:, 0], cand[:, 0]), f'{set_}/{enc}/{aspect}: c* partitions read back differ from those written'
-    return clu_cell(cand, plain, y, draws), plain
+    return clu_cell(cand, plain, y, draws), plain, cstar
 
 
 def replay_b(draws=FULL['clu'], aspects=ASPECTS, cache=None, out=None, cells=ALL_CELLS):
@@ -206,43 +219,16 @@ def replay_b(draws=FULL['clu'], aspects=ASPECTS, cache=None, out=None, cells=ALL
         comp = plain_parts(set_, enc, cache)
         for a in aspects:
             cand = cand_parts(set_, enc, a, cache)
-            got, back = replay_b_cell(set_, enc, cand, comp, labels_of(set_, a), draws, out, a)
+            got, back, back_c = replay_b_cell(set_, enc, cand, comp, labels_of(set_, a), draws, out, a)
             st, path = stored_cell(round_, 'clu', 'SC1', enc, a, DATA_TAG[set_])
             tag = f'{round_}/{enc}/{set_}/{a}/SC1/files'
             items.append(partition_item(f'{tag}/plain_read_back', 'OUT/parts/replay', back, comp))
+            items.append(partition_item(f'{tag}/cstar_read_back', 'OUT/parts/replay', back_c[:, 0], cand[:, 0]))
             items += cell_items(tag, path, got, st, draws == FULL['clu'])
     return finish(items, draws, FULL['clu'], tuple(aspects) == ASPECTS and set(cells) >= set(ALL_CELLS[:3]))
 
 
 # ------------------------------------------------------------------------------------------------ (c) retrieval
-def _unit(x):
-    """float32 rows divided by max(float32 row norm, 1e-12), r15's retrieval form of the MMArt plain image."""
-    x = np.asarray(x, dtype=np.float32)
-    return (x / np.maximum(np.linalg.norm(x, axis=1, keepdims=True), 1e-12)).astype(np.float32)
-
-
-class _Arms:
-    """Getters of one (set, encoder): c* of an aspect (seeds 0 to 4) and the plain image (cached per split)."""
-
-    def __init__(self, set_, enc):
-        self.set, self.enc, self.held, self._plain = set_, enc, op.HELD_SPLIT[set_], {}
-
-    def plain_rows(self, split):
-        if split not in self._plain:
-            x = od.plain(self.set, split, self.enc)
-            self._plain[split] = _unit(x) if self.set == 'mmart' else x
-        return self._plain[split]
-
-    def ap(self, arm, aspect, pick, y, workers):
-        if arm == 'cstar':
-            get = lambda split: (lambda s: od.cstar(self.set, split, self.enc, aspect, s))   # noqa: E731
-            seeds = SEEDS
-        else:
-            get = lambda split: (lambda s: self.plain_rows(split))                            # noqa: E731
-            seeds = None
-        return ns_ret.arm_ap(get('val'), get(self.held), pick, y, seeds, workers)
-
-
 def ret_cell(cstar, plain, draws):
     assert np.array_equal(cstar['rows'], plain['rows'])
     p = ns_ret.paired_ret(cstar['ap'], plain['ap'], None, draws, comp_seeds='none')
@@ -254,7 +240,7 @@ def replay_c(draws=FULL['ret'], aspects=ASPECTS, workers=8, cells=ALL_CELLS):
     full = draws == FULL['ret']
     items = []
     for round_, set_, enc in chosen(RET_CELLS, cells):
-        arms = _Arms(set_, enc)
+        arms = ns_ret._Rows(set_, enc)
         pick = {arm: ns_ret.reused_pick(arm, set_, enc) for arm in ('cstar', 'plain')}
         for a in aspects:
             y = labels_of(set_, a)
@@ -278,11 +264,14 @@ def _replay_r11(draws, workers):
     path = op.R11_OUT / 'stage5/verdict.json'
     v = _json(path)
     assert v['draws'] == FULL['ret']
-    arms = _Arms('artelingo', 'qwen')
+    arms = ns_ret._Rows('artelingo', 'qwen')
     a = R11_ASPECT
     y = labels_of('artelingo', a)
-    cstar = arms.ap('cstar', a, ns_ret.reused_pick('cstar', 'artelingo', 'qwen'), y, workers)
-    plain = arms.ap('plain', a, ns_ret.reused_pick('plain', 'artelingo', 'qwen'), y, workers)
+    pick = {arm: ns_ret.reused_pick(arm, 'artelingo', 'qwen') for arm in ('cstar', 'plain')}
+    for arm in pick:
+        check_pick(pick[arm], v['readouts'][arm], f'r11/qwen/artelingo/{a} {arm}')
+    cstar = arms.ap('cstar', a, pick['cstar'], y, workers)
+    plain = arms.ap('plain', a, pick['plain'], y, workers)
     got = ret_cell(cstar, plain, draws)
     (cmp_,) = v['sc']['SC10']['comparisons']
     assert cmp_['aspect'] == a and cmp_['candidate'] == ['cstar', a] and cmp_['comparator'][0] == 'plain'
