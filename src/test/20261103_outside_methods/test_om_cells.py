@@ -133,17 +133,22 @@ def test_unrepeated_turtle_candidate_is_refused_by_the_scorer():
 
 # ------------------------------------------------------------------------------------------------ fake loaders
 class FakeLoaders:
-    """Synthetic stand-ins for `oc.Loaders`: partitions and per-query AP built from the labels, deterministic."""
+    """Synthetic stand-ins for `oc.Loaders`: partitions and per-query AP built from the labels. Every call is memoised, so a
+    test can ask the stand-in again for the very arrays a cell was scored on and call r17's scorer on them directly."""
 
-    def __init__(self, n=36, missing=()):
-        self.n, self.missing, self.calls = n, set(missing), []
+    def __init__(self, n=60, missing=()):
+        self.n, self.missing, self.calls, self.memo = n, set(missing), [], {}
         self.rng = np.random.default_rng(1)
+
+    def _memo(self, key, make):
+        if key not in self.memo:
+            self.memo[key] = make()
+        return self.memo[key]
 
     def _y(self, set_, aspect):
         k = op.CLASS_COUNT[(set_, aspect)]
-        y = (np.arange(self.n) * 7 % self.n) % k
-        y = y.astype(np.int64)
-        y[::9] = -1
+        y = (np.arange(self.n) % k).astype(np.int64)         # every class twice or more; the masked rows leave all present
+        y[[3, 10, 22, 25]] = -1
         return y
 
     def labels(self, set_, aspect):
@@ -156,33 +161,37 @@ class FakeLoaders:
 
     def cstar_parts(self, set_, enc, aspect, k):
         self.calls.append(('cstar_parts', set_, enc, aspect, k))
-        return self._noisy(set_, aspect, k, 0.7, 3, seeds=5)
+        return self._memo(('cstar_parts', set_, enc, aspect, k), lambda: self._noisy(set_, aspect, k, 0.7, 3, seeds=5))
 
     def tpips_parts(self, set_, aspect, k):
         self.calls.append(('tpips_parts', set_, aspect, k))
         if 'tpips' in self.missing:
             raise FileNotFoundError('no TPIPS store')
-        return self._noisy(set_, aspect, k, 0.5, 3)
+        return self._memo(('tpips_parts', set_, aspect, k), lambda: self._noisy(set_, aspect, k, 0.5, 3))
 
     def clay_parts(self, set_, aspect, k, text_set):
         self.calls.append(('clay_parts', set_, aspect, k, text_set))
-        return self._noisy(set_, aspect, k, 0.5, 3)
+        return self._memo(('clay_parts', set_, aspect, k, text_set), lambda: self._noisy(set_, aspect, k, 0.5, 3))
 
     def turtle_plain(self, set_, enc, k):
         self.calls.append(('turtle_plain', set_, enc, k))
-        return self._noisy(set_, 'emotion', k, 0.5, 3)
+        return self._memo(('turtle_plain', set_, enc, k), lambda: self._noisy(set_, 'emotion', k, 0.5, 3))
 
     def turtle_cstar(self, set_, enc, aspect, k):
         self.calls.append(('turtle_cstar', set_, enc, aspect, k))
-        return self._noisy(set_, aspect, k, 0.7, 1, seeds=5)          # [5, 1, n] as om_data.turtle_parts
+        return self._memo(('turtle_cstar', set_, enc, aspect, k),
+                          lambda: self._noisy(set_, aspect, k, 0.7, 1, seeds=5))          # [5, 1, n] as om_data.turtle_parts
 
     def ap(self, arm, set_, enc, aspect, pick, text_set=None):
         self.calls.append(('ap', arm, set_, enc, aspect, pick, text_set))
-        nq = int((self._y(set_, aspect) >= 0).sum())
-        base = {'cstar': 0.6, 'tpips': 0.4, 'clay': 0.4}[arm]
-        shape = (5, nq) if arm == 'cstar' else (nq,)
-        ap = np.clip(base + 0.1 * self.rng.standard_normal(shape), 0, 1).astype(np.float64)
-        return {'ap': ap, 'rows': np.arange(nq, dtype=np.int64), 'point': float(ap.mean()), 'per_seed': None, 'dropped': 0}
+
+        def make():
+            nq = int((self._y(set_, aspect) >= 0).sum())
+            base = {'cstar': 0.6, 'tpips': 0.4, 'clay': 0.4}[arm]
+            shape = (5, nq) if arm == 'cstar' else (nq,)
+            ap = np.clip(base + 0.1 * self.rng.standard_normal(shape), 0, 1).astype(np.float64)
+            return {'ap': ap, 'rows': np.arange(nq, dtype=np.int64), 'point': float(ap.mean()), 'per_seed': None, 'dropped': 0}
+        return self._memo(('ap', arm, set_, enc, aspect, pick, text_set), make)
 
 
 def good_picks():
@@ -196,10 +205,14 @@ def good_picks():
     return p
 
 
+@pytest.fixture(autouse=True)
+def _reused_pick(monkeypatch):
+    monkeypatch.setattr(ns_ret, 'reused_pick', lambda arm, set_, enc: f'reused-{arm}-{set_}-{enc}')
+
+
 @pytest.fixture
 def patch_sha(monkeypatch):
     monkeypatch.setattr(oc, 'text_sha', lambda ts, aspect: f'sha-{ts}-{aspect}')
-    monkeypatch.setattr(ns_ret, 'reused_pick', lambda arm, set_, enc: f'reused-{arm}-{set_}-{enc}')
 
 
 # ------------------------------------------------------------------------------------------------ scoring wiring
@@ -211,26 +224,6 @@ def test_sc5_unit_has_15_cells_on_artelingo_and_scores_the_aspects_labels(patch_
     y = ld.labels('artelingo', 'emotion')
     assert cell['n_draws'] == 25 and cell['n_rows'] == ld.n and cell['n_labelled'] == int((y >= 0).sum())
     assert {c[0] for c in ld.calls} == {'turtle_cstar', 'turtle_plain'}
-
-
-def test_sc5_numbers_equal_the_direct_scorer_call(patch_sha, monkeypatch):
-    y, parts, plain, k = _toy(n=36, k=9, mask=True)
-
-    class L(FakeLoaders):
-        def labels(self, set_, aspect):
-            return y
-
-        def turtle_plain(self, set_, enc, k_):
-            return plain % k_
-
-        def turtle_cstar(self, set_, enc, aspect, k_):
-            return parts % k_
-
-    raw = oc.score_unit('SC5', 'artelingo', 'qwen', L(n=36), picks=good_picks(), draws=20)
-    cell = next(c for c in raw if (c['aspect'], c['metric'], c['k']) == ('emotion', 'ami', 9))
-    direct = ns_clu.paired_cell(np.repeat(parts % 9, 3, axis=1), plain % 9, y, 9, r=None, metrics=('ami',), draws=20)['ami']
-    for key in ('cand', 'comp', 'd', 'lo', 'hi'):
-        assert cell[key] == pytest.approx(direct[key], abs=1e-12), key
 
 
 def test_sc6_uses_cstar_kmeans_candidate_against_plain_turtle(patch_sha):
@@ -357,7 +350,14 @@ def ranges_record(r=0.01, missing=()):
 
 
 def raw_cell(spec, lo=0.02, hi=0.05, d=0.03):
-    return dict(spec, cand=0.5, comp=0.5 - d, d=d, lo=lo, hi=hi, n_draws=7, n_rows=10, missing=None)
+    """A scored cell as `score_unit` writes it: the protocol's draws and the read-outs / text set of `good_picks()`."""
+    c = dict(spec, cand=0.5, comp=0.5 - d, d=d, lo=lo, hi=hi, n_draws=op.N_DRAWS[spec['task']], n_rows=10, missing=None)
+    if spec['task'] == 'ret':
+        c.update(candidate_readout=f"reused-cstar-{spec['set']}-{spec['encoder']}",
+                 comparator_readout='center+k10' if spec['sc'] == 'SC2' else 'whiten49+k0')
+    if spec['sc'] in ('SC3', 'SC4'):
+        c['text_set'] = 'A'
+    return c
 
 
 def assemble_specs(specs, status=None, r17=None, ranges=None, picks=None, **raw_kw):
@@ -457,27 +457,52 @@ def test_stage1_picks_void_per_set_and_arm():
     assert {(c['sc'], c['set']) for c in assemble_specs(specs, status=st) if c['void']} == {('SC2', 'artelingo')}
 
 
-def test_r17_stage0_voids_the_same_cells_here():
-    specs = oc.cell_specs()
+def _voided_ids(mut):
+    r17 = ok_r17()
+    mut(r17['gates'])
+    return {c['id'] for c in assemble_specs(oc.cell_specs(), r17=r17) if c['void']}
 
-    def voided(mut):
-        r17 = ok_r17()
-        mut(r17['gates'])
-        return [c for c in assemble_specs(specs, r17=r17) if c['void']]
 
-    assert {c['sc'] for c in voided(lambda g: g.update(i_a='failed'))} == {'SC1', 'SC3', 'SC5', 'SC6'}
-    assert {c['sc'] for c in voided(lambda g: g.update(ii_scorer='failed'))} == {'SC2', 'SC4'}
-    assert voided(lambda g: g.update(i_c={'affection': 'failed', 'emoset': 'failed'})) == []        # photo sets: not ours
-    assert voided(lambda g: g.update(ii_crl='failed', ii_percept='failed', vi='failed')) == []
-    out = voided(lambda g: g['iii_metric'].update(nmi='failed'))
-    assert out and {c['metric'] for c in out} == {'nmi'} and {c['sc'] for c in out} == {'SC1', 'SC3', 'SC5', 'SC6'}
-    out = voided(lambda g: g['iii_count'].update({'artelingo/genre': 'failed'}))
-    # only the class-count cells of that set and aspect (genre's AMI at 20 is not one)
-    assert out and all((c['set'], c['aspect']) == ('artelingo', 'genre') and c['k'] == 10 for c in out)
-    out = voided(lambda g: g.update(i_d='failed'))
-    assert out and all(c['k'] == op.CLASS_COUNT[(c['set'], c['aspect'])] for c in out)
-    assert any(c['k'] == 20 and c['aspect'] == 'style' and c['set'] == 'mmart' for c in out)        # class count 20
-    assert not any(c['k'] == 20 and (c['set'], c['aspect']) == ('artelingo', 'emotion') for c in out)
+def _ids(pred):
+    """Hand-written selections of the 337 cells, by the cell fields only."""
+    return {c['id'] for c in oc.cell_specs() if pred(c)}
+
+
+CLU_SCS = ('SC1', 'SC3', 'SC5', 'SC6')
+
+
+def test_r17_scorer_gates_void_the_cells_of_their_scorer():
+    assert _voided_ids(lambda g: g.update(i_a='failed')) == _ids(lambda c: c['sc'] in CLU_SCS)
+    assert _voided_ids(lambda g: g.update(ii_scorer='failed')) == _ids(lambda c: c['sc'] in ('SC2', 'SC4'))
+    # r17's read-out rule (vi) voids a cell with a new pick: every SC2 and SC4 cell has one (TPIPS, CLAY)
+    assert _voided_ids(lambda g: g.update(vi='failed')) == _ids(lambda c: c['sc'] in ('SC2', 'SC4'))
+    assert len(_voided_ids(lambda g: g.update(vi='failed'))) == 18
+    # not ours: photo sets, CRL, PercepT, the retrieval rows of the old arms, the other r17 gate keys
+    assert _voided_ids(lambda g: g.update(i_c={'affection': 'failed', 'emoset': 'failed'})) == set()
+    assert _voided_ids(lambda g: g.update(i_b='failed', ii_crl='failed', ii_percept='failed')) == set()
+    assert _voided_ids(lambda g: g.update(iv={e: 'failed' for e in ns_paths.ENCODERS}, v={e: 'failed' for e in ns_paths.ENCODERS})) == set()
+
+
+@pytest.mark.parametrize('metric', ['acc', 'ari', 'nmi', 'ami'])
+def test_r17_metric_gate_voids_exactly_the_clustering_cells_of_that_metric(metric):
+    got = _voided_ids(lambda g: g['iii_metric'].update({metric: 'failed'}))
+    assert got == _ids(lambda c: c['sc'] in CLU_SCS and c['metric'] == metric)
+    assert got                                              # AMI at 20 included for ami, retrieval never
+
+
+@pytest.mark.parametrize('set_,aspect', sorted(op.CLASS_COUNT))
+def test_r17_count_gate_voids_exactly_the_class_count_cells_of_its_set_and_aspect(set_, aspect):
+    got = _voided_ids(lambda g: g['iii_count'].update({f'{set_}/{aspect}': 'failed'}))
+    want = _ids(lambda c: c['sc'] in CLU_SCS and (c['set'], c['aspect']) == (set_, aspect) and c['k'] == op.CLASS_COUNT[(set_, aspect)])
+    assert got == want and got
+    assert not any(i.split('/')[5] == '20' for i in got) or (set_, aspect) == ('mmart', 'style')     # AMI at 20 is not a class count
+
+
+def test_r17_class_count_gate_i_d_voids_the_class_count_cells_everywhere():
+    got = _voided_ids(lambda g: g.update(i_d='failed'))
+    assert got == _ids(lambda c: c['sc'] in CLU_SCS and c['k'] == op.CLASS_COUNT[(c['set'], c['aspect'])])
+    assert any(i.split('/')[1:5] == ['mmart', 'qwen', 'style', 'ami'] and i.split('/')[5] == '20' for i in got)     # MMArt style: 20 is the count
+    assert not any(i.split('/')[1] == 'artelingo' and i.split('/')[5] == '20' for i in got)
 
 
 def test_status_shape_is_checked():
@@ -542,8 +567,7 @@ def test_sentences():
 # ------------------------------------------------------------------------------------------------ the C13 guard
 def _cells_for_c13():
     specs = [spec_of('SC1', metric='ami', k=9), spec_of('SC2', metric='map'), spec_of('SC4', set_='mmart', enc='qwen', aspect='genre')]
-    raw = [dict(raw_cell(s), candidate_readout='rc', comparator_readout='rt') if s['task'] == 'ret' else raw_cell(s)
-           for s in specs]
+    raw = [raw_cell(s) for s in specs]
     return oc.assemble(raw, ranges_record(), good_picks(), ok_status(), ok_r17(), expected=specs)
 
 
@@ -601,23 +625,28 @@ def test_c13_void_cells_must_be_void_there_too():
     assert oc.c13_disagreements(cells, good_picks(), doc)
 
 
+def _rebuild_of(cells):
+    return lambda: copy.deepcopy(cells)
+
+
 def test_labels_step_refuses_without_c13_and_on_disagreement(tmp_path):
     cells, picks = _cells_for_c13(), good_picks()
+    specs = [{'id': c['id']} for c in cells]
     cells_path, c13_path, out_path = tmp_path / 'cells.json', tmp_path / 'c13' / 'c13_cells.json', tmp_path / 'rec' / 'labels.json'
     cells_path.write_text(json.dumps(cells))
     with pytest.raises(SystemExit) as e:
-        oc.run_labels(cells_path, c13_path, out_path, picks)
+        oc.run_labels(cells_path, c13_path, out_path, picks, _rebuild_of(cells), expected=specs)
     assert 'c13_cells.json' in str(e.value) and not out_path.exists()
     c13_path.parent.mkdir()
     doc = _c13_doc(cells, picks)
     doc['cells'][2]['hi'] += 2e-6
     c13_path.write_text(json.dumps(doc))
     with pytest.raises(SystemExit):
-        oc.run_labels(cells_path, c13_path, out_path, picks)
+        oc.run_labels(cells_path, c13_path, out_path, picks, _rebuild_of(cells), expected=specs)
     assert not out_path.exists()
     doc = _c13_doc(cells, picks)
     c13_path.write_text(json.dumps(doc))
-    oc.run_labels(cells_path, c13_path, out_path, picks)
+    oc.run_labels(cells_path, c13_path, out_path, picks, _rebuild_of(cells), expected=specs)
     rec = json.loads(out_path.read_text())
     assert [c['id'] for c in rec['cells']] == [c['id'] for c in cells]
     assert rec['cells_sha256'] == op.sha256_file(cells_path) and rec['c13_sha256'] == op.sha256_file(c13_path)
@@ -632,7 +661,587 @@ def test_labels_step_refuses_a_cells_file_that_changed_the_label(tmp_path):
     tampered[0]['label'] = 'BELOW' if cells[0]['label'] != 'BELOW' else 'WIN'
     cells_path.write_text(json.dumps(tampered))
     with pytest.raises(SystemExit):
-        oc.run_labels(cells_path, c13_path, tmp_path / 'labels.json', picks)
+        oc.run_labels(cells_path, c13_path, tmp_path / 'labels.json', picks, _rebuild_of(cells), expected=[{'id': c['id']} for c in cells])
+
+
+def test_labels_step_refuses_a_cells_file_that_is_not_what_assemble_gives_now(tmp_path):
+    cells, picks = _cells_for_c13(), good_picks()
+    cells_path, c13_path = tmp_path / 'cells.json', tmp_path / 'c13_cells.json'
+    cells_path.write_text(json.dumps(cells))
+    c13_path.write_text(json.dumps(_c13_doc(cells, picks)))          # C13 agrees with the old file
+    now = copy.deepcopy(cells)
+    now[0]['r'] = 0.5                                                # a range changed since: assemble gives another file
+    with pytest.raises(SystemExit, match='assemble'):
+        oc.run_labels(cells_path, c13_path, tmp_path / 'labels.json', picks, _rebuild_of(now), expected=[{'id': c['id']} for c in cells])
+    assert not (tmp_path / 'labels.json').exists()
+
+
+def test_labels_step_refuses_an_empty_or_partial_cell_list(tmp_path):
+    picks = good_picks()
+    c13_path = tmp_path / 'c13_cells.json'
+    for cells in ([], _cells_for_c13()[:2]):
+        cells_path = tmp_path / 'cells.json'
+        cells_path.write_text(json.dumps(cells))
+        c13_path.write_text(json.dumps(_c13_doc(cells, picks)))      # C13 agrees with whatever is there
+        with pytest.raises(SystemExit, match='expected'):
+            oc.run_labels(cells_path, c13_path, tmp_path / 'labels.json', picks, _rebuild_of(cells))        # default: all 337
+    assert not (tmp_path / 'labels.json').exists()
+
+
+# ------------------------------------------------------------------------------------------------ numbers against r17's scorer
+KEYS = ('cand', 'comp', 'd', 'lo', 'hi')
+
+
+def _same(cell, direct):
+    for key in KEYS:
+        assert cell[key] == pytest.approx(direct[key], abs=1e-12, rel=0), key
+
+
+def test_bootstrap_seed_is_zero():
+    assert op.BOOT_SEED == 0                  # the direct calls below name seed 0 themselves
+
+
+def _clu_arms(ld, sc, set_, enc, aspect, k, text_set='A'):
+    """The two partition arrays a clustering cell of `sc` must be scored on, asked of the stand-in directly."""
+    if sc == 'SC1':
+        return ld.cstar_parts(set_, enc, aspect, k), ld.tpips_parts(set_, aspect, k)
+    if sc == 'SC3':
+        return ld.cstar_parts(set_, enc, aspect, k), ld.clay_parts(set_, aspect, k, text_set)
+    if sc == 'SC5':
+        return np.repeat(ld.turtle_cstar(set_, enc, aspect, k), 3, axis=1), ld.turtle_plain(set_, enc, k)
+    return ld.cstar_parts(set_, enc, aspect, k), ld.turtle_plain(set_, enc, k)
+
+
+@pytest.mark.parametrize('sc,set_,enc', [('SC1', 'artelingo', 'qwen'), ('SC3', 'artelingo', 'clip_l14'), ('SC3', 'mmart', 'qwen'),
+                                         ('SC5', 'artelingo', 'siglip2'), ('SC5', 'mmart', 'qwen'), ('SC6', 'artelingo', 'qwen'),
+                                         ('SC6', 'mmart', 'clip_l14')])
+def test_clustering_cells_equal_r17s_paired_cell(patch_sha, sc, set_, enc):
+    ld = FakeLoaders()
+    picks = good_picks()
+    picks['clay_textset/clu/mmart'] = {'set': 'B', 'scores': {}, 'rule': 'x'}
+    raw = oc.score_unit(sc, set_, enc, ld, picks=picks, draws=24)
+    ts = 'B' if set_ == 'mmart' else 'A'
+    assert len(raw) > 10
+    for cell in raw:
+        cand, comp = _clu_arms(ld, sc, set_, enc, cell['aspect'], cell['k'], ts)
+        y = ld.labels(set_, cell['aspect'])
+        direct = ns_clu.paired_cell(cand, comp, y, cell['k'], r=None, metrics=(cell['metric'],), draws=24, rng_seed=0)[cell['metric']]
+        _same(cell, direct)
+        assert cell['n_draws'] == 24 and cell['n_rows'] == len(y)
+
+
+@pytest.mark.parametrize('sc,set_,enc,comp_arm,pick,ts', [('SC2', 'artelingo', 'qwen', 'tpips', 'center+k10', None),
+                                                          ('SC2', 'mmart', 'qwen', 'tpips', 'center+k10', None),
+                                                          ('SC4', 'artelingo', 'clip_l14', 'clay', 'whiten49+k0', 'A'),
+                                                          ('SC4', 'mmart', 'qwen', 'clay', 'whiten49+k0', 'A')])
+def test_retrieval_cells_equal_r17s_paired_ret(patch_sha, sc, set_, enc, comp_arm, pick, ts):
+    ld = FakeLoaders()
+    raw = oc.score_unit(sc, set_, enc, ld, picks=good_picks(), draws=60)
+    assert len(raw) == 3
+    for cell in raw:
+        cand = ld.ap('cstar', set_, enc, cell['aspect'], f'reused-cstar-{set_}-{enc}')['ap']
+        comp = ld.ap(comp_arm, set_, enc, cell['aspect'], pick, ts)['ap']
+        assert cand.shape[0] == 5 and comp.ndim == 1
+        _same(cell, ns_ret.paired_ret(cand, comp, r=None, draws=60, comp_seeds='none'))
+        assert cell['n_draws'] == 60 and cell['n_queries'] == comp.shape[0]
+
+
+def test_retrieval_numbers_are_not_a_bootstrap_of_another_seed_or_order(patch_sha):
+    ld = FakeLoaders()
+    cell = oc.score_unit('SC2', 'artelingo', 'qwen', ld, picks=good_picks(), draws=60)[0]
+    cand = ld.ap('cstar', 'artelingo', 'qwen', cell['aspect'], 'reused-cstar-artelingo-qwen')['ap']
+    comp = ld.ap('tpips', 'artelingo', 'qwen', cell['aspect'], 'center+k10')['ap']
+    other = ns_ret.paired_ret(cand, comp, r=None, draws=60, comp_seeds='none', rng_seed=1)
+    assert (cell['lo'], cell['hi']) != (other['lo'], other['hi'])          # the guarded seed matters here
+    rev = ns_ret.paired_ret(cand[..., ::-1], comp, r=None, draws=60, comp_seeds='none')
+    assert (cell['lo'], cell['hi']) != (rev['lo'], rev['hi'])
+
+
+class PerfectLoaders(FakeLoaders):
+    """Candidate partitions equal the labels, every comparator is one cluster; cstar AP is 0.8, the comparators' 0.2."""
+
+    def _perfect(self, set_, aspect, k, shape):
+        y = np.maximum(self._y(set_, aspect), 0) % k
+        return np.broadcast_to(y, shape + (self.n,)).astype(np.int32).copy()
+
+    def cstar_parts(self, set_, enc, aspect, k):
+        return self._perfect(set_, aspect, k, (5, 3))
+
+    def tpips_parts(self, set_, aspect, k):
+        return np.zeros((3, self.n), np.int32)
+
+    def turtle_plain(self, set_, enc, k):
+        return np.zeros((3, self.n), np.int32)
+
+    def ap(self, arm, set_, enc, aspect, pick, text_set=None):
+        nq = int((self._y(set_, aspect) >= 0).sum())
+        a = np.full((5, nq) if arm == 'cstar' else (nq,), 0.8 if arm == 'cstar' else 0.2)
+        return {'ap': a, 'rows': np.arange(nq, dtype=np.int64), 'point': float(a.mean()), 'per_seed': None, 'dropped': 0}
+
+
+@pytest.mark.parametrize('sc,set_,enc', [('SC1', 'artelingo', 'qwen'), ('SC6', 'mmart', 'siglip1')])
+def test_clustering_hand_value_perfect_candidate_against_one_cluster(patch_sha, sc, set_, enc):
+    raw = oc.score_unit(sc, set_, enc, PerfectLoaders(), picks=good_picks(), draws=12)
+    for c in raw:
+        if c['metric'] in ('ari', 'nmi', 'ami') and c['k'] == op.CLASS_COUNT[(set_, c['aspect'])]:     # perfect scores 1, one cluster 0
+            assert (c['cand'], c['comp'], c['d'], c['lo'], c['hi']) == pytest.approx((1.0, 0.0, 1.0, 1.0, 1.0)), c['id']
+
+
+@pytest.mark.parametrize('sc,set_,enc', [('SC2', 'artelingo', 'qwen'), ('SC4', 'mmart', 'clip_l14')])
+def test_retrieval_hand_value_constant_ap(patch_sha, sc, set_, enc):
+    raw = oc.score_unit(sc, set_, enc, PerfectLoaders(), picks=good_picks(), draws=30)
+    for c in raw:
+        assert (c['cand'], c['comp'], c['d'], c['lo'], c['hi']) == pytest.approx((0.8, 0.2, 0.6, 0.6, 0.6))
+
+
+def test_sc4_reads_the_retrieval_text_set_and_sc3_the_clustering_one(patch_sha):
+    picks = good_picks()
+    picks['clay_textset/clu/mmart'] = {'set': 'B', 'scores': {}, 'rule': 'x'}           # clustering chose B, retrieval A
+    ld = FakeLoaders()
+    raw4 = oc.score_unit('SC4', 'mmart', 'qwen', ld, picks=picks, draws=5)
+    assert {c['text_set'] for c in raw4} == {'A'}
+    assert {call[6] for call in ld.calls if call[:3] == ('ap', 'clay', 'mmart')} == {'A'}
+    raw3 = oc.score_unit('SC3', 'mmart', 'qwen', ld, picks=picks, draws=5)
+    assert {c['text_set'] for c in raw3} == {'B'}
+    picks['clay_textset/clu/mmart'] = {'set': 'A', 'scores': {}, 'rule': 'x'}           # and the other way round
+    picks['clay_textset/ret/mmart'] = {'set': 'B', 'scores': {}, 'rule': 'x'}
+    picks['clay/mmart']['text_set'] = 'B'
+    ld = FakeLoaders()
+    assert {c['text_set'] for c in oc.score_unit('SC4', 'mmart', 'qwen', ld, picks=picks, draws=5)} == {'B'}
+    assert {c['text_set'] for c in oc.score_unit('SC3', 'mmart', 'qwen', ld, picks=picks, draws=5)} == {'A'}
+
+
+def test_class_count_groups_assert_the_labels_have_that_many_classes(patch_sha):
+    class L(FakeLoaders):
+        def labels(self, set_, aspect):
+            y = super().labels(set_, aspect)
+            if (set_, aspect) == ('artelingo', 'emotion'):
+                y[y == 8] = -1                                    # 8 classes left, the count is 9
+            return y
+
+    with pytest.raises(AssertionError, match='classes'):
+        oc.score_unit('SC6', 'artelingo', 'qwen', L(), picks=good_picks(), draws=5)
+    oc.score_unit('SC6', 'artelingo', 'qwen', FakeLoaders(), picks=good_picks(), draws=5)        # whole labels: fine
+
+
+def test_sentence_needs_an_upper_bound_below_zero_for_below():
+    sp = spec_of('SC1', metric='ami', k=9)
+    c = assemble_specs([sp], lo=-0.05, hi=0.0, d=-0.02)[0]                  # hi exactly 0: not below
+    assert c['label'] == 'BELOW' and c['sentence'] is None
+    c = assemble_specs([sp], lo=-0.05, hi=-1e-9, d=-0.02)[0]
+    assert c['sentence'] is not None and 'better than c*' in c['sentence']
+
+
+# ------------------------------------------------------------------------------------------------ stale parts, statuses
+def test_stale_parts_are_refused_at_assembly(monkeypatch):
+    sp = spec_of('SC2', metric='map')
+    good = raw_cell(sp)
+    run = lambda raw, picks=None: oc.assemble([raw], ranges_record(), picks or good_picks(), ok_status(), ok_r17(), expected=[sp])
+    assert run(good)[0]['label'] == 'WIN'
+    with pytest.raises(AssertionError, match='n_draws'):
+        run(dict(good, n_draws=5))
+    with pytest.raises(AssertionError, match='comparator_readout'):
+        run(dict(good, comparator_readout='none+k0'))
+    with pytest.raises(AssertionError, match='candidate_readout'):
+        run(dict(good, candidate_readout='old'))
+    picks = good_picks()
+    picks['tpips/artelingo'] = {'pick': 'whiten49+k10'}             # the stage 1 pick moved after the parts were written
+    with pytest.raises(AssertionError, match='comparator_readout'):
+        run(good, picks)
+    monkeypatch.setattr(op, 'SMOKE', 1)                              # smoke draws are allowed other counts
+    assert run(dict(good, n_draws=5))[0]['label'] == 'WIN'
+    with pytest.raises(AssertionError, match='comparator_readout'):
+        run(dict(good, comparator_readout='none+k0'))               # but never another read-out
+
+
+def test_stale_text_set_is_refused_at_assembly():
+    for sc, key in (('SC3', 'clay_textset/clu/artelingo'), ('SC4', 'clay_textset/ret/artelingo')):
+        sp = spec_of(sc, enc='qwen', metric='map' if sc == 'SC4' else 'ami', k=None if sc == 'SC4' else 9)
+        picks = good_picks()
+        picks[key] = {'set': 'B', 'scores': {}, 'rule': 'x'}
+        with pytest.raises(AssertionError, match='text_set'):
+            oc.assemble([raw_cell(sp)], ranges_record(), picks, ok_status(), ok_r17(), expected=[sp])
+
+
+def test_unscored_cells_need_no_freshness():
+    sp = spec_of('SC2', metric='map')
+    gone = dict(raw_cell(sp, ), cand=None, comp=None, d=None, lo=None, hi=None, n_draws=None, missing='FileNotFoundError: x')
+    assert oc.assemble([gone], ranges_record(), good_picks(), ok_status(), ok_r17(), expected=[sp])[0]['label'] is None
+
+
+def test_range_status_not_ok_makes_r_missing_whatever_the_record_says():
+    sp = spec_of('SC1', metric='ami', k=9)
+    rk = oc.range_key(sp)
+    for bad in ('failed', 'missing'):
+        st = ok_status()
+        st['stage1'][rk] = bad
+        c = assemble_specs([sp], status=st, lo=-0.001)[0]
+        assert c['r'] is None and c['label'] == 'inconclusive' and c['void'] is None, bad
+        assert assemble_specs([sp], status=st, lo=0.3)[0]['label'] == 'WIN'      # a WIN stands without r
+    st = ok_status()
+    st['stage1'][rk] = 'ok'
+    assert assemble_specs([sp], status=st, lo=-0.001)[0]['label'] == 'LEVEL'
+    st['stage1'][oc.range_key(spec_of('SC1', metric='ari', k=9))] = 'failed'     # another cell's range: this one keeps its r
+    assert assemble_specs([sp], status=st, lo=-0.001)[0]['r'] == 0.01
+
+
+def test_status_keys_outside_the_picks_and_ranges_are_refused():
+    st = ok_status()
+    st['stage1']['tpips/artelingo'] = 'ok'
+    st['stage1']['clay_textset/clu/mmart'] = 'failed'
+    st['stage1'][oc.range_key(spec_of('SC1', metric='ami', k=9))] = 'ok'
+    oc.check_status(st)
+    for bad in ('tpip/artelingo', 'artelingo/qwen/emotion/ami/10', 'clay_textset/mmart', 'tpips/emoset'):
+        st = ok_status()
+        st['stage1'][bad] = 'failed'
+        with pytest.raises(AssertionError, match='keys no cell uses'):
+            oc.check_status(st)
+
+
+# ------------------------------------------------------------------------------------------------ the cells step
+def _parts(path, raw):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(raw))
+
+
+def test_unit_with_missing_cells_is_scored_again_but_a_complete_one_is_skipped(tmp_path):
+    sp = spec_of('SC1', metric='ami', k=9)
+    todo = [('SC1', 'artelingo', 'qwen')]
+    path = oc.parts_dir(tmp_path) / 'SC1__artelingo__qwen.json'
+    calls = []
+    score = lambda sc, set_, enc, ld, picks, draws: calls.append(sc) or [raw_cell(sp)]
+    _parts(path, [dict(raw_cell(sp), cand=None, d=None, lo=None, hi=None, missing='FileNotFoundError: no store')])
+    assert oc.run_cells(todo, {}, None, 5, False, out=tmp_path, score=score) == [] and calls == ['SC1']      # input arrived
+    assert json.loads(path.read_text())[0]['missing'] is None
+    oc.run_cells(todo, {}, None, 5, False, out=tmp_path, score=score)
+    assert calls == ['SC1']                                         # done: skipped
+    oc.run_cells(todo, {}, None, 5, True, out=tmp_path, score=score)
+    assert calls == ['SC1', 'SC1']                                  # --force
+
+
+def test_one_failing_unit_does_not_stop_the_others_and_the_run_fails_at_the_end(tmp_path, capsys):
+    sp = spec_of('SC1', metric='ami', k=9)
+    todo = [('SC1', 'artelingo', 'qwen'), ('SC2', 'artelingo', 'qwen'), ('SC3', 'artelingo', 'qwen')]
+
+    def score(sc, set_, enc, ld, picks, draws):
+        if sc == 'SC2':
+            raise AssertionError('partial store at unit 3')
+        return [raw_cell(sp)]
+
+    failed = oc.run_cells(todo, {}, None, 5, False, out=tmp_path, score=score)
+    assert failed == [('SC2', 'artelingo', 'qwen')]
+    names = sorted(p.name for p in oc.parts_dir(tmp_path).iterdir())
+    assert names == ['SC1__artelingo__qwen.json', 'SC3__artelingo__qwen.json']          # no file for the failed unit
+    assert 'FAILED SC2/artelingo/qwen' in capsys.readouterr().err
+
+
+@pytest.fixture
+def run_env(tmp_path, monkeypatch):
+    """OUT and the records folder in tmp; committed records served from a dict (the real function is tested apart)."""
+    records, out = tmp_path / 'records', tmp_path / 'out'
+    records.mkdir()
+    monkeypatch.setattr(op, 'RECORDS', records)
+    monkeypatch.setattr(op, 'OUT', out)
+    monkeypatch.setattr(op, 'SMOKE', 0)
+    store = {}
+    monkeypatch.setattr(op, 'read_committed_record', lambda name: copy.deepcopy(store[name]))
+    return type('Env', (), dict(tmp=tmp_path, records=records, out=out, store=store))
+
+
+def test_cmd_cells_exit_code_is_nonzero_when_a_unit_fails_and_the_rest_is_written(run_env, monkeypatch):
+    sp = spec_of('SC1', metric='ami', k=9)
+    run_env.store.update({'stage1_om_ranges.json': ranges_record(), 'stage1_om_picks.json': good_picks()})
+    monkeypatch.setattr(oc, 'Loaders', lambda: None)
+
+    def score(sc, set_, enc, ld, picks, draws):
+        if (sc, set_, enc) == ('SC2', 'artelingo', 'qwen'):
+            raise AssertionError('boom')
+        return [raw_cell(sp)]
+
+    monkeypatch.setattr(oc, 'score_unit', score)
+    args = oc.argparse.Namespace(sc=None, set='artelingo', enc='qwen', draws=5, force=False)
+    assert oc.cmd_cells(args) == 1
+    names = sorted(p.name for p in oc.parts_dir().iterdir())
+    assert names == [f'{sc}__artelingo__qwen.json' for sc in ('SC1', 'SC3', 'SC4', 'SC5', 'SC6')]       # all but the failed SC2
+    assert oc.cmd_cells(oc.argparse.Namespace(sc='SC1', set='artelingo', enc='qwen', draws=5, force=False)) == 0
+
+
+def _git_repo(tmp_path, monkeypatch, committed, uncommitted):
+    import subprocess
+    repo = (tmp_path / 'repo').resolve()
+    (repo / 'records').mkdir(parents=True)
+    run = lambda *a: subprocess.run(['git', '-C', str(repo), '-c', 'user.name=t', '-c', 'user.email=t@t', *a], check=True,
+                                    capture_output=True)
+    run('init', '-q')
+    for name, rec in committed.items():
+        (repo / 'records' / name).write_text(json.dumps(rec))
+    run('add', '-A')
+    run('commit', '-q', '--allow-empty', '-m', 'x')
+    for name, rec in uncommitted.items():
+        (repo / 'records' / name).write_text(json.dumps(rec))
+    monkeypatch.setattr(op, 'REPO', repo)
+    monkeypatch.setattr(op, 'RECORDS', repo / 'records')
+    monkeypatch.setattr(op, 'SMOKE', 0)
+    monkeypatch.setattr(op, 'OUT', tmp_path / 'out')
+
+
+@pytest.mark.parametrize('committed', ['picks', 'ranges', 'neither'])
+def test_cmd_cells_refuses_uncommitted_stage1_records_and_scores_nothing(tmp_path, monkeypatch, committed):
+    recs = {'stage1_om_ranges.json': ranges_record(), 'stage1_om_picks.json': good_picks()}
+    keep = {'picks': ['stage1_om_picks.json'], 'ranges': ['stage1_om_ranges.json'], 'neither': []}[committed]
+    _git_repo(tmp_path, monkeypatch, {k: recs[k] for k in keep}, {k: v for k, v in recs.items() if k not in keep})
+
+    def boom(*a, **k):
+        raise AssertionError('scored although stage 1 is not committed')
+
+    monkeypatch.setattr(oc, 'score_unit', boom)
+    monkeypatch.setattr(oc, 'Loaders', boom)
+    with pytest.raises(RuntimeError, match='not committed'):
+        oc.cmd_cells(oc.argparse.Namespace(sc=None, set=None, enc=None, draws=5, force=False))
+    assert not oc.parts_dir().exists()
+
+
+def test_cmd_cells_runs_when_stage1_is_committed(tmp_path, monkeypatch):
+    recs = {'stage1_om_ranges.json': ranges_record(), 'stage1_om_picks.json': good_picks()}
+    _git_repo(tmp_path, monkeypatch, recs, {})
+    seen = []
+    monkeypatch.setattr(oc, 'Loaders', lambda: None)
+    monkeypatch.setattr(oc, 'score_unit', lambda sc, set_, enc, ld, picks, draws: seen.append((sc, set_, enc)) or [])
+    assert oc.cmd_cells(oc.argparse.Namespace(sc='SC2', set='mmart', enc='qwen', draws=5, force=False)) == 0
+    assert seen == [('SC2', 'mmart', 'qwen')]
+
+
+# ------------------------------------------------------------------------------------------------ the labels step, whole
+@pytest.fixture
+def labelled(run_env, monkeypatch):
+    """Three cells in three units, parts written, records served; `labels` can run against it."""
+    specs = [spec_of('SC1', metric='ami', k=9), spec_of('SC2', metric='map'),
+             spec_of('SC4', set_='mmart', enc='qwen', aspect='genre')]
+    monkeypatch.setattr(oc, 'cell_specs', lambda: specs)
+    r17_path = run_env.tmp / 'r17_status.json'
+    r17_path.write_text(json.dumps(ok_r17()))
+    status = ok_status()
+    status['r17'] = {'path': str(r17_path), 'sha256': op.sha256_file(r17_path)}
+    run_env.store.update({'stage1_om_ranges.json': ranges_record(), 'stage1_om_picks.json': good_picks(), 'status.json': status})
+    for sp in specs:
+        _parts(oc.parts_dir() / f"{sp['sc']}__{sp['set']}__{sp['encoder']}.json", [raw_cell(sp)])
+    run_env.specs = specs
+    run_env.cells_path = run_env.out / 'stage2' / 'cells.json'
+    run_env.c13_path = run_env.out / 'c13' / 'c13_cells.json'
+    run_env.labels = run_env.records / 'labels.json'
+    return run_env
+
+
+def _write_c13(env, mutate=None):
+    cells = json.loads(env.cells_path.read_text())
+    doc = _c13_doc(cells, good_picks())
+    if mutate:
+        mutate(doc)
+    env.c13_path.parent.mkdir(parents=True, exist_ok=True)
+    env.c13_path.write_text(json.dumps(doc))
+
+
+def test_cmd_assemble_then_cmd_labels_writes_the_record(labelled):
+    assert oc.cmd_assemble(None) == 0
+    _write_c13(labelled)
+    assert oc.cmd_labels(None) == 0
+    rec = json.loads(labelled.labels.read_text())
+    assert [c['id'] for c in rec['cells']] == [s['id'] for s in labelled.specs]
+    assert {c['label'] for c in rec['cells']} == {'WIN'}
+
+
+def test_cmd_labels_refuses_without_the_c13_file(labelled):
+    oc.cmd_assemble(None)
+    with pytest.raises(SystemExit, match='c13_cells.json'):
+        oc.cmd_labels(None)
+    assert not labelled.labels.exists()
+
+
+def test_cmd_labels_refuses_when_c13_disagrees(labelled):
+    oc.cmd_assemble(None)
+    _write_c13(labelled, lambda doc: doc['cells'][0].update(label='LEVEL'))
+    with pytest.raises(SystemExit, match='disagrees'):
+        oc.cmd_labels(None)
+    _write_c13(labelled, lambda doc: doc['cells'][1].update(lo=doc['cells'][1]['lo'] + 3e-6))
+    with pytest.raises(SystemExit, match='disagrees'):
+        oc.cmd_labels(None)
+    _write_c13(labelled, lambda doc: doc['picks'].update({'tpips/artelingo': 'none+k0'}))
+    with pytest.raises(SystemExit, match='disagrees'):
+        oc.cmd_labels(None)
+    assert not labelled.labels.exists()
+
+
+def test_cmd_labels_refuses_a_cells_file_older_than_the_records(labelled):
+    oc.cmd_assemble(None)
+    _write_c13(labelled)
+    status = labelled.store['status.json']                           # a gate fails after cells.json was written
+    status['gates']['iv'] = 'failed'
+    labelled.store['status.json'] = status
+    with pytest.raises(SystemExit, match='assemble'):
+        oc.cmd_labels(None)
+    assert not labelled.labels.exists()
+    ranges = ranges_record()                                         # or a range changes
+    labelled.store['status.json']['gates']['iv'] = 'ok'
+    ranges[oc.range_key(labelled.specs[0])]['r'] = 0.5
+    labelled.store['stage1_om_ranges.json'] = ranges
+    with pytest.raises(SystemExit, match='assemble'):
+        oc.cmd_labels(None)
+
+
+def test_cmd_labels_refuses_a_partial_cells_file(labelled):
+    oc.cmd_assemble(None)
+    cells = json.loads(labelled.cells_path.read_text())
+    labelled.cells_path.write_text(json.dumps(cells[:2]))
+    _write_c13(labelled)
+    with pytest.raises(SystemExit):
+        oc.cmd_labels(None)
+    assert not labelled.labels.exists()
+
+
+# ------------------------------------------------------------------------------------------------ Loaders on a stand-in om_data
+import zlib  # noqa: E402
+
+import ns_data  # noqa: E402
+import ns_metrics  # noqa: E402
+
+LN, LD = 30, 24
+SPLITS = {'artelingo': 'held', 'mmart': 'test'}
+
+
+def rows_of(*tag):
+    """float32 unit rows [LN, LD], different for every tag: the test's own record of what each store holds."""
+    rng = np.random.default_rng(zlib.crc32('|'.join(map(str, tag)).encode()))
+    x = rng.standard_normal((LN, LD)).astype(np.float32)
+    return x / np.linalg.norm(x, axis=1, keepdims=True)
+
+
+def labels_of(set_, aspect):
+    y = (np.arange(LN) % 3).astype(np.int64)
+    y[[2, 11]] = -1
+    return y
+
+
+class StubData:
+    """The `om_data` calls Loaders makes, recording each call; rows come from `rows_of` keyed by what was asked for."""
+
+    def __init__(self):
+        self.calls = []
+        self.fail_turtle = False
+
+    def labels(self, set_, split, aspect):
+        self.calls.append(('labels', set_, split, aspect))
+        return labels_of(set_, aspect)
+
+    def cstar(self, set_, split, enc, aspect, seed, unit=True):
+        self.calls.append(('cstar', set_, split, enc, aspect, seed, unit))
+        x = rows_of('cstar', set_, split, enc, aspect, seed)
+        return x if unit else x * np.float32(3.0)
+
+    def tpips(self, set_, split, aspect):
+        self.calls.append(('tpips', set_, split, aspect))
+        return rows_of('tpips', set_, split, aspect)
+
+    def clay(self, set_, split, aspect, text_set):
+        self.calls.append(('clay', set_, split, aspect, text_set))
+        return rows_of('clay', set_, split, aspect, text_set)
+
+    def turtle_parts(self, set_, enc, arm, k, aspect=None):
+        self.calls.append(('turtle_parts', set_, enc, arm, k, aspect))
+        if self.fail_turtle:
+            raise FileNotFoundError('no fit')
+        return np.full((3, LN) if arm == 'plain' else (5, 1, LN), k % 7, np.int32)
+
+
+def fake_partitions(x, k, set_name):
+    """Stands in for r10's k-means: three 'states' that depend on the rows, the k and the set (and record nothing)."""
+    x = np.asarray(x)
+    return np.stack([(np.argmax(x[:, :k], axis=1) + j + len(set_name)) % k for j in range(3)]).astype(np.int32)
+
+
+@pytest.fixture
+def stub(monkeypatch):
+    sd = StubData()
+    monkeypatch.setattr(oc, 'om_data', sd)
+    monkeypatch.setattr(ns_data, 'cstar', sd.cstar)               # `ns_clu_cells._cand_rows` reads c* through ns_data
+    monkeypatch.setattr(ns_metrics, 'partitions', fake_partitions)
+    return sd
+
+
+@pytest.mark.parametrize('set_', ['artelingo', 'mmart'])
+def test_loaders_read_the_held_split_of_the_set(stub, set_):
+    ld = oc.Loaders()
+    y = ld.labels(set_, 'emotion')
+    assert y.dtype == np.int64 and np.array_equal(y, labels_of(set_, 'emotion'))
+    assert stub.calls == [('labels', set_, SPLITS[set_], 'emotion')]
+
+
+@pytest.mark.parametrize('set_', ['artelingo', 'mmart'])
+def test_loaders_cstar_partitions_are_the_five_seeds_of_the_held_split_in_clustering_form(stub, set_):
+    got = oc.Loaders().cstar_parts(set_, 'qwen', 'genre', 10)
+    calls = [c for c in stub.calls if c[0] == 'cstar']
+    assert [c[5] for c in calls] == [0, 1, 2, 3, 4]               # seeds in order
+    assert {c[2] for c in calls} == {SPLITS[set_]} and {c[6] for c in calls} == {False}        # held, not unit rows
+    want = np.stack([fake_partitions(rows_of('cstar', set_, SPLITS[set_], 'qwen', 'genre', s) * np.float32(3.0), 10, set_)
+                     for s in range(5)])
+    assert got.shape == (5, 3, LN) and np.array_equal(got, want)
+
+
+@pytest.mark.parametrize('set_', ['artelingo', 'mmart'])
+def test_loaders_tpips_and_clay_partitions_are_k_means_of_the_held_rows(stub, set_):
+    ld = oc.Loaders()
+    got = ld.tpips_parts(set_, 'style', 9)
+    assert np.array_equal(got, fake_partitions(rows_of('tpips', set_, SPLITS[set_], 'style'), 9, set_))
+    got = ld.clay_parts(set_, 'style', 9, 'B')
+    assert np.array_equal(got, fake_partitions(rows_of('clay', set_, SPLITS[set_], 'style', 'B'), 9, set_))
+    assert [c for c in stub.calls if c[0] in ('tpips', 'clay')] == [('tpips', set_, SPLITS[set_], 'style'),
+                                                                    ('clay', set_, SPLITS[set_], 'style', 'B')]
+
+
+def test_loaders_turtle_arms_and_missing_fit(stub):
+    ld = oc.Loaders()
+    assert ld.turtle_plain('mmart', 'siglip1', 9).shape == (3, LN)
+    assert ld.turtle_cstar('mmart', 'siglip1', 'genre', 9).shape == (5, 1, LN)
+    assert [c for c in stub.calls if c[0] == 'turtle_parts'] == [('turtle_parts', 'mmart', 'siglip1', 'plain', 9, None),
+                                                                 ('turtle_parts', 'mmart', 'siglip1', 'cstar', 9, 'genre')]
+    stub.fail_turtle = True
+    with pytest.raises(oc.MissingInput, match='no fit'):
+        ld.turtle_plain('mmart', 'siglip1', 9)
+    with pytest.raises(oc.MissingInput):
+        ld.turtle_cstar('mmart', 'siglip1', 'genre', 9)
+
+
+def _direct_ap(get_val, get_eval, pick, y, seeds):
+    return ns_ret.arm_ap(get_val, get_eval, pick, y, seeds)
+
+
+@pytest.mark.parametrize('set_', ['artelingo', 'mmart'])
+def test_loaders_ap_fits_on_validation_scores_on_held_with_the_five_seeds_of_unit_rows(stub, set_):
+    held, y = SPLITS[set_], labels_of(set_, 'genre')
+    got = oc.Loaders().ap('cstar', set_, 'qwen', 'genre', 'center+k10')
+    cs = [c for c in stub.calls if c[0] == 'cstar']
+    assert {c[6] for c in cs} == {True}                              # unit rows (default), as r17's retrieval arm
+    assert sorted({(c[2], c[5]) for c in cs}) == sorted({(sp, s) for sp in ('val', held) for s in range(5)})
+    want = _direct_ap(lambda s: rows_of('cstar', set_, 'val', 'qwen', 'genre', s),
+                      lambda s: rows_of('cstar', set_, held, 'qwen', 'genre', s), 'center+k10', y, (0, 1, 2, 3, 4))
+    assert got['ap'].shape == want['ap'].shape == (5, int((y >= 0).sum()))
+    assert np.array_equal(got['ap'], want['ap']) and np.array_equal(got['rows'], want['rows'])
+    swapped = _direct_ap(lambda s: rows_of('cstar', set_, held, 'qwen', 'genre', s),
+                         lambda s: rows_of('cstar', set_, 'val', 'qwen', 'genre', s), 'center+k10', y, (0, 1, 2, 3, 4))
+    assert not np.array_equal(swapped['ap'], want['ap'])             # the order of the splits matters here
+
+
+@pytest.mark.parametrize('set_', ['artelingo', 'mmart'])
+@pytest.mark.parametrize('arm,ts', [('tpips', None), ('clay', 'B')])
+def test_loaders_ap_of_the_unseeded_arms(stub, set_, arm, ts):
+    held, y = SPLITS[set_], labels_of(set_, 'genre')
+    got = oc.Loaders().ap(arm, set_, 'qwen', 'genre', 'center+k10', ts)
+    tag = lambda split: (arm, set_, split, 'genre') + (() if ts is None else (ts,))
+    want = _direct_ap(lambda s: rows_of(*tag('val')), lambda s: rows_of(*tag(held)), 'center+k10', y, None)
+    assert got['ap'].ndim == 1 and np.array_equal(got['ap'], want['ap'])
+    splits = [c[2] for c in stub.calls if c[0] == arm]
+    assert set(splits) == {'val', held}
+    swapped = _direct_ap(lambda s: rows_of(*tag(held)), lambda s: rows_of(*tag('val')), 'center+k10', y, None)
+    assert not np.array_equal(swapped['ap'], want['ap'])
 
 
 def test_labels_step_never_defaults_to_the_real_records_in_tests():
