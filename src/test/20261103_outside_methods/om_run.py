@@ -274,14 +274,56 @@ def cmd_stage2(args):
     return rc
 
 
+def _expected(only):
+    """Smoke only: the cells of the given units ('SC5/mmart/qwen,...'); None (all 337 cells) otherwise."""
+    if not only:
+        return None
+    assert op.SMOKE, '--only is for the smoke (OM_SMOKE=1): the real run assembles all 337 cells'
+    import om_cells
+    units = {tuple(u.split('/')) for u in only.split(',')}
+    cells = [c for c in om_cells.cell_specs() if (c['sc'], c['set'], c['encoder']) in units]
+    assert cells, f'no cell for {only}'
+    return cells
+
+
+def build_subset(expected):
+    """om_cells.build_cells for a subset of the cells (same inputs, same assemble)."""
+    import om_cells
+    ranges = op.read_committed_record('stage1_om_ranges.json')
+    picks = op.read_committed_record('stage1_om_picks.json')
+    status = om_cells.check_status(op.read_committed_record('status.json'))
+    r17 = om_cells.load_r17_status(status)
+    raw = []
+    for sc, set_, enc in om_cells.units():
+        path = om_cells.parts_dir() / f'{sc}__{set_}__{enc}.json'
+        if path.exists():
+            raw += json.loads(path.read_text())
+    return om_cells.assemble(raw, ranges, picks, status, r17, expected=expected)
+
+
 def cmd_assemble(args):
     import om_cells
-    return om_cells.cmd_assemble(args)
+    expected = _expected(args.only)
+    if expected is None:
+        return om_cells.cmd_assemble(args)
+    cells = build_subset(expected)
+    op.write_json(op.OUT / 'stage2' / 'cells.json', cells)
+    from collections import Counter
+    print(f'{len(cells)} cells (subset) -> {op.OUT / "stage2" / "cells.json"}; labels {dict(Counter(str(c["label"]) for c in cells))}; '
+          f'void {sum(bool(c["void"]) for c in cells)}')
+    return 0
 
 
 def cmd_labels(args):
     import om_cells
-    return om_cells.cmd_labels(args)
+    expected = _expected(args.only)
+    if expected is None:
+        return om_cells.cmd_labels(args)
+    picks = op.read_committed_record('stage1_om_picks.json')
+    out = om_cells.run_labels(op.OUT / 'stage2' / 'cells.json', op.OUT / 'c13' / 'c13_cells.json', om_cells.labels_path(), picks,
+                              rebuild=lambda: build_subset(expected), expected=expected)
+    print(f'labels (subset) -> {out}')
+    return 0
 
 
 def cmd_c13_stub(args):
@@ -320,7 +362,10 @@ def main(argv=None):
     p.add_argument('--enc', choices=op.ENCODERS)
     p.add_argument('--draws', type=int)
     p.add_argument('--force', action='store_true')
-    for n in ('status', 'assemble', 'labels', 'c13-stub', 'list'):
+    for n in ('assemble', 'labels'):
+        p = sub.add_parser(n)
+        p.add_argument('--only', help='smoke only: units SC/set/enc,... (assemble and check just those cells)')
+    for n in ('status', 'c13-stub', 'list'):
         sub.add_parser(n)
     a = ap.parse_args(argv)
     fn = {'stage0': cmd_stage0, 'stage1': cmd_stage1, 'stage2': cmd_stage2, 'status': cmd_status, 'assemble': cmd_assemble,
