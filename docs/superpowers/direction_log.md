@@ -24,9 +24,10 @@ PercepT cell is a WIN; against the teacher 18 WIN, 4 LEVEL, 2 BELOW (emotion ret
 Experiments start again (user, 2026-11-03 18:30) from the experiment overview's plan: six loops, r17 to r22, several
 at the same time to use the local GPU and the DAS6 node fully. r19 (c* on three more encoders, SemArt new artists,
 cost table) is read and closed (user, 2026-11-05): 23 of 23 verdicts hold, but no cell is "better than" the teacher, so
-its results go to an ablation or the appendix. r17 (new scores from saved outputs: NMI, ARI, ACC, cluster counts, CRL,
-PercepT retrieval, untold retrieval) and r18 (outside methods: TPIPS, CLAY, TEMI or TURTLE) have run and wait for the
-user's reading; r20 (figure), r21 (head variants) and r22 (text queries) follow from 11-06. The stage note's form
+its results go to an ablation or the appendix. r18 (outside methods: TPIPS, CLAY, TURTLE at its default
+settings) is read (user, 2026-11-05): c* is above them in most cells, TURTLE is a weak test, and r18's next step is open.
+r17 (new scores from saved outputs: NMI, ARI, ACC, cluster counts, CRL, PercepT retrieval, untold retrieval) has run and
+waits for the user's reading; r20 (figure), r21 (head variants) and r22 (text queries) follow from 11-06. The stage note's form
 still waits for the user. Deadlines:
 abstract 2026-11-10, paper 2026-11-16, supplementary 2026-11-23.
 Reporting (user, 2026-11-04): r17's results enter the weekly report of 2026-11-04 only after the user's reading in the r20
@@ -83,6 +84,29 @@ r17.
   of about 203 ms (never tried; not chosen by the user, 2026-11-05; [proposed in](../reports/auto/percept/2027-01-05_past_picks.md))
 - Emotion and style on new artists: a data search first, since SemArt has neither label (never tried; not chosen by the
   user, 2026-11-05; [proposed in](../reports/auto/percept/2027-01-05_past_picks.md))
+
+## 2026-11-05 · Outside methods read: c* above TPIPS and CLAY in most cells, default TURTLE is a weak test; the next step is open
+
+- **Read:** 337 cells, each with its own label and no overall verdict: 330 WIN, 6 LEVEL, 1 BELOW, 0 void. Qwen c*
+  against TPIPS: 34 of 35 WIN, one LEVEL (ArtELingo emotion AMI, 0.1024 against 0.0718). Qwen and CLIP L/14 c* against
+  CLAY: 66 of 70 WIN, the four others all style (0.1024 against 0.0676); the one BELOW is MMArt CLIP L/14 style
+  accuracy. c* against the plain image with TURTLE on both sides: 114 of 116 WIN. c* with k-means against the plain
+  image with TURTLE: 116 of 116 WIN. TURTLE ran at its released code's default settings, without its hyperparameter
+  selection, and scored below k-means in 203 of 232 diagnostic comparisons (170 with the whole interval below zero).
+  TEMI did not run.
+- **Meaning (C):** "we confirm that ours c* is (most of the time) stronger than three zero-shot CIR methods, that's
+  good" (user, before seeing ours). Ours: c* stands above both outside embeddings in most cells, with CLAY closest in
+  style; the TURTLE cells are weak evidence, since TURTLE at these settings mostly sits below k-means. Where they
+  differ: the two agree on TPIPS and CLAY. The user counts three methods beaten; we count two embeddings beaten and one
+  weak test, because TURTLE is a clustering method on the plain image and "stronger" holds there only at its default
+  settings.
+- **Decided (A):** open, awaiting the user. Options: a. put these rows into the paper; b. build and run TEMI, up to
+  10 GPU h; c. the one-off TURTLE selection on validation, then plain-image TURTLE at the chosen setting.
+- **Why:** the paper's related work needs these rows, and the test against a clustering stronger than k-means is still
+  open.
+- **Links:** [report](../reports/auto/percept/2027-01-06_outside_methods.md) ·
+  [user-read report](../user_read/2026-11-05_outside_methods.md) ·
+  [spec](specs/2026-11-03-outside-methods-design.md) · [handoff](handoffs/2026-11-05-r18-read-handoff.md)
 
 ## 2026-11-05 · Past picks read: all 23 verdicts hold, no "better than" against the teacher; the results go to an ablation or the appendix, and r19 closes
 
