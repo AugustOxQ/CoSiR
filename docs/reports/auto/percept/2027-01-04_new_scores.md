@@ -43,7 +43,7 @@ artists with the training paintings (r15).
 3. Go on with the planned loops, beside r18 (outside methods) and r19 (more encoders), which are still running: the qualitative figure (r20, CPU minutes and design work), head variants (r21, about
    2 h GPU), text queries (r22, under 1 h GPU). r21 could tell if another head closes the emotion gap to the teacher.
 
-**Your reading.**
+**Your reading.** "I think results overall good, ARI and ACC on teacher seems worth digging more cause half not win."
 
 <details>
 <summary>Our reading and recommendation (open after yours)</summary>

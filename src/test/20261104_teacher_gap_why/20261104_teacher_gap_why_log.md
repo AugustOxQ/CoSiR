@@ -36,7 +36,7 @@ JSON outputs: `outputs/` (gitignored, 244 KB with the scripts).
 | Other eight classes together | +0.0074 to +0.0107 |
 | ACC difference | -0.0029 to -0.0080 |
 | Contentment's part of it | -0.0169 to -0.0257 |
-| Other eight classes together | +0.0094 to +0.0228 |
+| Other eight classes together | +0.0095 to +0.0228 |
 | MI difference (nats) | +0.0192 to +0.0275 |
 | Contentment's part of it | -0.0011 to -0.0038 |
 | Contentment recall in its matched cluster | c* 0.256 to 0.282, teacher 0.331 |
@@ -45,11 +45,12 @@ Contentment masked after clustering: ARI d +0.0053 to +0.0104, all four interval
 two above 0 (Qwen, CLIP L/14), two reach 0 (SigLIP 2, SigLIP 1). Controls: with sadness, amusement or awe masked, ARI d
 stays negative with all 12 intervals below 0. Contentment is 35% of the rows and about 60% of the same-class pairs.
 
-Validation rows show the same direction, with a smaller gap: ARI d -0.0076 to +0.0028, contentment's part -0.0027 to
--0.0150; contentment masked: ARI d +0.0111 to +0.0151, ACC d +0.0116 to +0.0267, all eight intervals above 0.
+Validation rows: the gap is smaller and mostly absent, with c* above the teacher on CLIP L/14: ARI d -0.0076 to +0.0028, ACC
+d -0.0012 to +0.0088, contentment's ARI part -0.0027 to -0.0150; contentment masked: ARI d +0.0111 to +0.0151, ACC d +0.0116 to +0.0267, all eight intervals above 0.
 
 Class-balanced point values (no interval): ARI 0.0543 to 0.0570 against 0.0483; ACC 0.2373 to 0.2455 against 0.2286;
-NMI 0.0939 to 0.0996 against 0.0843.
+NMI 0.0939 to 0.0996 against 0.0843. The spread over single partitions includes the teacher's value in ACC on all eight
+encoder and set pairs and in ARI on six of eight.
 
 ## How: the contentment cluster (rows with both labels, 9,949)
 

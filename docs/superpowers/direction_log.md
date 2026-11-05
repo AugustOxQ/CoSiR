@@ -28,9 +28,11 @@ its results go to an ablation or the appendix. r18 (outside methods: TPIPS, CLAY
 settings) is read and closed (user, 2026-11-05): c* is above them in most cells, TURTLE at these settings is a
 weak test. These results are important and go into the paper in a later chat (memo in project memory and the paper's
 README); TEMI and the TURTLE selection are parked, to do later.
-r17 (new scores from saved outputs: NMI, ARI, ACC, cluster counts, CRL, PercepT retrieval, untold retrieval) has run and
-waits for the user's reading; r20 (figure), r21 (head variants) and r22 (text queries) follow from 11-06. The stage note's form
-still waits for the user. Deadlines:
+r17 (new scores from saved outputs: NMI, ARI, ACC, cluster counts, CRL, PercepT retrieval, untold retrieval) is read
+(user, 2026-11-04): good overall; against the teacher, 46 of 48 AMI and NMI cells WIN and 22 of 48 ARI and ACC cells. On
+ArtELingo emotion that gap comes from one class, contentment (report 2027-01-07); genre labels alone reach ACC level with
+both models, and ARI close to c* and below the teacher. What r20 does next is open in the r20 decide chat; r20 (figure), r21 (head variants) and r22 (text queries)
+are the plan's remaining loops. The stage note's form still waits for the user. Deadlines:
 abstract 2026-11-10, paper 2026-11-16, supplementary 2026-11-23.
 Reporting (user, 2026-11-04): r17's results enter the weekly report of 2026-11-04 only after the user's reading in the r20
 chat, and they stay out of the stage report of 2026-11-04 (29 October to 3 November); the next stage report starts from
@@ -92,6 +94,28 @@ r17.
   GPU h by our arithmetic, not measured; a small spec must settle D9 against D25 (never run; deferred by the user
   (2026-11-05): worth doing, not top priority;
   [proposed in](../reports/auto/percept/2027-01-06_outside_methods.md))
+
+## 2026-11-05 · New scores read: c* holds in the standard metrics; the teacher gap in ARI and ACC comes from contentment on ArtELingo; next step open
+
+- **Read:** 412 cells, each its own claim, no overall verdict: 373 WIN, 32 LEVEL, 7 BELOW; 398 give a claim. Against the
+  plain image, 96 of 96 clustering cells WIN. Against the teacher on paintings, AMI and NMI WIN in 46 of 48 cells, ARI and
+  ACC in 22 of 48, and all 5 BELOW are emotion. The check asked for at decision C: on ArtELingo emotion, contentment
+  carries the whole gap (ARI part -0.0175 to -0.0238 of -0.0101 to -0.0144); masked, c* is above the teacher in ARI on all
+  four encoders. The teacher's contentment cluster holds 20.0% of the rows at precision 0.651, c*'s 15.1% to 15.8% at 0.669
+  to 0.685. Genre labels alone reach ACC 0.258 (level with both) and ARI 0.055 (c* 0.062, teacher 0.077) there. MMArt is
+  partial: fear also carries ACC. On ArtELingo validation rows the gap is smaller and mostly absent.
+- **Meaning (C):** "I think results overall good, ARI and ACC on teacher seems worth digging more cause half not win."
+  (user, before seeing ours). Ours: the gains hold against the plain image, PercepT and CRL, teacher claims depend on the
+  metric, and emotion is the weak aspect. Where they differ: the facts agree. The user wanted the cause; we only worded
+  around it. The cause is now known on ArtELingo, not its source in training.
+- **Decided (A):** open: the user asked for the plan overview first (2026-11-05). Decided so far: a short report of the
+  check (user, after seeing the recommendation); the weekly report keeps the numbers without the reason (user, against the
+  recommendation).
+- **Why:** the check is needed for the paper's text beside the teacher cells; a weekly report only shows the numbers.
+- **Links:** [report](../reports/auto/percept/2027-01-04_new_scores.md) ·
+  [check](../reports/auto/percept/2027-01-07_teacher_gap.md) · [user-read report](../user_read/2026-11-04_new_scores.md) ·
+  [check, user-read](../user_read/2026-11-05_teacher_gap.md) · [spec](specs/2026-11-03-new-scores-design.md) ·
+  [handoff](handoffs/2026-11-04-r20-decide-handoff.md)
 
 ## 2026-11-05 · Outside methods read: c* above TPIPS and CLAY in most cells, default TURTLE is a weak test; r18 closes, the paper rows come later
 
