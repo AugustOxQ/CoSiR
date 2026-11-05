@@ -1,7 +1,7 @@
 # r22 explore: text and cross-modal retrieval (small loop, development data only)
 
 Round folder of the r22 exploration. Module prefix `tx_`. Bulk outputs: `/data/SSD2/cosir_r22/20261105_text_retrieval/`.
-Written before any score existed (2026-11-05 17:45). The user's decisions are in the handoff
+Written before any score existed (2026-11-05 2026-11-05 17:20). The user's decisions are in the handoff
 `docs/superpowers/handoffs/2026-11-05-r22-explore-handoff.md`, section 2; the choices below are agent defaults unless marked.
 
 ## Design
