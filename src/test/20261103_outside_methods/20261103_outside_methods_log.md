@@ -226,3 +226,13 @@ by the 200 W line; Qwen alone means 199.6 W.
 - **TPIPS:** shard 1 ended 08:02 after 151.7 min, not the 3.9 h the handoff expected; the store check at 10:29 finds every probe row equal, cosine 1.0, and no
   package changed. The loop (pid 2887562) waits for 19:00. At 2.5 h a shard, shards 2 to 5 end about Thursday 05:00; at 3.9 h, shard 5 still ends Thursday 23:00.
 - **Git:** `*.json` is gitignored at the repo root, so stage 1's three records need `git add -f`, as r17's did.
+- **TPIPS stores:** shards 2 to 5 took about 1.9 to 2.5 h each and ended 2026-11-05 03:08; the loop had six full shards at 03:09, not Thursday 23:00. Store check
+  `complete=True`, no package changed. Both merges passed (ArtELingo 18,433 rows, MMArt 16,384). Gate (iv) passes: lowest cosine 0.99999994 against the bar of 0.999,
+  48 rows per factor; all six stores pass. All six gates `ok`.
+- **Merge:** main into r18-int at b6b9975a. No hashed file moved (`git diff --stat` on `om_gate_iii`, `om_data`, `om_paths`, `ns_clu`, `ns_metrics`, `ns_ret`, `ns_data`,
+  `rg_held` is empty). Status after it still `ok` for all gates.
+- **Stage 1:** 03:11 to 03:19, 8 min against the 2 h estimate. 140 ranges, 0 with r null. Picks: TPIPS and CLAY `none+k10` on both sets; CLAY text set A for clustering
+  and retrieval on both sets (`a_higher`). Records committed at 8ca05e1c with `git add -f`.
+- **Stage 2 ran four units at a time, not one at a time as `om_queue.sh stage2 --run` does (agent default).** Each unit is its own process with its own part file, and the
+  caches are in memory, so no number depends on the order. 28 units through `res-queue cpu`, 03:20 to 04:10, 3.1 to 12.8 min each, all exit 0.
+- **Assemble:** 337 cells, 0 void, r17-family ranges equal r17's record. Labels stay provisional until C13 passes.
