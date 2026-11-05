@@ -1927,3 +1927,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-05-r22-explore-handoff.md
 - New chat: tab 'r22 explore', session 699c84f5-5f72-426b-9aab-36d1c336c799
 
+[brief] CoSiR: r22 explore -> r23 decide (2026-11-05 18:21 Amsterdam)
+- Done: the r22 exploration ran on validation, seed 0; reports written and claim-reviewed.
+- State: c*'s caption side is above plain Qwen and the teacher's text in 6 of 9 label cells (bar 5); 5 of 9 with one fixed read-out. Pair hits are below plain Qwen.
+- Next: show the user the results brief without our reading, record decision C, wrap up, then step 2.
+- Blocked: nothing. Two user decisions wait: the pair-hit limit and the free variant.
+- Handoff: docs/superpowers/handoffs/2026-11-05-r23-decide-handoff.md
+- New chat: tab 'r23 decide', session f89dacc0-c7b3-4cac-818a-aa9c5c2e41af
+
