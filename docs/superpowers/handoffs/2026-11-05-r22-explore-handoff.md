@@ -2,9 +2,9 @@
 
 ## Brief
 - Done: decision A for r22. A small exploration first, core plus SemArt, the MMArt perspective table and word queries.
-- State: no text retrieval result exists yet. c*'s caption side is saved in the weights. The container GPU failed its check before the restart.
+- State: no text retrieval result exists yet. c*'s caption side is saved in the weights. The GPU check passed after the restart.
 - Next: check the GPU, read the literature note, then run the exploration on development data.
-- Blocked: nothing after the restart.
+- Blocked: nothing. Two items wait for the user (the Lenses PDF, the MMArt numbers); neither blocks the exploration.
 
 > Written 2026-11-05 16:55 by tab "r22 decide". Loop step reached: after decision A, small loop, design in chat next. Direction log
 > entry: [New scores read](../direction_log.md) ("Decided in the r22 decide chat").
@@ -93,11 +93,16 @@ again. What it changes for the exploration:
 
 ## 4. Open points for the next step
 
-Asked of the user at the cut, 2026-11-05 17:00; the answers come in this chat or the paper chat:
+Asked of the user at the cut; both items stay open and are the user's actions:
 
-- **Key:** Lenses and CANVAS weaken the novelty wording. Check the abstract draft before 11-10 and word the claim on "no labels". Our recommendation;
-  the abstract draft itself is not checked. The Lenses PDF needs opening by hand (a fetch returned 403).
-- **Minor:** the note lists an author "Ding" on the MMArt paper. If that is the user, they can read MMArt's emotional R@1 from the figure data.
+- **Key, the novelty check:** the user said yes, check before the deadline (2026-11-05, after seeing the recommendation). Checked 17:15: no abstract
+  draft exists yet (`docs/paper/cvpr2027_aspect_spaces/drafts/v1/paper_v1.md`, "not written yet"). The related-work novelty sentence
+  (`drafts/v1/02_related_work.md`, line 33) lists what prior work does, and neither Lenses nor CANVAS is in the drafts or `refs.bib`. The list is now
+  incomplete. The paper chat adds both and words the abstract on "no labels".
+- **The Lenses PDF:** the user opens it by hand and saves it as `/project/CoSiR/.scratch/lenses_cvpr2026.pdf`. Then read its hit rule, label source and
+  text-to-image rows (note, Open 1). Do not fetch it by script: the site answers 403, and the auto-mode check refused a browser user agent.
+- **MMArt author:** the user asked what is needed. If they are an author: the emotional R@1 from Figure 5, which model gives each number, and the 1,000
+  query paintings. For the claim stage only; the exploration does not wait for it. If not, leave it out.
 
 Minor, agent defaults unless the results need the user:
 
@@ -128,8 +133,7 @@ Minor, agent defaults unless the results need the user:
 
 ## 6. State at handoff
 
-- **GPU:** `nvidia-smi` failed at 16:50 with `Failed to initialize NVML: Unknown Error`, kernel and library both 595.99.02, so a host
-  `systemctl daemon-reload` is the likely cause and a restart should fix it. Run the GPU check of `container.md` first.
+- **GPU:** the check passed at 17:12 after the restart of 17:00: driver, kernel module and library all 595.99.02, no process on the GPU.
 - Running: nothing. No queue job, no Codex job, no subagent.
 - Uncommitted: nothing of this chat's.
 - On disk over 1 GB: nothing new.
