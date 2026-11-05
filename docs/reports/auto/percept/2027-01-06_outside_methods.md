@@ -22,14 +22,14 @@ Examples use ArtELingo Qwen emotion: AMI at nine clusters, or mAP.
 |c* + TURTLE / plain image + TURTLE|116|114|2|0|0.0998 / 0.0669|+0.0330 [+0.0286, +0.0373]|
 |c* k-means / plain image + TURTLE|116|116|0|0|0.1024 / 0.0669|+0.0356 [+0.0317, +0.0394]|
 
-The independent re-derivation of the scoring matched all 10,762 checked items; none failed or was skipped.
+The independent re-derivation of the scoring from saved outputs matched all 10,762 checked items; none failed or was skipped.
 The largest gap on a cell was 3.89e-14; the largest overall was 2.06e-8, on a CLAY validation score.
 
 **What it does not show.** TURTLE used its released code's defaults, without its paper's selection of settings.
 At those defaults it scored below k-means in 203 of 232 diagnostic comparisons (170 with the whole interval below zero; c*'s intervals may be too narrow). So these cells do not show that c* holds against a clustering stronger than k-means.
 TURTLE is our re-implementation, checked against the official code only in a short run (100 outer steps on 2,000 rows).
 TURTLE cells use c*'s k-means seed range for LEVEL; no correction covers the 337 cells.
-TPIPS ran with one library version; its vectors move with the transformers version.
+TPIPS ran with one library version; its vectors move with the transformers version. Whether it saw WikiArt paintings in training was not checked.
 c*'s test values were known from earlier rounds; these comparator results were new.
 TEMI, which trains clustering heads through neighbours and a teacher copy, did not run.
 
@@ -52,7 +52,7 @@ TEMI, which trains clustering heads through neighbours and a teacher copy, did n
 TPIPS, on a base four times c*'s size, loses 34 of 35 cells with one LEVEL; it ran against Qwen c* only. CLAY is the close comparator: its four non-WIN cells of 70 are all style.
 The TURTLE cells are weaker evidence than their 230 WINs suggest. Plain-image TURTLE mostly sits below plain k-means, so these cells add little beyond r17's k-means cells.
 The closest ones are the ones to watch: d is below c*'s seed range in 5 of 116 c* k-means cells and 6 of 116 cells with TURTLE on both sides, all emotion ARI or ACC.
-We are sure of the scoring: the re-derivation matches it from saved outputs. That does not reach extraction or training. The gates check those, and for TURTLE training only by a short run against the official code and one full fit matched across machines.
+We are sure of the scoring: the re-derivation matches it from saved outputs and recomputes CLAY's vectors. It redoes no feature extraction or training. The gates check those, and for TURTLE training only by a short run against the official code and one full fit matched across machines.
 We are less sure what default TURTLE says about stronger clustering.
 
 **Our recommendation.** Our view: option 1 now, since the abstract is due 2026-11-10 and needs no new run.
@@ -131,7 +131,7 @@ Narrow WINs include ArtELingo Qwen style NMI against CLAY: +0.0048 [+0.0000, +0.
 MMArt SigLIP 1 emotion ARI with TURTLE on both sides is also narrow: +0.0037 [+0.0006, +0.0067].
 
 The [certificate](../../../../src/test/20261103_outside_methods/records/c13.json) covers labels, picks and ranges at full draw counts.
-It reads saved partitions, so it does not reproduce TURTLE training.
+It recomputes CLAY's vectors, reads saved partitions and stores, and so does not reproduce TURTLE training or TPIPS extraction.
 
 ## Analysis
 
