@@ -26,7 +26,8 @@ The independent re-derivation of the scoring matched all 10,762 checked items; n
 The largest gap on a cell was 3.89e-14; the largest overall was 2.06e-8, on a CLAY validation score.
 
 **What it does not show.** TURTLE used its released code's defaults, without its paper's selection of settings.
-At those defaults it scored below k-means in 203 of 232 diagnostic comparisons, so these cells do not show that c* holds against a clustering stronger than k-means.
+At those defaults it scored below k-means in 203 of 232 diagnostic comparisons (170 with the whole interval below zero; c*'s intervals may be too narrow). So these cells do not show that c* holds against a clustering stronger than k-means.
+TURTLE is our re-implementation, checked against the official code only in a short run (100 outer steps on 2,000 rows).
 TURTLE cells use c*'s k-means seed range for LEVEL; no correction covers the 337 cells.
 TPIPS ran with one library version; its vectors move with the transformers version.
 c*'s test values were known from earlier rounds; these comparator results were new.
@@ -39,7 +40,7 @@ TEMI, which trains clustering heads through neighbours and a teacher copy, did n
 2. Build and run TEMI, this loop's third stage. Cost: one unattended build and up to 10 GPU h.
    It could show whether a second method, at its paper's settings, closes c*'s gap. Results before 2026-11-16 enter the paper; c*'s heads may get no cell.
 3. Run the spec's one-off TURTLE selection on validation, then repeat plain-image TURTLE at the chosen setting.
-   Cost: a small spec, a build, and about 134 fits (50 + 84), at most about 4 GPU h by our arithmetic, not measured.
+   Cost: a small spec, a build, and about 134 fits (50 + 84): about 4 GPU h (3.7 to 4.4) by our arithmetic, not measured. A selected setting may change a fit's time.
    It could show whether selected TURTLE reaches c* with k-means, the test these cells leave open.
 
 **Your reading.**
@@ -47,11 +48,12 @@ TEMI, which trains clustering heads through neighbours and a teacher copy, did n
 <details>
 <summary>Our reading and recommendation (open after yours)</summary>
 
-**Our reading.** c* stands clearly above both outside embeddings, and above our priors.
-TPIPS, on a base four times c*'s size, loses 34 of 35 cells with one LEVEL. CLAY is the close comparator: its four non-WIN cells of 70 are all style.
+**Our reading.** c* stands above both outside embeddings in most cells, and above our priors.
+TPIPS, on a base four times c*'s size, loses 34 of 35 cells with one LEVEL; it ran against Qwen c* only. CLAY is the close comparator: its four non-WIN cells of 70 are all style.
 The TURTLE cells are weaker evidence than their 230 WINs suggest. Plain-image TURTLE mostly sits below plain k-means, so these cells add little beyond r17's k-means cells.
-The closest ones are the ones to watch: in 5 of 116 c* k-means cells, all emotion ARI or ACC, d is below c*'s seed range.
-We are sure of the labels: the re-derivation covers scoring from saved outputs, and the gates cover extraction and training. We are less sure what default TURTLE says about stronger clustering.
+The closest ones are the ones to watch: d is below c*'s seed range in 5 of 116 c* k-means cells and 6 of 116 cells with TURTLE on both sides, all emotion ARI or ACC.
+We are sure of the scoring: the re-derivation matches it from saved outputs. That does not reach extraction or training. The gates check those, and for TURTLE training only by a short run against the official code and one full fit matched across machines.
+We are less sure what default TURTLE says about stronger clustering.
 
 **Our recommendation.** Our view: option 1 now, since the abstract is due 2026-11-10 and needs no new run.
 Then option 2 with option 3 in the same build: they share node402, and a reader will first ask whether TURTLE was tuned.
@@ -154,7 +156,8 @@ These point comparisons have no label; ArtELingo style mAP was 0.2365 for TPIPS 
 
 **What TURTLE adds.** At its defaults TURTLE usually scored below k-means on the same rows; this diagnostic has no label.
 The table summarises `turtle_adds_*.json`: TURTLE minus k-means over 232 comparisons, the four class-count metrics and AMI at twenty.
-On the plain image the direction depends on the metric: ARI and ACC are mixed, and 14 of those 48 rows favour TURTLE.
+On the plain image the direction depends on the metric: in ARI and ACC, d is above zero in 20 of 48 rows, 14 of them with a lower bound above zero.
+In emotion, plain-image d is above zero in 11 of 40 rows, 8 of them with a lower bound above zero.
 
 |Arm|Metrics|Comparisons|d below 0|Upper bound below 0|Lower bound above 0|
 |---|---|---:|---:|---:|---:|
@@ -171,7 +174,7 @@ The c* comparison pairs rows only and draws the seed sets separately, so its int
 
 Default TURTLE does not close the gap: c* with k-means wins every labelled comparison against it.
 With TURTLE on both sides, two emotion cells are LEVEL; the rest WIN.
-In five of those k-means cells d is below c*'s seed range: SigLIP 2 and CLIP L/14 emotion, ARI or ACC. They are still WIN under the rule.
+In five c* k-means cells d is below c*'s seed range, and in six cells with TURTLE on both sides: SigLIP 2 and CLIP L/14 emotion, ARI or ACC. Of those eleven, one is LEVEL and the rest are WIN under the rule.
 Our reading: this supports the aspect spaces at these settings. It says little about stronger clustering, because the comparator mostly sits below plain k-means.
 
 **Count sweep.** Outside arms usually stay below c* in `sweep_*.json`; point values give no claim.
@@ -199,7 +202,7 @@ TPIPS and CLAY both picked `none+k10`, no map with ten-neighbour query expansion
 |MMArt|0.3213 / 0.2930|231.8407 / 216.6322|
 
 The selection score averages validation mAP divided by CLIP L/14 c*'s seed range.
-Some class names occur verbatim in both lists (such as awe, fear, landscape, portrait, baroque); none was removed.
+Set A holds 4 of 9 emotion class names, 3 of 10 genre names (4 after normalising case and underscores) and one MMArt style name; none was removed. Our reading: this favours CLAY.
 
 **TPIPS and plain cosine retrieval.** `tpips_cosine.json` records mean cosine between each image's three factor vectors.
 It is 0.7510 on ArtELingo held and 0.7511 on MMArt test.
@@ -230,7 +233,7 @@ No claim covers other counts, unscored sets, TPIPS or CLAY on other encoders, se
 
 **Run order and timing.** Stage two ran four units at a time through res-queue, an agent default, rather than serially as `om_queue.sh` does.
 Each unit used its own process and part file, and caches lived in memory, so no number depended on order.
-TPIPS extraction finished about a day before the first handoff's Thursday 23:00 estimate; labels followed at 05:28 on 2026-11-05, well before 11:00.
+TPIPS extraction finished about 20 hours before the first handoff's Thursday 23:00 estimate; labels followed at 05:28 on 2026-11-05, well before the 11:00 end set for overnight runs.
 
 **TPIPS parity.** Node vectors missed the fixed 0.999 cosine bar, with a lowest row cosine of 0.9987, even with identical packages and images; the hardware cause was not isolated.
 The threshold stayed unchanged, TPIPS moved to the local run, and gate (iv) then passed at 0.99999994.
@@ -245,7 +248,7 @@ Reported vectors depend on the library version: median row cosine between transf
 |(ii), GPU|3090 reference versus node402 fits|One full fit matched every partition row across machines; loss was 2.9114 on both.|
 |(iv), TPIPS|Store rows against reference|`om_tpips_check.py` compares each shard's probe rows with the reference.|
 
-Both final build reviewers approved with notes but incomplete coverage; the round log holds their list. Their main checks:
+Both final build reviewers approved with notes, and each stopped before full coverage. Their main checks:
 
 |Check|Final review evidence|
 |---|---|
@@ -253,7 +256,8 @@ Both final build reviewers approved with notes but incomplete coverage; the roun
 |CLAY vectors; gate projector / mean / query|1.5e-8; 2.2e-7 / 6.0e-8 / 6.6e-7 against 1e-5|
 |Earlier retrieval replay|36/36 expected values matched exactly|
 |Rule sabotage|19 cases; two misses gained tests|
-|Whole suite before the run|314 tests passed|
+
+The controller's whole-suite run before the fits passed 314 tests.
 
 Part files bind no input hash; changed inputs require forced recomputation.
 CLAY and TPIPS gates bind no code hash; independent re-derivation checks final scoring.
@@ -278,7 +282,7 @@ None of the four unfixed items can change a label; the re-review found no defect
 |Label writer does not require PASS itself|Unfixed; the controller required the full PASS first.|
 |Edits above the boundary invalidate every cache|Retained; this affects recomputation cost only.|
 
-The fix round passed seventy tests and caught six mutations. Three low notes on test fixtures and path checks stay in the round log.
+The fix round passed seventy tests and caught six mutations. Four low notes on test fixtures, path checks and input trust stay in the round log.
 
 ## Files and storage
 
