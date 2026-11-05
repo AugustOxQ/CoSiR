@@ -55,7 +55,7 @@ below 0; BELOW means further below.
 3. Test emotion and style on new artists. A data search comes first, since SemArt has neither label; the cost depends
    on what it finds. It could extend the new-artist result past genre.
 
-**Your reading.**
+**Your reading.** "Not out of expectation, though really 'no better' is kind of bad." So these results will be either the ablation or go to the appendix. Hold the current result and finish this round. (User, 2026-11-05, before seeing ours.)
 
 <details>
 <summary>Our reading and recommendation (open after writing yours)</summary>

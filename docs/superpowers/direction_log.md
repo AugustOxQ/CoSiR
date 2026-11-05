@@ -11,7 +11,7 @@ weekly and stage reports.
 
 The conditioned line's log (2026-09-28 to 2026-10-15, rounds 1 to 9, parked ideas) is archived: [direction log](../../archive/v2_conditioned/docs/superpowers/direction_log.md).
 
-## Now (2026-11-03)
+## Now (2026-11-05)
 
 The new line builds a condition-free model over PercepT: one Qwen3-VL-Embedding instruction per aspect, buddy graphs
 on each view, one shared trunk with emotion, style and genre heads, read once on the default image. On ArtELingo, c*
@@ -22,10 +22,12 @@ nothing (report 2027-01-02). The recipe carries over to SigLIP 2, SigLIP 1 and C
 WikiArt paintings outside ArtELingo, on all four encoders (r15, report 2027-01-03, holds): every plain-image and
 PercepT cell is a WIN; against the teacher 18 WIN, 4 LEVEL, 2 BELOW (emotion retrieval, Qwen and CLIP L/14).
 Experiments start again (user, 2026-11-03 18:30) from the experiment overview's plan: six loops, r17 to r22, several
-at the same time to use the local GPU and the DAS6 node fully. r17 (new scores from saved outputs: NMI, ARI, ACC,
-cluster counts, CRL, PercepT retrieval, untold retrieval), r18 (outside methods: TPIPS, CLAY, TEMI or TURTLE) and r19
-(c* on three more encoders, SemArt new artists, cost table) are decided on 11-03 evening; r20 (figure), r21 (head
-variants) and r22 (text queries) follow from 11-06. The stage note's form still waits for the user. Deadlines:
+at the same time to use the local GPU and the DAS6 node fully. r19 (c* on three more encoders, SemArt new artists,
+cost table) is read and closed (user, 2026-11-05): 23 of 23 verdicts hold, but no cell is "better than" the teacher, so
+its results go to an ablation or the appendix. r17 (new scores from saved outputs: NMI, ARI, ACC, cluster counts, CRL,
+PercepT retrieval, untold retrieval) and r18 (outside methods: TPIPS, CLAY, TEMI or TURTLE) have run and wait for the
+user's reading; r20 (figure), r21 (head variants) and r22 (text queries) follow from 11-06. The stage note's form
+still waits for the user. Deadlines:
 abstract 2026-11-10, paper 2026-11-16, supplementary 2026-11-23.
 Reporting (user, 2026-11-04): r17's results enter the weekly report of 2026-11-04 only after the user's reading in the r20
 chat, and they stay out of the stage report of 2026-11-04 (29 October to 3 November); the next stage report starts from
@@ -76,6 +78,33 @@ r17.
   does "fine-tune" reduce to "train on photos"? On validation, seed 0, at 40 neighbours, the two starts were about equal
   (AMI 0.1801 beside 0.1769, mAP 0.3227 for both). About 3 minutes per run plus scoring. To run after r19 frees the GPU
   (decided by the user, 2026-11-04, after seeing the recommendation; proposed in the 2026-11-04 stage report chat)
+
+- Cost against a teacher that encodes the image once: a local probe of about 1 h (an estimate), to replace our arithmetic
+  of about 203 ms (never tried; not chosen by the user, 2026-11-05; [proposed in](../reports/auto/percept/2027-01-05_past_picks.md))
+- Emotion and style on new artists: a data search first, since SemArt has neither label (never tried; not chosen by the
+  user, 2026-11-05; [proposed in](../reports/auto/percept/2027-01-05_past_picks.md))
+
+## 2026-11-05 · Past picks read: all 23 verdicts hold, no "better than" against the teacher; the results go to an ablation or the appendix, and r19 closes
+
+- **Read:** GO, 23 of 23 verdicts hold with c* unchanged. DINOv2, CLIP B/32 and CLIP B/16: 9 of 9 WIN against the plain
+  image and PercepT (smallest: DINOv2, MMArt emotion mAP, 0.1939 against 0.1890). New artists on SemArt, 11,159
+  paintings, genre only, seven encoders: 7 of 7 WIN (smallest: CLIP B/16, genre AMI, 0.4741 against 0.4509). Cost: 5.2
+  to 88.6 ms per image against 266.8 ms for the teacher's three passes (ratios 51.4 to 3.0). Against the teacher, 56
+  cells: 0 "better than", 15 "level with or better than", 41 no claim; DINOv2 is BELOW in all 16. A teacher that
+  encodes the image once was not measured (our arithmetic: about 203 ms).
+- **Meaning (C):** "not out of expectation, though really 'no better' is kind of bad", so these results will be either
+  the ablation or go to the appendix (user, before seeing ours). Ours: the recipe carries past our picks, we are sure
+  of the verdicts, the teacher stays ahead on the new three, and SemArt adds new artists against the plain image and
+  PercepT only. Where they differ: the facts agree. We put the weight on the verdicts that hold and recommended the
+  paper's encoder and cost tables. The user puts it on the missing "better than" and moves the rows out of the main
+  tables.
+- **Decided (A):** hold the current result and finish r19, with no more r19 compute; the other loops go on in r20's
+  chat (user, before seeing the recommendation). Ablation or appendix stays open for the paper. The report's options
+  b (cost against a teacher with one image pass) and c (emotion and style on new artists) are not taken and are parked.
+- **Why:** without a "better than" against the teacher, these rows carry no main claim.
+- **Links:** [report](../reports/auto/percept/2027-01-05_past_picks.md) ·
+  [user-read report](../user_read/2026-11-04_past_picks.md) ·
+  [spec](specs/2026-11-03-past-picks-design.md) · [handoff](handoffs/2026-11-04-r19-read-handoff.md)
 
 ## 2026-11-03 · MMArt test read: c* holds on four encoders (GO); experiments paused for the report to the collaborator and the supervisor (r16)
 
