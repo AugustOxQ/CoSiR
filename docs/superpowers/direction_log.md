@@ -95,7 +95,7 @@ r17.
   selection, and scored below k-means in 203 of 232 diagnostic comparisons (170 with the whole interval below zero).
   TEMI did not run.
 - **Meaning (C):** "we confirm that ours c* is (most of the time) stronger than three zero-shot CIR methods, that's
-  good" (user, before seeing ours). Ours: c* stands above both outside embeddings in most cells, with CLAY closest in
+  good" (user, before seeing ours; kept after seeing ours: "keep mine but yours are better indeed"). Ours: c* stands above both outside embeddings in most cells, with CLAY closest in
   style; the TURTLE cells are weak evidence, since TURTLE at these settings mostly sits below k-means. Where they
   differ: the two agree on TPIPS and CLAY. The user counts three methods beaten; we count two embeddings beaten and one
   weak test, because TURTLE is a clustering method on the plain image and "stronger" holds there only at its default

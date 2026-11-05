@@ -286,11 +286,9 @@ The fix round passed seventy tests and caught six mutations. Four low notes on t
 
 ## Files and storage
 
-This task created only this report and deleted nothing.
 The [round folder](../../../../src/test/20261103_outside_methods/) holds code, logs and records.
 Outputs (`OUT`) are under `/data/SSD2/cosir_r18/20261103_outside_methods/outputs/`.
 Keep `c13/compare.json`, `parts/turtle/`, `stage1/`, `stage2/`, `textset_b/` and all `diag/` files.
 Shared TPIPS stores are under `/data/SSD2/pre_extract/{artelingo_full,mmart}/tpips_8b/`.
 
-Would remove after review: `/data/SSD2/cosir_r18/20261103_outside_methods/c13_smoke/` and `c13_round_smoke/`.
-The storage summary is left for the wrap-up, in the read chat.
+Storage: decided at the wrap-up on 2026-11-05; every item of 1 GB or more is in `/project/claude-config/storage/disk_ledger.md`. `OUT/turtle_pack` and its node copy are deferred until r18's next step is chosen.
