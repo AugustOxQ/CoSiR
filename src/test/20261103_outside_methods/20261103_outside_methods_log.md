@@ -236,3 +236,14 @@ by the 200 W line; Qwen alone means 199.6 W.
 - **Stage 2 ran four units at a time, not one at a time as `om_queue.sh stage2 --run` does (agent default).** Each unit is its own process with its own part file, and the
   caches are in memory, so no number depends on the order. 28 units through `res-queue cpu`, 03:20 to 04:10, 3.1 to 12.8 min each, all exit 0.
 - **Assemble:** 337 cells, 0 void, r17-family ranges equal r17's record. Labels stay provisional until C13 passes.
+
+## C13 code (2026-11-05, unattended)
+
+- **Brief:** `.scratch/r18-outside-methods/c13/task.txt`, from r17's. Codex `gpt-6.1-sol` high (5h 100% left before, 84% after). It may not read `OUT/stage1`, `OUT/stage2`,
+  `OUT/clay`, `OUT/steps`, `records/stage1_*`, `records/status.json`, this log, the handoffs or the reports. Only `finish` opens the status files; only `compare` opens the round's numbers.
+- **Files:** `om_c13.py`, `test_om_c13.py`; 46 tests pass (controller's run: 46 passed in 3.60 s).
+- **Low-draw tree:** `/data/SSD2/cosir_r18/20261103_outside_methods/c13_round_smoke`, the round's own code at 40 and 100 draws on real inputs, six units, 63 cells, 0 void
+  (`.scratch/r18-outside-methods/run/c13_round_smoke.sh`). Under `OM_SMOKE=1` the real TPIPS stores, TURTLE partitions and set B are links, and the stage 0 and stage 1 files are copies.
+- **Subset smoke:** `C13 PASS items=2400 failed=0 max_abs=2.89213097915e-14 scope=subset`. No mismatch. 16.4 min with queue waits.
+- **Estimate of the full derive:** 52 sections, 5.5 slot-hours. Not started: the chat cut at the 200k context meter before the derive, since a chat may not cut while its run goes on.
+- **Binding:** derived files bind the text of `om_c13.py` above `# RESULT BOUNDARY`, plus `ns_c13.py`. A fix below that line keeps them valid. A fix above it means a new derive.
