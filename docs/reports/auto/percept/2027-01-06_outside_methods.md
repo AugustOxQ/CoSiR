@@ -7,7 +7,8 @@
 **What we tried.** Outside methods (r18) compared c*, our student with aspect heads, against outside embeddings and stronger clustering ([spec](../../../superpowers/specs/2026-11-03-outside-methods-design.md)).
 We used TPIPS (factor-conditioned embeddings), CLAY (text projection of CLIP), and TURTLE (label-free clustering) on two painting sets.
 
-**Outcome against the bar.** Each cell has its own label; there is no overall verdict.
+**Outcome against the bar.** Of 337 cells, 330 are WIN, 6 LEVEL, 1 BELOW and none void.
+Each cell has its own label; there is no overall verdict.
 WIN means the difference's lower 95% bound exceeds zero; otherwise LEVEL means it exceeds −r; BELOW means it does not.
 Here r is c*'s validation seed range, the maximum minus minimum over seeds.
 Examples use ArtELingo Qwen emotion: AMI at nine clusters, or mAP.
@@ -21,32 +22,40 @@ Examples use ArtELingo Qwen emotion: AMI at nine clusters, or mAP.
 |c* + TURTLE / plain image + TURTLE|116|114|2|0|0.0998 / 0.0669|+0.0330 [+0.0286, +0.0373]|
 |c* k-means / plain image + TURTLE|116|116|0|0|0.1024 / 0.0669|+0.0356 [+0.0317, +0.0394]|
 
-The independent re-derivation matched every cell; the largest cell difference was 3.89e-14 across 10,762 checked items.
-No item failed or was skipped; the overall maximum was 2.06e-8, on CLAY validation.
+The independent re-derivation of the scoring matched all 10,762 checked items; none failed or was skipped.
+The largest gap on a cell was 3.89e-14; the largest overall was 2.06e-8, on a CLAY validation score.
 
 **What it does not show.** TURTLE used its released code's defaults, without its paper's selection of settings.
+At those defaults it scored below k-means in 203 of 232 diagnostic comparisons, so these cells do not show that c* holds against a clustering stronger than k-means.
 TURTLE cells use c*'s k-means seed range for LEVEL; no correction covers the 337 cells.
 TPIPS ran with one library version; its vectors move with the transformers version.
 c*'s test values were known from earlier rounds; these comparator results were new.
 TEMI, which trains clustering heads through neighbours and a teacher copy, did not run.
 
-**Options for next.**
+**Options for next.** r20's decide chat holds this choice. Head variants (r21) and text queries (r22) stay on the plan.
 
-1. Add paper tables and the planned figure (r20). Writing, design work and CPU minutes could make the differences visible.
-2. Build this loop's third stage for TEMI, within 10 GPU h. It could test another clustering method; results before 2026-11-16 enter the paper.
-3. Continue head variants (r21) and text queries (r22), at about two GPU hours and under one GPU hour.
-   These could test different heads or text inputs.
+1. Put these rows into the paper: tables, related work, method text. Cost: writing only, no GPU.
+   It shows readers where c* stands against TPIPS, CLAY and default TURTLE; it adds no evidence.
+2. Build and run TEMI, this loop's third stage. Cost: one unattended build and up to 10 GPU h.
+   It could show whether a second method, at its paper's settings, closes c*'s gap. Results before 2026-11-16 enter the paper; c*'s heads may get no cell.
+3. Run the spec's one-off TURTLE selection on validation, then repeat plain-image TURTLE at the chosen setting.
+   Cost: a small spec, a build, and about 134 fits (50 + 84), at most about 4 GPU h by our arithmetic, not measured.
+   It could show whether selected TURTLE reaches c* with k-means, the test these cells leave open.
 
 **Your reading.**
 
 <details>
 <summary>Our reading and recommendation (open after yours)</summary>
 
-**Our reading.** The student stays ahead of the plain image with TURTLE at these settings.
-The embedding results exceed our priors; CLAY makes style close. TURTLE usually reduces scores; selected settings remain untested.
+**Our reading.** c* stands clearly above both outside embeddings, and above our priors.
+TPIPS, on a base four times c*'s size, loses 34 of 35 cells with one LEVEL. CLAY is the close comparator: its four non-WIN cells of 70 are all style.
+The TURTLE cells are weaker evidence than their 230 WINs suggest. Plain-image TURTLE mostly sits below plain k-means, so these cells add little beyond r17's k-means cells.
+The closest ones are the ones to watch: in 5 of 116 c* k-means cells, all emotion ARI or ACC, d is below c*'s seed range.
+We are sure of the labels: the re-derivation covers scoring from saved outputs, and the gates cover extraction and training. We are less sure what default TURTLE says about stronger clustering.
 
-**Our recommendation.** Our view: use the licensed sentences now and continue the planned TEMI build.
-Keep the TURTLE settings clause beside every paper claim.
+**Our recommendation.** Our view: option 1 now, since the abstract is due 2026-11-10 and needs no new run.
+Then option 2 with option 3 in the same build: they share node402, and a reader will first ask whether TURTLE was tuned.
+Until then, keep the settings clause beside every TURTLE sentence, and do not call default TURTLE "stronger" than k-means in the paper.
 
 </details>
 
@@ -57,17 +66,16 @@ All six gates passed; no cell was void.
 
 |Stage|Type; work|Where; timing|
 |---|---|---|
-|0|Regression; method parity and replay|Local CPU/3090 and node402 probes; replay took 45 min.|
-|1|Validation sweep; ranges and picks|Local CPU queue; 03:11 to 03:19 on 2026-11-05.|
-|2|Claim test; 28 units|Local CPU queue; 03:20 to 04:10.|
-|3|TEMI claim test|Not run; its own build follows.|
-|4|Descriptive diagnostics|Local CPU; duration unrecorded.|
-|Independent re-derivation|Picks, vectors and cells|Four local CPU queue slots; 04:46 to 05:27.|
+|0|Regression; method parity and replay|Local CPU/3090, node402 probes|
+|1|Validation sweep; ranges and picks|Local CPU; 03:11 to 03:19 on 2026-11-05|
+|2|Claim test; 28 units|Local CPU; 03:20 to 04:10|
+|3|TEMI claim test|Not run; its own build follows|
+|4|Descriptive diagnostics|Local CPU; 05:28 to 06:39|
+|Re-derivation|Picks, vectors and cells|Local CPU, four slots; 04:46 to 05:27|
 
 TPIPS used the local RTX 3090; six shards ended by 03:08 on 2026-11-05.
-TURTLE used node402's three GPUs on 2026-11-04, from 05:50 to 10:17.
-All sixteen jobs succeeded.
-CLAY vectors and texts came from the local build; text generation took 5.8 minutes.
+TURTLE used node402's three GPUs on 2026-11-04, 05:50 to 10:17; all sixteen jobs succeeded.
+CLAY vectors and texts came from the local build.
 
 |Data|Rows|Role|
 |---|---:|---|
@@ -77,20 +85,12 @@ CLAY vectors and texts came from the local build; text generation took 5.8 minut
 |MMArt test|16,384; emotion 16,218; genre 13,420|Claims and diagnostics|
 
 Encoders were Qwen, SigLIP 2, SigLIP 1 and CLIP L/14; c* used seeds zero through four.
-Plain-image TURTLE used starts zero through two; each c* seed used start zero.
-K-means averaged states zero through two.
-Clustering used 2,000 joint row/seed draws; retrieval used 10,000 paired draws.
-Class-count metrics were AMI, NMI, ARI and ACC; twenty clusters added AMI.
-Class counts were nine for emotion, ten for genre, and twenty-seven/twenty for ArtELingo/MMArt style.
-Clustering masked missing labels afterwards; TURTLE fitted scored images without labels.
-CLAY used the scored set's mean image; no train split was read.
+Plain-image TURTLE used starts zero through two, each c* seed start zero; k-means averaged states zero through two.
+Clustering used 2,000 joint row/seed draws and retrieval 10,000 paired draws.
+Metrics were AMI, NMI, ARI and ACC at the class count (nine emotion, ten genre, twenty-seven or twenty style) and AMI at twenty.
+Labels masked rows only at scoring; TURTLE fitted the scored images without labels, and CLAY used the scored set's mean image. No train split was read.
 
-|Code|Commit|
-|---|---|
-|Labels|65f8ff9a|
-|TURTLE jobs|c29073c9|
-|Stage-one records, before stage two|8ca05e1c|
-
+Commits: labels 65f8ff9a; TURTLE jobs c29073c9; stage-one records 8ca05e1c, before stage two.
 The scorer came from the preceding round, read-only.
 TPIPS used the released late-fusion model; possible WikiArt training overlap was not checked.
 
@@ -138,7 +138,7 @@ The files under `OUT/diag/` supply descriptive results; they assign no label.
 
 **Priors against outcome.** WIN shares exceed every tested prior.
 
-|Comparison|Spec's expected WIN odds|Observed WIN cells|
+|Comparison|Spec's prior per cell|Observed WIN cells|
 |---|---|---|
 |TPIPS clustering|0.50|28/29|
 |TPIPS retrieval|0.35|6/6|
@@ -152,89 +152,59 @@ The first surprise did not occur: the plain image with TURTLE never exceeded eit
 TPIPS fell below CLAY in sixteen of twenty-nine clustering cells and four of six retrieval cells, partly confirming the second surprise.
 These point comparisons have no label; ArtELingo style mAP was 0.2365 for TPIPS against CLAY's 0.3137.
 
-**What TURTLE adds.** It usually lowers both arms' scores.
-The table summarises `turtle_adds_*.json`: class-count AMI differences, TURTLE minus k-means, across encoders.
+**What TURTLE adds.** At its defaults TURTLE usually scored below k-means on the same rows; this diagnostic has no label.
+The table summarises `turtle_adds_*.json`: TURTLE minus k-means over 232 comparisons, the four class-count metrics and AMI at twenty.
+On the plain image the direction depends on the metric: ARI and ACC are mixed, and 14 of those 48 rows favour TURTLE.
 
-|Set; aspect|c* difference range|Plain-image difference range|
-|---|---|---|
-|ArtELingo; emotion|-0.0026 to +0.0020|-0.0045 to -0.0012|
-|ArtELingo; style|-0.0349 to -0.0216|-0.0471 to -0.0193|
-|ArtELingo; genre|-0.0348 to -0.0167|-0.0458 to +0.0111|
-|MMArt; emotion|-0.0034 to -0.0001|-0.0057 to -0.0003|
-|MMArt; style|-0.0270 to -0.0173|-0.0426 to -0.0086|
-|MMArt; genre|-0.0343 to -0.0265|-0.0602 to -0.0367|
+|Arm|Metrics|Comparisons|d below 0|Upper bound below 0|Lower bound above 0|
+|---|---|---:|---:|---:|---:|
+|c*|AMI, NMI|68|64|53|0|
+|c*|ARI, ACC|48|45|35|0|
+|Plain image|AMI, NMI|68|66|60|2|
+|Plain image|ARI, ACC|48|28|22|14|
 
-For ArtELingo Qwen emotion, TURTLE gives c* AMI 0.0998 against k-means' 0.1024: -0.0026 [-0.0055, +0.0002].
+Median d is smallest in emotion: -0.0034 on c* and -0.0020 on the plain image, against -0.0336 and -0.0302 in genre.
+For ArtELingo Qwen emotion AMI, TURTLE gives c* 0.0998 against k-means' 0.1024: -0.0026 [-0.0055, +0.0002].
 For the plain image, it gives 0.0669 against 0.0696: -0.0027 [-0.0050, -0.0004].
-The c* comparison pairs rows only; it draws the seed sets separately.
-Its interval may be wider; the widening is not measured.
-At twenty clusters, ArtELingo SigLIP 1 plain-image genre AMI also falls: -0.0804 [-0.0859, -0.0747].
+The largest plain-image fall is ArtELingo SigLIP 1 genre AMI at twenty: -0.0804 [-0.0859, -0.0747]. The largest rise is ArtELingo SigLIP 2 emotion ACC: +0.0256 [+0.0216, +0.0295].
+The c* comparison pairs rows only and draws the seed sets separately, so its interval may be wider; the widening is not measured.
 
 Default TURTLE does not close the gap: c* with k-means wins every labelled comparison against it.
 With TURTLE on both sides, two emotion cells are LEVEL; the rest WIN.
-Our reading: this supports the aspect spaces at these settings.
+In five of those k-means cells d is below c*'s seed range: SigLIP 2 and CLIP L/14 emotion, ARI or ACC. They are still WIN under the rule.
+Our reading: this supports the aspect spaces at these settings. It says little about stronger clustering, because the comparator mostly sits below plain k-means.
 
 **Count sweep.** Outside arms usually stay below c* in `sweep_*.json`; point values give no claim.
-Emotion uses counts 5, 8, 9, 16 and 20; genre uses 5, 10, 16 and 20.
-Style uses 10, 20, 27 and 40 on both sets.
-The table summarises outside-minus-c* k-means differences over both sets and every count.
-Comparators are Qwen c* for TPIPS, CLIP L/14 c* for CLAY, and each matching encoder for TURTLE.
+Counts are 5, 8, 9, 16, 20 (emotion); 5, 10, 16, 20 (genre); 10, 20, 27, 40 (style).
+The table gives outside minus c* k-means over both sets and every count, against Qwen c* for TPIPS, CLIP L/14 c* for CLAY, and the matching encoder for TURTLE.
 
 |Outside arm|Metric|Point comparisons|Outside above c*|Difference range|
 |---|---|---:|---:|---|
-|Plain image + TURTLE|AMI|104|0|-0.2040 to -0.0080|
-|Plain image + TURTLE|ARI|104|0|-0.1997 to -0.0026|
-|TPIPS|AMI|26|0|-0.1193 to -0.0091|
-|TPIPS|ARI|26|2|-0.0958 to +0.0079|
-|CLAY|AMI|26|0|-0.0426 to -0.0036|
-|CLAY|ARI|26|0|-0.0650 to -0.0039|
+|Plain image + TURTLE|AMI; ARI|104 each|0; 0|-0.2040 to -0.0080; -0.1997 to -0.0026|
+|TPIPS|AMI; ARI|26 each|0; 2|-0.1193 to -0.0091; -0.0958 to +0.0079|
+|CLAY|AMI; ARI|26 each|0; 0|-0.0426 to -0.0036; -0.0650 to -0.0039|
 
-Five-cluster emotion examples give AMI / ARI, averaged over starts or seeds.
-
-|Set|Qwen c* k-means|Qwen plain k-means|Qwen plain + TURTLE|TPIPS|CLIP L/14 c* k-means|CLAY|
-|---|---|---|---|---|---|---|
-|ArtELingo|0.0912 / 0.0744|0.0655 / 0.0510|0.0689 / 0.0554|0.0666 / 0.0761|0.0859 / 0.0699|0.0676 / 0.0524|
-|MMArt|0.0441 / 0.0322|0.0345 / 0.0241|0.0353 / 0.0252|0.0349 / 0.0275|0.0422 / 0.0301|0.0301 / 0.0196|
-
-**Fits.** `fits.json` records sixteen fits with empty clusters across ten groups; no fit is missing.
-Thirteen use plain images at twenty-seven or forty clusters; three c* emotion fits use nineteen of twenty.
-The largest shortfall was two; scoring kept every partition.
-Loss ranged from 1.5291 to 3.6602; entropy ranged from 1.6093 to 3.6889.
+**Fits.** `fits.json` records sixteen fits with empty clusters across ten groups, with a largest shortfall of two; no fit is missing and scoring kept every partition.
+Thirteen use plain images at twenty-seven or forty clusters; three are c* emotion fits at twenty.
 Entropy stayed within 0.0004 of log(K), despite empty hard clusters.
 Our reading: balanced soft assignments can still leave hard clusters empty.
+Our guess, not tested: the default entropy weight keeps clusters near equal size, which may explain the lower scores on classes of unequal size.
 
-**CLAY and validation picks.** `clay.json` records text set A for both tasks and sets, with reason `a_higher`.
-Both TPIPS and CLAY picked `none+k10`, meaning no map and ten-neighbour query expansion, on both sets.
-A uses fifty prior values per aspect; B uses generated values.
+**CLAY and validation picks.** `clay.json` records text set A for both tasks and sets, by the spec's rule. A uses fifty prior values per aspect; B uses generated values.
+TPIPS and CLAY both picked `none+k10`, no map with ten-neighbour query expansion, on both sets.
 
 |Set|Clustering mean AMI at twenty: A / B|Retrieval selection score: A / B|
 |---|---|---|
 |ArtELingo|0.3280 / 0.3003|195.2334 / 176.8842|
 |MMArt|0.3213 / 0.2930|231.8407 / 216.6322|
 
-The retrieval selection score averages validation mAP divided by the corresponding CLIP L/14 c* seed range.
-These class names occur verbatim in the lists; none was removed.
-
-|List|Emotion, both sets|Genre, both sets|ArtELingo style|MMArt style|
-|---|---|---|---|---|
-|A|amusement, awe, disgust, fear|cityscape, landscape, portrait|None|baroque|
-|B|awe, contentment, excitement, fear|landscape, portrait|None|baroque|
-
-Matches after lower-casing and replacing underscores are recorded separately.
+The selection score averages validation mAP divided by CLIP L/14 c*'s seed range.
+Some class names occur verbatim in both lists (such as awe, fear, landscape, portrait, baroque); none was removed.
 
 **TPIPS and plain cosine retrieval.** `tpips_cosine.json` records mean cosine between each image's three factor vectors.
 It is 0.7510 on ArtELingo held and 0.7511 on MMArt test.
 Our reading: the factors change the vectors but retain much shared direction.
-`r0_rows.json` supplies plain cosine mAP below; only CLAY A supplied labelled cells.
-
-|Set; arm|Emotion|Style|Genre|
-|---|---:|---:|---:|
-|ArtELingo; TPIPS|0.2555|0.2277|0.5386|
-|ArtELingo; CLAY A|0.2449|0.2918|0.5279|
-|ArtELingo; CLAY B|0.2472|0.2731|0.4570|
-|MMArt; TPIPS|0.1945|0.2474|0.5441|
-|MMArt; CLAY A|0.1910|0.3157|0.5354|
-|MMArt; CLAY B|0.1930|0.2957|0.4685|
+Plain cosine mAP for TPIPS and both CLAY sets is in `r0_rows.json`; only CLAY set A supplied labelled cells.
 
 ## How the results change the paper
 
@@ -258,20 +228,13 @@ No claim covers other counts, unscored sets, TPIPS or CLAY on other encoders, se
 
 ## Deviations
 
-The final labels passed verification, but the report must retain these procedure and checker limits.
-
 **Run order and timing.** Stage two ran four units at a time through res-queue, an agent default, rather than serially as `om_queue.sh` does.
-Each unit used its own process and part file; caches lived in memory, so no number depended on order.
-TPIPS extraction finished about a day before the first handoff's Thursday 23:00 estimate.
-Labels followed at 05:28 on 2026-11-05, well before 11:00.
-CPU slot-hours and diagnostic wall time remain uncomputed.
+Each unit used its own process and part file, and caches lived in memory, so no number depended on order.
+TPIPS extraction finished about a day before the first handoff's Thursday 23:00 estimate; labels followed at 05:28 on 2026-11-05, well before 11:00.
 
-**TPIPS parity.** Node vectors missed the fixed 0.999 cosine bar, even with identical packages and byte-identical images.
-The lowest row cosine was 0.9987; the remaining hardware cause was not isolated.
-The threshold stayed unchanged, and TPIPS moved to the local run.
-Gate (iv) then passed at 0.99999994.
-Between transformers 5.6.2 and 5.16.1, median row cosine was 0.9988.
-Reported vectors depend on the library version; this run used 5.6.2.
+**TPIPS parity.** Node vectors missed the fixed 0.999 cosine bar, with a lowest row cosine of 0.9987, even with identical packages and images; the hardware cause was not isolated.
+The threshold stayed unchanged, TPIPS moved to the local run, and gate (iv) then passed at 0.99999994.
+Reported vectors depend on the library version: median row cosine between transformers 5.6.2 and 5.16.1 was 0.9988. This run used 5.6.2.
 
 **Gate reach and final build review.** The gates retain limits after a pass.
 
@@ -282,59 +245,40 @@ Reported vectors depend on the library version; this run used 5.6.2.
 |(ii), GPU|3090 reference versus node402 fits|One full fit matched every partition row across machines; loss was 2.9114 on both.|
 |(iv), TPIPS|Store rows against reference|`om_tpips_check.py` compares each shard's probe rows with the reference.|
 
-Both final build reviewers approved with notes but incomplete coverage. Their checks follow.
+Both final build reviewers approved with notes but incomplete coverage; the round log holds their list. Their main checks:
 
 |Check|Final review evidence|
 |---|---|
 |Cells and execution units|337 identifiers and 28 units re-derived from the spec|
-|Two MMArt Qwen emotion retrieval cells|Largest difference 6e-11|
-|CLAY vectors|Largest difference 1.5e-8|
-|CLAY gate projector / mean / query|2.2e-7 / 6.0e-8 / 6.6e-7 against 1e-5|
+|CLAY vectors; gate projector / mean / query|1.5e-8; 2.2e-7 / 6.0e-8 / 6.6e-7 against 1e-5|
 |Earlier retrieval replay|36/36 expected values matched exactly|
 |Rule sabotage|19 cases; two misses gained tests|
-|Fix re-review|168 tests passed; three sabotages caught|
-|Pre-run whole suite|314 tests passed in two minutes thirteen seconds|
+|Whole suite before the run|314 tests passed|
 
 Part files bind no input hash; changed inputs require forced recomputation.
 CLAY and TPIPS gates bind no code hash; independent re-derivation checks final scoring.
 
-**Text list and row form.** Set B has forty-four style values containing “gothic”; the log reports forty-three “gothic X” values.
-The extra value is “gothic” itself; the log count covers the extended phrases. The list stays unchanged.
+**Text list and row form.** Set B has forty-four style values containing “gothic”; the log counts forty-three “gothic X” values, and the extra is “gothic” itself. The list stays unchanged.
+Set B keeps the first hundred distinct generated values, with no fallback when at least two remain.
 
-|Decision|Retained behaviour|
+TURTLE reads c*'s unit rows; k-means reads float16 rows cast to float32, without division. The spec names no TURTLE row form.
+On one seed and two encoders per set, row norms were 0.99997 to 1.00003, the largest element gap 3.7e-6 and the lowest cosine 0.99999976; all 412 fit inputs matched their hashes.
+Our reading: this small difference leaves the labels specific to unit-row TURTLE.
+
+**Independent re-derivation review.** Seven findings led to three fixes below the result boundary, one fix round and a re-review; derivation text stayed byte-identical.
+None of the four unfixed items can change a label; the re-review found no defect that does.
+
+|Finding|Disposition|
 |---|---|
-|D5|Keep the first hundred distinct generated values; no fallback when at least two remain.|
+|TURTLE input hashes unchecked|Fixed; compare binds every input.|
+|Unavailable ranges could cause false failure|Fixed; compare respects the recorded state.|
+|Status hashes ignored|Fixed.|
+|CLAY operation order|Unfixed; row difference up to 7.3e-12 risks a false failure only, and the full compare passed.|
+|Recorded inputs not reread|Unfixed; a hand check found no TURTLE file newer than 04:00, before the derive.|
+|Label writer does not require PASS itself|Unfixed; the controller required the full PASS first.|
+|Edits above the boundary invalidate every cache|Retained; this affects recomputation cost only.|
 
-TURTLE reads c*'s unit rows; k-means reads float16 rows cast to float32, without division.
-The spec names no TURTLE row form.
-The sample covered one seed and two encoders per set.
-
-|Row-form check|Measured size|
-|---|---|
-|Row norms|0.99997 to 1.00003|
-|Largest element gap|3.7e-6|
-|Lowest cosine|0.99999976|
-|Independent input binding|All 412 fit inputs matched hashes|
-
-Our reading: this small difference leaves the labels specific to unit-row TURTLE. The diagnostic interval's widening remains unmeasured.
-
-**Independent re-derivation review.** Seven findings led to three fixes below the result boundary, one fix round and a re-review.
-Derivation text stayed byte-identical.
-
-|Finding|Disposition and limit|
-|---|---|
-|TURTLE input hashes were unchecked|Fixed; compare now binds every input.|
-|Unavailable ranges could cause false failure|Fixed; compare respects the recorded range state.|
-|CLAY operation order|Unfixed; row difference up to 7.3e-12 risks false failure only. Full compare passed.|
-|Recorded inputs were not reread|Unfixed; hand check found no TURTLE file newer than 04:00, before derive.|
-|Status hashes were ignored|Fixed below the boundary.|
-|Label writer did not require PASS itself|Unfixed; controller required certified full PASS before labels.|
-|Edits above the boundary invalidate every cache|Retained; fifty-two sections depend on source identity. This affects recomputation cost.|
-
-The fix round passed seventy tests and caught six mutations; the re-review found no defect that changes a label.
-Residual notes concern colliding synthetic fixtures, unchecked path containment, and a low-draw test that cannot distinguish its guards.
-The input checker trusts sidecar aspect and seed; the partition reader checks every pairing a cell uses.
-These limit tests or malformed-input defence; actual pairings and the full comparison passed.
+The fix round passed seventy tests and caught six mutations. Three low notes on test fixtures and path checks stay in the round log.
 
 ## Files and storage
 
