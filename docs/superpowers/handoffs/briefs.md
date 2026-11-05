@@ -1919,3 +1919,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-05-r22-decide-handoff.md
 - New chat: tab 'r22 decide', session 168637b2-5aac-475c-b6b7-b23134218e34
 
+[brief] CoSiR: r22 decide -> r22 explore (2026-11-05 17:13 Amsterdam)
+- Done: decision A for r22. A small exploration first, core plus SemArt, the MMArt perspective table and word queries.
+- State: no text retrieval result exists yet. c*'s caption side is saved in the weights. The GPU check passed after the restart.
+- Next: check the GPU, read the literature note, then run the exploration on development data.
+- Blocked: nothing. Two items wait for the user (the Lenses PDF, the MMArt numbers); neither blocks the exploration.
+- Handoff: docs/superpowers/handoffs/2026-11-05-r22-explore-handoff.md
+- New chat: tab 'r22 explore', session 699c84f5-5f72-426b-9aab-36d1c336c799
+
