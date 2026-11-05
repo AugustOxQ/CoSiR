@@ -56,7 +56,7 @@ We are sure of the scoring: the re-derivation matches it from saved outputs. Tha
 We are less sure what default TURTLE says about stronger clustering.
 
 **Our recommendation.** Our view: option 1 now, since the abstract is due 2026-11-10 and needs no new run.
-Then option 2 with option 3 in the same build: they share node402, and a reader will first ask whether TURTLE was tuned.
+Then option 2 with option 3 in the same build: one spec covers both, and a reader will first ask whether TURTLE was tuned.
 Until then, keep the settings clause beside every TURTLE sentence, and do not call default TURTLE "stronger" than k-means in the paper.
 
 </details>
