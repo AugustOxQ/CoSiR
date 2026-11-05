@@ -3,6 +3,8 @@ import hashlib
 import json
 from pathlib import Path
 import tempfile
+import importlib.util
+import sys
 
 import numpy as np
 import pytest
@@ -336,3 +338,256 @@ def test_full_scope_demands_all_cells_tables_and_draws():
     docs['pick:clay:mmart']['result']['sets']['B']['table'].pop('none+k0')
     assert not c.full_scope(docs)
     assert not c.full_scope({k:v for k,v in full_documents().items() if k!='counts'})
+
+
+def turtle_test_array(d,e,arm,a=None,seed=None):
+    offset=1+10*c.SETS.index(d)+2*c.ENCODERS.index(e)
+    if arm=='cstar':offset+=20+5*c.ASPECTS.index(a)+seed
+    x=np.arange(6,dtype=np.float32).reshape(3,2)+offset
+    return (x/np.linalg.norm(x,axis=1,keepdims=True))[:,::-1]
+
+
+def turtle_test_sidecars(root,count=412):
+    fits=[]
+    for d in c.SETS:
+        for e in c.ENCODERS:
+            for k in (5,8,9,10,16,20,27,40):
+                for start in range(3):fits.append((d,e,'plain',None,None,f'k{k}__start{start}'))
+            for a in c.ASPECTS:
+                for k in sorted({c.K[d][a],20}):
+                    for seed in range(5):fits.append((d,e,'cstar',a,seed,f'{a}__s{seed}__k{k}'))
+    assert len(fits)==412
+    if count==413:fits.append((*fits[0][:5],'extra'))
+    for d,e,arm,a,seed,stem in fits[:count]:
+        x=turtle_test_array(d,e,arm,a,seed)
+        digest=hashlib.sha256((x.dtype.str+str(x.shape)).encode()+np.ascontiguousarray(x).tobytes()).hexdigest()
+        put(root/'parts/turtle'/d/e/arm/(stem+'.json'),dict(aspect=a,seed=seed,input_sha256=digest))
+
+
+def comparison_fixture(root,monkeypatch,sidecars=412,low_draw=False,missing_range=False):
+    """Exercise finish and the entire compare function, with tiny synthetic inputs."""
+    out,records,roundroot=root/'derive',root/'records',root/'round'
+    docs=full_documents()
+    for row in docs['ranges']['result'].values():
+        row['r']=.1
+        if 'per_seed' in row:row['per_seed']=[0.,.025,.05,.075,.1]
+    for section,doc in docs.items():
+        if section.startswith('cells:'):
+            for row in doc['result']:
+                row.update(cand=.4,comp=.3,d=.1,lo=-.01,hi=.2,r=.1,n_rows=3)
+                if row['task']=='ret':row.update(candidate_readout='none+k0',comparator_readout='none+k0')
+    if low_draw:
+        doc=docs['cells:SC1:mmart:qwen'];doc['draws_clu']=40
+        for row in doc['result']:row['n_draws']=40
+    picks={}
+    for d in c.SETS:
+        for arm in ('tpips','clay'):
+            row=docs[f'pick:{arm}:{d}']['result']
+            tables={'tpips':row} if arm=='tpips' else row['sets']
+            for ts,table in tables.items():
+                table.update(unit={a:.1 for a in c.ASPECTS},n_val=4,unit_score=2.)
+                table['table']={ro:dict(map={a:.2 for a in c.ASPECTS},score=0.,kept=True) for ro in table['table']}
+                name=f'{arm}__{d}'+(f'__{ts}' if arm=='clay' else '')
+                put(roundroot/'stage1/tables'/(name+'.json'),dict(table=table['table'],pick=table['pick'],ranges=table['unit'],n_val=4))
+            if arm=='clay':
+                row.update(**row['sets']['A'])
+                picks[f'clay_textset/ret/{d}']=dict(set='A',scores={ts:dict(
+                    pick=t['pick'],score=t['unit_score'],map=t['table'][t['pick']]['map'],
+                    r0_map=t['table']['none+k0']['map'],rank=49 if ts=='A' else 50) for ts,t in tables.items()})
+            picks[f'{arm}/{d}']=dict(pick=row['pick'],w='none',k=0,n_val=4,unit=row['unit'],scores={
+                **row['table'][row['pick']],'r0_map':row['table']['none+k0']['map']})
+            if arm=='clay':picks[f'{arm}/{d}'].update(text_set='A',unit_score=2.)
+        cluster=docs[f'textset:clu:{d}']['result']
+        cluster.update(scores={ts:.1 for ts in ('A','B')},per_aspect={ts:{a:.1 for a in c.ASPECTS} for ts in ('A','B')})
+        picks[f'clay_textset/clu/{d}']=dict(set='A',scores={ts:dict(mean_ami20=.1,ami20={a:.1 for a in c.ASPECTS}) for ts in ('A','B')})
+    for section,doc in docs.items():c.write_json(out/'derived'/f'{section}.json',doc)
+    status,previous=statuses();old=root/'old-status.json';put(old,previous)
+    if missing_range:status['stage1']['mmart/qwen/emotion/ami/9']='failed'
+    status['r17']={'path':str(old),'sha256':c.sha(old)};put(records/'status.json',status)
+    finished=c.finish(out,records)
+    put(roundroot/'stage2/cells.json',[{**row,'r':row['r_used']} for row in finished['cells']])
+    put(records/'stage1_om_picks.json',picks)
+    put(records/'stage1_om_ranges.json',docs['ranges']['result'])
+    turtle_test_sidecars(roundroot,sidecars)
+    calls=[]
+    def vector(self,d,split,e,arm,a='emotion',s=None,retrieval=False):
+        assert split==c.HELD[d] and retrieval==(arm=='cstar')
+        tag=(d,e,arm,a if arm=='cstar' else None,s if arm=='cstar' else None)
+        calls.append(tag)
+        return turtle_test_array(*tag)
+    monkeypatch.setattr(c.Work,'vector',vector)
+    return out,records,roundroot,old,calls
+
+
+def test_compare_full_clean_pass_and_turtle_cache(scratch,monkeypatch):
+    out,records,root,_,calls=comparison_fixture(scratch,monkeypatch)
+    report=c.compare(root,records,out)
+    assert report['failed']==0 and report['scope']=='full'
+    assert report['parts']['turtle_inputs']['items']==413
+    assert len(calls)==len(set(calls))==128
+
+
+@pytest.mark.parametrize('fault,part',[
+    ('label','cells:'),('void','cells:'),('readout','cells:'),('pick','picks/'),
+    ('table','tables:'),('range','ranges/'),('per_seed','ranges/'),
+    ('status','integrity/status_sha256'),('r17_status','integrity/r17_status_sha256'),
+    ('turtle','turtle_inputs/')])
+def test_compare_full_rejects_each_mismatch(scratch,monkeypatch,fault,part):
+    out,records,root,old,_=comparison_fixture(scratch,monkeypatch)
+    assert c.compare(root,records,out)['failed']==0
+    if fault in ('label','void','readout'):
+        path=root/'stage2/cells.json';doc=c.read_json(path)
+        row=next(r for r in doc if r['task']=='ret') if fault=='readout' else doc[0]
+        row[{'label':'label','void':'void','readout':'comparator_readout'}[fault]]={
+            'label':'BELOW','void':['failed gate'],'readout':'center+k0'}[fault]
+    elif fault=='pick':
+        path=records/'stage1_om_picks.json';doc=c.read_json(path);doc['tpips/mmart']['pick']='none+k1'
+    elif fault=='table':
+        path=root/'stage1/tables/tpips__mmart.json';doc=c.read_json(path);doc['table']['none+k0']['map']['emotion']+=.01
+    elif fault in ('range','per_seed'):
+        path=records/'stage1_om_ranges.json';doc=c.read_json(path);row=doc['artelingo/qwen/emotion/ami/20']
+        if fault=='range':row['r']+=.01
+        else:row['per_seed'][0]+=.01
+    elif fault in ('status','r17_status'):
+        path=records/'status.json' if fault=='status' else old
+        path.write_text(path.read_text()+'\n')
+    else:
+        path=next((root/'parts/turtle').glob('*/*/*/*.json'));doc=c.read_json(path);doc['input_sha256']='0'*64
+    if fault not in ('status','r17_status'):put(path,doc)
+    report=c.compare(root,records,out)
+    assert report['failed']>0
+    assert any(not item['pass'] and item['name'].startswith(part) for item in report['items'])
+    if fault=='turtle':assert report['parts']['turtle_inputs']['failed']==1
+
+
+def test_compare_null_effective_range_passes(scratch,monkeypatch):
+    out,records,root,_,_=comparison_fixture(scratch,monkeypatch,missing_range=True)
+    row=next(r for r in c.read_json(out/'c13_cells.json')['cells'] if r['id']=='SC1/mmart/qwen/emotion/ami/9/tpips')
+    assert row['r']==.1 and row['r_used'] is None and row['label']=='inconclusive'
+    assert c.compare(root,records,out)['failed']==0
+
+
+def test_compare_low_draws_cannot_claim_full(scratch,monkeypatch):
+    out,records,root,_,_=comparison_fixture(scratch,monkeypatch,low_draw=True)
+    report=c.compare(root,records,out)
+    assert report['failed']==0 and report['scope']=='subset'
+
+
+@pytest.mark.parametrize('count',[411,413])
+def test_compare_full_requires_412_turtle_sidecars(scratch,monkeypatch,count):
+    out,records,root,_,_=comparison_fixture(scratch,monkeypatch,sidecars=count)
+    report=c.compare(root,records,out)
+    assert report['scope']=='full' and report['failed']==1
+    assert next(x for x in report['items'] if x['name']=='turtle_inputs/sidecar_count')['pass'] is False
+
+
+def check_range_wiring(module,scratch,monkeypatch):
+    """Execute range loading with deliberately different retrieval/clustering ranges."""
+    with monkeypatch.context() as patch:
+        patch.setattr(module,'R17',scratch/'r17')
+        put(module.R17/'records/stage1_ranges.json',{})
+        patch.setattr(module,'keys',lambda d,s:['a','b','c','d'])
+        patch.setattr(module,'labels',lambda d,s:{a:np.array([0,1,0,1]) for a in module.ASPECTS})
+        patch.setattr(module.ns,'recorded_ranges',lambda d,e,task='ret':{a:(.13 if task=='ret' else .27) for a in module.ASPECTS})
+        patch.setattr(module.ns,'arm_metrics',lambda p,y:np.zeros(4))
+        work=module.Work(scratch)
+        patch.setattr(work,'dependency',lambda name:{})
+        patch.setattr(work,'vector',lambda *args:np.ones((4,3),dtype=np.float32))
+        patch.setattr(work,'array',lambda *args:np.zeros((3,4),dtype=np.int32))
+        result=work.ranges()
+        assert result['artelingo/qwen/emotion/map']['r']==.13
+        assert result['mmart/clip_l14/genre/map']['r']==.13
+        assert result['mmart/siglip2/style/ami/20']['r']==.27
+        assert result['artelingo/clip_l14/emotion/ami/20']['r']==.27
+
+
+def check_unit_encoder_wiring(module,scratch,monkeypatch):
+    """Picks must consume Qwen's TPIPS units and CLIP's CLAY units."""
+    with monkeypatch.context() as patch:
+        units={'qwen':dict(zip(module.ASPECTS,(.1,.2,.3))),
+               'clip_l14':dict(zip(module.ASPECTS,(.4,.5,.6)))}
+        patch.setattr(module,'keys',lambda d,s:['a','b','c','d'])
+        patch.setattr(module,'labels',lambda d,s:{a:np.array([0,1,0,1]) for a in module.ASPECTS})
+        patch.setattr(module.ns,'recorded_ranges',lambda d,e:units[e])
+        patch.setattr(module.rt,'crossfit_all',lambda xs,lab,ros,workers:{r:{a:.2 for a in module.ASPECTS} for r in ros})
+        work=module.Work(scratch)
+        patch.setattr(work,'dependency',lambda name:{'sets':{'A':{'ranks':{a:49 for a in module.ASPECTS}}}})
+        patch.setattr(work,'vector',lambda *args:np.ones((4,3),dtype=np.float32))
+        patch.setattr(work,'clay_vector',lambda *args:np.ones((4,3),dtype=np.float32))
+        patch.setattr(work,'array',lambda name,inputs,fn:fn())
+        for d in module.SETS:
+            assert work.pick_table(d,'tpips')['unit']==units['qwen']
+            assert work.pick_table(d,'clay','A')['unit']==units['clip_l14']
+
+
+def check_textset_wiring(module,scratch,monkeypatch):
+    """A .02 gain picks A for retrieval and B for clustering, through to cells."""
+    with monkeypatch.context() as patch:
+        d='mmart';work=module.Work(scratch,clu=40,ret=100,workers=1)
+        deps={f'clay:{d}:val':{'sets':{ts:{'ranks':{a:49 for a in module.ASPECTS}} for ts in ('A','B')}},
+              f'pick:clay:{d}':{'text_set':'A','pick':'none+k0'},f'textset:clu:{d}':{'set':'B'},
+              'counts':{},'ranges':{module.range_key(row):{'r':.1} for row in module.cell_specs()}}
+        deps[f'parts:cstar:{d}:qwen']={'arrays':{f'{a}/{k}':np.zeros((5,3,4),dtype=np.int32)
+            for a in module.ASPECTS for k in {module.K[d][a],20}}}
+        patch.setattr(module,'keys',lambda d,s:['a','b','c','d'])
+        patch.setattr(module,'labels',lambda d,s:{a:np.array([0,1,0,1]) for a in module.ASPECTS})
+        patch.setattr(work,'dependency',lambda name:deps[name])
+        patch.setattr(work,'pick_table',lambda d,arm,ts:dict(pick='none+k0',unit_score=.1 if ts=='A' else .12))
+        patch.setattr(work,'clay_vector',lambda d,split,ts,a:np.full((4,3),.1 if ts=='A' else .12,dtype=np.float32))
+        patch.setattr(work,'array',lambda name,inputs,fn:fn())
+        patch.setattr(work,'stored',lambda name,inputs,fn:(None,fn()))
+        patch.setattr(work,'artifact',lambda entry:entry)
+        patch.setattr(module.ns,'partitions',lambda x,k,d:np.full((3,len(x)),2 if x[0,0]<.11 else 7,dtype=np.int32))
+        patch.setattr(module.ns,'arm_metrics',lambda parts,y:np.array([.1 if parts[0,0]==2 else .12,0.,0.,0.]))
+        assert work.pick('clay',d)['text_set']=='A'
+        assert work.textset_clu(d)['set']=='B'
+        stats=dict(cand=.4,comp=.3,d=.1,lo=.01,hi=.2,n_draws=100)
+        def ap(dataset,encoder,arm,a,y):
+            if arm=='clay':
+                assert encoder=='clip_l14'
+                assert np.allclose(work.vector(dataset,module.HELD[dataset],encoder,arm,a),.1)
+            return np.full((5,4) if arm=='cstar' else (4,),.4 if arm=='cstar' else .3,dtype=np.float64),'none+k0'
+        patch.setattr(work,'ap',ap)
+        patch.setattr(module.ns,'paired_retrieval',lambda *args,**kwargs:stats)
+        assert len(work.cells('SC4',d,'qwen'))==3
+        deps[f'parts:clay:{d}']=work.partitions_section('clay',d)
+        def joint(candidate,comparator,y,count,workers):
+            assert np.all(comparator==7), 'clustering cells must consume text set B'
+            return {m:{**stats,'n_draws':count} for m in module.METRICS}
+        patch.setattr(module.ns,'joint_clustering',joint)
+        assert len(work.cells('SC3',d,'qwen'))==14
+
+
+@pytest.mark.parametrize('check',[check_range_wiring,check_unit_encoder_wiring,check_textset_wiring],ids=['range_routes','unit_encoder','textset_routes'])
+def test_behavioral_wiring(scratch,monkeypatch,check):
+    check(c,scratch,monkeypatch)
+
+
+MUTATIONS=[
+    ('range_ret_clu',"'ret' if m=='map' else 'clu'","'clu' if m=='map' else 'ret'",check_range_wiring),
+    ('unit_encoder',"encoder='qwen' if arm=='tpips' else 'clip_l14'","encoder='clip_l14' if arm=='tpips' else 'qwen'",check_unit_encoder_wiring),
+    ('pick_margin',"ts=choose_textset(scores,'ret')","ts=choose_textset(scores,'clu')",check_textset_wiring),
+    ('clustering_margin',"return dict(set=choose_textset(scores,'clu'),scores=scores,per_aspect=per_aspect)",
+        "return dict(set=choose_textset(scores,'ret'),scores=scores,per_aspect=per_aspect)",check_textset_wiring),
+    ('retrieval_textset',"ts=self.dependency(f'pick:clay:{d}')['text_set']",
+        "ts=self.dependency(f'textset:clu:{d}')['set']",check_textset_wiring),
+    ('clustering_textset',"ts=self.dependency(f'textset:clu:{d}')['set'] if arm=='clay' else None",
+        "ts=self.dependency(f'pick:clay:{d}')['text_set'] if arm=='clay' else None",check_textset_wiring),
+]
+
+
+@pytest.mark.parametrize('name,before,after,check',MUTATIONS,ids=[row[0] for row in MUTATIONS])
+def test_wiring_catches_temporary_mutation(scratch,monkeypatch,name,before,after,check):
+    source=Path(c.__file__).read_text()
+    assert source.count(before)==1
+    check(c,scratch/'baseline',monkeypatch)
+    path=scratch/'mutant.py'
+    mutated=source.replace(before,after,1)
+    compile(mutated,str(path),'exec')
+    path.write_text(mutated)
+    spec=importlib.util.spec_from_file_location('c13_mutant_'+scratch.name,path)
+    module=importlib.util.module_from_spec(spec);sys.modules[spec.name]=module
+    spec.loader.exec_module(module)
+    with pytest.raises(AssertionError):check(module,scratch/'mutated',monkeypatch)
+    put(scratch/'mutation_result.json',{'mutation':name,'caught':True,'check':check.__name__})
+    assert Path(c.__file__).read_text()==source

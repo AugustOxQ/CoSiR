@@ -247,3 +247,17 @@ by the 200 W line; Qwen alone means 199.6 W.
 - **Subset smoke:** `C13 PASS items=2400 failed=0 max_abs=2.89213097915e-14 scope=subset`. No mismatch. 16.4 min with queue waits.
 - **Estimate of the full derive:** 52 sections, 5.5 slot-hours. Not started: the chat cut at the 200k context meter before the derive, since a chat may not cut while its run goes on.
 - **Binding:** derived files bind the text of `om_c13.py` above `# RESULT BOUNDARY`, plus `ns_c13.py`. A fix below that line keeps them valid. A fix above it means a new derive.
+
+## C13 review and fix round (2026-11-05, unattended)
+
+- **Derive:** started 04:46 in `.scratch/r18-outside-methods/run/c13_drive.sh`, one `res-queue cpu` job per section, four at a time, the driver stops at a failed section. Phases 1 to 3 ended 05:05, 24 of 24 sections exit 0.
+- **Review:** Opus `high` worker, blind to the round's results, 12 min. No defect gives a wrong PASS; the math, the result boundary, the imports and the caches are sound; no shared misreading against `om_cells.py`, `om_stage1.py`, `om_clay.py`. Findings:
+  1. TURTLE fit inputs not bound to C13's rows: the sidecar's `input_sha256` was not checked. Fixed below the line.
+  2. False FAIL when a range state is not ok: raw `r` against the round's nulled `r`. Fixed below the line.
+  3. CLAY vectors are not bit-identical to the round's (float64 operation order; 0 to 2 elements differ per pair, largest row difference 7.3e-12 before the cast). Risk of a false FAIL only. A fix is above the line and re-derives all 52 sections, so it waits for `compare`.
+  4. Recorded inputs of derived docs are never read back. Not fixed; checked by hand at `compare` (no TURTLE file newer than the derive's start).
+  5. `compare` ignored the status hashes. Fixed below the line.
+  6. `om_cells.run_labels` does not itself need compare's PASS. Not fixed: the controller requires `C13 PASS .. scope=full` first.
+  7. Any edit above the line re-derives all 52 sections, since `source_identity` keys every cache.
+- **TURTLE row form:** `om_turtle_run._input` feeds c* in the unit form (`om_data.cstar` default); k-means gets the clustering form (`unit=False`). The spec names no form for TURTLE. Size on one seed, two encoders, both sets: row norms 0.99997 to 1.00003, largest element gap 3.7e-6, lowest cosine 0.99999976. Not material; the report states it.
+- **Fix round:** Codex resume, one round, 5h 84% to 79% left. Only `om_c13.py` below the line and `test_om_c13.py`. Text above the line byte-identical (sha256 acbb489a before and after, checked by the controller too). 70 tests pass (controller's run). Six mutations on a temporary copy, all caught: range `ret`/`clu` swap, unit encoder, pick margin, clustering margin, retrieval and clustering text sets.

@@ -562,6 +562,7 @@ def finish(out=DEFAULT_OUT,records=ROUND/'records'):
     rows=[decide(c,status,previous) for s,doc in docs.items() if s.startswith('cells:') for c in doc['result']]
     result=dict(picks=flat_picks(docs),cells=rows,source_sha256=source_identity(),
                 status_sha256=sha(status_path),r17_status_sha256=sha(path),
+                status_path=str(status_path.resolve()),r17_status_path=str(path.resolve()),
                 derived_sha256={s:sha(out/'derived'/f'{s}.json') for s in docs})
     write_json(out/'c13_cells.json',result)
     print(f'C13 finish cells={len(rows)} picks={len(result["picks"])} void={sum(bool(c["void"]) for c in rows)}',flush=True)
@@ -659,6 +660,44 @@ def cell_rows(node):
         for value in node:yield from cell_rows(value)
 
 
+def compare_status_hashes(result, finished, records):
+    """Bind labels to the exact status files read by finish, including old snapshots."""
+    status_path=Path(finished.get('status_path',Path(records)/'status.json'))
+    current=sha(status_path) if status_path.is_file() else None
+    result.add('integrity/status_sha256',finished.get('status_sha256'),current)
+    previous_path=finished.get('r17_status_path')
+    if previous_path is None and status_path.is_file():
+        link=read_json(status_path).get('r17')
+        previous_path=link.get('path') if isinstance(link,dict) else link
+    path=Path(previous_path) if isinstance(previous_path,str) else None
+    current=sha(path) if path is not None and path.is_file() else None
+    result.add('integrity/r17_status_sha256',finished.get('r17_status_sha256'),current)
+
+
+def compare_turtle_inputs(result, root, out, full):
+    """One exact input-hash check per sidecar; share hashes across K and starts."""
+    paths=sorted((Path(root)/'parts/turtle').glob('*/*/*/*.json'))
+    if full:result.add('turtle_inputs/sidecar_count',len(paths),412)
+    work=Work(out);cache={}
+    for path in paths:
+        name='turtle_inputs/'+path.relative_to(Path(root)/'parts/turtle').as_posix()
+        side=read_json(path)
+        d,e,arm=path.relative_to(Path(root)/'parts/turtle').parts[:3]
+        a,s=(side.get('aspect'),side.get('seed')) if arm=='cstar' else (None,None)
+        if d not in SETS or e not in ENCODERS or arm not in ('plain','cstar') or (
+                arm=='cstar' and (a not in ASPECTS or type(s) is not int or s not in range(5))):
+            result.add(name,'valid TURTLE fit identity','invalid fit identity')
+            continue
+        tag=(d,e,arm,a,s)
+        if tag not in cache:
+            x=work.vector(d,HELD[d],e,'plain') if arm=='plain' else work.vector(
+                d,HELD[d],e,'cstar',a,s,retrieval=True)
+            h=hashlib.sha256(f'{x.dtype.str}{x.shape}'.encode())
+            h.update(np.ascontiguousarray(x).tobytes())
+            cache[tag]=h.hexdigest()
+        result.add(name,cache[tag],side.get('input_sha256'))
+
+
 def compare(root=DEFAULT_ROOT,records=ROUND/'records',out=DEFAULT_OUT,structure_only=False):
     """The sole current-round numeric-result reader; compare every supplied cell.
 
@@ -686,6 +725,8 @@ def compare(root=DEFAULT_ROOT,records=ROUND/'records',out=DEFAULT_OUT,structure_
         c.get('n_draws')==(2000 if c.get('task')=='clu' else 10000) for c in refs.values())
     scope='full' if full else 'subset'
     result.add('integrity/source_sha256',finished.get('source_sha256'),source_identity())
+    compare_status_hashes(result,finished,records)
+    compare_turtle_inputs(result,root,out,full)
     result.tree('integrity/derived_snapshot',finished.get('derived_sha256'),
                 {s:sha(out/'derived'/f'{s}.json') for s in docs})
     result.tree('integrity/pick_snapshot',finished.get('picks'),flat_picks(docs))
@@ -704,7 +745,8 @@ def compare(root=DEFAULT_ROOT,records=ROUND/'records',out=DEFAULT_OUT,structure_
         if cid not in ours:continue
         c=ours[cid];prefix='cells:'+c['sc']+':'+c['set']+':'+c['encoder']+'/'+cid
         for field in ('cand','comp','d','lo','hi','r'):
-            result.add(prefix+'/'+field,c.get(field),ref.get(field),numeric=True)
+            value=c.get('r_used') if field=='r' else c.get(field)
+            result.add(prefix+'/'+field,value,ref.get(field),numeric=True)
         for field in ('id','sc','set','encoder','aspect','task','metric','k','candidate','comparator','n_draws','n_rows','label'):
             result.add(prefix+'/'+field,c.get(field),ref.get(field))
         result.add(prefix+'/void',bool(c.get('void')),bool(ref.get('void')))
