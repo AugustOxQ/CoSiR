@@ -3,7 +3,7 @@
 ## Brief
 - Done: decision A for r22. A small exploration first, core plus SemArt, the MMArt perspective table and word queries.
 - State: no text retrieval result exists yet. c*'s caption side is saved in the weights. The container GPU failed its check before the restart.
-- Next: check the GPU, run or collect the literature check, then run the exploration on development data.
+- Next: check the GPU, read the literature note, then run the exploration on development data.
 - Blocked: nothing after the restart.
 
 > Written 2026-11-05 16:55 by tab "r22 decide". Loop step reached: after decision A, small loop, design in chat next. Direction log
@@ -13,7 +13,8 @@
 
 1. This file, sections 2 to 5.
 2. The direction log's "Now".
-3. `src/test/20261029_retrieval/rt_metrics.py` and `rt_data.py`: mAP and the validation and held lists to reuse.
+3. The [literature note](../../reports/literature/2027-01-08_text_cross_modal_retrieval.md): its main finding and its ranked list.
+4. `src/test/20261029_retrieval/rt_metrics.py` and `rt_data.py`: mAP and the validation and held lists to reuse.
 
 Skills: none.
 
@@ -76,9 +77,19 @@ frozen, only if the rule triggers), u (c* score joined with plain score, weight 
 `src/test/20261019_model_sheet/ms_train.py`. The other encoders are under `/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/`,
 not checked for the caption side.
 
-**Literature check:** launched at 16:42 from the r22 decide chat, Opus `high`, deep depth, since our notes do not cover the area. A restart
-ends it. If `docs/reports/literature/2027-01-08_text_cross_modal_retrieval.md` exists, read it. If not, launch it again with the brief in
-section 7. Do not wait for it: new comparators only add rows (user said start after the restart, and the rows are additive).
+**Literature check, done (Opus `high`, deep):** [note 2027-01-08](../../reports/literature/2027-01-08_text_cross_modal_retrieval.md). Do not launch it
+again. What it changes for the exploration:
+
+- **Metrics:** add a chance row beside every label mAP; state the emotion hit rule, since "at least one label" inflates hits when one painting holds
+  several caption labels; R@1/5/10 and MedR per direction for pair hits; word-query mAP averaged over classes, as a separate row.
+- **Comparators to add in the exploration, cached:** plain CLIP L/14, SigLIP 2 and SigLIP on ArtELingo (the note's floor). All-MiniLM-L6-v2 and
+  INSTRUCTOR-large are later rows for text to text; they need their own embeddings.
+- **SemArt:** Text2Art's published numbers conflict between paper and repo, and the best rows use metadata. Keep option p as a known-pair row on
+  our own terms, compare only to the plain-text published row.
+- **MMArt:** the only directly comparable published setup is 1,000 query paintings, gallery 74,234, on Qwen3-VL-Embedding-2B. That is for the claim
+  stage, not the exploration. Find out which 1,000 queries it used.
+- **Novelty:** Lenses and CANVAS weaken "several aspect spaces across modalities"; "no labels" is the difference left. The user is told.
+  Lenses' paper body and CANVAS's hit rule are open (note, Open 1 and 2) and bear on the abstract's wording. This is not checked independently.
 
 ## 4. Open points for the next step
 
@@ -106,41 +117,13 @@ Minor, agent defaults unless the results need the user:
 - **Comparators:** our notes describe TPIPS as image to image; CLAY uses text only for its condition. Neither has a known caption query path.
 - `masked_label` and `masked_broad` hold `default` and `emotion_focus` subfolders with masked caption embeddings, from
   `src/test/20261017_emotion_word_masking/`; their row set is not checked.
-- Reports use the next sequence date; literature note 2027-01-08 is reserved for the check above. Report rows go in `reports_sum.md`.
+- Reports use the next sequence date, 2027-01-09. Report rows go in `reports_sum.md`.
 - Bulk outputs go to `/data/SSD2/cosir_r22/`, smoke runs to the scratchpad.
 
 ## 6. State at handoff
 
 - **GPU:** `nvidia-smi` failed at 16:50 with `Failed to initialize NVML: Unknown Error`, kernel and library both 595.99.02, so a host
   `systemctl daemon-reload` is the likely cause and a restart should fix it. Run the GPU check of `container.md` first.
-- Running: the literature check only (see section 3). No queue job, no Codex job.
+- Running: nothing. No queue job, no Codex job, no subagent.
 - Uncommitted: nothing of this chat's.
 - On disk over 1 GB: nothing new.
-
-## 7. The literature brief, to launch again if needed
-
-`deep-research`, model `opus`, effort `high`, background, deep depth. Save its report as
-`docs/reports/literature/2027-01-08_text_cross_modal_retrieval.md` and add its index row.
-
-Read first: in `docs/reports/literature/`, the notes `2026-10-21_cvpr_literature_review.md`, `2026-11-28_design_l_novelty.md`,
-`2026-12-04_conditional_similarity_update.md`, `2026-11-25_held_claim_check.md`, `2026-12-05_percept_neighbourhood.md`, and grep
-`2027-01-03_paper_related_work_sources.md` for cross-modal, C-STS and SemArt.
-
-Context for the agent: c* sits on a frozen multimodal encoder, uses no labels, and has one trunk and three aspect heads (emotion, style, genre)
-on the image side and the same on the caption side, trained on aspect neighbour graphs from instruction-conditioned embeddings. Retrieval so
-far is image to image with label hits. Test sets: ArtELingo, MMArt, possibly SemArt and Affection.
-
-Questions:
-
-1. How does the field score aspect-specific or attribute-conditional retrieval across text and image, and text to text? Hit definitions, metrics
-   (mAP, R@K, MedR, nDCG) and any standard protocol. Include C-STS and follow-ups, and cross-modal hashing's label-sharing mAP.
-2. Which comparators would a CVPR reviewer expect, for cross-modal and for text to text? Consider CLIP, SigLIP, instruction-following
-   embedders (Qwen3-VL-Embedding, GME, VLM2Vec), instruction-tuned text embedders (INSTRUCTOR), emotion text encoders (GoEmotions RoBERTa) and
-   art-specific models. Public weights? Runnable in hours without training?
-3. What published cross-modal numbers exist on paintings and affect: SemArt Text2Art and successors, ArtEmis or ArtELingo retrieval, an MMArt
-   baseline, Affection? Best MedR or R@K with split and gallery size; could our protocol be comparable?
-4. How do papers treat captions that name the label in text-query retrieval? Is masking standard? Class-name prompts against real captions?
-5. Closest prior work, 2024 to 2026: one model with several aspect spaces, scored across modalities, without labels. The strongest comparator,
-   and anything that weakens a novelty claim.
-
-End with a ranked list of comparators to run and metrics to report, each with one line of why. No advice on our model's design.
