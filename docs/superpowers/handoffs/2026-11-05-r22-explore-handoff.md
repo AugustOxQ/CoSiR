@@ -93,6 +93,12 @@ again. What it changes for the exploration:
 
 ## 4. Open points for the next step
 
+Asked of the user at the cut, 2026-11-05 17:00; the answers come in this chat or the paper chat:
+
+- **Key:** Lenses and CANVAS weaken the novelty wording. Check the abstract draft before 11-10 and word the claim on "no labels". Our recommendation;
+  the abstract draft itself is not checked. The Lenses PDF needs opening by hand (a fetch returned 403).
+- **Minor:** the note lists an author "Ding" on the MMArt paper. If that is the user, they can read MMArt's emotional R@1 from the figure data.
+
 Minor, agent defaults unless the results need the user:
 
 - The read-out for text and cross-modal cells, picked on validation as in r11. Centering per modality may matter.
