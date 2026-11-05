@@ -27,6 +27,9 @@ cluster counts, CRL, PercepT retrieval, untold retrieval), r18 (outside methods:
 (c* on three more encoders, SemArt new artists, cost table) are decided on 11-03 evening; r20 (figure), r21 (head
 variants) and r22 (text queries) follow from 11-06. The stage note's form still waits for the user. Deadlines:
 abstract 2026-11-10, paper 2026-11-16, supplementary 2026-11-23.
+Reporting (user, 2026-11-04): r17's results enter the weekly report of 2026-11-04 only after the user's reading in the r20
+chat, and they stay out of the stage report of 2026-11-04 (29 October to 3 November); the next stage report starts from
+r17.
 
 ## Parked ideas
 
@@ -69,6 +72,10 @@ abstract 2026-11-10, paper 2026-11-16, supplementary 2026-11-23.
 - TPIPS (arXiv 2607.18237, Qwen3-VL-Embedding-8B tuned on human odd-one-out votes) as c*'s teacher in place of the
   instructed Qwen image: a retrain (never tried; deferred by the user (2026-11-03): good, but no time before the
   deadline; proposed in the r16 report chat, [handoff](handoffs/2026-11-03-r16-report-2-handoff.md))
+- The photo model from random weights at the picked settings (80 neighbours), five seeds, on the Affection test photos:
+  does "fine-tune" reduce to "train on photos"? On validation, seed 0, at 40 neighbours, the two starts were about equal
+  (AMI 0.1801 beside 0.1769, mAP 0.3227 for both). About 3 minutes per run plus scoring. To run after r19 frees the GPU
+  (decided by the user, 2026-11-04, after seeing the recommendation; proposed in the 2026-11-04 stage report chat)
 
 ## 2026-11-03 · MMArt test read: c* holds on four encoders (GO); experiments paused for the report to the collaborator and the supervisor (r16)
 

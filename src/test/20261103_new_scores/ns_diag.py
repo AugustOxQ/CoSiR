@@ -262,9 +262,9 @@ def qwen_crl(workers=8, clu_draws=None, ret_draws=None, aspects=None):
     for aspect in aspects:
         y = ns_clu_cells._labels(set_, split, aspect)
         K = P.CLASS_COUNT[(set_, aspect)]
-        for k, metrics in ((20, P.SWEEP_METRICS), (K, P.CLASS_METRICS)):
-            if k == 20 and K == 20:
-                continue                                              # MMArt style: K = 20, the K row covers it
+        # MMArt style: K = 20, so the K row stands for both
+        rows = ((K, P.CLASS_METRICS),) if K == 20 else ((20, P.SWEEP_METRICS), (K, P.CLASS_METRICS))
+        for k, metrics in rows:
             cand = cache.setdefault(('c', aspect, k), arm_parts(set_, enc, aspect, 'cstar', k))
             comp = cache.setdefault(('m', aspect, k), arm_parts(set_, P.CRL_ENCODER, aspect, 'crl', k))
             cell = ns_clu.paired_cell(cand, comp, y, k, r=None, metrics=metrics, draws=clu_draws)

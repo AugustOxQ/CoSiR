@@ -1815,3 +1815,67 @@
 - Handoff: docs/superpowers/handoffs/2026-11-04-r18-build-6-handoff.md
 - New chat: tab 'r18 build 6', session 11fc0fcc-c6dd-4c71-86ed-728ca26e43c8
 
+[brief] CoSiR: r18 build 6 -> r18 run (2026-11-04 05:47 Amsterdam)
+- Done: build finished. All 12 tickets are merged into main, the final review and the fix wave passed, and the full smoke passes.
+- State: the node and the local GPU give the same TURTLE partition (every row equal, loss 2.911379). Gates (ii), (iii) pass. TPIPS shard 1 of 6 runs.
+- Next: launch the 16 TURTLE jobs on node402. TPIPS stores end about Thursday 23:00, so stage 1 runs after that.
+- Blocked: nothing. GPU check passes. No fit, cell or label exists yet.
+- Handoff: docs/superpowers/handoffs/2026-11-04-r18-run-handoff.md
+- New chat: tab 'r18 run', session 1e814de2-074b-4d23-9283-442d5ce2fdad
+
+[brief] CoSiR: r17 run -> r20 decide (2026-11-04 09:32 Amsterdam)
+- Done: r17 ran every stage, and the independent re-derivation passed for all 412 cells. The auto and user-read reports are committed.
+- State: c* WINs all 96 plain-image clustering cells. Against the teacher, AMI and NMI WIN 46 of 48, ARI and ACC 22 of 48, with 5 BELOW, all emotion.
+- Next: step 1: show the results brief without our reading and record the user's reading. Then wrap up r17 and go to step 2.
+- Blocked: nothing. r18 and r19 run in their own chats.
+- Handoff: docs/superpowers/handoffs/2026-11-04-r20-decide-handoff.md
+- New chat: tab 'r20 decide', session e55f8816-2621-413c-95f9-3682406c474a
+
+[brief] CoSiR: 2 -> weekly report (2026-11-04 10:25 Amsterdam)
+- Done: outside-view page published (update #6, 29 October to 3 November). Weekly report v3 and slides v3 are drafted and checked.
+- State: 21 slides, about 11,000 words; no wrong number in the fidelity checks. Drafts are not committed or indexed.
+- Next: discuss the weekly report with the user. After their edits, build the pptx.
+- Blocked: waits for the user's comments on v3.
+- Handoff: docs/superpowers/handoffs/2026-11-04-weekly-report-handoff.md
+- New chat: tab 'weekly report', session 75c21a4e-03b5-4e27-9d68-777aef64644c
+
+[brief] CoSiR: r19 run -> r19 run 2 (2026-11-04 12:33 Amsterdam)
+- Done: node training (15 c*, 15 photo, M5), 8 stores, cost probe, stages 0, 1, 2 and 3; 137 cells and 7 cost cells saved.
+- State: every gate (i) to (viii) passes; stage 1 records frozen at a617831b; no verdict written, no test number read.
+- Next: launch Codex with the ready C13 brief, review its code, run the full derive from 19:00, then stage 4 and the reports.
+- Blocked: nothing. CPU work over the user's 13:00 limit waits for 19:00.
+- Handoff: docs/superpowers/handoffs/2026-11-04-r19-run-2-handoff.md
+- New chat: tab 'r19 run 2', session 74fc410f-b4e2-462a-a1d3-fc17b6e8bf16
+
+[brief] CoSiR: r19 run 2 -> r19 run 3 (2026-11-04 20:28 Amsterdam)
+- Done: C13 passed in full scope: 18,778 items, none failed, largest difference 1.9e-09; `records/c13.json` is committed.
+- State: every gate (i) to (viii) passes; no verdict written, and no chat has read a stage 2 cell.
+- Next: stage 4 (about 1 h), `pp_c13.py check-outcomes`, the auto report and user-read report, the merge, the wrap-up.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-04-r19-run-3-handoff.md
+- New chat: tab 'r19 run 3', session 099d1a86-2fa6-4a11-8ea9-7a7173f4b4c4
+
+[brief] CoSiR: r19 run 3 -> r19 run 4 (2026-11-04 21:52 Amsterdam)
+- Done: stage 4 ran, all 12 diagnostics ok; `check-outcomes` passes, 4,211 items, none failed, largest difference 1.9e-09.
+- State: every r19 verdict holds (23 of 23). Against the teacher: 0 "better than", 15 "level with or better than", 41 no claim.
+- Next: the auto report, the user-read report, the merge, the wrap-up.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-04-r19-run-4-handoff.md
+- New chat: tab 'r19 run 4', session 0aec155f-907f-4ab0-9f9b-e4e1204a6f80
+
+[brief] CoSiR: r19 run 4 -> r19 run 5 (2026-11-04 22:12 Amsterdam)
+- Done: the auto report is written, claim-reviewed and pushed on `r19-past-picks` (2a6515aa). No number was wrong.
+- State: 23 of 23 verdicts hold. Against the teacher: 0 "better than", 15 "level with or better than", 41 no claim.
+- Next: the user-read report, its two checks, the index row, the merge into main, the wrap-up.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-04-r19-run-5-handoff.md
+- New chat: tab 'r19 run 5', session 95f6797e-5c93-4325-a646-554756c300ec
+
+[brief] CoSiR: r19 run 5 -> r19 read (2026-11-04 22:27 Amsterdam)
+- Done: the user-read report passed both checks; r19 is merged into main and pushed. No number was wrong.
+- State: 23 of 23 verdicts hold. Against the teacher: 0 "better than", 15 "level with or better than", 41 no claim.
+- Next: show the results brief without our reading, record the user's reading, wrap up r19.
+- Blocked: this chat waits for the user's reading. r20's decide chat still holds r17, so r19 has its own tab.
+- Handoff: docs/superpowers/handoffs/2026-11-04-r19-read-handoff.md
+- New chat: tab 'r19 read', session 53416e8e-e127-42a2-8dd7-9c89826c4a0a
+

@@ -1,0 +1,622 @@
+res-queue: enqueued cpu normal position 1, 0 ahead, estimated start 07:00
+res-queue: enqueued cpu normal position 2, 1 ahead, estimated start 07:00
+res-queue: enqueued cpu normal position 3, 2 ahead, estimated start 07:00
+res-queue: start cpu 07:00
+res-queue: waiting cpu normal position 1, 0 ahead, estimated start 07:00
+res-queue: start cpu 07:00
+res-queue: waiting cpu normal position 1, 0 ahead, estimated start 07:00
+res-queue: start cpu 07:00
+  artelingo/siglip1/emotion k=5 cstar: 22s
+  artelingo/siglip1/emotion k=5 plain: 3s
+  artelingo/siglip1/emotion k=5 matched: 1s
+  artelingo/siglip1/emotion k=8 cstar: 29s
+  artelingo/siglip1/emotion k=8 plain: 4s
+  artelingo/siglip1/emotion k=8 matched: 1s
+  artelingo/siglip1/emotion k=9 cstar: 33s
+  artelingo/siglip1/emotion k=9 plain: 4s
+  artelingo/siglip1/emotion k=9 matched: 1s
+  artelingo/siglip1/emotion k=16 cstar: 44s
+  artelingo/siglip1/emotion k=16 plain: 5s
+  artelingo/siglip1/emotion k=16 matched: 1s
+  artelingo/siglip1/emotion k=20 cstar: 54s
+  artelingo/siglip1/emotion k=20 plain: 7s
+  artelingo/siglip1/emotion k=20 matched: 1s
+  artelingo/siglip1/style k=10 cstar: 32s
+  artelingo/siglip1/style k=10 plain: 4s
+  artelingo/siglip1/style k=10 matched: 1s
+  artelingo/siglip1/style k=20 cstar: 54s
+  artelingo/siglip1/style k=20 plain: 5s
+  artelingo/siglip1/style k=20 matched: 1s
+  artelingo/siglip1/style k=27 cstar: 72s
+  artelingo/siglip1/style k=27 plain: 8s
+  artelingo/siglip1/style k=27 matched: 2s
+  artelingo/siglip1/style k=40 cstar: 97s
+  artelingo/siglip1/style k=40 plain: 10s
+  artelingo/siglip1/style k=40 matched: 2s
+  artelingo/siglip1/genre k=5 cstar: 21s
+  artelingo/siglip1/genre k=5 plain: 3s
+  artelingo/siglip1/genre k=5 matched: 1s
+  artelingo/siglip1/genre k=10 cstar: 30s
+  artelingo/siglip1/genre k=10 plain: 5s
+  artelingo/siglip1/genre k=10 matched: 1s
+  artelingo/siglip1/genre k=16 cstar: 45s
+  artelingo/siglip1/genre k=16 plain: 5s
+  artelingo/siglip1/genre k=16 matched: 2s
+  artelingo/siglip1/genre k=20 cstar: 50s
+  artelingo/siglip1/genre k=20 plain: 6s
+  artelingo/siglip1/genre k=20 matched: 1s
+sweep artelingo/siglip1: 429 k-means runs, 668s
+sweep done in 668s
+res-queue: end cpu exit 0, 11.21 minutes run
+res-queue: enqueued cpu normal position 1, 0 ahead, estimated start 07:11
+res-queue: start cpu 07:11
+  artelingo/siglip2/emotion k=5 cstar: 23s
+  artelingo/siglip2/emotion k=5 plain: 3s
+  artelingo/siglip2/emotion k=5 matched: 1s
+  artelingo/siglip2/emotion k=8 cstar: 29s
+  artelingo/siglip2/emotion k=8 plain: 4s
+  artelingo/siglip2/emotion k=8 matched: 1s
+  artelingo/siglip2/emotion k=9 cstar: 31s
+  artelingo/siglip2/emotion k=9 plain: 4s
+  artelingo/siglip2/emotion k=9 matched: 1s
+  artelingo/siglip2/emotion k=16 cstar: 44s
+  artelingo/siglip2/emotion k=16 plain: 5s
+  artelingo/siglip2/emotion k=16 matched: 1s
+  artelingo/siglip2/emotion k=20 cstar: 53s
+  artelingo/siglip2/emotion k=20 plain: 7s
+  artelingo/siglip2/emotion k=20 matched: 2s
+  artelingo/siglip2/style k=10 cstar: 33s
+  artelingo/siglip2/style k=10 plain: 4s
+  artelingo/siglip2/style k=10 matched: 1s
+  artelingo/siglip2/style k=20 cstar: 54s
+  artelingo/siglip2/style k=20 plain: 5s
+  artelingo/siglip2/style k=20 matched: 1s
+  artelingo/siglip2/style k=27 cstar: 75s
+  artelingo/siglip2/style k=27 plain: 8s
+  artelingo/siglip2/style k=27 matched: 2s
+  artelingo/siglip2/style k=40 cstar: 96s
+  artelingo/siglip2/style k=40 plain: 11s
+  artelingo/siglip2/style k=40 matched: 3s
+  artelingo/siglip2/genre k=5 cstar: 20s
+  artelingo/siglip2/genre k=5 plain: 3s
+  artelingo/siglip2/genre k=5 matched: 1s
+  artelingo/siglip2/genre k=10 cstar: 34s
+  artelingo/siglip2/genre k=10 plain: 4s
+  artelingo/siglip2/genre k=10 matched: 1s
+  artelingo/siglip2/genre k=16 cstar: 48s
+  artelingo/siglip2/genre k=16 plain: 6s
+  artelingo/siglip2/genre k=16 matched: 1s
+  artelingo/siglip2/genre k=20 cstar: 54s
+  artelingo/siglip2/genre k=20 plain: 5s
+  artelingo/siglip2/genre k=20 matched: 2s
+sweep artelingo/siglip2: 429 k-means runs, 679s
+sweep done in 679s
+res-queue: end cpu exit 0, 11.39 minutes run
+res-queue: enqueued cpu normal position 1, 0 ahead, estimated start 07:11
+res-queue: start cpu 07:11
+  artelingo/qwen/emotion k=5 cstar: 22s
+  artelingo/qwen/emotion k=5 plain: 4s
+  artelingo/qwen/emotion k=5 matched: 1s
+  artelingo/qwen/emotion k=5 teacher: 5s
+  artelingo/qwen/emotion k=8 cstar: 30s
+  artelingo/qwen/emotion k=8 plain: 7s
+  artelingo/qwen/emotion k=8 matched: 1s
+  artelingo/qwen/emotion k=8 teacher: 7s
+  artelingo/qwen/emotion k=9 cstar: 31s
+  artelingo/qwen/emotion k=9 plain: 7s
+  artelingo/qwen/emotion k=9 matched: 1s
+  artelingo/qwen/emotion k=9 teacher: 7s
+  artelingo/qwen/emotion k=16 cstar: 47s
+  artelingo/qwen/emotion k=16 plain: 10s
+  artelingo/qwen/emotion k=16 matched: 1s
+  artelingo/qwen/emotion k=16 teacher: 9s
+  artelingo/qwen/emotion k=20 cstar: 54s
+  artelingo/qwen/emotion k=20 plain: 11s
+  artelingo/qwen/emotion k=20 matched: 1s
+  artelingo/qwen/emotion k=20 teacher: 12s
+  artelingo/qwen/style k=10 cstar: 34s
+  artelingo/qwen/style k=10 plain: 5s
+  artelingo/qwen/style k=10 matched: 1s
+  artelingo/qwen/style k=10 teacher: 7s
+  artelingo/qwen/style k=20 cstar: 59s
+  artelingo/qwen/style k=20 plain: 11s
+  artelingo/qwen/style k=20 matched: 2s
+  artelingo/qwen/style k=20 teacher: 10s
+  artelingo/qwen/style k=27 cstar: 73s
+  artelingo/qwen/style k=27 plain: 15s
+  artelingo/qwen/style k=27 matched: 2s
+  artelingo/qwen/style k=27 teacher: 12s
+  artelingo/qwen/style k=40 cstar: 104s
+  artelingo/qwen/style k=40 plain: 19s
+  artelingo/qwen/style k=40 matched: 3s
+  artelingo/qwen/style k=40 teacher: 19s
+  artelingo/qwen/genre k=5 cstar: 22s
+  artelingo/qwen/genre k=5 plain: 4s
+  artelingo/qwen/genre k=5 matched: 1s
+  artelingo/qwen/genre k=5 teacher: 3s
+  artelingo/qwen/genre k=10 cstar: 28s
+  artelingo/qwen/genre k=10 plain: 7s
+  artelingo/qwen/genre k=10 matched: 1s
+  artelingo/qwen/genre k=10 teacher: 6s
+  artelingo/qwen/genre k=16 cstar: 42s
+  artelingo/qwen/genre k=16 plain: 10s
+  artelingo/qwen/genre k=16 matched: 1s
+  artelingo/qwen/genre k=16 teacher: 9s
+  artelingo/qwen/genre k=20 cstar: 58s
+  artelingo/qwen/genre k=20 plain: 11s
+  artelingo/qwen/genre k=20 matched: 1s
+  artelingo/qwen/genre k=20 teacher: 12s
+sweep artelingo/qwen: 468 k-means runs, 858s
+sweep done in 858s
+res-queue: end cpu exit 0, 14.37 minutes run
+res-queue: enqueued cpu normal position 1, 0 ahead, estimated start 07:14
+res-queue: start cpu 07:14
+  artelingo/clip_l14/emotion k=5 cstar: 21s
+  artelingo/clip_l14/emotion k=5 plain: 2s
+  artelingo/clip_l14/emotion k=5 matched: 1s
+  artelingo/clip_l14/emotion k=5 crl: 1s
+  artelingo/clip_l14/emotion k=8 cstar: 29s
+  artelingo/clip_l14/emotion k=8 plain: 3s
+  artelingo/clip_l14/emotion k=8 matched: 1s
+  artelingo/clip_l14/emotion k=8 crl: 1s
+  artelingo/clip_l14/emotion k=9 cstar: 30s
+  artelingo/clip_l14/emotion k=9 plain: 3s
+  artelingo/clip_l14/emotion k=9 matched: 1s
+  artelingo/clip_l14/emotion k=9 crl: 1s
+  artelingo/clip_l14/emotion k=16 cstar: 50s
+  artelingo/clip_l14/emotion k=16 plain: 4s
+  artelingo/clip_l14/emotion k=16 matched: 1s
+  artelingo/clip_l14/emotion k=16 crl: 1s
+  artelingo/clip_l14/emotion k=20 cstar: 56s
+  artelingo/clip_l14/emotion k=20 plain: 5s
+  artelingo/clip_l14/emotion k=20 matched: 2s
+  artelingo/clip_l14/emotion k=20 crl: 1s
+  artelingo/clip_l14/style k=10 cstar: 38s
+  artelingo/clip_l14/style k=10 plain: 3s
+  artelingo/clip_l14/style k=10 matched: 1s
+  artelingo/clip_l14/style k=10 crl: 1s
+  artelingo/clip_l14/style k=20 cstar: 53s
+  artelingo/clip_l14/style k=20 plain: 5s
+  artelingo/clip_l14/style k=20 matched: 2s
+  artelingo/clip_l14/style k=20 crl: 1s
+  artelingo/clip_l14/style k=27 cstar: 70s
+  artelingo/clip_l14/style k=27 plain: 6s
+  artelingo/clip_l14/style k=27 matched: 2s
+  artelingo/clip_l14/style k=27 crl: 1s
+  artelingo/clip_l14/style k=40 cstar: 99s
+  artelingo/clip_l14/style k=40 plain: 8s
+  artelingo/clip_l14/style k=40 matched: 3s
+  artelingo/clip_l14/style k=40 crl: 1s
+  artelingo/clip_l14/genre k=5 cstar: 22s
+  artelingo/clip_l14/genre k=5 plain: 2s
+  artelingo/clip_l14/genre k=5 matched: 1s
+  artelingo/clip_l14/genre k=5 crl: 1s
+  artelingo/clip_l14/genre k=10 cstar: 36s
+  artelingo/clip_l14/genre k=10 plain: 3s
+  artelingo/clip_l14/genre k=10 matched: 1s
+  artelingo/clip_l14/genre k=10 crl: 1s
+  artelingo/clip_l14/genre k=16 cstar: 45s
+  artelingo/clip_l14/genre k=16 plain: 4s
+  artelingo/clip_l14/genre k=16 matched: 1s
+  artelingo/clip_l14/genre k=16 crl: 1s
+  artelingo/clip_l14/genre k=20 cstar: 55s
+  artelingo/clip_l14/genre k=20 plain: 5s
+  artelingo/clip_l14/genre k=20 matched: 2s
+  artelingo/clip_l14/genre k=20 crl: 1s
+sweep artelingo/clip_l14: 468 k-means runs, 685s
+sweep done in 685s
+res-queue: end cpu exit 0, 11.52 minutes run
+res-queue: enqueued cpu normal position 1, 0 ahead, estimated start 07:23
+res-queue: start cpu 07:23
+  mmart/siglip2/emotion k=5 cstar: 24s
+  mmart/siglip2/emotion k=5 plain: 3s
+  mmart/siglip2/emotion k=5 matched: 1s
+  mmart/siglip2/emotion k=8 cstar: 35s
+  mmart/siglip2/emotion k=8 plain: 3s
+  mmart/siglip2/emotion k=8 matched: 1s
+  mmart/siglip2/emotion k=9 cstar: 31s
+  mmart/siglip2/emotion k=9 plain: 4s
+  mmart/siglip2/emotion k=9 matched: 1s
+  mmart/siglip2/emotion k=16 cstar: 45s
+  mmart/siglip2/emotion k=16 plain: 6s
+  mmart/siglip2/emotion k=16 matched: 2s
+  mmart/siglip2/emotion k=20 cstar: 53s
+  mmart/siglip2/emotion k=20 plain: 5s
+  mmart/siglip2/emotion k=20 matched: 2s
+  mmart/siglip2/style k=10 cstar: 36s
+  mmart/siglip2/style k=10 plain: 3s
+  mmart/siglip2/style k=10 matched: 2s
+  mmart/siglip2/style k=20 cstar: 55s
+  mmart/siglip2/style k=20 plain: 5s
+  mmart/siglip2/style k=20 matched: 2s
+  mmart/siglip2/style k=27 cstar: 73s
+  mmart/siglip2/style k=27 plain: 8s
+  mmart/siglip2/style k=27 matched: 3s
+  mmart/siglip2/style k=40 cstar: 94s
+  mmart/siglip2/style k=40 plain: 10s
+  mmart/siglip2/style k=40 matched: 3s
+  mmart/siglip2/genre k=5 cstar: 21s
+  mmart/siglip2/genre k=5 plain: 3s
+  mmart/siglip2/genre k=5 matched: 1s
+  mmart/siglip2/genre k=10 cstar: 32s
+  mmart/siglip2/genre k=10 plain: 4s
+  mmart/siglip2/genre k=10 matched: 1s
+  mmart/siglip2/genre k=16 cstar: 45s
+  mmart/siglip2/genre k=16 plain: 5s
+  mmart/siglip2/genre k=16 matched: 2s
+  mmart/siglip2/genre k=20 cstar: 53s
+  mmart/siglip2/genre k=20 plain: 6s
+  mmart/siglip2/genre k=20 matched: 2s
+sweep mmart/siglip2: 429 k-means runs, 682s
+sweep done in 682s
+res-queue: end cpu exit 0, 11.47 minutes run
+res-queue: enqueued cpu normal position 1, 0 ahead, estimated start 07:26
+res-queue: start cpu 07:26
+  mmart/qwen/emotion k=5 cstar: 23s
+  mmart/qwen/emotion k=5 plain: 5s
+  mmart/qwen/emotion k=5 matched: 1s
+  mmart/qwen/emotion k=5 teacher: 4s
+  mmart/qwen/emotion k=8 cstar: 26s
+  mmart/qwen/emotion k=8 plain: 6s
+  mmart/qwen/emotion k=8 matched: 1s
+  mmart/qwen/emotion k=8 teacher: 6s
+  mmart/qwen/emotion k=9 cstar: 34s
+  mmart/qwen/emotion k=9 plain: 7s
+  mmart/qwen/emotion k=9 matched: 1s
+  mmart/qwen/emotion k=9 teacher: 8s
+  mmart/qwen/emotion k=16 cstar: 51s
+  mmart/qwen/emotion k=16 plain: 8s
+  mmart/qwen/emotion k=16 matched: 2s
+  mmart/qwen/emotion k=16 teacher: 9s
+  mmart/qwen/emotion k=20 cstar: 60s
+  mmart/qwen/emotion k=20 plain: 12s
+  mmart/qwen/emotion k=20 matched: 2s
+  mmart/qwen/emotion k=20 teacher: 12s
+  mmart/qwen/style k=10 cstar: 32s
+  mmart/qwen/style k=10 plain: 8s
+  mmart/qwen/style k=10 matched: 1s
+  mmart/qwen/style k=10 teacher: 7s
+  mmart/qwen/style k=20 cstar: 55s
+  mmart/qwen/style k=20 plain: 9s
+  mmart/qwen/style k=20 matched: 2s
+  mmart/qwen/style k=20 teacher: 11s
+  mmart/qwen/style k=27 cstar: 77s
+  mmart/qwen/style k=27 plain: 14s
+  mmart/qwen/style k=27 matched: 2s
+  mmart/qwen/style k=27 teacher: 15s
+  mmart/qwen/style k=40 cstar: 99s
+  mmart/qwen/style k=40 plain: 16s
+  mmart/qwen/style k=40 matched: 3s
+  mmart/qwen/style k=40 teacher: 18s
+  mmart/qwen/genre k=5 cstar: 22s
+  mmart/qwen/genre k=5 plain: 4s
+  mmart/qwen/genre k=5 matched: 1s
+  mmart/qwen/genre k=5 teacher: 4s
+  mmart/qwen/genre k=10 cstar: 32s
+  mmart/qwen/genre k=10 plain: 7s
+  mmart/qwen/genre k=10 matched: 2s
+  mmart/qwen/genre k=10 teacher: 7s
+  mmart/qwen/genre k=16 cstar: 49s
+  mmart/qwen/genre k=16 plain: 10s
+  mmart/qwen/genre k=16 matched: 2s
+  mmart/qwen/genre k=16 teacher: 10s
+  mmart/qwen/genre k=20 cstar: 57s
+  mmart/qwen/genre k=20 plain: 10s
+  mmart/qwen/genre k=20 matched: 1s
+  mmart/qwen/genre k=20 teacher: 10s
+sweep mmart/qwen: 468 k-means runs, 874s
+sweep done in 874s
+res-queue: end cpu exit 0, 14.65 minutes run
+res-queue: enqueued cpu short position 1, 0 ahead, estimated start 07:26
+res-queue: start cpu 07:26
+per-class artelingo/qwen: 9 classes
+per-class done in 64s
+res-queue: end cpu exit 0, 1.18 minutes run
+res-queue: enqueued cpu normal position 1, 0 ahead, estimated start 07:27
+res-queue: start cpu 07:27
+told-untold done in 443s
+res-queue: end cpu exit 0, 7.49 minutes run
+res-queue: enqueued cpu short position 1, 0 ahead, estimated start 07:35
+res-queue: start cpu 07:35
+  mmart/siglip1/emotion k=5 cstar: 24s
+  mmart/siglip1/emotion k=5 plain: 3s
+  mmart/siglip1/emotion k=5 matched: 1s
+  mmart/siglip1/emotion k=8 cstar: 31s
+  mmart/siglip1/emotion k=8 plain: 3s
+  mmart/siglip1/emotion k=8 matched: 1s
+  mmart/siglip1/emotion k=9 cstar: 31s
+  mmart/siglip1/emotion k=9 plain: 4s
+  mmart/siglip1/emotion k=9 matched: 1s
+  mmart/siglip1/emotion k=16 cstar: 43s
+  mmart/siglip1/emotion k=16 plain: 6s
+  mmart/siglip1/emotion k=16 matched: 2s
+  mmart/siglip1/emotion k=20 cstar: 47s
+  mmart/siglip1/emotion k=20 plain: 6s
+  mmart/siglip1/emotion k=20 matched: 2s
+  mmart/siglip1/style k=10 cstar: 47s
+  mmart/siglip1/style k=10 plain: 4s
+  mmart/siglip1/style k=10 matched: 1s
+  mmart/siglip1/style k=20 cstar: 64s
+  mmart/siglip1/style k=20 plain: 7s
+  mmart/siglip1/style k=20 matched: 2s
+  mmart/siglip1/style k=27 cstar: 87s
+  mmart/siglip1/style k=27 plain: 9s
+  mmart/siglip1/style k=27 matched: 3s
+  mmart/siglip1/style k=40 cstar: 114s
+  mmart/siglip1/style k=40 plain: 12s
+  mmart/siglip1/style k=40 matched: 4s
+  mmart/siglip1/genre k=5 cstar: 27s
+  mmart/siglip1/genre k=5 plain: 4s
+  mmart/siglip1/genre k=5 matched: 2s
+  mmart/siglip1/genre k=10 cstar: 38s
+  mmart/siglip1/genre k=10 plain: 3s
+  mmart/siglip1/genre k=10 matched: 1s
+  mmart/siglip1/genre k=16 cstar: 56s
+  mmart/siglip1/genre k=16 plain: 7s
+  mmart/siglip1/genre k=16 matched: 1s
+  mmart/siglip1/genre k=20 cstar: 61s
+  mmart/siglip1/genre k=20 plain: 8s
+  mmart/siglip1/genre k=20 matched: 2s
+sweep mmart/siglip1: 429 k-means runs, 769s
+sweep done in 769s
+res-queue: end cpu exit 0, 12.91 minutes run
+res-queue: enqueued cpu normal position 1, 0 ahead, estimated start 07:36
+res-queue: start cpu 07:36
+per-class artelingo/siglip2: 9 classes
+per-class done in 63s
+res-queue: end cpu exit 0, 1.16 minutes run
+res-queue: enqueued cpu short position 1, 0 ahead, estimated start 07:36
+res-queue: start cpu 07:36
+per-class artelingo/siglip1: 9 classes
+per-class done in 73s
+res-queue: end cpu exit 0, 1.35 minutes run
+res-queue: enqueued cpu normal position 1, 0 ahead, estimated start 07:37
+res-queue: start cpu 07:37
+  mmart/clip_l14/emotion k=5 cstar: 20s
+  mmart/clip_l14/emotion k=5 plain: 3s
+  mmart/clip_l14/emotion k=5 matched: 2s
+  mmart/clip_l14/emotion k=5 crl: 0s
+  mmart/clip_l14/emotion k=8 cstar: 39s
+  mmart/clip_l14/emotion k=8 plain: 2s
+  mmart/clip_l14/emotion k=8 matched: 2s
+  mmart/clip_l14/emotion k=8 crl: 1s
+  mmart/clip_l14/emotion k=9 cstar: 30s
+  mmart/clip_l14/emotion k=9 plain: 3s
+  mmart/clip_l14/emotion k=9 matched: 2s
+  mmart/clip_l14/emotion k=9 crl: 1s
+  mmart/clip_l14/emotion k=16 cstar: 59s
+  mmart/clip_l14/emotion k=16 plain: 7s
+  mmart/clip_l14/emotion k=16 matched: 2s
+  mmart/clip_l14/emotion k=16 crl: 1s
+  mmart/clip_l14/emotion k=20 cstar: 69s
+  mmart/clip_l14/emotion k=20 plain: 6s
+  mmart/clip_l14/emotion k=20 matched: 2s
+  mmart/clip_l14/emotion k=20 crl: 1s
+  mmart/clip_l14/style k=10 cstar: 43s
+  mmart/clip_l14/style k=10 plain: 2s
+  mmart/clip_l14/style k=10 matched: 1s
+  mmart/clip_l14/style k=10 crl: 0s
+  mmart/clip_l14/style k=20 cstar: 70s
+  mmart/clip_l14/style k=20 plain: 5s
+  mmart/clip_l14/style k=20 matched: 2s
+  mmart/clip_l14/style k=20 crl: 1s
+  mmart/clip_l14/style k=27 cstar: 94s
+  mmart/clip_l14/style k=27 plain: 6s
+  mmart/clip_l14/style k=27 matched: 2s
+  mmart/clip_l14/style k=27 crl: 1s
+  mmart/clip_l14/style k=40 cstar: 120s
+  mmart/clip_l14/style k=40 plain: 7s
+  mmart/clip_l14/style k=40 matched: 3s
+  mmart/clip_l14/style k=40 crl: 2s
+  mmart/clip_l14/genre k=5 cstar: 39s
+  mmart/clip_l14/genre k=5 plain: 2s
+  mmart/clip_l14/genre k=5 matched: 2s
+  mmart/clip_l14/genre k=5 crl: 1s
+  mmart/clip_l14/genre k=10 cstar: 49s
+  mmart/clip_l14/genre k=10 plain: 7s
+  mmart/clip_l14/genre k=10 matched: 2s
+  mmart/clip_l14/genre k=10 crl: 1s
+  mmart/clip_l14/genre k=16 cstar: 83s
+  mmart/clip_l14/genre k=16 plain: 5s
+  mmart/clip_l14/genre k=16 matched: 2s
+  mmart/clip_l14/genre k=16 crl: 1s
+  mmart/clip_l14/genre k=20 cstar: 101s
+  mmart/clip_l14/genre k=20 plain: 7s
+  mmart/clip_l14/genre k=20 matched: 2s
+  mmart/clip_l14/genre k=20 crl: 1s
+sweep mmart/clip_l14: 468 k-means runs, 914s
+sweep done in 914s
+res-queue: end cpu exit 0, 15.33 minutes run
+res-queue: enqueued cpu short position 1, 0 ahead, estimated start 07:41
+res-queue: start cpu 07:41
+per-class artelingo/clip_l14: 9 classes
+per-class done in 92s
+res-queue: end cpu exit 0, 1.67 minutes run
+res-queue: enqueued cpu normal position 1, 0 ahead, estimated start 07:43
+res-queue: start cpu 07:43
+told-untold done in 552s
+res-queue: end cpu exit 0, 9.33 minutes run
+res-queue: enqueued cpu short position 1, 0 ahead, estimated start 07:45
+res-queue: start cpu 07:45
+told-untold done in 577s
+res-queue: end cpu exit 0, 9.77 minutes run
+res-queue: enqueued cpu normal position 1, 0 ahead, estimated start 07:47
+res-queue: start cpu 07:47
+per-class mmart/qwen: 9 classes
+per-class done in 128s
+res-queue: end cpu exit 0, 2.28 minutes run
+res-queue: enqueued cpu short position 1, 0 ahead, estimated start 07:47
+res-queue: start cpu 07:47
+per-class mmart/siglip2: 9 classes
+per-class done in 138s
+res-queue: end cpu exit 0, 2.47 minutes run
+res-queue: enqueued cpu normal position 1, 0 ahead, estimated start 07:50
+res-queue: start cpu 07:50
+told-untold done in 651s
+res-queue: end cpu exit 0, 11.01 minutes run
+res-queue: enqueued cpu short position 1, 0 ahead, estimated start 07:54
+res-queue: start cpu 07:54
+per-class mmart/siglip1: 9 classes
+per-class done in 143s
+res-queue: end cpu exit 0, 2.58 minutes run
+res-queue: enqueued cpu normal position 1, 0 ahead, estimated start 07:56
+res-queue: start cpu 07:56
+told-untold done in 1016s
+res-queue: end cpu exit 0, 17.09 minutes run
+res-queue: enqueued cpu short position 1, 0 ahead, estimated start 08:04
+res-queue: start cpu 08:04
+per-class mmart/clip_l14: 9 classes
+per-class done in 134s
+res-queue: end cpu exit 0, 2.40 minutes run
+res-queue: enqueued cpu normal position 1, 0 ahead, estimated start 08:06
+res-queue: start cpu 08:06
+told-untold done in 1030s
+res-queue: end cpu exit 0, 17.31 minutes run
+res-queue: enqueued cpu normal position 1, 0 ahead, estimated start 08:07
+res-queue: start cpu 08:07
+told-untold done in 982s
+res-queue: end cpu exit 0, 16.55 minutes run
+res-queue: enqueued cpu normal position 1, 0 ahead, estimated start 08:13
+res-queue: start cpu 08:13
+qwen-crl done in 892s
+res-queue: end cpu exit 0, 15.03 minutes run
+told-untold done in 934s
+res-queue: end cpu exit 0, 15.67 minutes run
+r0 rows: 16, missing []
+r0 done in 2011s
+res-queue: end cpu exit 0, 33.64 minutes run
+res-queue: enqueued cpu short position 1, 0 ahead, estimated start 08:47
+res-queue: enqueued cpu short position 2, 1 ahead, estimated start 08:47
+res-queue: enqueued cpu short position 3, 2 ahead, estimated start 08:47
+res-queue: start cpu 08:47
+res-queue: waiting cpu short position 1, 0 ahead, estimated start 08:47
+res-queue: start cpu 08:47
+res-queue: waiting cpu short position 1, 0 ahead, estimated start 08:47
+res-queue: start cpu 08:47
+tables artelingo: 156 beside, 48 spreads, missing 0
+tables done in 0s
+res-queue: end cpu exit 0, 0.07 minutes run
+res-queue: enqueued cpu short position 1, 0 ahead, estimated start 08:47
+res-queue: start cpu 08:47
+/data/SSD2/cosir_r17/20261103_new_scores/outputs/stage3/figures/sweep_mmart.png
+figure done in 1s
+/data/SSD2/cosir_r17/20261103_new_scores/outputs/stage3/figures/sweep_artelingo.png
+figure done in 1s
+res-queue: end cpu exit 0, 0.09 minutes run
+res-queue: end cpu exit 0, 0.09 minutes run
+tables mmart: 156 beside, 48 spreads, missing 0
+tables done in 0s
+res-queue: end cpu exit 0, 0.07 minutes run
+res-queue: enqueued cpu normal position 1, 0 ahead, estimated start 08:47
+res-queue: enqueued cpu normal position 2, 1 ahead, estimated start 08:47
+res-queue: enqueued cpu normal position 3, 2 ahead, estimated start 08:47
+res-queue: start cpu 08:47
+res-queue: waiting cpu normal position 1, 0 ahead, estimated start 08:47
+res-queue: start cpu 08:47
+res-queue: waiting cpu normal position 1, 0 ahead, estimated start 08:47
+res-queue: start cpu 08:47
+  affection/siglip1/emotion k=5 photo: 13s
+  affection/siglip1/emotion k=5 plain: 2s
+  affection/siglip1/emotion k=8 photo: 17s
+  affection/siglip1/emotion k=8 plain: 2s
+  affection/siglip1/emotion k=9 photo: 18s
+  affection/siglip1/emotion k=9 plain: 2s
+  affection/siglip1/emotion k=16 photo: 24s
+  affection/siglip1/emotion k=16 plain: 3s
+  affection/siglip1/emotion k=20 photo: 29s
+  affection/siglip1/emotion k=20 plain: 3s
+sweep affection/siglip1: 90 k-means runs, 116s
+sweep done in 116s
+res-queue: end cpu exit 0, 1.99 minutes run
+res-queue: enqueued cpu normal position 1, 0 ahead, estimated start 08:49
+res-queue: start cpu 08:49
+  affection/siglip2/emotion k=5 photo: 15s
+  affection/siglip2/emotion k=5 plain: 2s
+  affection/siglip2/emotion k=8 photo: 20s
+  affection/siglip2/emotion k=8 plain: 2s
+  affection/siglip2/emotion k=9 photo: 21s
+  affection/siglip2/emotion k=9 plain: 2s
+  affection/siglip2/emotion k=16 photo: 29s
+  affection/siglip2/emotion k=16 plain: 2s
+  affection/siglip2/emotion k=20 photo: 31s
+  affection/siglip2/emotion k=20 plain: 3s
+sweep affection/siglip2: 90 k-means runs, 129s
+sweep done in 129s
+res-queue: end cpu exit 0, 2.22 minutes run
+res-queue: enqueued cpu normal position 1, 0 ahead, estimated start 08:49
+res-queue: start cpu 08:49
+  affection/qwen/emotion k=5 photo: 17s
+  affection/qwen/emotion k=5 plain: 5s
+  affection/qwen/emotion k=5 teacher: 3s
+  affection/qwen/emotion k=8 photo: 19s
+  affection/qwen/emotion k=8 plain: 5s
+  affection/qwen/emotion k=8 teacher: 4s
+  affection/qwen/emotion k=9 photo: 22s
+  affection/qwen/emotion k=9 plain: 5s
+  affection/qwen/emotion k=9 teacher: 4s
+  affection/qwen/emotion k=16 photo: 28s
+  affection/qwen/emotion k=16 plain: 6s
+  affection/qwen/emotion k=16 teacher: 5s
+  affection/qwen/emotion k=20 photo: 33s
+  affection/qwen/emotion k=20 plain: 8s
+  affection/qwen/emotion k=20 teacher: 7s
+sweep affection/qwen: 105 k-means runs, 172s
+sweep done in 172s
+res-queue: end cpu exit 0, 2.93 minutes run
+  affection/clip_l14/emotion k=5 photo: 17s
+  affection/clip_l14/emotion k=5 plain: 1s
+  affection/clip_l14/emotion k=8 photo: 17s
+  affection/clip_l14/emotion k=8 plain: 1s
+  affection/clip_l14/emotion k=9 photo: 17s
+  affection/clip_l14/emotion k=9 plain: 1s
+  affection/clip_l14/emotion k=16 photo: 22s
+  affection/clip_l14/emotion k=16 plain: 2s
+  affection/clip_l14/emotion k=20 photo: 27s
+  affection/clip_l14/emotion k=20 plain: 2s
+sweep affection/clip_l14: 90 k-means runs, 110s
+sweep done in 110s
+res-queue: end cpu exit 0, 1.91 minutes run
+  emoset/qwen/emotion k=5 photo: 24s
+  emoset/qwen/emotion k=5 plain: 5s
+  emoset/qwen/emotion k=5 teacher: 5s
+  emoset/qwen/emotion k=8 photo: 23s
+  emoset/qwen/emotion k=8 plain: 5s
+  emoset/qwen/emotion k=8 teacher: 5s
+  emoset/qwen/emotion k=9 photo: 23s
+  emoset/qwen/emotion k=9 plain: 5s
+  emoset/qwen/emotion k=9 teacher: 4s
+  emoset/qwen/emotion k=16 photo: 33s
+  emoset/qwen/emotion k=16 plain: 6s
+  emoset/qwen/emotion k=16 teacher: 7s
+  emoset/qwen/emotion k=20 photo: 38s
+  emoset/qwen/emotion k=20 plain: 7s
+  emoset/qwen/emotion k=20 teacher: 8s
+sweep emoset/qwen: 105 k-means runs, 197s
+sweep done in 197s
+res-queue: end cpu exit 0, 3.36 minutes run
+res-queue: enqueued cpu short position 1, 0 ahead, estimated start 08:52
+res-queue: enqueued cpu short position 2, 1 ahead, estimated start 08:52
+res-queue: enqueued cpu short position 3, 2 ahead, estimated start 08:52
+res-queue: start cpu 08:52
+res-queue: waiting cpu short position 1, 0 ahead, estimated start 08:52
+res-queue: start cpu 08:52
+res-queue: waiting cpu short position 1, 0 ahead, estimated start 08:52
+res-queue: start cpu 08:52
+tables affection: 32 beside, 16 spreads, missing 0
+tables done in 0s
+/data/SSD2/cosir_r17/20261103_new_scores/outputs/stage3/figures/sweep_emoset.png
+figure done in 0s
+/data/SSD2/cosir_r17/20261103_new_scores/outputs/stage3/figures/sweep_affection.png
+figure done in 0s
+res-queue: end cpu exit 0, 0.07 minutes run
+res-queue: enqueued cpu short position 1, 0 ahead, estimated start 08:52
+res-queue: start cpu 08:52
+res-queue: end cpu exit 0, 0.07 minutes run
+res-queue: end cpu exit 0, 0.07 minutes run
+tables emoset: 8 beside, 4 spreads, missing 0
+tables done in 0s
+res-queue: end cpu exit 0, 0.06 minutes run
+res-queue: enqueued cpu normal position 1, 0 ahead, estimated start 08:54
+res-queue: start cpu 08:54
+qwen-crl done in 467s
+res-queue: end cpu exit 0, 7.85 minutes run

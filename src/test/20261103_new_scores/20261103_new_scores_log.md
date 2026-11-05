@@ -79,3 +79,51 @@ bbd4f4f9: `compare` now checks the numbers, `licensed`, `summary`, `status`, `sm
 once and caught. Sonnet `high` re-review: pass. Left as notes: an inherited false FAIL if a stage 1 range were not ok (all
 116 are ok, so it does not fire), and hand-edited `sentence` text, `present`, `r_source` or the void reason list would not
 be seen (`ns_outcome` writes those).
+
+## 2026-11-04 04:58: stage 2 done, outcomes written (pending C13)
+
+All 21 steps ok, 412 cells, rows decided 412, missing 0 (2.4 h of wall time, others' jobs held a slot part of it).
+`records/status.json` committed; `outcomes` wrote `records/outcomes.json`, sha256 f851da2e. No verdict before C13.
+
+## 2026-11-04 06:59: C13 passed, verdicts written
+
+- Derive: 52 of 52 sections ended exit 0 (`run_logs/c13_derive.log`), 02:32 code start, about 05:00 first full plan, 06:59 end.
+- Compare (`ns_c13.py compare --write-record`, `run_logs/c13_compare.log`):
+  `C13 PASS items=22615 failed=0 missing=0 max_abs=3.52218254562e-14 scope=full`.
+- `c13.json` names `outcomes_sha256` f851da2e...5b7f, which equals `sha256sum records/outcomes.json`.
+- `c13-check` ok, `verdicts` wrote `records/verdicts.json` (same bytes as `outcomes.json`). `status` rebuilt: ok 161, failed 0,
+  missing 0; `status.json` equals HEAD.
+- Machine at 06:59: CPU idle, 4 slots free. Stage 3 starts now in three chains.
+
+## 2026-11-04 07:02: stage 3 starts, order and end estimate
+
+- Order (agent): the 39 lines of `ns_run_cpu.sh stage3` split into four parts, each in three chains:
+  a. painting sweeps, per-class, told-untold, `qwen_crl`, `r0`; b. painting figures and tables; c. photo sweeps; d. photo
+  figures and tables. Why: §3.6 says the photo sets run last and may be cut, and the plan's own order put photo sweeps before
+  the painting diagnostics. With this order a cut can lose photo rows only. No step changes.
+- End estimate: about 11:30 if the CPU slots stay free (r18 and r19 may take slots). This is past 11:00; the choice made at
+  stage 0 holds (CPU only, go on; §3.6's 12:00 cut applies).
+
+## 2026-11-04 08:53: stage 3 done
+
+- 39 of 39 steps exit 0 (`run_logs/stage3.log`), 07:00 to 08:53, about 1 h 53 min in three chains. CPU was free all the way.
+- Much faster than the estimate (about 11:30): painting sweeps took 11 to 34 min, not 55 min; photo sweeps about 2 to 3 min.
+- Nothing was cut: photo sets all ran. The run's CPU use ended at 08:53, before 11:00.
+- Outputs: `/data/SSD2/cosir_r17/20261103_new_scores/outputs/stage3/` (2.0 MB, 39 files).
+
+## 2026-11-04 09:02: fix of the Qwen c* against CRL diagnostic
+
+- Found when I read stage 3's output: `qwen_crl_mmart.json` had clustering rows for emotion and genre only. In `ns_diag.qwen_crl`
+  the skip of the 20-cluster row also skipped the class-count row at K = 20, so MMArt style was lost.
+- Fix bd8717c2, with a test that failed before the fix. Rerun through the queue: the old rows came back identical, and 4 style
+  rows are new. No verdict reads this step. Change log: `.claude/20261104_log.md`.
+- `ns_nonwin_cells.md` written from `records/verdicts.json`: 39 of 412 cells, the rest are WIN.
+
+## 2026-11-04 09:31: reports done
+
+- Auto report `docs/reports/auto/percept/2027-01-04_new_scores.md`: Codex draft (`gpt-6.1-sol` medium), the controller rewrote the
+  results brief, then a Sonnet `high` claim review (about 330 numbers recomputed; two small errors, four wordings too strong,
+  caveats added). User-read report `docs/user_read/2026-11-04_new_scores.md`: Codex draft, a Haiku cold read and a Sonnet `high`
+  fidelity check (about 70 numbers, all matched), one fix wave. Time-box 18:00 met.
+- The report is about 18 KB against a target of about 15 KB: the many report items that no code writes take the room.
+- CPU use ended 09:02. No GPU. Nothing cut. Disk: 183 MB on SSD2.
