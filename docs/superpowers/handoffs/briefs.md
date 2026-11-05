@@ -1879,3 +1879,19 @@
 - Handoff: docs/superpowers/handoffs/2026-11-04-r19-read-handoff.md
 - New chat: tab 'r19 read', session 53416e8e-e127-42a2-8dd7-9c89826c4a0a
 
+[brief] CoSiR: r18 run -> r18 run 2 (2026-11-05 04:12 Amsterdam)
+- Done: 412 TURTLE fits good, TPIPS stores merged, all six gates pass, stages 1 and 2 done, 337 cells assembled with 0 void.
+- State: labels are provisional until C13 agrees. No labels.json exists. The run is about 19 h ahead of the first handoff's estimate.
+- Next: write the C13 brief from r17's, run Codex, review its code, run the full derive, then `labels`, diagnostics, report.
+- Blocked: nothing. Codex has room (5h 100% left at 04:11).
+- Handoff: docs/superpowers/handoffs/2026-11-05-r18-run2-handoff.md
+- New chat: tab 'r18 run 2', session 8a6b5334-290e-4bfa-b7c4-ac41f861bb2f
+
+[brief] CoSiR: r18 run 2 -> r18 run 3 (2026-11-05 04:45 Amsterdam)
+- Done: Codex wrote the C13 code, 46 tests pass, and the subset smoke passes: 2,400 items, 0 failed, largest difference 2.9e-14.
+- State: the code is committed, unreviewed. The full derive has not started. Labels stay provisional until C13 agrees.
+- Next: start the derive (52 sections, about 5.5 slot-hours), and an Opus `high` review of the code beside it.
+- Blocked: nothing. Queue idle at 04:45.
+- Handoff: docs/superpowers/handoffs/2026-11-05-r18-run-3-handoff.md
+- New chat: tab 'r18 run 3', session 2fa2c6b7-d287-421d-8c70-1680fff5da5d
+
