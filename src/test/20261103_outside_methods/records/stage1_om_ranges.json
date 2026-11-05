@@ -1,0 +1,589 @@
+{
+ "artelingo/clip_l14/emotion/acc/9": {
+  "r": 0.02530342436064148,
+  "source": "r17 records/stage1_ranges.json:cstar/artelingo/clip_l14/emotion/acc"
+ },
+ "artelingo/clip_l14/emotion/ami/20": {
+  "r": 0.0037443296627407696,
+  "source": "r14 records/stage1_clip_l14.json:artclu.ranges.emotion"
+ },
+ "artelingo/clip_l14/emotion/ami/9": {
+  "r": 0.005527191154879929,
+  "source": "r17 records/stage1_ranges.json:cstar/artelingo/clip_l14/emotion/ami"
+ },
+ "artelingo/clip_l14/emotion/ari/9": {
+  "r": 0.025345755183824974,
+  "source": "r17 records/stage1_ranges.json:cstar/artelingo/clip_l14/emotion/ari"
+ },
+ "artelingo/clip_l14/emotion/map": {
+  "r": 0.0016892742932269056,
+  "source": "r14 stage1_clip_l14.json artret_ranges (X-c* ArtELingo validation, mAP at R0)"
+ },
+ "artelingo/clip_l14/emotion/nmi/9": {
+  "r": 0.005507126048183653,
+  "source": "r17 records/stage1_ranges.json:cstar/artelingo/clip_l14/emotion/nmi"
+ },
+ "artelingo/clip_l14/genre/acc/10": {
+  "r": 0.047983870967741926,
+  "source": "r17 records/stage1_ranges.json:cstar/artelingo/clip_l14/genre/acc"
+ },
+ "artelingo/clip_l14/genre/ami/10": {
+  "r": 0.016027518641662408,
+  "source": "r17 records/stage1_ranges.json:cstar/artelingo/clip_l14/genre/ami"
+ },
+ "artelingo/clip_l14/genre/ami/20": {
+  "r": 0.015928465148856708,
+  "source": "r14 records/stage1_clip_l14.json:artclu.ranges.genre"
+ },
+ "artelingo/clip_l14/genre/ari/10": {
+  "r": 0.038377760245014325,
+  "source": "r17 records/stage1_ranges.json:cstar/artelingo/clip_l14/genre/ari"
+ },
+ "artelingo/clip_l14/genre/map": {
+  "r": 0.0016564163854410063,
+  "source": "r14 stage1_clip_l14.json artret_ranges (X-c* ArtELingo validation, mAP at R0)"
+ },
+ "artelingo/clip_l14/genre/nmi/10": {
+  "r": 0.015964740558663926,
+  "source": "r17 records/stage1_ranges.json:cstar/artelingo/clip_l14/genre/nmi"
+ },
+ "artelingo/clip_l14/style/acc/27": {
+  "r": 0.023732119635890836,
+  "source": "r17 records/stage1_ranges.json:cstar/artelingo/clip_l14/style/acc"
+ },
+ "artelingo/clip_l14/style/ami/20": {
+  "r": 0.008617842073935733,
+  "source": "r14 records/stage1_clip_l14.json:artclu.ranges.style"
+ },
+ "artelingo/clip_l14/style/ami/27": {
+  "r": 0.009401682367092934,
+  "source": "r17 records/stage1_ranges.json:cstar/artelingo/clip_l14/style/ami"
+ },
+ "artelingo/clip_l14/style/ari/27": {
+  "r": 0.013159594008649661,
+  "source": "r17 records/stage1_ranges.json:cstar/artelingo/clip_l14/style/ari"
+ },
+ "artelingo/clip_l14/style/map": {
+  "r": 0.003796055065128312,
+  "source": "r14 stage1_clip_l14.json artret_ranges (X-c* ArtELingo validation, mAP at R0)"
+ },
+ "artelingo/clip_l14/style/nmi/27": {
+  "r": 0.009240639886448188,
+  "source": "r17 records/stage1_ranges.json:cstar/artelingo/clip_l14/style/nmi"
+ },
+ "artelingo/qwen/emotion/acc/9": {
+  "r": 0.02037277850021671,
+  "source": "r17 records/stage1_ranges.json:cstar/artelingo/qwen/emotion/acc"
+ },
+ "artelingo/qwen/emotion/ami/20": {
+  "n_labelled": 6152,
+  "n_val": 6152,
+  "per_seed": {
+   "0": 0.10366834086937221,
+   "1": 0.10632491259792483,
+   "2": 0.10954677664948143,
+   "3": 0.1071777608936329,
+   "4": 0.10524860252343445
+  },
+  "r": 0.005878435780109215,
+  "source": "om_stage1: k-means as r10 on Qwen c* validation exports, seeds 0 to 4, mean over states 0 to 2, max minus min"
+ },
+ "artelingo/qwen/emotion/ami/9": {
+  "r": 0.003627631477242557,
+  "source": "r17 records/stage1_ranges.json:cstar/artelingo/qwen/emotion/ami"
+ },
+ "artelingo/qwen/emotion/ari/9": {
+  "r": 0.01300814714081322,
+  "source": "r17 records/stage1_ranges.json:cstar/artelingo/qwen/emotion/ari"
+ },
+ "artelingo/qwen/emotion/map": {
+  "r": 0.0014116107779215126,
+  "source": "r11 stage0a_ranges.json (Qwen c*, ArtELingo validation, mAP at R0)"
+ },
+ "artelingo/qwen/emotion/nmi/9": {
+  "r": 0.0036145255463291837,
+  "source": "r17 records/stage1_ranges.json:cstar/artelingo/qwen/emotion/nmi"
+ },
+ "artelingo/qwen/genre/acc/10": {
+  "r": 0.03461021505376349,
+  "source": "r17 records/stage1_ranges.json:cstar/artelingo/qwen/genre/acc"
+ },
+ "artelingo/qwen/genre/ami/10": {
+  "r": 0.01356068956441503,
+  "source": "r17 records/stage1_ranges.json:cstar/artelingo/qwen/genre/ami"
+ },
+ "artelingo/qwen/genre/ami/20": {
+  "n_labelled": 4960,
+  "n_val": 6152,
+  "per_seed": {
+   "0": 0.5173597486839144,
+   "1": 0.5105685880544019,
+   "2": 0.5034543875924872,
+   "3": 0.5167534486703502,
+   "4": 0.5093952816762993
+  },
+  "r": 0.01390536109142726,
+  "source": "om_stage1: k-means as r10 on Qwen c* validation exports, seeds 0 to 4, mean over states 0 to 2, max minus min"
+ },
+ "artelingo/qwen/genre/ari/10": {
+  "r": 0.05277602328494979,
+  "source": "r17 records/stage1_ranges.json:cstar/artelingo/qwen/genre/ari"
+ },
+ "artelingo/qwen/genre/map": {
+  "r": 0.0038237977312404192,
+  "source": "r11 stage0a_ranges.json (Qwen c*, ArtELingo validation, mAP at R0)"
+ },
+ "artelingo/qwen/genre/nmi/10": {
+  "r": 0.013515685991260185,
+  "source": "r17 records/stage1_ranges.json:cstar/artelingo/qwen/genre/nmi"
+ },
+ "artelingo/qwen/style/acc/27": {
+  "r": 0.008940182054616441,
+  "source": "r17 records/stage1_ranges.json:cstar/artelingo/qwen/style/acc"
+ },
+ "artelingo/qwen/style/ami/20": {
+  "n_labelled": 6152,
+  "n_val": 6152,
+  "per_seed": {
+   "0": 0.41714338413433555,
+   "1": 0.41204002261180955,
+   "2": 0.41078863025130935,
+   "3": 0.41597692701063843,
+   "4": 0.40641710184845437
+  },
+  "r": 0.010726282285881183,
+  "source": "om_stage1: k-means as r10 on Qwen c* validation exports, seeds 0 to 4, mean over states 0 to 2, max minus min"
+ },
+ "artelingo/qwen/style/ami/27": {
+  "r": 0.008678457342291501,
+  "source": "r17 records/stage1_ranges.json:cstar/artelingo/qwen/style/ami"
+ },
+ "artelingo/qwen/style/ari/27": {
+  "r": 0.01780756199969255,
+  "source": "r17 records/stage1_ranges.json:cstar/artelingo/qwen/style/ari"
+ },
+ "artelingo/qwen/style/map": {
+  "r": 0.002229334648849224,
+  "source": "r11 stage0a_ranges.json (Qwen c*, ArtELingo validation, mAP at R0)"
+ },
+ "artelingo/qwen/style/nmi/27": {
+  "r": 0.008491084595036447,
+  "source": "r17 records/stage1_ranges.json:cstar/artelingo/qwen/style/nmi"
+ },
+ "artelingo/siglip1/emotion/acc/9": {
+  "r": 0.016200693541395722,
+  "source": "r17 records/stage1_ranges.json:cstar/artelingo/siglip1/emotion/acc"
+ },
+ "artelingo/siglip1/emotion/ami/20": {
+  "r": 0.003795790529504628,
+  "source": "r14 records/stage1_siglip1.json:artclu.ranges.emotion"
+ },
+ "artelingo/siglip1/emotion/ami/9": {
+  "r": 0.003795404005570921,
+  "source": "r17 records/stage1_ranges.json:cstar/artelingo/siglip1/emotion/ami"
+ },
+ "artelingo/siglip1/emotion/ari/9": {
+  "r": 0.007367054345702173,
+  "source": "r17 records/stage1_ranges.json:cstar/artelingo/siglip1/emotion/ari"
+ },
+ "artelingo/siglip1/emotion/map": {
+  "r": 0.0021643605637413077,
+  "source": "r14 stage1_siglip1.json artret_ranges (X-c* ArtELingo validation, mAP at R0)"
+ },
+ "artelingo/siglip1/emotion/nmi/9": {
+  "r": 0.0037829868573076714,
+  "source": "r17 records/stage1_ranges.json:cstar/artelingo/siglip1/emotion/nmi"
+ },
+ "artelingo/siglip1/genre/acc/10": {
+  "r": 0.02694892473118282,
+  "source": "r17 records/stage1_ranges.json:cstar/artelingo/siglip1/genre/acc"
+ },
+ "artelingo/siglip1/genre/ami/10": {
+  "r": 0.022109287322613747,
+  "source": "r17 records/stage1_ranges.json:cstar/artelingo/siglip1/genre/ami"
+ },
+ "artelingo/siglip1/genre/ami/20": {
+  "r": 0.011503544326430415,
+  "source": "r14 records/stage1_siglip1.json:artclu.ranges.genre"
+ },
+ "artelingo/siglip1/genre/ari/10": {
+  "r": 0.03159104438899746,
+  "source": "r17 records/stage1_ranges.json:cstar/artelingo/siglip1/genre/ari"
+ },
+ "artelingo/siglip1/genre/map": {
+  "r": 0.004102472623162656,
+  "source": "r14 stage1_siglip1.json artret_ranges (X-c* ArtELingo validation, mAP at R0)"
+ },
+ "artelingo/siglip1/genre/nmi/10": {
+  "r": 0.022023679287544118,
+  "source": "r17 records/stage1_ranges.json:cstar/artelingo/siglip1/genre/nmi"
+ },
+ "artelingo/siglip1/style/acc/27": {
+  "r": 0.030125704377980234,
+  "source": "r17 records/stage1_ranges.json:cstar/artelingo/siglip1/style/acc"
+ },
+ "artelingo/siglip1/style/ami/20": {
+  "r": 0.008543263296041215,
+  "source": "r14 records/stage1_siglip1.json:artclu.ranges.style"
+ },
+ "artelingo/siglip1/style/ami/27": {
+  "r": 0.00990384940509248,
+  "source": "r17 records/stage1_ranges.json:cstar/artelingo/siglip1/style/ami"
+ },
+ "artelingo/siglip1/style/ari/27": {
+  "r": 0.02118896175280416,
+  "source": "r17 records/stage1_ranges.json:cstar/artelingo/siglip1/style/ari"
+ },
+ "artelingo/siglip1/style/map": {
+  "r": 0.004682403141340774,
+  "source": "r14 stage1_siglip1.json artret_ranges (X-c* ArtELingo validation, mAP at R0)"
+ },
+ "artelingo/siglip1/style/nmi/27": {
+  "r": 0.009709743672759064,
+  "source": "r17 records/stage1_ranges.json:cstar/artelingo/siglip1/style/nmi"
+ },
+ "artelingo/siglip2/emotion/acc/9": {
+  "r": 0.049252275682704794,
+  "source": "r17 records/stage1_ranges.json:cstar/artelingo/siglip2/emotion/acc"
+ },
+ "artelingo/siglip2/emotion/ami/20": {
+  "r": 0.002862436943750657,
+  "source": "r14 records/stage1_siglip2.json:artclu.ranges.emotion"
+ },
+ "artelingo/siglip2/emotion/ami/9": {
+  "r": 0.0038076849170717575,
+  "source": "r17 records/stage1_ranges.json:cstar/artelingo/siglip2/emotion/ami"
+ },
+ "artelingo/siglip2/emotion/ari/9": {
+  "r": 0.02930417414738023,
+  "source": "r17 records/stage1_ranges.json:cstar/artelingo/siglip2/emotion/ari"
+ },
+ "artelingo/siglip2/emotion/map": {
+  "r": 0.0015141856668823839,
+  "source": "r14 stage1_siglip2.json artret_ranges (X-c* ArtELingo validation, mAP at R0)"
+ },
+ "artelingo/siglip2/emotion/nmi/9": {
+  "r": 0.003768307828730666,
+  "source": "r17 records/stage1_ranges.json:cstar/artelingo/siglip2/emotion/nmi"
+ },
+ "artelingo/siglip2/genre/acc/10": {
+  "r": 0.042002688172043,
+  "source": "r17 records/stage1_ranges.json:cstar/artelingo/siglip2/genre/acc"
+ },
+ "artelingo/siglip2/genre/ami/10": {
+  "r": 0.03383072985663982,
+  "source": "r17 records/stage1_ranges.json:cstar/artelingo/siglip2/genre/ami"
+ },
+ "artelingo/siglip2/genre/ami/20": {
+  "r": 0.0069549551644224605,
+  "source": "r14 records/stage1_siglip2.json:artclu.ranges.genre"
+ },
+ "artelingo/siglip2/genre/ari/10": {
+  "r": 0.03794846095710519,
+  "source": "r17 records/stage1_ranges.json:cstar/artelingo/siglip2/genre/ari"
+ },
+ "artelingo/siglip2/genre/map": {
+  "r": 0.004259334686874894,
+  "source": "r14 stage1_siglip2.json artret_ranges (X-c* ArtELingo validation, mAP at R0)"
+ },
+ "artelingo/siglip2/genre/nmi/10": {
+  "r": 0.033681266267441945,
+  "source": "r17 records/stage1_ranges.json:cstar/artelingo/siglip2/genre/nmi"
+ },
+ "artelingo/siglip2/style/acc/27": {
+  "r": 0.02644126571304728,
+  "source": "r17 records/stage1_ranges.json:cstar/artelingo/siglip2/style/acc"
+ },
+ "artelingo/siglip2/style/ami/20": {
+  "r": 0.01604545569202437,
+  "source": "r14 records/stage1_siglip2.json:artclu.ranges.style"
+ },
+ "artelingo/siglip2/style/ami/27": {
+  "r": 0.016882824292348553,
+  "source": "r17 records/stage1_ranges.json:cstar/artelingo/siglip2/style/ami"
+ },
+ "artelingo/siglip2/style/ari/27": {
+  "r": 0.0138197921123831,
+  "source": "r17 records/stage1_ranges.json:cstar/artelingo/siglip2/style/ari"
+ },
+ "artelingo/siglip2/style/map": {
+  "r": 0.003092987345707676,
+  "source": "r14 stage1_siglip2.json artret_ranges (X-c* ArtELingo validation, mAP at R0)"
+ },
+ "artelingo/siglip2/style/nmi/27": {
+  "r": 0.01654271963144177,
+  "source": "r17 records/stage1_ranges.json:cstar/artelingo/siglip2/style/nmi"
+ },
+ "mmart/clip_l14/emotion/acc/9": {
+  "r": 0.009149184149184142,
+  "source": "r17 records/stage1_ranges.json:cstar/mmart/clip_l14/emotion/acc"
+ },
+ "mmart/clip_l14/emotion/ami/20": {
+  "r": 0.003024395717182826,
+  "source": "r15 records/stage1_clip_l14.json:clu_ranges.ranges.emotion"
+ },
+ "mmart/clip_l14/emotion/ami/9": {
+  "r": 0.004845251835270452,
+  "source": "r17 records/stage1_ranges.json:cstar/mmart/clip_l14/emotion/ami"
+ },
+ "mmart/clip_l14/emotion/ari/9": {
+  "r": 0.003227420015704023,
+  "source": "r17 records/stage1_ranges.json:cstar/mmart/clip_l14/emotion/ari"
+ },
+ "mmart/clip_l14/emotion/map": {
+  "r": 0.000633751040052366,
+  "source": "r15 stage1_clip_l14.json ret_ranges (X-c* MMArt validation, mAP at R0)"
+ },
+ "mmart/clip_l14/emotion/nmi/9": {
+  "r": 0.00481870756717976,
+  "source": "r17 records/stage1_ranges.json:cstar/mmart/clip_l14/emotion/nmi"
+ },
+ "mmart/clip_l14/genre/acc/10": {
+  "r": 0.06347510151741831,
+  "source": "r17 records/stage1_ranges.json:cstar/mmart/clip_l14/genre/acc"
+ },
+ "mmart/clip_l14/genre/ami/10": {
+  "r": 0.026702344563332314,
+  "source": "r17 records/stage1_ranges.json:cstar/mmart/clip_l14/genre/ami"
+ },
+ "mmart/clip_l14/genre/ami/20": {
+  "r": 0.00864004543698993,
+  "source": "r15 records/stage1_clip_l14.json:clu_ranges.ranges.genre"
+ },
+ "mmart/clip_l14/genre/ari/10": {
+  "r": 0.035837764204893485,
+  "source": "r17 records/stage1_ranges.json:cstar/mmart/clip_l14/genre/ari"
+ },
+ "mmart/clip_l14/genre/map": {
+  "r": 0.0019367407309804907,
+  "source": "r15 stage1_clip_l14.json ret_ranges (X-c* MMArt validation, mAP at R0)"
+ },
+ "mmart/clip_l14/genre/nmi/10": {
+  "r": 0.026560206127290598,
+  "source": "r17 records/stage1_ranges.json:cstar/mmart/clip_l14/genre/nmi"
+ },
+ "mmart/clip_l14/style/acc/20": {
+  "r": 0.008146992546368526,
+  "source": "r17 records/stage1_ranges.json:cstar/mmart/clip_l14/style/acc"
+ },
+ "mmart/clip_l14/style/ami/20": {
+  "r": 0.013524361774149285,
+  "source": "r15 records/stage1_clip_l14.json:clu_ranges.ranges.style"
+ },
+ "mmart/clip_l14/style/ari/20": {
+  "r": 0.010840097785321245,
+  "source": "r17 records/stage1_ranges.json:cstar/mmart/clip_l14/style/ari"
+ },
+ "mmart/clip_l14/style/map": {
+  "r": 0.0038390840430087003,
+  "source": "r15 stage1_clip_l14.json ret_ranges (X-c* MMArt validation, mAP at R0)"
+ },
+ "mmart/clip_l14/style/nmi/20": {
+  "r": 0.013333174856507424,
+  "source": "r17 records/stage1_ranges.json:cstar/mmart/clip_l14/style/nmi"
+ },
+ "mmart/qwen/emotion/acc/9": {
+  "r": 0.01835664335664336,
+  "source": "r17 records/stage1_ranges.json:cstar/mmart/qwen/emotion/acc"
+ },
+ "mmart/qwen/emotion/ami/20": {
+  "r": 0.004760010300125482,
+  "source": "r15 records/stage1_qwen.json:clu_ranges.ranges.emotion"
+ },
+ "mmart/qwen/emotion/ami/9": {
+  "r": 0.003667895236044036,
+  "source": "r17 records/stage1_ranges.json:cstar/mmart/qwen/emotion/ami"
+ },
+ "mmart/qwen/emotion/ari/9": {
+  "r": 0.00282931261125725,
+  "source": "r17 records/stage1_ranges.json:cstar/mmart/qwen/emotion/ari"
+ },
+ "mmart/qwen/emotion/map": {
+  "r": 0.0014573890029571657,
+  "source": "r15 stage1_qwen.json ret_ranges (X-c* MMArt validation, mAP at R0)"
+ },
+ "mmart/qwen/emotion/nmi/9": {
+  "r": 0.0036507503080211584,
+  "source": "r17 records/stage1_ranges.json:cstar/mmart/qwen/emotion/nmi"
+ },
+ "mmart/qwen/genre/acc/10": {
+  "r": 0.058203319797677566,
+  "source": "r17 records/stage1_ranges.json:cstar/mmart/qwen/genre/acc"
+ },
+ "mmart/qwen/genre/ami/10": {
+  "r": 0.014089605425099516,
+  "source": "r17 records/stage1_ranges.json:cstar/mmart/qwen/genre/ami"
+ },
+ "mmart/qwen/genre/ami/20": {
+  "r": 0.009653816653803826,
+  "source": "r15 records/stage1_qwen.json:clu_ranges.ranges.genre"
+ },
+ "mmart/qwen/genre/ari/10": {
+  "r": 0.045463502846969484,
+  "source": "r17 records/stage1_ranges.json:cstar/mmart/qwen/genre/ari"
+ },
+ "mmart/qwen/genre/map": {
+  "r": 0.00366990589956373,
+  "source": "r15 stage1_qwen.json ret_ranges (X-c* MMArt validation, mAP at R0)"
+ },
+ "mmart/qwen/genre/nmi/10": {
+  "r": 0.014039065833001518,
+  "source": "r17 records/stage1_ranges.json:cstar/mmart/qwen/genre/nmi"
+ },
+ "mmart/qwen/style/acc/20": {
+  "r": 0.028312243600855103,
+  "source": "r17 records/stage1_ranges.json:cstar/mmart/qwen/style/acc"
+ },
+ "mmart/qwen/style/ami/20": {
+  "r": 0.011840919567543906,
+  "source": "r15 records/stage1_qwen.json:clu_ranges.ranges.style"
+ },
+ "mmart/qwen/style/ari/20": {
+  "r": 0.016778305690462597,
+  "source": "r17 records/stage1_ranges.json:cstar/mmart/qwen/style/ari"
+ },
+ "mmart/qwen/style/map": {
+  "r": 0.00258267282747926,
+  "source": "r15 stage1_qwen.json ret_ranges (X-c* MMArt validation, mAP at R0)"
+ },
+ "mmart/qwen/style/nmi/20": {
+  "r": 0.011684144808534525,
+  "source": "r17 records/stage1_ranges.json:cstar/mmart/qwen/style/nmi"
+ },
+ "mmart/siglip1/emotion/acc/9": {
+  "r": 0.005011655011655014,
+  "source": "r17 records/stage1_ranges.json:cstar/mmart/siglip1/emotion/acc"
+ },
+ "mmart/siglip1/emotion/ami/20": {
+  "r": 0.003835759130330657,
+  "source": "r15 records/stage1_siglip1.json:clu_ranges.ranges.emotion"
+ },
+ "mmart/siglip1/emotion/ami/9": {
+  "r": 0.0030074558015010175,
+  "source": "r17 records/stage1_ranges.json:cstar/mmart/siglip1/emotion/ami"
+ },
+ "mmart/siglip1/emotion/ari/9": {
+  "r": 0.0015088897115217853,
+  "source": "r17 records/stage1_ranges.json:cstar/mmart/siglip1/emotion/ari"
+ },
+ "mmart/siglip1/emotion/map": {
+  "r": 0.0005943409765497565,
+  "source": "r15 stage1_siglip1.json ret_ranges (X-c* MMArt validation, mAP at R0)"
+ },
+ "mmart/siglip1/emotion/nmi/9": {
+  "r": 0.00300740155125781,
+  "source": "r17 records/stage1_ranges.json:cstar/mmart/siglip1/emotion/nmi"
+ },
+ "mmart/siglip1/genre/acc/10": {
+  "r": 0.05193417396879685,
+  "source": "r17 records/stage1_ranges.json:cstar/mmart/siglip1/genre/acc"
+ },
+ "mmart/siglip1/genre/ami/10": {
+  "r": 0.010381831986050805,
+  "source": "r17 records/stage1_ranges.json:cstar/mmart/siglip1/genre/ami"
+ },
+ "mmart/siglip1/genre/ami/20": {
+  "r": 0.010028808035874803,
+  "source": "r15 records/stage1_siglip1.json:clu_ranges.ranges.genre"
+ },
+ "mmart/siglip1/genre/ari/10": {
+  "r": 0.05431289856436411,
+  "source": "r17 records/stage1_ranges.json:cstar/mmart/siglip1/genre/ari"
+ },
+ "mmart/siglip1/genre/map": {
+  "r": 0.004160257189950056,
+  "source": "r15 stage1_siglip1.json ret_ranges (X-c* MMArt validation, mAP at R0)"
+ },
+ "mmart/siglip1/genre/nmi/10": {
+  "r": 0.010353243551439073,
+  "source": "r17 records/stage1_ranges.json:cstar/mmart/siglip1/genre/nmi"
+ },
+ "mmart/siglip1/style/acc/20": {
+  "r": 0.03293465071936208,
+  "source": "r17 records/stage1_ranges.json:cstar/mmart/siglip1/style/acc"
+ },
+ "mmart/siglip1/style/ami/20": {
+  "r": 0.018954696185318975,
+  "source": "r15 records/stage1_siglip1.json:clu_ranges.ranges.style"
+ },
+ "mmart/siglip1/style/ari/20": {
+  "r": 0.015851607603265594,
+  "source": "r17 records/stage1_ranges.json:cstar/mmart/siglip1/style/ari"
+ },
+ "mmart/siglip1/style/map": {
+  "r": 0.005078570836115792,
+  "source": "r15 stage1_siglip1.json ret_ranges (X-c* MMArt validation, mAP at R0)"
+ },
+ "mmart/siglip1/style/nmi/20": {
+  "r": 0.018742996502452314,
+  "source": "r17 records/stage1_ranges.json:cstar/mmart/siglip1/style/nmi"
+ },
+ "mmart/siglip2/emotion/acc/9": {
+  "r": 0.027447552447552398,
+  "source": "r17 records/stage1_ranges.json:cstar/mmart/siglip2/emotion/acc"
+ },
+ "mmart/siglip2/emotion/ami/20": {
+  "r": 0.00441461497638964,
+  "source": "r15 records/stage1_siglip2.json:clu_ranges.ranges.emotion"
+ },
+ "mmart/siglip2/emotion/ami/9": {
+  "r": 0.005328851217634441,
+  "source": "r17 records/stage1_ranges.json:cstar/mmart/siglip2/emotion/ami"
+ },
+ "mmart/siglip2/emotion/ari/9": {
+  "r": 0.007934393592690773,
+  "source": "r17 records/stage1_ranges.json:cstar/mmart/siglip2/emotion/ari"
+ },
+ "mmart/siglip2/emotion/map": {
+  "r": 0.0010930056213613037,
+  "source": "r15 stage1_siglip2.json ret_ranges (X-c* MMArt validation, mAP at R0)"
+ },
+ "mmart/siglip2/emotion/nmi/9": {
+  "r": 0.005322714862812668,
+  "source": "r17 records/stage1_ranges.json:cstar/mmart/siglip2/emotion/nmi"
+ },
+ "mmart/siglip2/genre/acc/10": {
+  "r": 0.03184441119897419,
+  "source": "r17 records/stage1_ranges.json:cstar/mmart/siglip2/genre/acc"
+ },
+ "mmart/siglip2/genre/ami/10": {
+  "r": 0.02013857599858293,
+  "source": "r17 records/stage1_ranges.json:cstar/mmart/siglip2/genre/ami"
+ },
+ "mmart/siglip2/genre/ami/20": {
+  "r": 0.0073350274138213045,
+  "source": "r15 records/stage1_siglip2.json:clu_ranges.ranges.genre"
+ },
+ "mmart/siglip2/genre/ari/10": {
+  "r": 0.023551676133569677,
+  "source": "r17 records/stage1_ranges.json:cstar/mmart/siglip2/genre/ari"
+ },
+ "mmart/siglip2/genre/map": {
+  "r": 0.00436614529322954,
+  "source": "r15 stage1_siglip2.json ret_ranges (X-c* MMArt validation, mAP at R0)"
+ },
+ "mmart/siglip2/genre/nmi/10": {
+  "r": 0.020049574591455066,
+  "source": "r17 records/stage1_ranges.json:cstar/mmart/siglip2/genre/nmi"
+ },
+ "mmart/siglip2/style/acc/20": {
+  "r": 0.023169815681516215,
+  "source": "r17 records/stage1_ranges.json:cstar/mmart/siglip2/style/acc"
+ },
+ "mmart/siglip2/style/ami/20": {
+  "r": 0.007135795021261826,
+  "source": "r15 records/stage1_siglip2.json:clu_ranges.ranges.style"
+ },
+ "mmart/siglip2/style/ari/20": {
+  "r": 0.013746573100723414,
+  "source": "r17 records/stage1_ranges.json:cstar/mmart/siglip2/style/ari"
+ },
+ "mmart/siglip2/style/map": {
+  "r": 0.00290602226345571,
+  "source": "r15 stage1_siglip2.json ret_ranges (X-c* MMArt validation, mAP at R0)"
+ },
+ "mmart/siglip2/style/nmi/20": {
+  "r": 0.007057647080380425,
+  "source": "r17 records/stage1_ranges.json:cstar/mmart/siglip2/style/nmi"
+ }
+}
