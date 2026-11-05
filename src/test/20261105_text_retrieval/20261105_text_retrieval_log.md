@@ -53,3 +53,14 @@ The cells are label-hit mAP, 3 aspects by 3 directions: 9 cells. Each row uses i
 
 The free variant is read beside the rule. If it alone would change the outcome, that goes to the user. If c* wins on label hits and falls below plain
 text on pair hits, the user decides whether the paper states it as a limit.
+
+## Run (2026-11-05, 17:39 to 17:53)
+
+Gates passed: the c* forward pass reproduces the saved validation outputs (largest difference 6.1e-5), so the caption side's input at export is each
+painting's L2-normalized caption mean (`input_cap: default`); the metric equals `rt_metrics` on image-to-image (largest difference 6.9e-8); re-encoded
+captions match the stored emotion and plain text (mean cosine 0.9999). Results: `results/tables.md`, `results/summary.json`; checks: `results/checks.json`.
+
+**Outcome 1:** c* above plain Qwen and the teacher's text in 6 of 9 label cells; the free variant in 3 of 9 (beside the rule). `tx_checks.py` was added after
+the first read, as a check only: with one fixed read-out for every row the count is 5 of 9 at each read-out, and cross-fit picks give 6 of 9.
+
+Deviations from the design: CLIP B/32 joins the SemArt floor, since CLIP L/14 and SigLIP have no SemArt text there; image-to-image is left out of the pair table.
