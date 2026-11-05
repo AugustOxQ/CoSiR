@@ -249,8 +249,8 @@ No departure or checker repair changed a final score or a verdict.
 
 ## Files and storage
 
-Nothing was deleted.
+On 2026-11-05 the user approved the storage table. Node copies, smoke outputs, scratch folders and the merged worktrees were deleted. Nothing that the reports rest on was deleted.
 
 - **Outputs:** [round folder](../../../../src/test/20261103_past_picks/), [records](../../../../src/test/20261103_past_picks/records/), `/data/SSD2/cosir_r19/20261103_past_picks/outputs/` (about 16 GB).
-- **Also left:** eight new stores under `/data/SSD2/pre_extract/`, `c13/` (61 MB, every compared item), `c13_smoke/` (49 MB), job folders on node402, pulled job folders in `res/cluster_jobs/`.
-- **Storage:** the decision is taken at the wrap-up; see the disk ledger rows dated 2026-11-04.
+- **Also kept:** eight new stores under `/data/SSD2/pre_extract/`, `c13/` (61 MB, every compared item), and the pulled job folders, now in `/data/SSD2/cosir_r19/20261103_past_picks/cluster_jobs/`.
+- **Storage:** decided at the wrap-up; see the disk ledger rows dated 2026-11-04 and 2026-11-05.

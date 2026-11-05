@@ -98,3 +98,7 @@ Run sheet: `pp_run_sheet.md`. Spec: `docs/superpowers/specs/2026-11-03-past-pick
 - **Findings not applied:** "published method" stays, since PercepT's published paper is the project's own definition. "The gates cover
   those" stays, since the claim review fixed that wording. D17's reason for the unset cells stays out: it explains the design and
   changes no result's meaning.
+
+## Wrap-up (2026-11-05 16:03)
+
+Storage decided by the user; see the disk ledger rows dated 2026-11-04 and 2026-11-05. The pulled job folders moved from the r19-int worktree to `/data/SSD2/cosir_r19/20261103_past_picks/cluster_jobs/`, ticket 12's two logs to `ticket12_logs/` beside it. Decision C and the direction log entry: `docs/superpowers/direction_log.md`, 2026-11-05.
