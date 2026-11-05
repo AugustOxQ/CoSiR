@@ -63,4 +63,8 @@ captions match the stored emotion and plain text (mean cosine 0.9999). Results: 
 **Outcome 1:** c* above plain Qwen and the teacher's text in 6 of 9 label cells; the free variant in 3 of 9 (beside the rule). `tx_checks.py` was added after
 the first read, as a check only: with one fixed read-out for every row the count is 5 of 9 at each read-out, and cross-fit picks give 6 of 9.
 
-Deviations from the design: CLIP B/32 joins the SemArt floor, since CLIP L/14 and SigLIP have no SemArt text there; image-to-image is left out of the pair table.
+Deviations from the design: CLIP B/32 joins the SemArt floor, since CLIP L/14 and SigLIP have no SemArt text there; image-to-image is left out of the pair table; word queries use raw cosine and centering only; the teacher is not run on MMArt, by scope.
+
+Caption input in training: one row per painting, the caption mean (`ct2_d2.py` line 286 without `per_caption`; `ms_train.py` indexes it by painting).
+
+Reports: `docs/reports/auto/percept/2027-01-09_text_retrieval.md`, `docs/user_read/2026-11-05_text_retrieval.md`. Claim review by a Sonnet worker: no number wrong, 18 wording and coverage fixes applied.
