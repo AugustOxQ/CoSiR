@@ -31,8 +31,10 @@ README); TEMI and the TURTLE selection are parked, to do later.
 r17 (new scores from saved outputs: NMI, ARI, ACC, cluster counts, CRL, PercepT retrieval, untold retrieval) is read
 and closed (user, 2026-11-05): good overall; against the teacher, 46 of 48 AMI and NMI cells WIN and 22 of 48 ARI and ACC cells. On
 ArtELingo emotion that gap comes from one class, contentment (report 2027-01-07); genre labels alone reach ACC level with
-both models, and ARI close to c* and below the teacher. After the weekly meeting, text-to-text and cross-modal retrieval are top priority (user, 2026-11-05): r22, plus more, comes
-first and its scope is decided in the r22 decide chat. r20 (figure) and r21 (head variants) wait for that decision. The stage note's form still waits for the user. Deadlines:
+both models, and ARI close to c* and below the teacher. After the weekly meeting, text-to-text and cross-modal retrieval are top priority (user, 2026-11-05): r22 comes first, as a
+small exploration on development data (text to image, image to text, text to text; label hits and pair hits; ArtELingo and MMArt captions;
+plus SemArt, a perspective-by-head table and word queries), and a main claim with the abstract unchanged if the exploration earns it.
+r20 (figure) and r21 (head variants) wait for its reading. The stage note's form still waits for the user. Deadlines:
 abstract 2026-11-10, paper 2026-11-16, supplementary 2026-11-23.
 Reporting (user, 2026-11-04): r17's results enter the weekly report of 2026-11-04 only after the user's reading in the r20
 chat, and they stay out of the stage report of 2026-11-04 (29 October to 3 November); the next stage report starts from
@@ -114,6 +116,10 @@ r17.
   recommendation).
 - **Why:** "my supervisor and collaborators think it might not be enough to do the image-to-image retrieval"; the check is
   needed for the paper's text beside the teacher cells, and a weekly report only shows the numbers.
+- **Decided in the r22 decide chat (A, 2026-11-05):** all three directions and both hit rules (user); ArtELingo and MMArt text (user); a main
+  claim with the abstract unchanged (user), on our condition that the exploration earns it; a small exploration first (user); scope, the core plus
+  SemArt, the perspective table and word queries (user, after seeing the recommendation). Whether the paper may state weak pair hits as a limit
+  is decided after the results (user). [Handoff](handoffs/2026-11-05-r22-explore-handoff.md).
 - **Links:** [report](../reports/auto/percept/2027-01-04_new_scores.md) ·
   [check](../reports/auto/percept/2027-01-07_teacher_gap.md) · [user-read report](../user_read/2026-11-04_new_scores.md) ·
   [check, user-read](../user_read/2026-11-05_teacher_gap.md) · [spec](specs/2026-11-03-new-scores-design.md) ·
