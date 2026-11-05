@@ -1903,3 +1903,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-05-r18-run-4-handoff.md
 - New chat: tab 'r18 run 4', session eb206345-63ad-43a1-a4d9-14acffbc4957
 
+[brief] CoSiR: r18 run 4 -> r18 read (2026-11-05 07:18 Amsterdam)
+- Done: the auto report is claim-reviewed, the user-read report passed both checks, and r18 is merged into main and pushed. No table number was wrong.
+- State: 337 cells: 330 WIN, 6 LEVEL, 1 BELOW, 0 void. Default TURTLE scored below k-means in 203 of 232 diagnostic comparisons.
+- Next: show the results brief without our reading, record the user's reading, wrap up r18.
+- Blocked: this chat waits for the user's reading. The GPU is lost in the container; r18 needs none.
+- Handoff: docs/superpowers/handoffs/2026-11-05-r18-read-handoff.md
+- New chat: tab 'r18 read', session b6d5ba34-61d0-4435-8031-d0efd8ae8672
+
