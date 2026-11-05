@@ -1911,3 +1911,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-05-r18-read-handoff.md
 - New chat: tab 'r18 read', session b6d5ba34-61d0-4435-8031-d0efd8ae8672
 
+[brief] CoSiR: r20 decide -> r22 decide (2026-11-05 16:24 Amsterdam)
+- Done: r17 is read and closed. The teacher gap check (report 2027-01-07) is committed. r17's storage is decided.
+- State: r17, r18 and r19 are closed; r20, r21 and r22 have not started. After the weekly meeting, text-to-text and cross-modal retrieval are top priority.
+- Next: step 2 with the user: what r22 covers, its type and size, and what happens to the other open items.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-05-r22-decide-handoff.md
+- New chat: tab 'r22 decide', session 168637b2-5aac-475c-b6b7-b23134218e34
+
