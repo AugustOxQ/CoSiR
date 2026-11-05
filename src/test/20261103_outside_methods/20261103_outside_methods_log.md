@@ -269,3 +269,10 @@ by the 200 W line; Qwen alone means 199.6 W.
 - **Hand check of review finding 4:** no file under `OUT/parts/turtle` is newer than 04:00 on 11-05.
 - **Compare:** `C13 PASS items=10762 failed=0 max_abs=2.06238901512e-08 scope=full`. No failed or skipped item, draws 2,000 and 10,000 on both sides. Largest gap a CLAY validation score (MMArt, text set B, `whiten50+k5`); every cell value is within 3.9e-14. `turtle_inputs`: 413 items (412 sidecars and their count), 0 failed, so every TURTLE fit ran on the rows C13 loads by itself, c* in the unit form.
 - **Labels:** `om_run.py labels` wrote `records/labels.json` at 05:28.
+
+## Diagnostics and report draft (2026-11-05, unattended)
+
+- **Diagnostics:** six items through `res-queue cpu`, four at a time (`.scratch/r18-outside-methods/run/diag_drive.sh`), 05:28 to 06:39, all exit 0. `sweep` has `missing` empty and `r17_kmeans` filled on both sets. `adds` took 70 min, the rest under 8 min each. Files: `OUT/diag/`.
+- **Merge:** main (8042ff0c) merged into `r18-outside-methods` after the labels, so the report sits on the current index. No hashed file moved after the labels.
+- **Report draft:** Codex `gpt-6.1-sol` medium, brief `.scratch/r18-outside-methods/report/task.txt`, thread `01a1aa39-d221-7913-bc21-b97c52bb5928`, 5h 79% to 68% left, 20.0 KB. Committed unreviewed. Claude's edit and claim review are next.
+- **GPU check at 06:55:** `nvidia-smi` fails with `Failed to initialize NVML: Unknown Error`; kernel module and library both 595.99.02. So a host `daemon-reload` dropped the GPU from the container (`container.md`). r18 needs no more GPU work.
