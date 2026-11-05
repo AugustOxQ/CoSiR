@@ -25,7 +25,9 @@ Experiments start again (user, 2026-11-03 18:30) from the experiment overview's 
 at the same time to use the local GPU and the DAS6 node fully. r19 (c* on three more encoders, SemArt new artists,
 cost table) is read and closed (user, 2026-11-05): 23 of 23 verdicts hold, but no cell is "better than" the teacher, so
 its results go to an ablation or the appendix. r18 (outside methods: TPIPS, CLAY, TURTLE at its default
-settings) is read (user, 2026-11-05): c* is above them in most cells, TURTLE is a weak test, and r18's next step is open.
+settings) is read and closed (user, 2026-11-05): c* is above them in most cells, TURTLE at these settings is a
+weak test. These results are important and go into the paper in a later chat (memo in project memory and the paper's
+README); TEMI and the TURTLE selection are parked, to do later.
 r17 (new scores from saved outputs: NMI, ARI, ACC, cluster counts, CRL, PercepT retrieval, untold retrieval) has run and
 waits for the user's reading; r20 (figure), r21 (head variants) and r22 (text queries) follow from 11-06. The stage note's form
 still waits for the user. Deadlines:
@@ -84,8 +86,14 @@ r17.
   of about 203 ms (never tried; not chosen by the user, 2026-11-05; [proposed in](../reports/auto/percept/2027-01-05_past_picks.md))
 - Emotion and style on new artists: a data search first, since SemArt has neither label (never tried; not chosen by the
   user, 2026-11-05; [proposed in](../reports/auto/percept/2027-01-05_past_picks.md))
+- TEMI, r18's third stage: a second clustering method at its paper's settings, up to 10 GPU h (never run; deferred by
+  the user (2026-11-05): worth doing, not top priority; [proposed in](specs/2026-11-03-outside-methods-design.md))
+- The one-off TURTLE selection on validation, then plain-image TURTLE at the chosen setting: about 134 fits, about 4
+  GPU h by our arithmetic, not measured; a small spec must settle D9 against D25 (never run; deferred by the user
+  (2026-11-05): worth doing, not top priority;
+  [proposed in](../reports/auto/percept/2027-01-06_outside_methods.md))
 
-## 2026-11-05 · Outside methods read: c* above TPIPS and CLAY in most cells, default TURTLE is a weak test; the next step is open
+## 2026-11-05 · Outside methods read: c* above TPIPS and CLAY in most cells, default TURTLE is a weak test; r18 closes, the paper rows come later
 
 - **Read:** 337 cells, each with its own label and no overall verdict: 330 WIN, 6 LEVEL, 1 BELOW, 0 void. Qwen c*
   against TPIPS: 34 of 35 WIN, one LEVEL (ArtELingo emotion AMI, 0.1024 against 0.0718). Qwen and CLIP L/14 c* against
@@ -100,10 +108,13 @@ r17.
   differ: the two agree on TPIPS and CLAY. The user counts three methods beaten; we count two embeddings beaten and one
   weak test, because TURTLE is a clustering method on the plain image and "stronger" holds there only at its default
   settings.
-- **Decided (A):** open, awaiting the user. Options: a. put these rows into the paper; b. build and run TEMI, up to
-  10 GPU h; c. the one-off TURTLE selection on validation, then plain-image TURTLE at the chosen setting.
-- **Why:** the paper's related work needs these rows, and the test against a clustering stronger than k-means is still
-  open.
+- **Decided (A):** no more r18 compute now, and r18 closes; what comes next is discussed in r20's chat. The rows go into
+  the paper later, in a different chat: the results are important, and a memo marks them (project memory
+  `project_r18-paper-rows.md`, the paper's README). TEMI and the one-off TURTLE selection on validation are worth doing
+  but not top priority: to do later, parked below (user, after seeing the recommendation, which was the rows now, then
+  both in one build). `turtle_pack` and its node copy stay deferred for them.
+- **Why:** the paper needs these rows, and the test against a clustering stronger than k-means stays open; other work
+  comes first.
 - **Links:** [report](../reports/auto/percept/2027-01-06_outside_methods.md) ·
   [user-read report](../user_read/2026-11-05_outside_methods.md) ·
   [spec](specs/2026-11-03-outside-methods-design.md) · [handoff](handoffs/2026-11-05-r18-read-handoff.md)
