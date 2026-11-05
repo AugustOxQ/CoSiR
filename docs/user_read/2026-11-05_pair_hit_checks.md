@@ -1,31 +1,34 @@
-# A missing training term explains weak pair hits, and joined scores recover them
+# On older models the own-caption term raises pair hits; joined scores recover them for c*
 
 > 2026-11-05 · [Full report](../reports/auto/percept/2027-01-10_pair_hit_checks.md)
 
 ## Summary
 
-- We asked why c* finds a painting's own caption less often than plain Qwen.
-- A saved model pair supports your explanation: the training term for own captions matters.
-- That term raises pair hits and lowers label hits.
+- We asked why c* gets fewer pair hits than plain Qwen. A pair hit is a painting's own caption in the first ten results.
+- Two saved models support your explanation: a training term that pulls a painting to its own caption raises pair hits.
+- That term also lowers label hits, which are results with the same emotion, style or genre.
 - Joining c* scores with plain Qwen scores recovers pair hits without a retrain.
-- One weight passed our bar, so the margin is thin.
-- These validation results use one seed, so they support no claim yet.
+- Only one weight passed our bar, so the margin is thin.
+- These validation results use one seed, so the paper cannot claim them yet.
 
 ## How we got here
 
-The last exploration showed c* above plain Qwen and the teacher on shared labels, and below plain Qwen on pair hits.
-You said this fits a training that does not align a painting with its own caption.
+The last exploration showed c* above plain Qwen and the teacher in 6 of 9 label cells, and below plain Qwen on pair hits.
+The teacher is the aspect-instructed Qwen model that c* learns from.
+You said this fits c*'s training, which does not pull a painting to its own caption.
 We tested that, and we tested a cheap way to recover pair hits.
 
 ## The own-caption term
 
 **Problem.** c* was trained without a term that pulls a painting to its own caption.
-**Idea.** Two saved older models differ in this term, so we compared them on pair hits.
-**Did it work?** Yes. The term recovers more than half of the gap to plain Qwen.
+**Idea.** Two saved models from before c* differ in this term, so we compared them on pair hits.
+They have the same teacher share and the same size.
+**Did it work?** Yes. With the term, pair hits rise by more than half of the distance to plain Qwen.
 It also lowers label hits, mostly on emotion and genre.
-These are older, smaller models, so the size of the effect on c* is not known.
+These models trained on a smaller sample with earlier graphs, so the size of the effect on c* is not known.
 
-**Key evidence.** The table shows pair recall among the first ten results, for each model's best head.
+**Key evidence.** The table shows R@10, the share of queries with a pair hit in the first ten results.
+Each model shows its head with the highest R@10.
 
 | Direction | Term on | Term off | Plain Qwen |
 |---|---:|---:|---:|
@@ -38,14 +41,15 @@ These are older, smaller models, so the size of the effect on c* is not known.
 ## Joined scores
 
 **Problem.** A retrain would change the model that all earlier results rest on.
-**Idea.** c* already takes plain Qwen as input, so we can join both scores with a weight and run no new encoder.
-**Did it work?** Yes, at one weight: 70% on plain Qwen.
-There, pair hits are close to plain Qwen, and 5 of 9 label cells stay above both comparators.
-The neighbouring weights fail, so the pass is narrow.
+**Idea.** c* already takes plain Qwen vectors as input, so a joined score needs no new encoder pass.
+The joined score is (1 - a) times the c* cosine plus a times the plain Qwen cosine.
+**Did it work?** Yes, at one weight: a = 0.7.
+There, pair hits are close to plain Qwen, and 5 of 9 label cells stay above plain Qwen and the teacher.
+We tried a from 0 to 1 in steps of 0.1. The weights 0.6 and 0.8 fail, so the pass is narrow.
 
-**Key evidence.** Each row is one weight on plain Qwen.
+**Key evidence.** Each row is one weight. The last three columns are pair R@10.
 
-| Weight | Label cells above both | Text to image | Image to text | Text to text |
+| Weight a | Label cells above both | Text to image | Image to text | Text to text |
 |---:|---:|---:|---:|---:|
 | 0 | 6 | 0.2118 | 0.3186 | 0.1756 |
 | 0.7 | 5 | 0.3215 | 0.4954 | 0.1952 |
@@ -66,14 +70,15 @@ We would keep c* frozen and not retrain it before the deadline.
 
 ## Next
 
-Under the rule, joined scores enter the claim loop as one extra row.
-You read these results first, and then we grill the claim loop.
+Under the rule written before these checks, joined scores enter the claim loop as one extra row.
+The claim loop tests the results on held data with five seeds.
+You read these results first, and then we grill the design of that loop.
 You still decide the pair-hit limit, after your talk with the other authors.
 
 ## Glossary
 
-- **Pair hit:** a result that is the painting's own caption, or the caption's own painting.
+- **Pair hit:** a result that is the painting's own caption, the caption's own painting, or another caption of the same painting.
 - **Own-caption term:** a training term that pulls a painting to its own caption.
 - **Joined score:** a weighted sum of the c* score and the plain Qwen score.
-- **Label cell:** one aspect in one retrieval direction.
+- **Label cell:** one aspect (emotion, style, genre) in one direction (text to image, image to text, text to text), so 9 cells.
 - **Head:** one output of c* for an aspect.

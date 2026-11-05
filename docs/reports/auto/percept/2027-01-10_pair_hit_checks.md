@@ -109,7 +109,7 @@ Label mAP of joined scores, with Table 1's comparators of the r22 report:
 
 ## Analysis
 
-Our reading: joined pair hits exceed both parts on two directions.
+Our reading: at some weights, joined pair hits exceed both parts in all three directions.
 Text to image peaks at a = 0.8 (0.3221 against plain Qwen's 0.3102).
 Text to text peaks at a = 0.5 (0.1977 against 0.1823).
 Image to text peaks at a = 0.9 (0.5125 against 0.5068).
@@ -121,7 +121,7 @@ From a = 0.8 the count falls fast: 2 of 9 cells at a = 0.8, 1 at a = 0.9.
 ## Deviations
 
 None from the rule. The rule's limits are agent defaults. The code had no separate review.
-Its gates compare a = 0 and a = 1 with the saved r22 scores for every cell and read-out; the largest difference was 3.2e-6.
+Its gates compare a = 0 and a = 1 with the saved r22 scores for every cell and read-out; the largest difference was 3.1e-6.
 No painting of the recipes' training sample is a validation painting (0 of 6,152).
 
 ## Files and storage
