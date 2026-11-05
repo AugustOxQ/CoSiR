@@ -1895,3 +1895,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-05-r18-run-3-handoff.md
 - New chat: tab 'r18 run 3', session 2fa2c6b7-d287-421d-8c70-1680fff5da5d
 
+[brief] CoSiR: r18 run 3 -> r18 run 4 (2026-11-05 06:55 Amsterdam)
+- Done: C13 passes at full scope (10,762 items, 0 failed), labels committed, six diagnostics done, report draft committed unreviewed.
+- State: 337 cells: 330 WIN, 6 LEVEL, 1 BELOW, 0 void. c* with k-means WINs 116 of 116 against the plain image with TURTLE.
+- Next: edit the draft, run the claim review, write the user-read report and its two checks, merge into main, open "r18 read".
+- Blocked: nothing for r18. The GPU is lost in the container; r18 needs no GPU.
+- Handoff: docs/superpowers/handoffs/2026-11-05-r18-run-4-handoff.md
+- New chat: tab 'r18 run 4', session eb206345-63ad-43a1-a4d9-14acffbc4957
+
