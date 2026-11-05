@@ -68,3 +68,28 @@ Deviations from the design: CLIP B/32 joins the SemArt floor, since CLIP L/14 an
 Caption input in training: one row per painting, the caption mean (`ct2_d2.py` line 286 without `per_caption`; `ms_train.py` indexes it by painting).
 
 Reports: `docs/reports/auto/percept/2027-01-09_text_retrieval.md`, `docs/user_read/2026-11-05_text_retrieval.md`. Claim review by a Sonnet worker: no number wrong, 18 wording and coverage fixes applied.
+
+## Follow-up: two short checks (r23 decide chat, 2026-11-05)
+
+The user accepted two short checks before the claim loop. Validation only, seed 0, no training, no held rows. Written before any score of these
+checks. The limits are agent defaults. Code: `tx_followup.py`.
+
+**Check 1, the own-caption term.** Does a term that pulls a painting to its own caption raise pair hits? Models: recipes R0-5 (term on) and R6-5 (term off) of
+`20261025_recipe_backbones`, seed 0, sample scale, same teacher share. Both are older than c*. The same rankings as Table 2: each head picks its read-out on
+MRR, and each recipe's best head by R@10 is read. The interval is the paired painting bootstrap of R0-5 minus R6-5 on per-query R@10.
+
+- **Supported:** in both text to image and image to text, the interval lies above 0 and the rise is at least half of R6-5's gap to plain Qwen.
+- **Partly:** the interval lies above 0 in at least one of the two, without the first case.
+- **Not supported:** neither interval lies above 0.
+
+Label mAP of both recipes is shown too, since the term may cost label hits. The check cannot show what the term would do to c* or to clustering.
+
+**Check 2, joined scores.** A joined vector is (sqrt(1 - a) c*, sqrt(a) plain Qwen), a from 0 to 1 by 0.1, per head. Its cosine is (1 - a) c* cosine + a plain
+cosine. Label cells take the best read-out per cell, as Table 1. Pair hits take the read-out picked on MRR and the best head by R@10, as Table 2. Comparators are
+Table 1's plain Qwen and teacher values.
+
+- **Joined scores enter the claim loop as one extra row** only if one a has pair R@10 within 0.02 of plain Qwen in both text to image and image to text, and
+  5 or more of 9 label cells above both comparators by mean score. Its weight is then picked on validation.
+- **Otherwise** the curve is a note for the pair-hit point. The claim loop keeps c* alone.
+
+The rule's main read stays on c*; these checks change neither Outcome 1 nor the cell count.

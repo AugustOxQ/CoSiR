@@ -33,8 +33,8 @@ and closed (user, 2026-11-05): good overall; against the teacher, 46 of 48 AMI a
 ArtELingo emotion that gap comes from one class, contentment (report 2027-01-07); genre labels alone reach ACC level with
 both models, and ARI close to c* and below the teacher. After the weekly meeting, text-to-text and cross-modal retrieval are top priority (user, 2026-11-05). r22, an exploration on validation with seed 0,
 is read (user, 2026-11-05): c*'s caption side beats plain Qwen and the teacher's text in 6 of 9 label cells (bar 5; 5 of 9 with one fixed read-out),
-with emotion below the teacher, and pair hits below plain Qwen, which the user expected. The next step is open (direction log, r22 entry).
-r20 (figure) and r21 (head variants) wait for that decision. The stage note's form still waits for the user. Deadlines:
+with emotion below the teacher, and pair hits below plain Qwen, which the user expected. Next (user, 2026-11-05): two short checks on validation, then the claim loop as r23. The pair-hit limit waits for
+the user's talk with the other authors. r20 (figure) and r21 (head variants) wait. The stage note's form still waits for the user. Deadlines:
 abstract 2026-11-10, paper 2026-11-16, supplementary 2026-11-23.
 Reporting (user, 2026-11-04): r17's results enter the weekly report of 2026-11-04 only after the user's reading in the r20
 chat, and they stay out of the stage report of 2026-11-04 (29 October to 3 November); the next stage report starts from
@@ -97,7 +97,7 @@ r17.
   (2026-11-05): worth doing, not top priority;
   [proposed in](../reports/auto/percept/2027-01-06_outside_methods.md))
 
-## 2026-11-05 · Text retrieval read: c* above both comparators in 6 of 9 label cells, below plain Qwen on pair hits, as the user expected; next step open
+## 2026-11-05 · Text retrieval read: c* above both comparators in 6 of 9 label cells, below plain Qwen on pair hits, as the user expected; short checks, then the claim loop
 
 - **Read:** validation, seed 0, 6,152 paintings and 30,872 captions; an exploration, so no claim. Label mAP: c* above plain Qwen and the teacher's text in
   6 of 9 cells (bar 5). All 9 above plain Qwen; style's 3 and genre's 3 above the teacher; emotion's 3 below it. One fixed read-out gives 5 of 9;
@@ -108,8 +108,10 @@ r17.
   says "buddy+own-caption"; that label is stale. The four buddy terms stay, and two of them are image to caption, but across two buddy paintings, not a
   painting and its own caption. Our report's reading named content subtraction in the emotion and style graphs. The user's cause also covers genre, which is
   the best head on pair hits. Neither cause is tested. Own-caption terms left the recipe on clustering scores (report 12-24), not on pair hits.
-- **Decided (A):** open, awaiting the user. Options: the claim loop on held ArtELingo and the MMArt test rows; joined c* and plain scores; a retrain on
-  single captions; new from this reading, the saved own-caption pair (recipes R0-5 and R6-5, seed 0, caption sides saved) scored on pair hits.
+- **Decided (A):** two short checks on validation first (joined c* and plain scores; the saved own-caption pair, recipes R0-5 and R6-5, on pair hits), then the
+  claim loop as r23, on held ArtELingo and the MMArt test rows with five seeds; type confirmation, medium loop (user, after seeing the recommendation).
+- **Pair-hit limit:** not decided. It stays a flagged point for the paper writing, since the user discusses it with the other authors first (user).
+- **Free variant:** the rule keeps reading c*; the variant is a side row in the supplementary (user, after seeing the recommendation).
 - **Why:** the rule's Outcome 1 passed, with a thin margin.
 - **Links:** [report](../reports/auto/percept/2027-01-09_text_retrieval.md) · [user-read report](../user_read/2026-11-05_text_retrieval.md) · [handoff](handoffs/2026-11-05-r23-decide-handoff.md)
 
