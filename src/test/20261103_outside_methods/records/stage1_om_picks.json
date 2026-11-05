@@ -1,0 +1,264 @@
+{
+ "clay/artelingo": {
+  "k": 10,
+  "n_val": 6152,
+  "pick": "none+k10",
+  "scores": {
+   "kept": true,
+   "map": {
+    "emotion": 0.25240399483772896,
+    "genre": 0.5827620186500775,
+    "style": 0.3206286607833284
+   },
+   "r0_map": {
+    "emotion": 0.24897881627220483,
+    "genre": 0.535909613387948,
+    "style": 0.2992082176412168
+   },
+   "score": 11.985274492006377
+  },
+  "table_path": "stage1/tables/clay__artelingo__A.json",
+  "text_rank": 49,
+  "text_set": "A",
+  "unit": {
+   "emotion": 0.0016892742932269056,
+   "genre": 0.0016564163854410063,
+   "style": 0.003796055065128312
+  },
+  "unit_score": 195.2334183945608,
+  "unit_source": "/project/CoSiR/src/test/20261102_backbones_sweep/records/stage1_clip_l14.json",
+  "w": "none"
+ },
+ "clay/mmart": {
+  "k": 10,
+  "n_val": 5769,
+  "pick": "none+k10",
+  "scores": {
+   "kept": true,
+   "map": {
+    "emotion": 0.19124507586287812,
+    "genre": 0.5891561669747203,
+    "style": 0.3438104226624513
+   },
+   "r0_map": {
+    "emotion": 0.19081633435680728,
+    "genre": 0.5420370220368902,
+    "style": 0.3210460214754829
+   },
+   "score": 10.311750248255143
+  },
+  "table_path": "stage1/tables/clay__mmart__A.json",
+  "text_rank": 49,
+  "text_set": "A",
+  "unit": {
+   "emotion": 0.000633751040052366,
+   "genre": 0.0019367407309804907,
+   "style": 0.0038390840430087003
+  },
+  "unit_score": 231.84067371150354,
+  "unit_source": "/project/CoSiR/src/test/20261102_mmart_test/records/stage1_clip_l14.json",
+  "w": "none"
+ },
+ "clay_text_sha256": {
+  "A": {
+   "emotion": "1d30ee64a85251d15f2f4e33e3b8626dcf13a859653c7055cd3c3589c724240a",
+   "genre": "3c3ccfa3962bb52b6f3e8c49896b780e7e6d03399d1ac563eed8508db06e403f",
+   "style": "4c19a8169716e68eca62f7e8b86ab9be9ba41116b5a960daca206e7cf5ef2cc3"
+  },
+  "B": {
+   "emotion": "ccf30d36367118b834d350966496e9970bb699ce934d7d525b7e8b1ab7e213e0",
+   "genre": "07b3aeca3943aac553f14a32454744b5215cfcf43b9b1b8964063ec992003346",
+   "style": "2b71e915862a17e2709c7d7252fc68e4a55539c3999b2c66925f0c1078cc84ef"
+  }
+ },
+ "clay_textset/clu/artelingo": {
+  "margin": 0.001,
+  "reason": "a_higher",
+  "rule": "B only if the mean over aspects of validation AMI at 20 (k-means as r10, mean over states) exceeds A's by more than 0.001",
+  "scores": {
+   "A": {
+    "ami20": {
+     "emotion": 0.07799032477904566,
+     "genre": 0.4836516529674744,
+     "style": 0.4222159495014366
+    },
+    "mean_ami20": 0.32795264241598554
+   },
+   "B": {
+    "ami20": {
+     "emotion": 0.08183826392080544,
+     "genre": 0.42672941097384287,
+     "style": 0.3924120518586695
+    },
+    "mean_ami20": 0.30032657558443926
+   }
+  },
+  "set": "A"
+ },
+ "clay_textset/clu/mmart": {
+  "margin": 0.001,
+  "reason": "a_higher",
+  "rule": "B only if the mean over aspects of validation AMI at 20 (k-means as r10, mean over states) exceeds A's by more than 0.001",
+  "scores": {
+   "A": {
+    "ami20": {
+     "emotion": 0.036624484044958126,
+     "genre": 0.49678358229150676,
+     "style": 0.4303545131964534
+    },
+    "mean_ami20": 0.3212541931776394
+   },
+   "B": {
+    "ami20": {
+     "emotion": 0.04135104680422965,
+     "genre": 0.4290801839694473,
+     "style": 0.4085320799231742
+    },
+    "mean_ami20": 0.2929877702322837
+   }
+  },
+  "set": "A"
+ },
+ "clay_textset/ret/artelingo": {
+  "margin": 0.1,
+  "reason": "a_higher",
+  "rule": "B only if mean over aspects of validation mAP at the set's own pick / CLIP L/14 c* range exceeds A's by more than 0.1",
+  "scores": {
+   "A": {
+    "map": {
+     "emotion": 0.25240399483772896,
+     "genre": 0.5827620186500775,
+     "style": 0.3206286607833284
+    },
+    "pick": "none+k10",
+    "r0_map": {
+     "emotion": 0.24897881627220483,
+     "genre": 0.535909613387948,
+     "style": 0.2992082176412168
+    },
+    "rank": 49,
+    "score": 195.2334183945608
+   },
+   "B": {
+    "map": {
+     "emotion": 0.25659095113394337,
+     "genre": 0.49697110489527774,
+     "style": 0.2988654976817578
+    },
+    "pick": "none+k10",
+    "r0_map": {
+     "emotion": 0.2519147912023959,
+     "genre": 0.465461683513221,
+     "style": 0.2803611829522105
+    },
+    "rank": 50,
+    "score": 176.88420800886777
+   }
+  },
+  "set": "A",
+  "unit": {
+   "emotion": 0.0016892742932269056,
+   "genre": 0.0016564163854410063,
+   "style": 0.003796055065128312
+  },
+  "unit_source": "/project/CoSiR/src/test/20261102_backbones_sweep/records/stage1_clip_l14.json"
+ },
+ "clay_textset/ret/mmart": {
+  "margin": 0.1,
+  "reason": "a_higher",
+  "rule": "B only if mean over aspects of validation mAP at the set's own pick / CLIP L/14 c* range exceeds A's by more than 0.1",
+  "scores": {
+   "A": {
+    "map": {
+     "emotion": 0.19124507586287812,
+     "genre": 0.5891561669747203,
+     "style": 0.3438104226624513
+    },
+    "pick": "none+k10",
+    "r0_map": {
+     "emotion": 0.19081633435680728,
+     "genre": 0.5420370220368902,
+     "style": 0.3210460214754829
+    },
+    "rank": 49,
+    "score": 231.84067371150354
+   },
+   "B": {
+    "map": {
+     "emotion": 0.19327176207625563,
+     "genre": 0.504558728188139,
+     "style": 0.3240663287968214
+    },
+    "pick": "none+k10",
+    "r0_map": {
+     "emotion": 0.1924627433576895,
+     "genre": 0.4727700360896028,
+     "style": 0.3030862549581032
+    },
+    "rank": 50,
+    "score": 216.63223776987283
+   }
+  },
+  "set": "A",
+  "unit": {
+   "emotion": 0.000633751040052366,
+   "genre": 0.0019367407309804907,
+   "style": 0.0038390840430087003
+  },
+  "unit_source": "/project/CoSiR/src/test/20261102_mmart_test/records/stage1_clip_l14.json"
+ },
+ "tpips/artelingo": {
+  "k": 10,
+  "n_val": 6152,
+  "pick": "none+k10",
+  "scores": {
+   "kept": true,
+   "map": {
+    "emotion": 0.2595289012923464,
+    "genre": 0.5667077789079544,
+    "style": 0.23593614274673025
+   },
+   "r0_map": {
+    "emotion": 0.2592328391849124,
+    "genre": 0.5391082926481694,
+    "style": 0.23048617675900157
+   },
+   "score": 3.2907381734062753
+  },
+  "table_path": "stage1/tables/tpips__artelingo.json",
+  "unit": {
+   "emotion": 0.0014116107779215126,
+   "genre": 0.0038237977312404192,
+   "style": 0.002229334648849224
+  },
+  "unit_source": "/project/CoSiR/src/test/20261029_retrieval/stage0a_ranges.json",
+  "w": "none"
+ },
+ "tpips/mmart": {
+  "k": 10,
+  "n_val": 5769,
+  "pick": "none+k10",
+  "scores": {
+   "kept": true,
+   "map": {
+    "emotion": 0.19432459421455162,
+    "genre": 0.5718297682819788,
+    "style": 0.2609847966839246
+   },
+   "r0_map": {
+    "emotion": 0.1953500628635895,
+    "genre": 0.5442738750996843,
+    "style": 0.25281488283497794
+   },
+   "score": 3.322777417730045
+  },
+  "table_path": "stage1/tables/tpips__mmart.json",
+  "unit": {
+   "emotion": 0.0014573890029571657,
+   "genre": 0.00366990589956373,
+   "style": 0.00258267282747926
+  },
+  "unit_source": "/project/CoSiR/src/test/20261102_mmart_test/records/stage1_qwen.json",
+  "w": "none"
+ }
+}

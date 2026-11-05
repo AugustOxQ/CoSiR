@@ -212,3 +212,76 @@ by the 200 W line; Qwen alone means 199.6 W.
   pending, so read `complete`; `OM_SMOKE=2` reads as smoke in `om_paths` but not in `om_env`.
 - **Left for later builds or the report:** parts files bind no input hash, so pass `--force` after any re-extraction or refit; gates (i) and (iv) carry no code
   hash; `sweep` has no TEMI rows; `r17_kmeans` stays empty until r17's stage 3 files exist; in `adds`, the interval's widening is not measured.
+
+## Run (2026-11-04, unattended)
+
+- **Checks before the fits:** the whole round's suite, run once after the fix wave through `res-queue cpu`: 314 passed in 2 min 13 s. Stage 0 (`om_run.py
+  stage0`): gate (i) pass, largest difference 6.6e-07; gate (ii) CPU pass. Status: i, ii, iii a, b, c `ok`; iv `failed` until the local rerun after shard 5.
+- **TURTLE:** 16 jobs on node402 at c29073c9, one GPU each, 05:50 to 10:17. All three GPUs were free: r19's 8 node jobs had ended by 03:59. Each job took 32 to
+  57 min, mean 44.5, so the whole set ended about an hour before the handoff's estimate. 0 failures.
+- **Pulls ran after the last job, not per job.** All 16 share `/local/wding/res/r18_turtle`, and a tagged pull's verifying dry run would find another job's new
+  files. All 16 pulls verified and marked; each code copy removed.
+- **`check-pulled res/r18_turtle`:** 412 of 412 fits good, 0 bad; hosts node402 412; torch 2.11.0+cu130 412. The printed rsync line ran; its dry run showed no
+  overwrite. `OUT/parts/turtle` holds 412 npz and 412 json, 3.0 GB, and a repeat dry run finds nothing left.
+- **TPIPS:** shard 1 ended 08:02 after 151.7 min, not the 3.9 h the handoff expected; the store check at 10:29 finds every probe row equal, cosine 1.0, and no
+  package changed. The loop (pid 2887562) waits for 19:00. At 2.5 h a shard, shards 2 to 5 end about Thursday 05:00; at 3.9 h, shard 5 still ends Thursday 23:00.
+- **Git:** `*.json` is gitignored at the repo root, so stage 1's three records need `git add -f`, as r17's did.
+- **TPIPS stores:** shards 2 to 5 took about 1.9 to 2.5 h each and ended 2026-11-05 03:08; the loop had six full shards at 03:09, not Thursday 23:00. Store check
+  `complete=True`, no package changed. Both merges passed (ArtELingo 18,433 rows, MMArt 16,384). Gate (iv) passes: lowest cosine 0.99999994 against the bar of 0.999,
+  48 rows per factor; all six stores pass. All six gates `ok`.
+- **Merge:** main into r18-int at b6b9975a. No hashed file moved (`git diff --stat` on `om_gate_iii`, `om_data`, `om_paths`, `ns_clu`, `ns_metrics`, `ns_ret`, `ns_data`,
+  `rg_held` is empty). Status after it still `ok` for all gates.
+- **Stage 1:** 03:11 to 03:19, 8 min against the 2 h estimate. 140 ranges, 0 with r null. Picks: TPIPS and CLAY `none+k10` on both sets; CLAY text set A for clustering
+  and retrieval on both sets (`a_higher`). Records committed at 8ca05e1c with `git add -f`.
+- **Stage 2 ran four units at a time, not one at a time as `om_queue.sh stage2 --run` does (agent default).** Each unit is its own process with its own part file, and the
+  caches are in memory, so no number depends on the order. 28 units through `res-queue cpu`, 03:20 to 04:10, 3.1 to 12.8 min each, all exit 0.
+- **Assemble:** 337 cells, 0 void, r17-family ranges equal r17's record. Labels stay provisional until C13 passes.
+
+## C13 code (2026-11-05, unattended)
+
+- **Brief:** `.scratch/r18-outside-methods/c13/task.txt`, from r17's. Codex `gpt-6.1-sol` high (5h 100% left before, 84% after). It may not read `OUT/stage1`, `OUT/stage2`,
+  `OUT/clay`, `OUT/steps`, `records/stage1_*`, `records/status.json`, this log, the handoffs or the reports. Only `finish` opens the status files; only `compare` opens the round's numbers.
+- **Files:** `om_c13.py`, `test_om_c13.py`; 46 tests pass (controller's run: 46 passed in 3.60 s).
+- **Low-draw tree:** `/data/SSD2/cosir_r18/20261103_outside_methods/c13_round_smoke`, the round's own code at 40 and 100 draws on real inputs, six units, 63 cells, 0 void
+  (`.scratch/r18-outside-methods/run/c13_round_smoke.sh`). Under `OM_SMOKE=1` the real TPIPS stores, TURTLE partitions and set B are links, and the stage 0 and stage 1 files are copies.
+- **Subset smoke:** `C13 PASS items=2400 failed=0 max_abs=2.89213097915e-14 scope=subset`. No mismatch. 16.4 min with queue waits.
+- **Estimate of the full derive:** 52 sections, 5.5 slot-hours. Not started: the chat cut at the 200k context meter before the derive, since a chat may not cut while its run goes on.
+- **Binding:** derived files bind the text of `om_c13.py` above `# RESULT BOUNDARY`, plus `ns_c13.py`. A fix below that line keeps them valid. A fix above it means a new derive.
+
+## C13 review and fix round (2026-11-05, unattended)
+
+- **Derive:** started 04:46 in `.scratch/r18-outside-methods/run/c13_drive.sh`, one `res-queue cpu` job per section, four at a time, the driver stops at a failed section. Phases 1 to 3 ended 05:05, 24 of 24 sections exit 0.
+- **Review:** Opus `high` worker, blind to the round's results, 12 min. No defect gives a wrong PASS; the math, the result boundary, the imports and the caches are sound; no shared misreading against `om_cells.py`, `om_stage1.py`, `om_clay.py`. Findings:
+  1. TURTLE fit inputs not bound to C13's rows: the sidecar's `input_sha256` was not checked. Fixed below the line.
+  2. False FAIL when a range state is not ok: raw `r` against the round's nulled `r`. Fixed below the line.
+  3. CLAY vectors are not bit-identical to the round's (float64 operation order; 0 to 2 elements differ per pair, largest row difference 7.3e-12 before the cast). Risk of a false FAIL only. A fix is above the line and re-derives all 52 sections, so it waits for `compare`.
+  4. Recorded inputs of derived docs are never read back. Not fixed; checked by hand at `compare` (no TURTLE file newer than the derive's start).
+  5. `compare` ignored the status hashes. Fixed below the line.
+  6. `om_cells.run_labels` does not itself need compare's PASS. Not fixed: the controller requires `C13 PASS .. scope=full` first.
+  7. Any edit above the line re-derives all 52 sections, since `source_identity` keys every cache.
+- **TURTLE row form:** `om_turtle_run._input` feeds c* in the unit form (`om_data.cstar` default); k-means gets the clustering form (`unit=False`). The spec names no form for TURTLE. Size on one seed, two encoders, both sets: row norms 0.99997 to 1.00003, largest element gap 3.7e-6, lowest cosine 0.99999976. Not material; the report states it.
+- **Fix round:** Codex resume, one round, 5h 84% to 79% left. Only `om_c13.py` below the line and `test_om_c13.py`. Text above the line byte-identical (sha256 acbb489a before and after, checked by the controller too). 70 tests pass (controller's run). Six mutations on a temporary copy, all caught: range `ret`/`clu` swap, unit encoder, pick margin, clustering margin, retrieval and clustering text sets.
+- **Re-review of the fix:** Sonnet `high` worker, blind to results. No defect gives a wrong PASS or a false FAIL. Items a, b, c, the boundary and the cost are sound; 5 real sidecars hash equal to `Work.vector`; its own run of the 6 mutants caught each at the intended assert. Left as they are (low, no effect on a label): the clean-pass fixture's synthetic arrays collide, so that test shows the count of tags, not each tag; `compare_status_hashes` does not check that the stored path is under `--records`; the low-draw test cannot tell its two guards apart; `compare_turtle_inputs` trusts the sidecar body for aspect and seed, while `turtle_parts` checks the pairing for every fit a cell reads.
+
+## C13 full derive, compare and labels (2026-11-05, unattended)
+
+- **Derive:** 52 of 52 sections exit 0, 04:46 to 05:27 (41 min on four slots; estimate 1.5 h). `finish`: 337 cells, 10 picks, 0 void.
+- **Hand check of review finding 4:** no file under `OUT/parts/turtle` is newer than 04:00 on 11-05.
+- **Compare:** `C13 PASS items=10762 failed=0 max_abs=2.06238901512e-08 scope=full`. No failed or skipped item, draws 2,000 and 10,000 on both sides. Largest gap a CLAY validation score (MMArt, text set B, `whiten50+k5`); every cell value is within 3.9e-14. `turtle_inputs`: 413 items (412 sidecars and their count), 0 failed, so every TURTLE fit ran on the rows C13 loads by itself, c* in the unit form.
+- **Labels:** `om_run.py labels` wrote `records/labels.json` at 05:28.
+
+## Diagnostics and report draft (2026-11-05, unattended)
+
+- **Diagnostics:** six items through `res-queue cpu`, four at a time (`.scratch/r18-outside-methods/run/diag_drive.sh`), 05:28 to 06:39, all exit 0. `sweep` has `missing` empty and `r17_kmeans` filled on both sets. `adds` took 70 min, the rest under 8 min each. Files: `OUT/diag/`.
+- **Merge:** main (8042ff0c) merged into `r18-outside-methods` after the labels, so the report sits on the current index. No hashed file moved after the labels.
+- **Report draft:** Codex `gpt-6.1-sol` medium, brief `.scratch/r18-outside-methods/report/task.txt`, thread `01a1aa39-d221-7913-bc21-b97c52bb5928`, 5h 79% to 68% left, 20.0 KB. Committed unreviewed. Claude's edit and claim review are next.
+- **GPU check at 06:55:** `nvidia-smi` fails with `Failed to initialize NVML: Unknown Error`; kernel module and library both 595.99.02. So a host `daemon-reload` dropped the GPU from the container (`container.md`). r18 needs no more GPU work.
+
+## Auto report and user-read report (2026-11-05, unattended)
+
+- **Controller's edit:** options, our reading and recommendation rewritten. "TURTLE usually reduces scores" checked against `OUT/diag/turtle_adds_*.json` and stated in full as a diagnostic: 203 of 232 comparisons below k-means, while on the plain image ARI and ACC are mixed (d above 0 in 20 of 48). Deviation items a to h all present. 20.8 KB against the aim of about 18; the extra is the caveats the claim review required.
+- **Option 3's source:** the spec's D25 keeps a one-off selection on validation (50 fits) for a close cell. D9 says "50 fits per cell"; the report takes D25. In 5 c* k-means cells and 6 cells with TURTLE on both sides, d is below c*'s seed range, all emotion ARI or ACC.
+- **A check that found nothing:** `cand` of the SC5 and SC6 cells for MMArt SigLIP 2 emotion ACC agree at four digits. The two values differ by 1e-5 and the partitions are separate. It is the only such pair of 116.
+- **Claim review:** Sonnet `high` worker, about 110 claims. No table number wrong. Must-fix: one overclaim (the gates "cover" extraction and training; TURTLE training has only a short official-code check and one full fit across machines), the option 3 cost range (3.7 to 4.4 GPU h), and four process statements. All applied.
+- **User-read report:** Codex resume of the report thread, 5h 68% to 65%. Controller rewrote title, summary and "How we got here". Cold read on Haiku, fidelity check on Sonnet `high` (about 75 claims, no number wrong), one fix wave, humanizer pass. The TPIPS overlap caveat and the reach of the re-derivation (it recomputes CLAY's vectors, redoes no feature extraction or training) also went into the full report.
+- **Cold-read items not applied:** the cost details of the options stay, since the user's choice rests on them; the abstract date stays, since the advice rests on it; encoder names get one line, no more.
