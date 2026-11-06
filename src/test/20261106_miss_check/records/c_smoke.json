@@ -1,0 +1,97 @@
+{
+  "smoke": 300,
+  "device": "cpu",
+  "text": "A",
+  "n_paintings": 300,
+  "n_captions": 1517,
+  "draws": 10000,
+  "score_passed": true,
+  "outcomes_passed": true,
+  "E_unchanged": true,
+  "counts": {
+    "A": {
+      "cstar-plain": 8,
+      "cstar-teacher": 5,
+      "late-plain": 9,
+      "late-teacher": 6
+    },
+    "B": {
+      "cstar-plain": 6,
+      "cstar-teacher": 5,
+      "late-plain": 9,
+      "late-teacher": 6
+    },
+    "E": {
+      "cstar-plain": 8,
+      "cstar-teacher": 3,
+      "late-plain": 9,
+      "late-teacher": 0
+    }
+  },
+  "metrics_tests": "3 passed",
+  "gates": {
+    "smoke": 300,
+    "image": {
+      "n": 200,
+      "min_cosine": 0.9999998807907104,
+      "passed": true
+    },
+    "regression": [
+      {
+        "set": "art_held",
+        "row": "cstar",
+        "head": "genre",
+        "seed": 0,
+        "readout": "center_k10",
+        "n_query": 1455,
+        "n_finite": 1216,
+        "max_error": 0.00010186433792114258,
+        "passed": false
+      },
+      {
+        "set": "art_held",
+        "row": "plain",
+        "head": "all",
+        "seed": "x",
+        "readout": "center_k10",
+        "n_query": 1455,
+        "n_finite": 1216,
+        "max_error": 0.00010185688734054565,
+        "passed": false
+      },
+      {
+        "set": "mm_test",
+        "row": "cstar",
+        "head": "genre",
+        "seed": 0,
+        "readout": "center_k10",
+        "n_query": 300,
+        "n_finite": 247,
+        "max_error": 4.202127456665039e-06,
+        "passed": true
+      },
+      {
+        "set": "mm_test",
+        "row": "plain",
+        "head": "all",
+        "seed": "x",
+        "readout": "center_k10",
+        "n_query": 300,
+        "n_finite": 247,
+        "max_error": 6.020069122314453e-06,
+        "passed": true
+      }
+    ],
+    "passed": false
+  },
+  "cpu_probe": {
+    "query": 42114,
+    "label_only_cpu": 0.2461773008108139,
+    "original_r23_cpu": 0.24617724120616913,
+    "saved_r23": 0.24627916514873505,
+    "cpu_evaluator_difference": 5.960464477539063e-08,
+    "saved_difference": 0.00010186433792114258
+  },
+  "text_M": "not extracted; A-only smoke, no fake stores",
+  "outputs": "/data/SSD2/cosir_r24/20261106_miss_check/smoke300"
+}
