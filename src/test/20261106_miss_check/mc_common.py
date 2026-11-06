@@ -13,8 +13,8 @@ from tcl_metrics import painting_interval
 
 R23 = P.DEFAULT_OUT
 OUT = Path(os.environ.get('MC_OUTPUTS', '/data/SSD2/cosir_r24/20261106_miss_check'))
-assert not OUT.resolve().is_relative_to(R23.resolve())
-assert not OUT.resolve().is_relative_to(P.R15_OUT.resolve())
+for protected in (Path('/data/SSD2/cosir_r23'), Path('/data/SSD2/cosir_r15'), P.ROUND, P.R15_ROUND):
+    assert not OUT.resolve().is_relative_to(protected.resolve()), protected
 
 
 def record(group):
