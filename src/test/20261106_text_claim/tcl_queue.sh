@@ -18,6 +18,7 @@ cd "$R"
 chain="${1:?usage: tcl_queue.sh val|held|post}"
 
 wait_for_19() {   # $1 = estimate in minutes
+  [ "${R23_D13_LIFTED:-0}" = 1 ] && return 0    # lifted for this run by the user, 2026-11-06 12:49 (spec's Amendments)
   local s; s="$("$PY" tcl_run.py _wait --est "$1")"
   if [ "$s" -gt 0 ]; then echo "$(TZ=Europe/Amsterdam date '+%F %H:%M') r23: waiting ${s}s for 19:00 (D13)"; sleep "$s"; fi
 }

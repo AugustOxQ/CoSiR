@@ -186,14 +186,15 @@ Grill rows: the r23 decide 2 chat, 2026-11-06, about 03:50 to 04:30.
 | D10 | Why a = 0.7 helps | §3.6, after the verdicts, on ArtELingo validation and held; MMArt test as well, at the same cost | held rows cost seconds, and a paper sentence needs them (validation only) | user, after seeing the recommendation (minor c) | 2026-11-06 |
 | D11 | Read-outs | per row, aspect and direction, on validation over five seeds; MMArt on its own validation; fixed read-outs reported after the verdict | r22's rule (one read-out per row) | user, after seeing the recommendation (minor d) | 2026-11-06 |
 | D12 | Side rows | §3.2; SemArt and word queries out | a table for the supplementary | user, after seeing the recommendation (minor f) | 2026-11-06 |
-| D13 | Device | local GPU, jobs under 1 hour each; heavy jobs that fall between 10:00 and 19:00 on a weekday wait for 19:00 | a DAS6 move needs a data sync for about 2 h of work | agent default, not objected to | 2026-11-06 |
+| D13 | Device | local GPU, jobs under 1 hour each; heavy jobs that fall between 10:00 and 19:00 on a weekday wait for 19:00, lifted for this run on 2026-11-06 (Amendments) | a DAS6 move needs a data sync for about 2 h of work | agent default, not objected to; the lift: user | 2026-11-06 |
 | D14 | Term | "late fusion", with "joined scores" as its old name; WIN, LEVEL, BELOW enter the glossary | the field's term | user, after seeing the recommendation | 2026-11-06 |
 | D15 | Interval | §3.4: r11's form with paintings as the unit | caption queries of one painting are not independent (r22 used paintings, one seed) | agent default | 2026-11-06 |
 | D16 | Pair cells | one head and read-out per direction from validation | the bar needs one row; a best head per seed adds a pick (best head per draw) | agent default | 2026-11-06 |
 | D17 | Stores | new text stores in the shared cache, `pre_extract/artelingo_full/` and `pre_extract/mmart/`; run outputs in `/data/SSD2/cosir_r23/` | `storage.md` | agent default | 2026-11-06 |
 | D18 | Round | folder `src/test/20261106_text_claim/`, prefix `tcl_`; report sequence date 2027-01-11 | a new prefix per round | agent default | 2026-11-06 |
 
-**Amendments** none.
+**Amendments**
+- 2026-11-06 12:49, before any held score, user: "No one will be in the office, so start running freely." The 19:00 wait of D13 is lifted for this run. It changes when the jobs run. It changes no rule, row, pick or bar. Places: this section's D13 row; `tcl_queue.sh` (`R23_D13_LIFTED=1`).
 
 ## 5. Assumptions and open questions
 
