@@ -8,8 +8,9 @@
     fuse(c, plain, a)                          the late vector of one side
     gate_ii(device)                            15 weight files against the stored exports; writes OUT/stage0/gate_ii.json
 
-At raw cosine, the cosine of two late vectors is (1 - a) c* cosine + a plain cosine. No label is read here: the
-label arrays of tcl_data are not touched, and gate (ii) reads no held-set label or frame at all.
+At raw cosine, the cosine of two late vectors is (1 - a) c* cosine + a plain cosine. This module reads no label directly.
+rows() delegates through tcl_data.frame, which loads held labels on held sets; no returned vector depends on them.
+Gate (ii) reads no held-set label or frame.
 """
 import json
 import sys
@@ -85,8 +86,10 @@ def gate_ii(device='cpu', out=None):
     """Spec §3.5 (ii), on the full sets (TCL_SMOKE does not apply). Per file (aspect, seed), the largest absolute difference:
     art_val_image, art_held_image, mm_test_image against the stored image exports (mm_test by key, from r15's `new` export of
     16,782 keys) and art_val_caption (L2-normalised caption means through the caption side) against the stored `cap`. A set
-    group passes when all its differences are at most 1e-3: `art` (art_val_image, art_held_image, art_val_caption) and `mm`.
-    No label and no held frame is read: images come from the stores by painting name or key."""
+    group passes when all its differences are at most 1e-3: `art` (art_val_image, art_held_image, art_val_caption)
+    and `mm` (mm_test_image, art_val_caption).
+    MMArt text rows use the same caption side, so its caption check serves both groups.
+    No held label or held frame is read: images come from the stores by painting name or key."""
     import mt_export
     captions = tx_data.val_captions()
     assert np.array_equal(captions['pid'], tcl_data._art_captions('val')['pid']), 'pid differs from tcl_data'
@@ -110,7 +113,7 @@ def gate_ii(device='cpu', out=None):
             print('gate ii', aspect, seed, {k: round(v, 6) for k, v in item.items()}, flush=True)
             del image_side, caption_side
     assert len(files) == 15
-    groups = dict(art=('art_val_image', 'art_held_image', 'art_val_caption'), mm=('mm_test_image',))
+    groups = dict(art=('art_val_image', 'art_held_image', 'art_val_caption'), mm=('mm_test_image', 'art_val_caption'))
     largest = {k: max(f[k] for f in files.values()) for k in groups['art'] + groups['mm']}
     passed = {g: bool(all(largest[k] <= TOL for k in keys)) for g, keys in groups.items()}
     result = dict(tolerance=TOL, files=files, largest=largest, **{'pass': passed})
