@@ -5,7 +5,7 @@
 #   held  stage 2 (the bar rows of art_held and mm_test narrative, then decide). Then C13 (run chat), then `tcl_run.py verdicts`.
 #   post  stage 3 (side rows, the other four MMArt kinds, diagnostics); the runner refuses without records/verdicts.json.
 # The first failed step stops the chain (set -e): trace it, fix, rerun; every step resumes (extraction by done.json, scoring
-# by its done files). D13: a job with an estimate waits for 19:00 if it would overlap 10:00 to 19:00 on a weekday.
+# by its done files). D13: a GPU job with an estimate waits for 19:00 if it would overlap 10:00 to 19:00 on a weekday.
 # Durations are estimates, not measurements.
 set -euo pipefail
 R="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -19,7 +19,7 @@ chain="${1:?usage: tcl_queue.sh val|held|post}"
 
 wait_for_19() {   # $1 = estimate in minutes
   local s; s="$("$PY" tcl_run.py _wait --est "$1")"
-  if [ "$s" -gt 0 ]; then echo "$(date '+%F %T') r23: waiting ${s}s for 19:00 (D13)"; sleep "$s"; fi
+  if [ "$s" -gt 0 ]; then echo "$(TZ=Europe/Amsterdam date '+%F %H:%M') r23: waiting ${s}s for 19:00 (D13)"; sleep "$s"; fi
 }
 gpu_short() {     # stage step
   res-queue gpu --short --label "r23:$2" -- "$PY" tcl_run.py "$1" --only "$2" > "$L/$2.log" 2>&1
@@ -55,7 +55,6 @@ val)
 held)
   gpu_est stage2 score_art_held 30
   gpu_short stage2 score_mm_test_narrative
-  wait_for_19 45
   res-queue cpu --est 45m --label r23:decide -- "$PY" tcl_run.py stage2 --only decide > "$L/decide.log" 2>&1
   echo "r23 held chain done: $(grep -h 'TCL_RUN stage2 decide' "$L/decide.log" | tail -1). Next: C13, then tcl_run.py verdicts"
   ;;
