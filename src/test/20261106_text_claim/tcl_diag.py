@@ -838,11 +838,11 @@ def main(argv=None):
     p.add_argument('--device', default='cuda')
     p.add_argument('--parts', nargs='+', type=int, choices=sorted(PARTS), default=sorted(PARTS))
     args = p.parse_args(argv)
-    tcl_score.held_guard('art_held')
-    tcl_score.held_guard('mm_test')
     if not P.SMOKE and not P.record_path('verdicts.json').exists():
         print(f'refused: {P.record_path("verdicts.json")} is absent; stage 3 runs after the verdicts', file=sys.stderr)
         return 2
+    tcl_score.held_guard('art_held')
+    tcl_score.held_guard('mm_test')
     recs = {g: P.read_committed_record(f'stage1_{g}.json') for g in ('art', 'mm')}
     ctx = Context(recs, args.device)
     for n in sorted(set(args.parts)):
