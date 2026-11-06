@@ -1,6 +1,6 @@
 # c*'s caption side on held rows: design
 
-> Date: 2026-11-06 05:00 · Status: draft · Kind: experiment
+> Date: 2026-11-06 05:00 · Status: approved 2026-11-06 05:09 (from the brief, r23 decide 2; no container restart) · Kind: experiment
 > Builds on: [report 2027-01-09](../../reports/auto/percept/2027-01-09_text_retrieval.md) (r22, exploration) and
 > [report 2027-01-10](../../reports/auto/percept/2027-01-10_pair_hit_checks.md) (short checks); decisions C and A of
 > 2026-11-05 and 2026-11-06; the grill in the r23 decide 2 chat (2026-11-06, two rounds and a closing summary; its

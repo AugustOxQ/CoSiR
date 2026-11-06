@@ -33,7 +33,7 @@ and closed (user, 2026-11-05): good overall; against the teacher, 46 of 48 AMI a
 ArtELingo emotion that gap comes from one class, contentment (report 2027-01-07); genre labels alone reach ACC level with
 both models, and ARI close to c* and below the teacher. After the weekly meeting, text-to-text and cross-modal retrieval are top priority (user, 2026-11-05). r22, an exploration on validation with seed 0,
 is read (user, 2026-11-05): c*'s caption side beats plain Qwen and the teacher's text in 6 of 9 label cells (bar 5; 5 of 9 with one fixed read-out),
-with emotion below the teacher, and pair hits below plain Qwen, which the user expected. The two short checks are read (user, 2026-11-06): on older saved models the own-caption term raises pair hits and lowers label hits; joined c* and plain Qwen scores pass the rule at one weight, a = 0.7, which the user reads as important, with no clear reason yet why that weight helps. Next: the claim loop as r23, with c* as the main row and joined scores as one extra row (user, 2026-11-06). The pair-hit limit waits for
+with emotion below the teacher, and pair hits below plain Qwen, which the user expected. The two short checks are read (user, 2026-11-06): on older saved models the own-caption term raises pair hits and lowers label hits; joined c* and plain Qwen scores pass the rule at one weight, a = 0.7, which the user reads as important, with no clear reason yet why that weight helps. Next: the claim loop as r23, with c* as the main row and late fusion (joined scores, a = 0.7) as one extra row (user, 2026-11-06); its [spec](specs/2026-11-06-text-claim-design.md) is approved (user, 2026-11-06 05:09), build and run unattended, report by 2026-11-07. The pair-hit limit waits for
 the user's talk with the other authors. r20 (figure) and r21 (head variants) wait. The stage note's form still waits for the user. Deadlines:
 abstract 2026-11-10, paper 2026-11-16, supplementary 2026-11-23.
 Reporting (user, 2026-11-04): r17's results enter the weekly report of 2026-11-04 only after the user's reading in the r20
@@ -111,6 +111,11 @@ r17.
   own-caption term (user, after seeing the recommendation). The loop also checks why a = 0.7 helps, by which queries c* and plain Qwen each get right (user, after
   seeing the recommendation).
 - **Why:** the rule written before the checks calls for the extra row; a retrain would put every earlier result at risk 10 days before the paper deadline.
+- **Grill and spec (r23 decide 2):** on held ArtELingo and MMArt's new rows (16,384 paintings; r15's test set, not the 11,528 shared rows), each with its own verdict. c* holds with a WIN over plain Qwen in 9 of 9
+  label cells and over the teacher's text in 5 or more; qualified with 9 of 9 and 3 or 4; fails otherwise (user). 8 of 9 over plain Qwen stays fails (user, after seeing the recommendation). Late fusion, the field's
+  name for joined scores, gets its own verdict: the same label bar, and a pair R@10 lower bound above -0.02 against plain Qwen (user). MMArt's bar text is the narrative text (user, unsure, then after seeing the
+  recommendation): the unified text names its own style in 83.2% of validation rows, against 0.2% for ArtELingo captions, and our first figure of 15.7% covered emotion only. Stage 2 is a claim test (user, after
+  seeing the recommendation). Rule review: pass after fixes, all applied.
 - **Links:** [report](../reports/auto/percept/2027-01-10_pair_hit_checks.md) · [user-read report](../user_read/2026-11-05_pair_hit_checks.md) · [rule](../../src/test/20261105_text_retrieval/20261105_text_retrieval_log.md)
 
 ## 2026-11-05 · Text retrieval read: c* above both comparators in 6 of 9 label cells, below plain Qwen on pair hits, as the user expected; short checks, then the claim loop
