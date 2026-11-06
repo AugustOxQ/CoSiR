@@ -174,6 +174,21 @@ def test_replicate_six_paintings_counts_repeated_units_and_seeds(seeds, expected
     assert got == pytest.approx(expected, abs=1e-12, rel=0)
 
 
+@pytest.mark.parametrize('seeds, expected', [([0, 0, 1], 7 / 450), ([1, 1, 0], 23 / 450)])
+def test_replicate_three_seeds_keeps_repeats_of_s(seeds, expected):
+    """Hand case, I = [0, 1, 1, 4, 5, 5]: seed numerators 6.2, 7.8 and an unused 9.9 over 15 queries, comparator 6.5.
+    S = [0, 0, 1] is (2 v0 + v1) / 3 minus the comparator; dropping repeats of S would give (v0 + v1) / 2."""
+    counts = np.asarray([1, 2, 3, 1, 2, 4], dtype=np.float64)
+    cand = np.asarray([[0.2, 1.0, 1.5, 0.4, 1.6, 1.2],
+                       [0.8, 0.6, 2.1, 0.9, 0.2, 2.8],
+                       [2.0, 1.0, 9.0, 9.0, 3.0, 1.45]], dtype=np.float64)
+    comp = np.asarray([0.1, 0.8, 1.2, 0.6, 0.8, 2.0], dtype=np.float64)
+    units = np.asarray([0, 1, 1, 4, 5, 5], dtype=np.int64)
+    got = m.replicate(cand, comp, counts, units, np.asarray(seeds, dtype=np.int64))
+    assert got == pytest.approx(expected, abs=1e-12, rel=0)
+    assert abs(got - ((6.2 + 7.8) / 2 - 6.5) / 15) > 1e-3
+
+
 def loop_interval(cand, comp, pid, draws):
     """Independent oracle: physically repeat query rows instead of aggregating painting sums."""
     units = np.unique(pid)
