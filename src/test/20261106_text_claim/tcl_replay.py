@@ -1,10 +1,29 @@
-"""r23 scoring replay, gate (iii) (ticket 06; spec §3.5 (iii), C12)."""
+"""r23 scoring replay, gate (iii) (ticket 06; spec §3.5 (iii), C12). Run from the round folder: `python tcl_replay.py cuda`.
+
+New scoring code fed r22's validation rows (means fitted on those rows, passed to `tcl_metrics.evaluate`), against numbers
+read from r22's own files. Writes OUT/stage0/gate_iii.json, {"clauses": {name: {"pass", "worst", "n"}}, "overall"}:
+
+    core_label     c*, plain Qwen, teacher's text, seed 0: label mAP, 9 cells x 3 read-outs, vs results/core.json     1e-5
+    late_label     late fusion at a = 0, 0.7, 1, seed 0 heads: label mAP (best read-out) per cell, vs followup.json     1e-5
+    late_pair      the same: R@10 of the picked head and read-out per direction, and the pick itself                    1e-5
+    mmart_label    MMArt validation, unified text, text to image, raw and centring, c* and plain: label mAP, mmart.json 1e-5
+    mmart_pair     the same: pair R@10 and MRR                                                                         1e-5
+    interval_hand  `replicate` on a hand case of 6 paintings (2 and 3 seeds, hand I and S)                              1e-12
+    interval_tie   `painting_interval` against `replicate` rebuilt draw by draw on the same case and generator           1e-12
+    table2         `painting_interval`, k = 1, on r22's per-query differences vs r22's Table 2 bounds                    3e-4
+
+A difference of head or read-out in late_pair counts as 1. The MMArt labels are first checked against r22's own coding,
+joined by key (`check_label_join`). TCL_SMOKE does not apply: the rows are full validation rows (`full_rows`).
+"""
+import contextlib
 import json
+import sys
 from pathlib import Path
 
 import numpy as np
 
 import tcl_paths as P
+import tcl_data
 import tcl_forward
 import tcl_metrics
 
@@ -329,3 +348,77 @@ def mmart_reference_r22(path=R22_RESULTS / 'mmart.json'):
                 pair[key] = float(r[name])
     assert len(label) == 4 * 3 * len(MM_READOUTS) and len(pair) == 4 * 2 * len(MM_READOUTS), (len(label), len(pair))
     return dict(label=label, pair=pair)
+
+
+# ------------------------------------------------------------------------------------------------ the gate
+class Source:
+    """One validation set read through the data door and the forward module: `frame`, and `rows(row, head)` giving
+    (text, image) for plain Qwen (head None), c* and the teacher's text (head = aspect), all at seed 0."""
+
+    def __init__(self, set_name, kind, device):
+        self.set_name, self.kind, self.device = set_name, kind, device
+        self.frame = tcl_data.frame(set_name, kind)
+        self.cache = {}
+
+    def rows(self, row, head):
+        if (row, head) not in self.cache:
+            assert (head is None) == (row == 'plain') and row in ('plain', 'cstar', 'teacher')
+            self.cache[row, head] = tcl_forward.rows(self.set_name, self.kind, row, 'all' if head is None else head,
+                                                     0 if row == 'cstar' else 'x', self.device)
+        return self.cache[row, head]
+
+    def check_labels(self):
+        """MMArt only: r15's labels and order against r22's own coding of its val index, joined by key."""
+        import tx_data
+        import tx_extras
+        import mt_paths
+        assert self.set_name == 'mm_val'
+        index = tx_data.mmart_index()
+        codes, books = tx_extras.mmart_labels(index)
+        check_label_join(self.frame['names'], {a: self.frame['labels'][a]['i'] for a in P.ASPECTS}, mt_paths.CLASSES,
+                         index['key'].tolist(), codes, books)
+
+
+@contextlib.contextmanager
+def full_rows():
+    """Gate (iii) replays full validation rows: TCL_SMOKE does not apply to them."""
+    saved, P.SMOKE = P.SMOKE, 0
+    try:
+        yield
+    finally:
+        P.SMOKE = saved
+
+
+def run_gate(art, mm, refs, items, device, draws=P.N_DRAWS):
+    """The eight clauses, in order. `art` and `mm` are sources, `refs` r22's numbers {core, late, mmart}, `items` Table 2's."""
+    clauses = {}
+
+    def done(name, result):
+        clauses[name] = result
+        print(f"gate iii {name}: {'pass' if result['pass'] else 'FAIL'} worst {result['worst']:.3g} n {result['n']}", flush=True)
+
+    done('core_label', clause_core(art, refs['core'], device))
+    late = late_scores(art, device)
+    done('late_label', clause_late_label(late, refs['late']))
+    done('late_pair', clause_late_pair(late, refs['late']))
+    mmart = mmart_scores(mm, device)
+    done('mmart_label', clause_mmart_label(mmart, refs['mmart']))
+    done('mmart_pair', clause_mmart_pair(mmart, refs['mmart']))
+    done('interval_hand', clause_interval_hand())
+    done('interval_tie', clause_interval_tie())
+    done('table2', clause_table2(items, draws=draws))
+    return clauses
+
+
+def gate_iii(device='cuda', out=None):
+    """Spec §3.5 (iii) on the full validation sets (TCL_SMOKE does not apply). Writes OUT/stage0/gate_iii.json."""
+    with full_rows():
+        refs = dict(core=core_reference_r22(), late=late_reference_r22(), mmart=mmart_reference_r22())
+        clauses = run_gate(Source('art_val', P.CAPTION, device), Source('mm_val', MM_KIND, device), refs, table2_items(), device)
+    return write_gate(clauses, out)
+
+
+if __name__ == '__main__':
+    result = gate_iii(sys.argv[1] if len(sys.argv) > 1 else 'cuda')
+    print('gate iii overall:', 'pass' if result['overall'] else 'FAIL')
+    sys.exit(0 if result['overall'] else 1)

@@ -403,3 +403,42 @@ def test_mmart_reference_crashes_on_a_missing_record(tmp_path):
     path.write_text(json.dumps(doc))
     with pytest.raises(AssertionError):
         R.mmart_reference_r22(path)
+
+
+# ------------------------------------------------------------------------------------------------ the whole gate
+CLAUSES = ('core_label', 'late_label', 'late_pair', 'mmart_label', 'mmart_pair', 'interval_hand', 'interval_tie', 'table2')
+
+
+def fake_gate_inputs():
+    art, mm = FakeSource(seed=2), FakeSource(seed=3, one_text_per_painting=True)
+    refs = dict(core=core_reference(art), late=late_reference(art), mmart=mmart_reference(mm))
+    return art, mm, refs, [synthetic_item()]
+
+
+def test_run_gate_has_one_flag_per_clause_and_overall_follows_them(tmp_path):
+    art, mm, refs, items = fake_gate_inputs()
+    clauses = R.run_gate(art, mm, refs, items, 'cpu', draws=2000)
+    assert tuple(clauses) == CLAUSES and all(c['pass'] for c in clauses.values())
+    assert R.write_gate(clauses, tmp_path)['overall'] is True
+
+
+@pytest.mark.parametrize('where, name', [('core', 'core_label'), ('late', 'late_label'), ('mmart', 'mmart_label')])
+def test_run_gate_fails_the_clause_whose_reference_is_wrong(tmp_path, where, name):
+    art, mm, refs, items = fake_gate_inputs()
+    table = refs[where]['label'] if where != 'core' else refs['core']
+    key = next(iter(table))
+    table[key] += 1e-4
+    clauses = R.run_gate(art, mm, refs, items, 'cpu', draws=2000)
+    assert [n for n, c in clauses.items() if not c['pass']] == [name]
+    assert R.write_gate(clauses, tmp_path)['overall'] is False
+
+
+def test_full_rows_lifts_smoke_inside_and_restores_it():
+    before = P.SMOKE
+    P.SMOKE = 7
+    try:
+        with R.full_rows():
+            assert P.SMOKE == 0
+        assert P.SMOKE == 7
+    finally:
+        P.SMOKE = before
