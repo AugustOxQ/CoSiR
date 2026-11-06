@@ -1,0 +1,29 @@
+{
+  "verdicts": {
+    "SC1": {
+      "P": 9,
+      "Q": null,
+      "T": 6,
+      "verdict": "holds"
+    },
+    "SC2": {
+      "P": 8,
+      "Q": null,
+      "T": 3,
+      "verdict": "fails"
+    },
+    "SC3": {
+      "P": 9,
+      "Q": true,
+      "T": 5,
+      "verdict": "holds"
+    },
+    "SC4": {
+      "P": 9,
+      "Q": true,
+      "T": 0,
+      "verdict": "fails"
+    }
+  },
+  "voided": []
+}
