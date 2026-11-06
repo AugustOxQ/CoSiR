@@ -337,20 +337,26 @@ def label_share(set_name, kind, aspect):
 
 
 # ------------------------------------------------------------------------------------------------ gate (iv)
-def gate_iv():
-    """Spec §3.5 (iv), on the full sets whatever TCL_SMOKE says. Returns the measured sizes; asserts them."""
+def gate_iv_art():
+    """Spec §3.5 (iv) for ArtELingo, on the full sets whatever TCL_SMOKE says. Returns the measured sizes; asserts them."""
     held = rt_data.names('held')
     captions = _art_captions('held')
     val = _art_captions('val')
-    test = mt_data.keys('test')
     got = dict(art_held_paintings=len(held), art_held_captions=len(captions['sample_id']),
                art_held_genre_labelled=int((rt_data.labels('held')['genre'] >= 0).sum()),
-               mm_test_keys=len(test), art_val_paintings=len(val['names']), art_val_captions=len(val['sample_id']),
-               mm_val_keys=len(mt_data.keys('val')))
+               art_val_paintings=len(val['names']), art_val_captions=len(val['sample_id']))
     want = dict(art_held_paintings=P.N_PAINTINGS['art_held'], art_held_captions=P.N_CAPTIONS['art_held'],
-                art_held_genre_labelled=9949, mm_test_keys=P.N_PAINTINGS['mm_test'],
-                art_val_paintings=P.N_PAINTINGS['art_val'], art_val_captions=P.N_CAPTIONS['art_val'],
-                mm_val_keys=P.N_PAINTINGS['mm_val'])
+                art_held_genre_labelled=9949, art_val_paintings=P.N_PAINTINGS['art_val'],
+                art_val_captions=P.N_CAPTIONS['art_val'])
+    assert got == want, (got, want)
+    return got
+
+
+def gate_iv_mm():
+    """Spec §3.5 (iv) for MMArt, on the full sets whatever TCL_SMOKE says. Returns the measured sizes; asserts them."""
+    test = mt_data.keys('test')
+    got = dict(mm_test_keys=len(test), mm_val_keys=len(mt_data.keys('val')))
+    want = dict(mm_test_keys=P.N_PAINTINGS['mm_test'], mm_val_keys=P.N_PAINTINGS['mm_val'])
     assert got == want, (got, want)
     assert len(set(test)) == len(test), 'MMArt test keys are not unique'
     # r15 cmd_cutsets hashes lexical key order; evaluation order sorts each key's digest.
@@ -360,3 +366,8 @@ def gate_iv():
     assert test == sorted(test, key=lambda k: hashlib.sha256(k.encode('utf-8')).hexdigest()), \
         "MMArt test keys not in r15's order"
     return got
+
+
+def gate_iv():
+    """Both sets; a fault in either asserts."""
+    return {**gate_iv_art(), **gate_iv_mm()}

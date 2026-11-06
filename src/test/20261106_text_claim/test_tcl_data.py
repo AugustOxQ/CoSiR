@@ -105,6 +105,8 @@ def test_frame_edits_do_not_poison_later_calls(monkeypatch, set_name, kind, smok
 
 def test_gate_iv():
     got = D.gate_iv()
+    assert D.gate_iv_art() == {k: v for k, v in got.items() if k.startswith('art_')}
+    assert D.gate_iv_mm() == {k: v for k, v in got.items() if k.startswith('mm_')}
     assert got == dict(art_held_paintings=12281, art_held_captions=61744, art_held_genre_labelled=9949,
                        mm_test_keys=16384, art_val_paintings=6152, art_val_captions=30872, mm_val_keys=5769)
 
