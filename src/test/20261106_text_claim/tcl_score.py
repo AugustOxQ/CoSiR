@@ -169,9 +169,25 @@ def release(device):
         torch.cuda.empty_cache()
 
 
+def held_guard(set_name):
+    """Refuse to score a held set (§3.5: stage 1 is committed before any held number). A validation set needs nothing.
+    Reads the set's own group's stage 1 record and status.json, and the other group's stage 1 record when that file exists,
+    through `read_committed_record`: a missing file, or a file that differs from git HEAD, raises. A missing other-group
+    record is allowed, since §3.5 and §6 void only that group's verdicts."""
+    if set_name not in ('art_held', 'mm_test'):
+        return
+    own = P.GROUP[set_name]
+    other = 'mm' if own == 'art' else 'art'
+    P.read_committed_record(f'stage1_{own}.json')
+    P.read_committed_record('status.json')
+    if P.record_path(f'stage1_{other}.json').exists():
+        P.read_committed_record(f'stage1_{other}.json')
+
+
 def run(set_name, kinds=None, rows=None, device='cuda', block=BLOCK, out=None):
     """Score a set: every kind (default all of its group), every planned row, head and seed. Rows are built and released
     per head and seed."""
+    held_guard(set_name)
     import tcl_data
     import tcl_forward
     assert set_name in P.SETS

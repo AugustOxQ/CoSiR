@@ -456,6 +456,7 @@ def test_run_routes_each_units_rows_flags_and_validation_counts(tmp_path, monkey
     monkeypatch.setattr(tcl_forward, 'rows', rows)
     monkeypatch.setattr(S, 'score_unit', record_score)
     monkeypatch.setattr(S, 'release', lambda device: released.append(device))
+    monkeypatch.setattr(S, 'held_guard', lambda set_name: None)      # the guard has its own tests below
     expected_calls, expected_scored = [], []
     for set_name in (val_set, held_set):
         S.run(set_name, device='cpu', block=5, out=tmp_path)
@@ -558,3 +559,121 @@ def test_validation_file_holds_what_evaluate_returns_without_means(tmp_path, sto
     assert np.array_equal(got['first_rank'], want['first_rank'], equal_nan=True)
     for key, value in want['ap'].items():
         assert np.allclose(got[f'ap__{key}'], value, atol=1e-6 if readout != 'r0' else 0, equal_nan=True)
+
+
+# ------------------------------------------------------------------------------------------------ held guard
+@pytest.fixture
+def repo(tmp_path, monkeypatch):
+    """A temporary git repository standing in for the project: P.REPO and P.RECORDS point into it, SMOKE is off."""
+    import subprocess
+    root = tmp_path / 'repo'
+    records = root / 'round' / 'records'
+    records.mkdir(parents=True)
+    git = lambda *a: subprocess.run(['git', '-C', str(root), *a], check=True, capture_output=True)   # noqa: E731
+    git('init', '-q')
+    git('config', 'user.email', 't@t')
+    git('config', 'user.name', 't')
+    monkeypatch.setattr(P, 'REPO', root)
+    monkeypatch.setattr(P, 'RECORDS', records)
+    monkeypatch.setattr(P, 'SMOKE', 0)
+
+    def write(name, text='{}'):
+        (records / name).write_text(text)
+
+    def commit(*names):
+        git('add', '-f', *[str((records / n).relative_to(root)) for n in names])
+        git('commit', '-q', '-m', 'x')
+    return write, commit, records
+
+
+def test_guard_all_committed_passes(repo):
+    write, commit, _ = repo
+    for n in ('stage1_art.json', 'stage1_mm.json', 'status.json'):
+        write(n)
+    commit('stage1_art.json', 'stage1_mm.json', 'status.json')
+    S.held_guard('art_held')
+    S.held_guard('mm_test')
+
+
+def test_guard_validation_needs_nothing(repo):
+    S.held_guard('art_val')
+    S.held_guard('mm_val')
+
+
+def test_guard_uncommitted_own_record_refuses(repo):
+    write, commit, _ = repo
+    write('status.json')
+    commit('status.json')
+    write('stage1_art.json')
+    with pytest.raises(RuntimeError):
+        S.held_guard('art_held')
+
+
+def test_guard_changed_after_commit_refuses(repo):
+    write, commit, _ = repo
+    write('stage1_art.json')
+    write('status.json')
+    commit('stage1_art.json', 'status.json')
+    write('stage1_art.json', '{"a": 1}')
+    with pytest.raises(RuntimeError):
+        S.held_guard('art_held')
+
+
+def test_guard_missing_status_refuses(repo):
+    write, commit, _ = repo
+    write('stage1_mm.json')
+    commit('stage1_mm.json')
+    with pytest.raises(FileNotFoundError):
+        S.held_guard('mm_test')
+
+
+def test_guard_changed_status_refuses(repo):
+    write, commit, _ = repo
+    write('stage1_mm.json')
+    write('status.json')
+    commit('stage1_mm.json', 'status.json')
+    write('status.json', '{"gate_iii": true}')
+    with pytest.raises(RuntimeError):
+        S.held_guard('mm_test')
+
+
+def test_guard_missing_own_record_refuses(repo):
+    write, commit, _ = repo
+    write('status.json')
+    write('stage1_mm.json')
+    commit('status.json', 'stage1_mm.json')
+    with pytest.raises(FileNotFoundError):
+        S.held_guard('art_held')
+
+
+def test_guard_missing_other_group_record_passes(repo):
+    write, commit, _ = repo
+    write('status.json')
+    write('stage1_art.json')
+    commit('status.json', 'stage1_art.json')
+    S.held_guard('art_held')
+
+
+def test_guard_uncommitted_other_group_record_refuses(repo):
+    write, commit, _ = repo
+    write('status.json')
+    write('stage1_art.json')
+    commit('status.json', 'stage1_art.json')
+    write('stage1_mm.json')
+    with pytest.raises(RuntimeError):
+        S.held_guard('art_held')
+
+
+def test_run_on_held_set_with_uncommitted_record_raises_before_any_row(repo, tmp_path, monkeypatch):
+    import tcl_data
+    import tcl_forward
+    write, _, _ = repo
+    write('stage1_art.json')
+    write('status.json')
+
+    def boom(*a, **k):
+        raise AssertionError('data was read before the guard')
+    monkeypatch.setattr(tcl_data, 'frame', boom)
+    monkeypatch.setattr(tcl_forward, 'rows', boom)
+    with pytest.raises(RuntimeError, match='not committed'):
+        S.run('art_held', device='cpu', out=tmp_path)
