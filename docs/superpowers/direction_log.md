@@ -33,7 +33,7 @@ and closed (user, 2026-11-05): good overall; against the teacher, 46 of 48 AMI a
 ArtELingo emotion that gap comes from one class, contentment (report 2027-01-07); genre labels alone reach ACC level with
 both models, and ARI close to c* and below the teacher. After the weekly meeting, text-to-text and cross-modal retrieval are top priority (user, 2026-11-05). r22, an exploration on validation with seed 0,
 is read (user, 2026-11-05): c*'s caption side beats plain Qwen and the teacher's text in 6 of 9 label cells (bar 5; 5 of 9 with one fixed read-out),
-with emotion below the teacher, and pair hits below plain Qwen, which the user expected. The two short checks are read (user, 2026-11-06): on older saved models the own-caption term raises pair hits and lowers label hits; joined c* and plain Qwen scores pass the rule at one weight, a = 0.7, which the user reads as important, with no clear reason yet why that weight helps. Next: the claim loop as r23. The pair-hit limit waits for
+with emotion below the teacher, and pair hits below plain Qwen, which the user expected. The two short checks are read (user, 2026-11-06): on older saved models the own-caption term raises pair hits and lowers label hits; joined c* and plain Qwen scores pass the rule at one weight, a = 0.7, which the user reads as important, with no clear reason yet why that weight helps. Next: the claim loop as r23, with c* as the main row and joined scores as one extra row (user, 2026-11-06). The pair-hit limit waits for
 the user's talk with the other authors. r20 (figure) and r21 (head variants) wait. The stage note's form still waits for the user. Deadlines:
 abstract 2026-11-10, paper 2026-11-16, supplementary 2026-11-23.
 Reporting (user, 2026-11-04): r17's results enter the weekly report of 2026-11-04 only after the user's reading in the r20
@@ -107,6 +107,10 @@ r17.
 - **Our reading, opened after the user's:** it agrees on the term and on the value of joined scores. It differs in two points. The term is a trade-off, since it
   costs label hits, and its effect on c* itself is not known. "Works" holds on validation only: one grid point, one seed, and the weight picked on the scored rows.
 - **Why a = 0.7 helps:** not tested. A likely cause is that the two scores make different errors (agent, not checked).
+- **Decided (A):** the claim loop carries c* as the main row and joined scores as one extra row, with a fixed from validation; c* stays frozen, no retrain with the
+  own-caption term (user, after seeing the recommendation). The loop also checks why a = 0.7 helps, by which queries c* and plain Qwen each get right (user, after
+  seeing the recommendation).
+- **Why:** the rule written before the checks calls for the extra row; a retrain would put every earlier result at risk 10 days before the paper deadline.
 - **Links:** [report](../reports/auto/percept/2027-01-10_pair_hit_checks.md) · [user-read report](../user_read/2026-11-05_pair_hit_checks.md) · [rule](../../src/test/20261105_text_retrieval/20261105_text_retrieval_log.md)
 
 ## 2026-11-05 · Text retrieval read: c* above both comparators in 6 of 9 label cells, below plain Qwen on pair hits, as the user expected; short checks, then the claim loop
