@@ -1,0 +1,56 @@
+{
+ "gate_i": {
+  "art_held/caption/emotion_focus/teacher": true,
+  "art_held/caption/genre_word/teacher": true,
+  "art_held/caption/none/roberta": true,
+  "art_held/caption/style_word/teacher": true,
+  "mm_test/emotional/default/plain": true,
+  "mm_test/emotional/emotion_focus/teacher": true,
+  "mm_test/emotional/genre_word/teacher": true,
+  "mm_test/emotional/style_word/teacher": true,
+  "mm_test/formal/default/plain": true,
+  "mm_test/formal/emotion_focus/teacher": true,
+  "mm_test/formal/genre_word/teacher": true,
+  "mm_test/formal/style_word/teacher": true,
+  "mm_test/historical/default/plain": true,
+  "mm_test/historical/emotion_focus/teacher": true,
+  "mm_test/historical/genre_word/teacher": true,
+  "mm_test/historical/style_word/teacher": true,
+  "mm_test/narrative/default/plain": true,
+  "mm_test/narrative/emotion_focus/teacher": true,
+  "mm_test/narrative/genre_word/teacher": true,
+  "mm_test/narrative/style_word/teacher": true,
+  "mm_test/unified/default/plain": true,
+  "mm_test/unified/emotion_focus/teacher": true,
+  "mm_test/unified/genre_word/teacher": true,
+  "mm_test/unified/style_word/teacher": true,
+  "mm_val/emotional/emotion_focus/teacher": true,
+  "mm_val/emotional/genre_word/teacher": true,
+  "mm_val/emotional/style_word/teacher": true,
+  "mm_val/formal/emotion_focus/teacher": true,
+  "mm_val/formal/genre_word/teacher": true,
+  "mm_val/formal/style_word/teacher": true,
+  "mm_val/historical/emotion_focus/teacher": true,
+  "mm_val/historical/genre_word/teacher": true,
+  "mm_val/historical/style_word/teacher": true,
+  "mm_val/narrative/emotion_focus/teacher": true,
+  "mm_val/narrative/genre_word/teacher": true,
+  "mm_val/narrative/style_word/teacher": true,
+  "mm_val/unified/emotion_focus/teacher": true,
+  "mm_val/unified/genre_word/teacher": true,
+  "mm_val/unified/style_word/teacher": true
+ },
+ "gate_ii": {
+  "art": true,
+  "mm": true
+ },
+ "gate_iii": true,
+ "gate_iv": {
+  "art": true,
+  "mm": true
+ },
+ "stage1": {
+  "art": true,
+  "mm": true
+ }
+}
