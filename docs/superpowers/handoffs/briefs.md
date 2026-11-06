@@ -2007,3 +2007,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-06-r23-run3-handoff.md
 - New chat: tab 'r23 run 3', session d47dbe09-3d81-431f-b85f-639674e20a2d
 
+[brief] CoSiR: r23 run 3 -> r23 run 4 (2026-11-06 16:04 Amsterdam)
+- Done: the auto report is finished, claim-reviewed, indexed and pushed (6671687b).
+- State: ArtELingo: c* holds, late fusion holds. MMArt: c* fails, late fusion fails. Nothing is voided.
+- Next: the user-read report, its two checks, then the r24 decide handoff and `loop-next`.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-06-r23-run4-handoff.md
+- New chat: tab 'r23 run 4', session 8c9ca0a2-757b-4594-b8ef-511baff1afd0
+
