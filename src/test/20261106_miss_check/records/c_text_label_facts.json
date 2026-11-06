@@ -1,0 +1,22 @@
+{
+  "paintings": 11528,
+  "captions": 58002,
+  "caption_words_mean": 14.47667321816489,
+  "caption_words_median": 14.0,
+  "narrative_words_mean": 70.580759888966,
+  "narrative_words_median": 71.0,
+  "label_agreement": {
+    "emotion": {
+      "both": 11398,
+      "agree": 0.43358483944551673
+    },
+    "style": {
+      "both": 11528,
+      "agree": 0.9681644691186676
+    },
+    "genre": {
+      "both": 9401,
+      "agree": 1.0
+    }
+  }
+}
