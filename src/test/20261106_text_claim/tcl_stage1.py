@@ -8,6 +8,7 @@ from tcl_metrics import summarize_pair
 
 
 def _read_score(set_name, kind, row, head, seed, direction, readout, alignment):
+    assert set_name in ('art_val', 'mm_val'), 'stage 1 reads validation only'
     path = p.score_path(set_name, kind, row, head, seed, direction, readout)
     assert path.parents[2].name == path.resolve().parents[2].name == set_name, \
         f'stage 1 needs a validation score path: {path}'
@@ -16,8 +17,13 @@ def _read_score(set_name, kind, row, head, seed, direction, readout, alignment):
         required = {'q_pid', 'first_rank'} | {f'ap__{aspect}' for aspect in aspects}
         assert required <= set(score.files), f'missing score columns: {path}'
         pid, ranks = score['q_pid'], score['first_rank']
-        n_i = p.N_PAINTINGS[set_name]
-        n_q = p.N_CAPTIONS[set_name] if set_name == 'art_val' and direction != 'i2t' else n_i
+        n_i = min(p.SMOKE or p.N_PAINTINGS[set_name], p.N_PAINTINGS[set_name])
+        text = set_name == 'art_val' and direction != 'i2t'
+        if text:
+            # Smoke keeps every caption of the selected paintings, so its count varies.
+            n_q = len(pid) if p.SMOKE else p.N_CAPTIONS[set_name]
+        else:
+            n_q = n_i
         assert pid.shape == (n_q,) and pid.dtype == np.int64, f'query IDs: {path}'
         assert ((pid >= 0) & (pid < n_i)).all(), f'painting positions: {path}'
         if direction == 'i2t' or set_name == 'mm_val':
@@ -52,9 +58,10 @@ def _pair_picks(set_name, kind, alignment):
                     per_seed = []
                     for seed in seeds:
                         _, ranks = _read_score(set_name, kind, row, head, seed, direction, readout, alignment)
-                        per_seed.append(summarize_pair(ranks))
-                    summaries[readout] = {metric: float(np.mean([s[metric] for s in per_seed]))
-                                          for metric in ('mrr', 'r10')}
+                        per_seed.append(summarize_pair(ranks.astype(np.float64)))
+                    # Query counts match across heads; integer totals preserve exact R@10 ties.
+                    summaries[readout] = dict(mrr=float(np.mean([s['mrr'] for s in per_seed])),
+                                              r10=sum(round(s['r10'] * s['n_query']) for s in per_seed))
                 picked = max(p.READOUTS, key=lambda r: summaries[r]['mrr'])
                 candidates[head] = (picked, summaries[picked]['r10'])
         head = max(p.ASPECTS, key=lambda h: candidates[h][1])
