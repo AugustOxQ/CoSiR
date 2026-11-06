@@ -1,0 +1,8 @@
+{
+ "note": "numerics taken from the run's path, logic derived from the rule; no numerical diversity",
+ "pass": true,
+ "sha256": {
+  "stage2/cells.json": "f140acea436574399001088d01ce66ff43943e81cc09aa5d2579a77058ee4a2b",
+  "stage2/outcomes.json": "9be2a191ef8d7dfad7d5943005d086fdbc31c7fb31a3e16083ee3fd8c9fedfa9"
+ }
+}
