@@ -1983,3 +1983,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-06-r23-build-5-handoff.md
 - New chat: tab 'r23 build 5', session e11d41ed-3414-46cc-93d8-16b4b7521d82
 
+[brief] CoSiR: r23 build 5 -> r23 run (2026-11-06 09:03 Amsterdam)
+- Done: all 10 tickets, the final review, one fix wave and its re-review. Merged into main at f43f3692 and pushed.
+- State: no held score exists. 464 round tests pass. The end-to-end smoke passes from stage 0 to stage 3.
+- Next: run `tcl_queue.sh val` from the main checkout. Heavy jobs that would overlap 10:00 to 19:00 wait for 19:00 by themselves.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-06-r23-run-handoff.md
+- New chat: tab 'r23 run', session f61ddf0c-95e6-4a41-b251-ddcd6fdaaf07
+
