@@ -1975,3 +1975,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-06-r23-build-4-handoff.md
 - New chat: tab 'r23 build 4', session a6e0cc2d-4e46-4685-a827-2c56524eb359
 
+[brief] CoSiR: r23 build 4 -> r23 build 5 (2026-11-06 07:57 Amsterdam)
+- Done: tickets 9 and 10 are merged, so all 10 tickets are done. All 443 round tests pass on the merged code.
+- State: no full held score exists. The end-to-end smoke on 200 paintings passes from stage 0 to stage 3, with all four gates passing and 76 cells written.
+- Next: final whole-branch review, one fix wave, scoped re-review, merge to main, cut to the run chat.
+- Blocked: nothing. The cut came from the context meter (past 200k tokens), not from a problem.
+- Handoff: docs/superpowers/handoffs/2026-11-06-r23-build-5-handoff.md
+- New chat: tab 'r23 build 5', session e11d41ed-3414-46cc-93d8-16b4b7521d82
+
