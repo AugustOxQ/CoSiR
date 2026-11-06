@@ -236,6 +236,7 @@ def run_stage(stage, only):
         if stage == 'stage2' and name == 'decide':
             for o in s['outputs']:
                 Path(o).unlink(missing_ok=True)
+            P.record_path('verdicts.json').unlink(missing_ok=True)     # old verdicts must not outlive their outcomes
         if stage in ('stage2', 'stage3') and group and not P.record_path(f'stage1_{group}.json').is_file():
             skip_step(stage, name, f'records/stage1_{group}.json is missing: {HELD_OF[group]} verdicts are void (§6)')
             continue
@@ -328,15 +329,18 @@ def cmd_gate_iv():
     import tcl_data
     path = gate_path('gate_iv')
     path.parent.mkdir(parents=True, exist_ok=True)
-    try:
-        sizes = tcl_data.gate_iv()
-    except AssertionError as ex:
-        path.write_text(json.dumps(dict(art=False, mm=False, message=str(ex)), indent=1) + '\n')
-        print('gate iv FAIL:', ex)
-        return 1
-    path.write_text(json.dumps(dict(art=True, mm=True, sizes=sizes), indent=1) + '\n')
-    print('gate iv pass:', sizes)
-    return 0
+    doc, sizes = dict(message={}), {}
+    for g, check in (('art', tcl_data.gate_iv_art), ('mm', tcl_data.gate_iv_mm)):
+        try:
+            sizes.update(check())
+            doc[g] = True
+        except AssertionError as ex:
+            doc[g] = False
+            doc['message'][g] = str(ex)
+    doc['sizes'] = sizes
+    path.write_text(json.dumps(doc, indent=1) + '\n')
+    print('gate iv:', {g: doc[g] for g in GROUPS}, doc['message'], sizes)
+    return 0 if doc['art'] and doc['mm'] else 1
 
 
 def cmd_stage1(set_name):

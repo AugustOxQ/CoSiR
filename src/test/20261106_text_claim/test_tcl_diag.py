@@ -300,3 +300,127 @@ def test_main_refuses_without_verdicts_outside_smoke(world, monkeypatch, capsys)
     assert called == ['art_held', 'mm_test']                           # the guard runs first, then the refusal
     assert not (world / 'stage3').exists()
     assert not (world / 'committed_records').exists()
+
+
+@pytest.mark.parametrize('missing', ['art', 'mm'])
+def test_main_skips_only_the_group_without_a_record(world, monkeypatch, capsys, missing):
+    kept = 'mm' if missing == 'art' else 'art'
+    records = world / 'records'
+    records.mkdir()
+    (records / f'stage1_{kept}.json').write_text(json.dumps(make_recs()[kept]))
+    guarded, ran = [], []
+    monkeypatch.setattr(tcl_score, 'held_guard', lambda name: guarded.append(name))
+
+    def group_part(n, ctx):
+        assert set(ctx.recs) == {kept}
+        ran.append(n)
+        return D.result(n, D.NAMES[n], D.Reader(), {})
+
+    for n in (5, 6):
+        monkeypatch.setitem(D.PARTS, n, lambda ctx, n=n: group_part(n, ctx))
+    assert D.main(['--device', 'cpu', '--parts', '3', '5', '6']) == 0
+    assert guarded == [dict(art='art_held', mm='mm_test')[kept]]
+    assert ran == [dict(art=5, mm=6)[kept]]
+    assert f'part {dict(art=5, mm=6)[missing]}: skipped' in capsys.readouterr().out
+    part3 = json.loads((world / 'stage3/part3_pair_all_rows.json').read_text())
+    assert part3['missing']
+    assert {path.split('/')[1] for path in part3['missing']} == {s for s in P.SETS if P.GROUP[s] == kept}
+
+    monkeypatch.setattr(P, 'SMOKE', 0)
+    monkeypatch.setattr(P, 'RECORDS', records)
+    assert D.main(['--device', 'cpu', '--parts', '3', '5', '6']) == 2
+    assert guarded == [dict(art='art_held', mm='mm_test')[kept]] * 2
+    assert ran == [dict(art=5, mm=6)[kept]]
+
+
+def test_main_keeps_guard_when_neither_record_exists(world, monkeypatch):
+    def guard(name):
+        assert name == 'art_held'
+        raise FileNotFoundError('stage1_art.json')
+
+    monkeypatch.setattr(tcl_score, 'held_guard', guard)
+    with pytest.raises(FileNotFoundError, match='stage1_art.json'):
+        D.main(['--device', 'cpu', '--parts', '8'])
+
+
+@pytest.mark.parametrize('smoke', [0, 6])
+@pytest.mark.parametrize('voided', [[], [dict(what='diagnostic', key='mm_test/formal', why='store failed'),
+                                      dict(what='cell_claims', key='art_held', why='gate iv failed')]])
+def test_voided_reaches_part_and_summary_from_outcomes(world, monkeypatch, smoke, voided):
+    records = world / 'records'
+    records.mkdir()
+    for group, rec in make_recs().items():
+        (records / f'stage1_{group}.json').write_text(json.dumps(rec))
+    (records / 'verdicts.json').write_text('{}')
+    monkeypatch.setattr(P, 'SMOKE', smoke)
+    monkeypatch.setattr(P, 'RECORDS', records)
+    monkeypatch.setattr(P, 'read_committed_record', lambda name: json.loads((records / name).read_text()))
+    monkeypatch.setitem(D.PARTS, 8, lambda ctx: D.result(8, D.NAMES[8], D.Reader(), dict(stores=[])))
+    args = ['--device', 'cpu', '--parts', '8']
+    part = world / 'stage3/part8_truncation.json'
+    summary = world / 'stage3/summary.md'
+    if smoke:
+        assert D.main(args) == 0
+        assert json.loads(part.read_text())['voided'] == []
+        assert '## Voided (§6)\n\nnone\n' in summary.read_text()
+    else:
+        with pytest.raises(AssertionError, match='outcomes.json'):
+            D.main(args)
+    outcomes = world / 'stage2/outcomes.json'
+    outcomes.parent.mkdir()
+    outcomes.write_text(json.dumps(dict(voided=voided)))
+    assert D.main(args) == 0
+    assert json.loads(part.read_text())['voided'] == voided
+    outcomes.unlink()
+    D.write_summary()                                             # a standalone part carries the void list
+    text = summary.read_text()
+    assert text.index('## Voided (§6)') < text.index('| part |')
+    for entry in voided:
+        assert f'- {entry["what"]}: {entry["key"]}: {entry["why"]}' in text
+    if not voided:
+        assert '## Voided (§6)\n\nnone\n' in text
+
+
+def test_part6_pair_includes_teacher_at_every_head_and_readout(world, monkeypatch):
+    recs = make_recs()
+    mm = recs['mm']
+    picks = mm['picks']['narrative']
+    mm['picks'] = {kind: dict(picks, teacher=picks['cstar']) for kind in P.KINDS}
+    mm['pair_picks'] = {kind: mm['pair_picks']['narrative'] for kind in P.KINDS}
+    monkeypatch.setattr(tcl_data, 'label_share', lambda *args: 0.0)
+    others = [kind for kind in P.KINDS if kind != P.BAR_KIND['mm']]
+    expected = {}
+    pid = fake_frame('mm_test', 'formal')['tp']
+    n_query = len(pid)
+
+    def write_score(path, ranks):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        cols = {f'ap__{a}{suffix}': np.full(n_query, 0.5, np.float32)
+                for a in P.ASPECTS for suffix in ('', '__no_leak')}
+        np.savez(path, q_pid=pid, first_rank=ranks, **cols)
+
+    for kind in others:
+        for h, head in enumerate(P.ASPECTS):
+            for r, ro in enumerate(P.READOUTS):
+                for d in P.PAIR_DIRECTIONS:
+                    ranks = np.where(np.arange(n_query) < 1 + (h * 3 + r) % n_query, 1, 20).astype(np.float32)
+                    path = P.score_path('mm_test', kind, 'teacher', head, 'x', d, ro)
+                    write_score(path, ranks)
+                    expected[kind, head, d, ro] = float(np.mean(ranks <= 10))
+        for d in P.PAIR_DIRECTIONS:
+            for row, head, ro in (('cstar', 'genre' if d == 't2i' else 'style', 'r0' if d == 't2i' else 'center_k10'),
+                                  ('late', 'genre' if d == 't2i' else 'style', 'r0' if d == 't2i' else 'center_k10'),
+                                  ('plain', 'all', 'center' if d == 't2i' else 'r0')):
+                for seed in D.seeds_of(row):
+                    path = P.score_path('mm_test', kind, row, head, seed, d, ro)
+                    write_score(path, np.full(n_query, 1, np.float32))
+    res = D.part6(D.Context(recs, 'cpu'))
+    pair = res['sections']['pair']
+    teacher = [r for r in pair if r['row'] == 'teacher']
+    assert len(teacher) == len(others) * len(P.ASPECTS) * len(P.READOUTS) * len(P.PAIR_DIRECTIONS)
+    assert {(r['kind'], r['head'], r['direction'], r['readout']): r['r10'] for r in teacher} == expected
+    assert all(r['seed'] == 'x' and not r['mean_over_seeds'] and r['n_query'] == n_query for r in teacher)
+    existing = [r for r in pair if r['row'] != 'teacher']
+    assert len(existing) == len(others) * len(P.PAIR_DIRECTIONS) * 3
+    assert {r['row'] for r in existing} == {'cstar', 'late', 'plain'}
+    assert all(r['r10'] == 1.0 for r in existing)

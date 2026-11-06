@@ -459,9 +459,12 @@ def test_status_and_uncommitted_records_are_not_swallowed(tmp_path, monkeypatch)
     with pytest.raises(FileNotFoundError):
         run()
     write_record('status.json', good_status())
+    real = p.read_committed_record
 
     def refuse(name):
-        raise RuntimeError('not committed')
+        if name == 'status.json':
+            raise RuntimeError('not committed')
+        return real(name)
     monkeypatch.setattr(p, 'read_committed_record', refuse)
     with pytest.raises(RuntimeError):
         run()
