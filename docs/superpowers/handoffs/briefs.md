@@ -2015,3 +2015,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-06-r23-run4-handoff.md
 - New chat: tab 'r23 run 4', session 8c9ca0a2-757b-4594-b8ef-511baff1afd0
 
+[brief] CoSiR: r23 run 4 -> r24 decide (2026-11-06 16:12 Amsterdam)
+- Done: r23 is finished. The auto report and the user-read report are committed and pushed.
+- State: c* holds on ArtELingo and fails on MMArt. Late fusion holds on ArtELingo and fails on MMArt. No verdict is void.
+- Next: show the results brief without its collapsed block and take the user's reading (decision C).
+- Blocked: this chat waits for the user's reading.
+- Handoff: docs/superpowers/handoffs/2026-11-06-r24-decide-handoff.md
+- New chat: tab 'r24 decide', session ea240ca6-b814-4b47-a5f7-af18b5416043
+
