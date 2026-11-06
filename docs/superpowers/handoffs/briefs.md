@@ -1991,3 +1991,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-06-r23-run-handoff.md
 - New chat: tab 'r23 run', session f61ddf0c-95e6-4a41-b251-ddcd6fdaaf07
 
+[brief] CoSiR: r23 run -> r23 run 2 (2026-11-06 10:52 Amsterdam)
+- Done: part of stage 0 extraction, and the C13 code: written by Codex, reviewed, fixed, re-reviewed, committed at 383dab80.
+- State: no held score exists. C13's validation derive is done at full size.
+- Next: start `tcl_queue.sh val` in the background. It waits for 19:00 by itself, then the chain follows §5 below.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-06-r23-run2-handoff.md
+- New chat: tab 'r23 run 2', session d3db6ef7-bdb5-4a58-86f0-d193d5c63a6b
+
