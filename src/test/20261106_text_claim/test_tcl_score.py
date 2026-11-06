@@ -23,9 +23,10 @@ def unit(x):
 
 
 def make_store(seed=0, n_i=6, d=16, gap=1.5, n_unlabelled=2):
-    """A tiny set: 12 texts in non-adjacent order (two per painting), a modality gap so the means matter, some -1 labels."""
+    """Two texts per painting in non-adjacent order, a modality gap so means matter, and some -1 labels."""
     rng = np.random.default_rng(seed)
-    tp = np.array([3, 0, 5, 1, 2, 4, 0, 5, 3, 1, 4, 2], dtype=np.int64)[:2 * n_i]
+    tp = (np.array([3, 0, 5, 1, 2, 4, 0, 5, 3, 1, 4, 2], dtype=np.int64) if n_i == 6
+          else rng.permutation(np.tile(np.arange(n_i, dtype=np.int64), 2)))
     n_t = len(tp)
     base = rng.normal(size=(n_i, d))
     image = unit(base + 0.5 * rng.normal(size=(n_i, d)) + gap * np.eye(d)[0])
@@ -85,6 +86,29 @@ def ref_ap(orders, ql, gl, q_ok, g_ok, qp=None, gp=None):
 def load(path):
     with np.load(path, allow_pickle=False) as z:
         return {k: z[k] for k in z.files}
+
+
+def assert_reference_file(got, fr, flags, text, image, aspects, direction, readout, mt, mi):
+    """Compare the whole file with the independent, brute-force ranking and AP definitions above."""
+    qs, gs = direction[0], direction[2]
+    vectors, means, pid = dict(t=text, i=image), dict(t=mt, i=mi), dict(t=fr['tp'], i=fr['ip'])
+    q, g, qp, gp = vectors[qs], vectors[gs], pid[qs], pid[gs]
+    orders = ref_orders(q, g, means[qs], means[gs], readout, direction == 't2t')
+    want = dict(q_pid=qp, first_rank=ref_first_rank(q, g, qp, gp, means[qs], means[gs], readout, direction == 't2t'))
+    for a in aspects:
+        ql, gl = fr['labels'][a][qs], fr['labels'][a][gs]
+        q_ok, g_ok = ql >= 0, gl >= 0
+        want[f'ap__{a}'] = ref_ap(orders, ql, gl, q_ok, g_ok)
+        want[f'ap__{a}__no_leak'] = ref_ap(orders, ql, gl, q_ok & (~flags[a] if qs == 't' else True),
+                                         g_ok & (~flags[a] if gs == 't' else True))
+        want[f'ap__{a}__cross_painting'] = ref_ap(orders, ql, gl, q_ok, g_ok, qp, gp)
+    assert set(got) == set(want)
+    for key in want:
+        assert got[key].dtype == (np.int64 if key == 'q_pid' else np.float32)
+        if key in ('q_pid', 'first_rank'):
+            assert np.array_equal(got[key], want[key], equal_nan=True), key
+        else:
+            assert np.allclose(got[key], want[key], rtol=0, atol=1e-6, equal_nan=True), key
 
 
 @pytest.fixture
@@ -155,6 +179,24 @@ def test_held_means_are_those_of_the_same_row_head_and_seed(tmp_path, store):
     with pytest.raises(FileNotFoundError):
         score(tmp_path, store, set_name='art_held', seed=1, head='style', val_n=VAL_N)
 
+    # Positive MMArt path: both seeds and both kinds exist, with deliberately different rows and means.
+    validation = {}
+    for kind_index, kind in enumerate(('narrative', 'formal')):
+        for seed in (0, 1):
+            val = make_store(20 + 2 * kind_index + seed)
+            fr, flags, text, image = val
+            validation[kind, seed] = (text.mean(0, dtype=np.float64).astype(np.float32),
+                                      image.mean(0, dtype=np.float64).astype(np.float32))
+            S.score_unit('mm_val', kind, 'cstar', 'emotion', seed, text, image, fr, flags, 'cpu', out=tmp_path)
+    fr, flags, text, image = make_store(31)
+    S.score_unit('mm_test', 'formal', 'cstar', 'emotion', 1, text, image, fr, flags, 'cpu',
+                 out=tmp_path, val_n=VAL_N)
+    mt, mi = validation['formal', 1]
+    for direction in P.DIRECTIONS:
+        for readout in P.READOUTS:
+            got = load(P.score_path('mm_test', 'formal', 'cstar', 'emotion', 1, direction, readout, out=tmp_path))
+            assert_reference_file(got, fr, flags, text, image, ('emotion',), direction, readout, mt, mi)
+
 
 def test_held_means_row_counts_must_match_the_validation_rows(tmp_path, store):
     score(tmp_path, store)
@@ -167,31 +209,36 @@ def test_held_means_row_counts_must_match_the_validation_rows(tmp_path, store):
 
 
 # ------------------------------------------------------------------------------------------------ the three entries
+@pytest.mark.parametrize('row,head,seed,aspects', (('cstar', 'emotion', 0, ('emotion',)),
+                                                    ('cstar', 'style', 0, ('style',)),
+                                                    ('plain', 'all', 'x', P.ASPECTS)))
 @pytest.mark.parametrize('direction', P.DIRECTIONS)
 @pytest.mark.parametrize('readout', ('r0', 'center_k10'))
-def test_entries_follow_r22_with_unlabelled_rows_ranked_and_masked_only_at_ap(tmp_path, store, direction, readout):
+def test_entries_follow_r22_with_unlabelled_rows_ranked_and_masked_only_at_ap(
+        tmp_path, store, row, head, seed, aspects, direction, readout):
     fr, flags, text, image = store
-    score(tmp_path, store)
-    got = load(P.score_path('art_val', 'caption', 'cstar', 'emotion', 0, direction, readout, out=tmp_path))
+    score(tmp_path, store, row=row, head=head, seed=seed)
+    got = load(P.score_path('art_val', 'caption', row, head, seed, direction, readout, out=tmp_path))
     mt, mi = text.mean(0, dtype=np.float64).astype(np.float32), image.mean(0, dtype=np.float64).astype(np.float32)
     q, g, qs, gs, mq, mg = {'t2i': (text, image, 't', 'i', mt, mi), 'i2t': (image, text, 'i', 't', mi, mt),
                             't2t': (text, text, 't', 't', mt, mt)}[direction]
     qp, gp = (fr['tp'] if qs == 't' else fr['ip']), (fr['tp'] if gs == 't' else fr['ip'])
     orders = ref_orders(q, g, mq, mg, readout, direction == 't2t')
-    assert all(len(o) == len(g) - (direction == 't2t') for o in orders)          # unlabelled rows are in every ranking
-    lab = fr['labels']['emotion']
-    ql, gl = lab[qs], lab[gs]
-    q_named = ~flags['emotion'] if qs == 't' else np.ones(len(q), bool)
-    g_named = ~flags['emotion'] if gs == 't' else np.ones(len(g), bool)
-    want = {'ap__emotion': ref_ap(orders, ql, gl, ql >= 0, gl >= 0),
-            'ap__emotion__no_leak': ref_ap(orders, ql, gl, (ql >= 0) & q_named, (gl >= 0) & g_named),
-            'ap__emotion__cross_painting': ref_ap(orders, ql, gl, ql >= 0, gl >= 0, qp, gp)}
-    for key, value in want.items():
-        assert got[key].dtype == np.float32
-        assert np.allclose(got[key], value, atol=1e-6, equal_nan=True), key
-        assert np.isnan(got[key]).any() and np.isfinite(got[key]).any(), key
-    assert np.isnan(got['ap__emotion'][ql < 0]).all()                            # unlabelled queries: not scored
-    assert np.isfinite(got['first_rank'][ql < 0]).any() or not (ql < 0).any()    # ...but they still have a pair rank
+    assert all(len(o) == len(g) - (direction == 't2t') for o in orders)  # unlabelled gallery rows stay ranked
+    for aspect in aspects:
+        lab = fr['labels'][aspect]
+        ql, gl = lab[qs], lab[gs]
+        q_named = ~flags[aspect] if qs == 't' else np.ones(len(q), bool)
+        g_named = ~flags[aspect] if gs == 't' else np.ones(len(g), bool)
+        want = {f'ap__{aspect}': ref_ap(orders, ql, gl, ql >= 0, gl >= 0),
+                f'ap__{aspect}__no_leak': ref_ap(orders, ql, gl, (ql >= 0) & q_named, (gl >= 0) & g_named),
+                f'ap__{aspect}__cross_painting': ref_ap(orders, ql, gl, ql >= 0, gl >= 0, qp, gp)}
+        for key, value in want.items():
+            assert got[key].dtype == np.float32
+            assert np.allclose(got[key], value, atol=1e-6, equal_nan=True), key
+            assert np.isnan(got[key]).any() and np.isfinite(got[key]).any(), key
+        assert np.isnan(got[f'ap__{aspect}'][ql < 0]).all()  # unlabelled queries still have a pair rank
+        assert np.isfinite(got['first_rank'][ql < 0]).any() or not (ql < 0).any()
 
 
 def test_entries_differ_from_the_bar_entry(tmp_path, store):
@@ -251,19 +298,21 @@ def test_roberta_ranks_text_to_text_on_emotion_with_no_image(tmp_path, store):
     assert files_under(tmp_path, 'art_held', 'roberta') == files_under(tmp_path, 'art_val', 'roberta')
 
 
-def test_late_fusion_means_act_on_the_whole_concatenated_vector(tmp_path, store):
-    fr, flags, text, image = store
+@pytest.mark.parametrize('direction', P.DIRECTIONS)
+@pytest.mark.parametrize('readout', ('center', 'center_k10'))
+def test_late_fusion_means_act_on_the_whole_concatenated_vector(tmp_path, direction, readout):
+    fr, flags, text, image = make_store(7, n_i=19)
     rng = np.random.default_rng(5)
-    wide = lambda x: unit(np.concatenate([np.sqrt(.3) * x, np.sqrt(.7) * unit(x + .3 * rng.normal(size=x.shape))], axis=1))
+    wide = lambda x: np.concatenate([np.sqrt(.3) * x,
+                                    np.sqrt(.7) * unit(x + .8 * rng.normal(size=x.shape))], axis=1).astype(np.float32)
     lt, li = wide(text), wide(image)
     S.score_unit('art_val', 'caption', 'late', 'emotion', 2, lt, li, fr, flags, 'cpu', out=tmp_path)
     m = load(P.means_path('art_val', 'caption', 'late', 'emotion', 2, out=tmp_path))
     assert m['t'].shape == m['i'].shape == (32,) and m['t'].dtype == np.float32
-    assert (int(m['n_t']), int(m['n_i'])) == (12, 6)
+    assert (int(m['n_t']), int(m['n_i'])) == (38, 19)
     assert np.allclose(m['t'], lt.mean(0), atol=1e-6) and np.allclose(m['i'], li.mean(0), atol=1e-6)
-    got = load(P.score_path('art_val', 'caption', 'late', 'emotion', 2, 't2i', 'center', out=tmp_path))
-    want = ref_first_rank(lt, li, fr['tp'], fr['ip'], m['t'], m['i'], 'center', False)
-    assert np.array_equal(got['first_rank'], want, equal_nan=True)
+    got = load(P.score_path('art_val', 'caption', 'late', 'emotion', 2, direction, readout, out=tmp_path))
+    assert_reference_file(got, fr, flags, lt, li, ('emotion',), direction, readout, m['t'], m['i'])
 
 
 def test_mismatched_rows_crash(tmp_path, store):
@@ -289,7 +338,7 @@ def test_a_complete_unit_is_skipped_and_leaves_no_temporary_file(tmp_path, store
     score(tmp_path, store)
     first = stamp(all_files(tmp_path)) | stamp(sorted((tmp_path / 'means').rglob('*')))
     assert len(first) == 10 and not [p for p in first if p.name.endswith('.tmp')]
-    assert S.unit_done('art_val', 'caption', 'cstar', 'emotion', 0, out=tmp_path)
+    assert S.unit_done('art_val', 'caption', 'cstar', 'emotion', 0, store[0], out=tmp_path)
     score(tmp_path, store)
     assert stamp(all_files(tmp_path)) | stamp(sorted((tmp_path / 'means').rglob('*'))) == first
 
@@ -304,19 +353,162 @@ def test_only_the_missing_or_incomplete_files_are_redone(tmp_path, store):
     gone.unlink()
     np.savez(half, q_pid=want[half]['q_pid'])                                  # a file without its scores
     half.with_name(half.name + '.tmp').write_bytes(b'left by a killed job')
-    assert not S.unit_done('art_val', 'caption', 'cstar', 'emotion', 0, out=tmp_path)
+    assert not S.unit_done('art_val', 'caption', 'cstar', 'emotion', 0, store[0], out=tmp_path)
     score(tmp_path, store)
     assert stamp([done]) == before
     for p in (done, gone, half):
         assert set(load(p)) == set(want[p]) and all(np.array_equal(load(p)[k], want[p][k], equal_nan=True) for k in want[p])
     assert not list((tmp_path / 'scores').rglob('*.tmp'))
-    assert S.unit_done('art_val', 'caption', 'cstar', 'emotion', 0, out=tmp_path)
+    assert S.unit_done('art_val', 'caption', 'cstar', 'emotion', 0, store[0], out=tmp_path)
 
 
 def test_a_validation_unit_without_its_means_is_not_done(tmp_path, store):
     score(tmp_path, store)
     P.means_path('art_val', 'caption', 'cstar', 'emotion', 0, out=tmp_path).unlink()
-    assert not S.unit_done('art_val', 'caption', 'cstar', 'emotion', 0, out=tmp_path)
+    assert not S.unit_done('art_val', 'caption', 'cstar', 'emotion', 0, store[0], out=tmp_path)
+
+
+@pytest.mark.parametrize('direction', P.DIRECTIONS)
+@pytest.mark.parametrize('fault', ('pid_order', 'pid_length', 'pid_dtype', 'rank_length', 'rank_dtype',
+                                   'ap_length', 'ap_dtype', 'ap_shape'))
+def test_resume_replaces_stale_ids_and_malformed_score_columns(tmp_path, store, direction, fault):
+    score(tmp_path, store)
+    path = P.score_path('art_val', 'caption', 'cstar', 'emotion', 0, direction, 'center', out=tmp_path)
+    want = load(path)
+    bad = {k: v.copy() for k, v in want.items()}
+    column = {'pid': 'q_pid', 'rank': 'first_rank', 'ap': 'ap__emotion'}[fault.split('_')[0]]
+    change = fault.split('_')[1]
+    bad[column] = {'order': lambda x: x[::-1], 'length': lambda x: x[:-1],
+                   'dtype': lambda x: x.astype(np.float64), 'shape': lambda x: x[:, None]}[change](bad[column])
+    np.savez(path, **bad)
+    assert not S.unit_done('art_val', 'caption', 'cstar', 'emotion', 0, store[0], out=tmp_path)
+    score(tmp_path, store)
+    got = load(path)
+    for key in want:
+        assert got[key].dtype == want[key].dtype
+        assert np.array_equal(got[key], want[key], equal_nan=True)
+
+
+@pytest.mark.parametrize('row,head,seed', (('cstar', 'emotion', 0), ('roberta', 'all', 'x')))
+@pytest.mark.parametrize('column', ('n_t', 'n_i'))
+def test_resume_checks_validation_means_counts(tmp_path, store, row, head, seed, column):
+    fr, flags, text, image = store
+    if row == 'roberta':
+        image = None
+    args = ('art_val', 'caption', row, head, seed)
+    S.score_unit(*args, text, image, fr, flags, 'cpu', out=tmp_path)
+    path = P.means_path(*args, out=tmp_path)
+    bad = load(path)
+    bad[column] += 1
+    np.savez(path, **bad)
+    assert not S.unit_done(*args, fr, out=tmp_path)
+    S.score_unit(*args, text, image, fr, flags, 'cpu', out=tmp_path)
+    means = load(path)
+    assert (int(means['n_t']), int(means['n_i'])) == (fr['n_t'], 0 if image is None else fr['n_i'])
+
+
+# ------------------------------------------------------------------------------------------------ run wiring
+@pytest.mark.parametrize('val_set,held_set,kinds', (('art_val', 'art_held', ('caption',)),
+                                                  ('mm_val', 'mm_test', P.KINDS)))
+def test_run_routes_each_units_rows_flags_and_validation_counts(tmp_path, monkeypatch, val_set, held_set, kinds):
+    import tcl_data
+    import tcl_forward
+
+    # Keep every row type and head, and two distinct seeds, without loading any model or store.
+    monkeypatch.setattr(P, 'SEEDS', (0, 1))
+    units = S.plan(val_set)
+    stores, vectors = {}, {}
+    for set_index, set_name in enumerate((val_set, held_set)):
+        for kind_index, kind in enumerate(kinds):
+            store = make_store(100 + 10 * set_index + kind_index, n_i=6 + 7 * set_index)
+            fr, flags, _, _ = store
+            # Different masks on every aspect make routing all aspects to emotion observable.
+            flags = {a: (np.arange(fr['n_t']) + index) % 3 == 0 for index, a in enumerate(P.ASPECTS)}
+            stores[set_name, kind] = fr, flags
+            for index, (row, head, seed) in enumerate(units):
+                rng = np.random.default_rng(1000 + 100 * set_index + len(units) * kind_index + index)
+                text = unit(rng.normal(size=(fr['n_t'], 16)) - np.eye(16)[0])
+                image = None if row == 'roberta' else unit(rng.normal(size=(fr['n_i'], 16)) + np.eye(16)[1])
+                vectors[set_name, kind, row, head, seed] = text, image
+
+    calls, scored, released = [], [], []
+
+    def frame(set_name, kind):
+        calls.append(('frame', set_name, kind))
+        return stores[set_name, kind][0]
+
+    def names_label(set_name, kind, aspect):
+        calls.append(('flags', set_name, kind, aspect))
+        return stores[set_name, kind][1][aspect]
+
+    def rows(set_name, kind, row, head, seed, device):
+        calls.append(('rows', set_name, kind, row, head, seed, device))
+        return vectors[set_name, kind, row, head, seed]
+
+    original = S.score_unit
+
+    def record_score(*args, **kw):
+        scored.append((args[:5], kw.get('val_n')))
+        return original(*args, **kw)
+
+    monkeypatch.setattr(tcl_data, 'frame', frame)
+    monkeypatch.setattr(tcl_data, 'names_label', names_label)
+    monkeypatch.setattr(tcl_forward, 'rows', rows)
+    monkeypatch.setattr(S, 'score_unit', record_score)
+    monkeypatch.setattr(S, 'release', lambda device: released.append(device))
+    expected_calls, expected_scored = [], []
+    for set_name in (val_set, held_set):
+        S.run(set_name, device='cpu', block=5, out=tmp_path)
+        for kind in kinds:
+            expected_calls.append(('frame', set_name, kind))
+            expected_calls.extend(('flags', set_name, kind, a) for a in P.ASPECTS)
+            if set_name == held_set:
+                expected_calls.append(('frame', val_set, kind))
+            for row, head, seed in units:
+                expected_calls.append(('rows', set_name, kind, row, head, seed, 'cpu'))
+                expected_scored.append(((set_name, kind, row, head, seed), None if set_name == val_set else VAL_N))
+                fr, flags = stores[set_name, kind]
+                text, image = vectors[set_name, kind, row, head, seed]
+                vt, vi = vectors[val_set, kind, row, head, seed]
+                mt = vt.mean(0, dtype=np.float64).astype(np.float32)
+                mi = None if vi is None else vi.mean(0, dtype=np.float64).astype(np.float32)
+                means = load(P.means_path(val_set, kind, row, head, seed, out=tmp_path))
+                assert np.array_equal(means['t'], mt)
+                assert np.array_equal(means['i'], np.zeros(0, np.float32) if vi is None else mi)
+                aspects = (head,) if row in P.HEAD_ROWS else (('emotion',) if row == 'roberta' else P.ASPECTS)
+                for direction in (('t2t',) if row == 'roberta' else P.DIRECTIONS):
+                    for readout in P.READOUTS:
+                        got = load(P.score_path(set_name, kind, row, head, seed, direction, readout, out=tmp_path))
+                        assert_reference_file(got, fr, flags, text, image, aspects, direction, readout, mt, mi)
+    assert calls == expected_calls
+    assert scored == expected_scored
+    assert released == ['cpu'] * len(expected_scored)
+
+    # A resumed run checks the frame before skipping, and never builds already-complete rows.
+    calls.clear()
+    S.run(val_set, device='cpu', out=tmp_path)
+    assert calls == [('frame', val_set, kind) for kind in kinds]
+    assert scored == expected_scored
+
+
+def test_one_text_per_painting_has_nan_t2t_ranks_and_finite_ap_and_can_resume(tmp_path):
+    fr, flags, text, image = make_store(9, n_i=16, n_unlabelled=0)
+    selection = np.array([np.flatnonzero(fr['tp'] == p)[0] for p in fr['ip']])
+    text = text[selection]
+    fr['n_t'], fr['tp'] = fr['n_i'], fr['ip'].copy()
+    for aspect in P.ASPECTS:
+        fr['labels'][aspect] = dict(t=fr['ip'] % 2, i=fr['ip'] % 2)
+        flags[aspect] = np.zeros(fr['n_t'], bool)
+    args = ('mm_val', 'narrative', 'plain', 'all', 'x')
+    S.score_unit(*args, text, image, fr, flags, 'cpu', out=tmp_path)
+    for readout in P.READOUTS:
+        got = load(P.score_path(*args, 't2t', readout, out=tmp_path))
+        assert np.isnan(got['first_rank']).all()
+        assert all(np.isfinite(v).all() for k, v in got.items() if k.startswith('ap__'))
+    assert S.unit_done(*args, fr, out=tmp_path)
+    before = stamp(all_files(tmp_path))
+    S.score_unit(*args, text, image, fr, flags, 'cpu', out=tmp_path)
+    assert stamp(all_files(tmp_path)) == before
 
 
 # ------------------------------------------------------------------------------------------------ which rankings
