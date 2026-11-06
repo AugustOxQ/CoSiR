@@ -283,6 +283,10 @@ class Context:
     def __init__(self, recs, device):
         self.recs, self.device, self._frames = recs, device, {}
 
+    def sets(self, names):
+        """The sets of `names` whose group has a stage 1 record; a group without one is void (§6)."""
+        return [s for s in names if P.GROUP[s] in self.recs]
+
     def frame(self, set_name, kind):
         if (set_name, kind) not in self._frames:
             self._frames[set_name, kind] = tcl_data.frame(set_name, kind)
@@ -383,7 +387,7 @@ def part1_cosines(ctx, set_name, kind, sections):
 def part1(ctx):
     R = Reader()
     sections = dict(pair_split=[], label_split=[], spread=[], rank_correlation=[])
-    for set_name in PART1_SETS:
+    for set_name in ctx.sets(PART1_SETS):
         kind = bar_kind(set_name)
         for d in P.PAIR_DIRECTIONS:
             head, ro_late, ro_plain = ctx.pair_pick(set_name, kind, d)
@@ -449,7 +453,7 @@ def part2(ctx):
     labels_rec, pair_rec = [], []
     checks = dict(tolerance=SELF_CHECK_TOL, n_checked=0, max_abs_diff=0.0, a=P.A)
     n_rank, started = 0, time.monotonic()
-    for set_name in ('art_val', 'mm_val'):
+    for set_name in ctx.sets(('art_val', 'mm_val')):
         kind = bar_kind(set_name)
         fr = ctx.frame(set_name, kind)
         pid = dict(t=fr['tp'], i=fr['ip'])
@@ -542,7 +546,7 @@ def pair_record(set_name, kind, row, head, direction, readout, scs):
 def part3(ctx):
     R = Reader()
     records = []
-    for set_name in P.SETS:
+    for set_name in ctx.sets(P.SETS):
         kind = bar_kind(set_name)
         art = P.GROUP[set_name] == 'art'
         units = list(dict.fromkeys((row, head) for row, head, _ in tcl_score.plan(set_name)))
@@ -580,7 +584,7 @@ def per_class_ap(ap, labels, n_class):
 def part4(ctx):
     R = Reader()
     cells, classes = [], []
-    for set_name in P.SETS:
+    for set_name in ctx.sets(P.SETS):
         kind = bar_kind(set_name)
         fr = ctx.frame(set_name, kind)
         for row in P.BAR_ROWS:
@@ -725,7 +729,7 @@ def part6(ctx):
 def part7(ctx):
     R = Reader()
     spreads_ = []
-    for set_name in ('art_held', 'mm_test'):
+    for set_name in ctx.sets(('art_held', 'mm_test')):
         group = P.GROUP[set_name]
         for kind in P.kinds(group):
             if not ctx.has_kind(R, set_name, kind):
@@ -838,14 +842,19 @@ def main(argv=None):
     p.add_argument('--device', default='cuda')
     p.add_argument('--parts', nargs='+', type=int, choices=sorted(PARTS), default=sorted(PARTS))
     args = p.parse_args(argv)
-    tcl_score.held_guard('art_held')
-    tcl_score.held_guard('mm_test')
+    groups = [g for g in ('art', 'mm') if P.record_path(f'stage1_{g}.json').exists()] or ['art', 'mm']
+    for set_name in ('art_held', 'mm_test'):
+        if P.GROUP[set_name] in groups:
+            tcl_score.held_guard(set_name)
     if not P.SMOKE and not P.record_path('verdicts.json').exists():
         print(f'refused: {P.record_path("verdicts.json")} is absent; stage 3 runs after the verdicts', file=sys.stderr)
         return 2
-    recs = {g: P.read_committed_record(f'stage1_{g}.json') for g in ('art', 'mm')}
+    recs = {g: P.read_committed_record(f'stage1_{g}.json') for g in groups}
     ctx = Context(recs, args.device)
     for n in sorted(set(args.parts)):
+        if {5: 'art', 6: 'mm'}.get(n, groups[0]) not in groups:
+            print(f'part {n}: skipped, its group has no stage 1 record', flush=True)
+            continue
         started = time.monotonic()
         res = PARTS[n](ctx)
         path = write_part(res)

@@ -300,3 +300,44 @@ def test_main_refuses_without_verdicts_outside_smoke(world, monkeypatch, capsys)
     assert called == ['art_held', 'mm_test']                           # the guard runs first, then the refusal
     assert not (world / 'stage3').exists()
     assert not (world / 'committed_records').exists()
+
+
+@pytest.mark.parametrize('missing', ['art', 'mm'])
+def test_main_skips_only_the_group_without_a_record(world, monkeypatch, capsys, missing):
+    kept = 'mm' if missing == 'art' else 'art'
+    records = world / 'records'
+    records.mkdir()
+    (records / f'stage1_{kept}.json').write_text(json.dumps(make_recs()[kept]))
+    guarded, ran = [], []
+    monkeypatch.setattr(tcl_score, 'held_guard', lambda name: guarded.append(name))
+
+    def group_part(n, ctx):
+        assert set(ctx.recs) == {kept}
+        ran.append(n)
+        return D.result(n, D.NAMES[n], D.Reader(), {})
+
+    for n in (5, 6):
+        monkeypatch.setitem(D.PARTS, n, lambda ctx, n=n: group_part(n, ctx))
+    assert D.main(['--device', 'cpu', '--parts', '3', '5', '6']) == 0
+    assert guarded == [dict(art='art_held', mm='mm_test')[kept]]
+    assert ran == [dict(art=5, mm=6)[kept]]
+    assert f'part {dict(art=5, mm=6)[missing]}: skipped' in capsys.readouterr().out
+    part3 = json.loads((world / 'stage3/part3_pair_all_rows.json').read_text())
+    assert part3['missing']
+    assert {path.split('/')[1] for path in part3['missing']} == {s for s in P.SETS if P.GROUP[s] == kept}
+
+    monkeypatch.setattr(P, 'SMOKE', 0)
+    monkeypatch.setattr(P, 'RECORDS', records)
+    assert D.main(['--device', 'cpu', '--parts', '3', '5', '6']) == 2
+    assert guarded == [dict(art='art_held', mm='mm_test')[kept]] * 2
+    assert ran == [dict(art=5, mm=6)[kept]]
+
+
+def test_main_keeps_guard_when_neither_record_exists(world, monkeypatch):
+    def guard(name):
+        assert name == 'art_held'
+        raise FileNotFoundError('stage1_art.json')
+
+    monkeypatch.setattr(tcl_score, 'held_guard', guard)
+    with pytest.raises(FileNotFoundError, match='stage1_art.json'):
+        D.main(['--device', 'cpu', '--parts', '8'])
