@@ -48,3 +48,33 @@ def test_gate_iv_records_each_group_independently(tmp_path, monkeypatch, failed)
     doc = json.loads(R.gate_path('gate_iv').read_text())
     assert {g: doc[g] for g in R.GROUPS} == {g: g != failed for g in R.GROUPS}
     assert doc['sizes'] == {f'{g}_size': 1 for g in R.GROUPS if g != failed}
+
+
+def test_decide_rerun_removes_old_verdicts_and_blocks_stage3(tmp_path, monkeypatch):
+    monkeypatch.setattr(P, 'OUT', tmp_path)
+    monkeypatch.setattr(P, 'RECORDS', tmp_path / 'records')
+    monkeypatch.setattr(P, 'SMOKE', 0)
+    monkeypatch.setattr(R, 'refuse_unless_committed', lambda: [])
+    verdicts = P.record_path('verdicts.json')
+    verdicts.parent.mkdir()
+    verdicts.write_text('{"old": true}')
+    folder = tmp_path / 'stage2'
+    folder.mkdir()
+    for name in ('outcomes.json', 'cells.json'):
+        (folder / name).write_text('{"old": true}')
+    called = []
+
+    def decide(stage, name, argv, outputs, ok_rcs):
+        assert (stage, name) == ('stage2', 'decide')
+        assert not verdicts.exists()
+        assert all(not path.exists() for path in outputs)
+        for path in outputs:
+            path.write_text('{"new": true}')
+        called.append(name)
+        return dict(failed=False)
+
+    monkeypatch.setattr(R, 'run_step', decide)
+    assert R.main(['stage2', '--only', 'decide']) == 0
+    assert called == ['decide'] and not verdicts.exists()
+    assert R.main(['stage3', '--only', 'diag']) == 2
+    assert called == ['decide']

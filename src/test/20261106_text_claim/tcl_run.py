@@ -236,6 +236,7 @@ def run_stage(stage, only):
         if stage == 'stage2' and name == 'decide':
             for o in s['outputs']:
                 Path(o).unlink(missing_ok=True)
+            P.record_path('verdicts.json').unlink(missing_ok=True)     # old verdicts must not outlive their outcomes
         if stage in ('stage2', 'stage3') and group and not P.record_path(f'stage1_{group}.json').is_file():
             skip_step(stage, name, f'records/stage1_{group}.json is missing: {HELD_OF[group]} verdicts are void (§6)')
             continue
