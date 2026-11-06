@@ -1951,3 +1951,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-06-r23-build-handoff.md
 - New chat: tab 'r23 build', session 01e916db-e2c8-4a25-9b9a-4b04b71498d3
 
+[brief] CoSiR: r23 build -> r23 build 2 (2026-11-06 05:36 Amsterdam)
+- Done: tickets 1, 2, 3, 4 and 7 are built; ticket 1 is reviewed and merged.
+- State: no held score exists. Forward gate (ii) passes on all 15 weight files: largest difference 6.1e-5 against a bar of 1e-3.
+- Next: fix ticket 2 from its review, review tickets 4 and 7, merge, then build tickets 5, 6, 8, 9 and 10.
+- Blocked: nothing. The cut came from the context meter (206k tokens), not from a problem.
+- Handoff: docs/superpowers/handoffs/2026-11-06-r23-build-2-handoff.md
+- New chat: tab 'r23 build 2', session 7da119dc-f293-4d1e-86a7-6a9ce75014d8
+
