@@ -1,6 +1,8 @@
 """Tests of the r23 data door (ticket 02). Real stores for everything that exists; tiny fixture stores in tmp_path for
 the new text stores (ticket 03 makes the real ones), read through TCL_STORES's parameter `tcl_paths.STORE_ROOT`."""
+import hashlib
 import json
+import re
 
 import numpy as np
 import pytest
@@ -9,7 +11,9 @@ import tcl_paths as P
 import tcl_data as D
 import tx_data
 import mt_data
+import mt_paths
 import rt_data
+import rs_vh
 from pav_prompts import PROMPTS
 
 R22 = P.R22_OUT
@@ -37,11 +41,89 @@ def unit_rows(x):
     return x / np.linalg.norm(x, axis=1, keepdims=True)
 
 
+def direct_art_rows(row, section, wanted):
+    path = tx_data.FULL / tx_data.STORES[row]
+    index = json.loads((path / 'index.json').read_text())[section]
+    key = 'sample_id' if section == 'texts' else 'painting'
+    positions = {r[key]: i for i, r in enumerate(index)}
+    assert len(positions) == len(index)
+    raw = np.load(path / ('txt.npy' if section == 'texts' else 'img.npy'), mmap_mode='r')
+    return unit_rows(raw[[positions[k] for k in wanted]])
+
+
+def slow_names_label(texts, own_names, aspect):
+    """Direct per-text scan by label name: no tcl codebooks, class maps or mask helpers."""
+    import ewm_masks
+    table = tx_data.STYLE_PATTERNS if aspect == 'style' else tx_data.GENRE_PATTERNS
+    patterns = {k.lower(): v for k, v in table.items()}
+    out = []
+    for text, own in zip(texts, own_names):
+        if own is None:
+            out.append(False)
+        elif aspect == 'emotion':
+            words = [m.group().lower() for m in ewm_masks.PATTERNS['label'].finditer(text)]
+            named = {ewm_masks.EMOTION_NAMES[ewm_masks.WORD_LABEL[w]] for w in words}
+            out.append(own.lower() in named)
+        else:
+            out.append(re.search(r'\b(?:' + patterns[own.lower()] + r')\b', text, re.IGNORECASE) is not None)
+    assert len(out) == len(texts) == len(own_names)
+    return np.asarray(out, dtype=bool)
+
+
+@pytest.fixture(scope='module')
+def mm_test_raw():
+    import pandas as pd
+    keys = mt_data.keys('test')
+    cols = ['image_id', 'style', 'dominant_emotion', *['e_' + k for k in P.KINDS]]
+    raw = pd.read_parquet('/data/SSD/mmart/raw/data/data.parquet', columns=cols,
+                          filters=[('image_id', 'in', keys)]).set_index('image_id')
+    assert raw.index.is_unique
+    return raw.loc[keys]
+
+
 # ------------------------------------------------------------------------------------------ real stores
+@pytest.mark.parametrize('set_name,kind', [('art_val', 'caption'), ('art_held', 'caption'),
+                                         ('mm_val', 'narrative'), ('mm_test', 'unified')])
+@pytest.mark.parametrize('smoke', [0, 3])
+def test_frame_edits_do_not_poison_later_calls(monkeypatch, set_name, kind, smoke):
+    monkeypatch.setattr(P, 'SMOKE', smoke)
+    f = D.frame(set_name, kind)
+    arrays = {k: v for k, v in f.items() if isinstance(v, np.ndarray)}
+    arrays.update({(a, row): v for a, lab in f['labels'].items() for row, v in lab.items()})
+    for key, value in arrays.items():
+        original = value.copy()
+        value[:] = -1
+        fresh = D.frame(set_name, kind)
+        got = fresh['labels'][key[0]][key[1]] if isinstance(key, tuple) else fresh[key]
+        assert np.array_equal(got, original), key
+        value[:] = original
+    for key in ('names', 'text'):
+        original = list(f[key])
+        f[key][0] = 'edited by a scoring cell'
+        assert D.frame(set_name, kind)[key] == original
+
+
 def test_gate_iv():
     got = D.gate_iv()
     assert got == dict(art_held_paintings=12281, art_held_captions=61744, art_held_genre_labelled=9949,
                        mm_test_keys=16384, art_val_paintings=6152, art_val_captions=30872, mm_val_keys=5769)
+
+
+@pytest.mark.parametrize('fault', ['membership', 'order', 'duplicate'])
+def test_gate_iv_rejects_wrong_keys_independently_of_r15_order(monkeypatch, fault):
+    keys = {s: mt_data.keys(s) for s in ('val', 'test')}
+    if fault == 'membership':
+        keys['test'][0] = 'not a member of the frozen r15 cutset'
+        keys['test'].sort(key=lambda k: hashlib.sha256(k.encode()).hexdigest())
+    elif fault == 'order':
+        keys['test'].reverse()
+    else:
+        keys['test'][0] = keys['test'][1]
+    # A broken upstream order helper must not make the gate tautological.
+    monkeypatch.setattr(mt_data, 'keys', lambda split: list(keys[split]))
+    monkeypatch.setattr(mt_data, 'order', lambda ks: list(ks))
+    with pytest.raises(AssertionError, match='MMArt test'):
+        D.gate_iv()
 
 
 def test_art_val_frame_equals_r22():
@@ -101,18 +183,34 @@ def test_art_held_frame_and_plain():
     assert text.shape == (61744, 2048) and image.shape == (12281, 2048)
     assert text.dtype == image.dtype == np.float32
     assert np.allclose(np.linalg.norm(text, axis=1), 1, atol=1e-3) and np.allclose(np.linalg.norm(image, axis=1), 1, atol=1e-3)
-    # a caption's text row belongs to its own caption: compare with the store by painting name
-    index = tx_data.read_json(tx_data.FULL / 'qwen3vl_emb_2b' / 'index.json')['texts']
-    by_id = {r['sample_id']: r['painting'] for r in index}
-    names = f['names']
-    assert all(by_id[int(s)] == names[p] for s, p in zip(f['sample_id'][::97], f['tp'][::97]))
+    assert np.array_equal(text, direct_art_rows('plain', 'texts', f['sample_id']))
+    assert np.array_equal(image, direct_art_rows('plain', 'images', f['names']))
 
 
-def test_art_held_names_label_shapes():
+@pytest.mark.parametrize('row', ['clip_l14', 'siglip2_so400m', 'siglip_so400m'])
+def test_art_held_side_rows_match_direct_store(row):
     f = D.frame('art_held', 'caption')
+    text, image = D.side('art_held', row)
+    assert np.array_equal(text, direct_art_rows(row, 'texts', f['sample_id']))
+    assert np.array_equal(image, direct_art_rows(row, 'images', f['names']))
+
+
+@pytest.mark.parametrize('aspect', P.ASPECTS)
+def test_art_held_teacher_images(aspect):
+    assert np.array_equal(D.image('art_held', 'teacher', aspect), rt_data.embed('instructed', 'held', aspect))
+
+
+def test_art_held_names_label_matches_direct_recompute():
+    f = D.frame('art_held', 'caption')
+    annotations = json.loads(rs_vh.ANNOTATIONS.read_text())
+    rows = [annotations[int(s)] for s in f['sample_id']]
+    genre = dict(zip(rt_data.names('held'), rt_data.labels('held')['genre']))
+    own = dict(emotion=[r['emotion'] for r in rows], style=[r['art_style'] for r in rows],
+               genre=[tx_data.GENRE_NAMES[genre[r['painting']]] if genre[r['painting']] >= 0 else None for r in rows])
     for a in P.ASPECTS:
         got = D.names_label('art_held', 'caption', a)
         assert got.dtype == bool and got.shape == (61744,)
+        assert np.array_equal(got, slow_names_label([r['caption'] for r in rows], own[a], a))
         assert not got[f['labels'][a]['t'] < 0].any()
 
 
@@ -148,12 +246,39 @@ def test_mm_val_plain_joins_by_key():
 def test_mm_test_frame_gate_and_images():
     keys = mt_data.keys('test')
     f = D.frame('mm_test', 'unified')
-    assert f['names'] == keys == mt_data.order(keys) and f['n_t'] == 16384 and len(f['text']) == 16384
+    assert f['names'] == keys == sorted(keys, key=lambda k: hashlib.sha256(k.encode()).hexdigest())
+    assert f['n_t'] == 16384 and len(f['text']) == 16384
     image = D.image('mm_test', 'plain')
     assert image.shape == (16384, 2048)
     assert np.array_equal(image[:5], mt_data.features('qwen_default', keys[:5]))
-    teacher_image = D.image('mm_test', 'teacher', 'style')
-    assert np.array_equal(teacher_image[:5], mt_data.features('style_word', keys[:5]))
+
+
+@pytest.mark.parametrize('kind', P.KINDS)
+def test_mm_test_labels_text_and_names_label_against_raw(kind, mm_test_raw):
+    import pandas as pd
+    f = D.frame('mm_test', kind)
+    assert f['names'] == mm_test_raw.index.tolist()
+    assert f['text'] == mm_test_raw['e_' + kind].tolist()
+    index = pd.read_parquet(mt_paths.MMART_INDEX).set_index('key').loc[f['names']]
+    own = dict(emotion=[name or None for name in mm_test_raw['dominant_emotion'].str.lower()],
+               style=[name or None for name in mm_test_raw['style'].str.lower()],
+               genre=[mt_paths.CLASSES['genre'][y] if y >= 0 else None for y in index['genre']])
+    for a in P.ASPECTS:
+        codes = {name: i for i, name in enumerate(mt_paths.CLASSES[a])}
+        want = np.asarray([codes[name] if name is not None else -1 for name in own[a]], dtype=np.int64)
+        for row in ('t', 'i'):
+            assert f['labels'][a][row].dtype == np.int64
+            assert np.array_equal(f['labels'][a][row], want)
+        assert np.array_equal(D.names_label('mm_test', kind, a),
+                              slow_names_label(mm_test_raw['e_' + kind].tolist(), own[a], a))
+
+
+@pytest.mark.parametrize('set_name', ['mm_val', 'mm_test'])
+@pytest.mark.parametrize('aspect', P.ASPECTS)
+def test_mm_teacher_images_all_aspects(set_name, aspect):
+    keys = mt_data.keys(D.SPLIT[set_name])
+    view = dict(emotion='emotion_focus', style='style_word', genre='genre_word')[aspect]
+    assert np.array_equal(D.image(set_name, 'teacher', aspect), mt_data.features(view, keys))
 
 
 def test_d9_shares_on_mm_val():
@@ -171,16 +296,17 @@ def test_d9_shares_on_mm_val():
 def test_mm_names_label_maps_every_class():
     for a in ('style', 'genre', 'emotion'):
         mapping = D.class_map(a)
-        import mt_paths
         assert set(mapping) == set(mt_paths.CLASSES[a])
         assert all(v in D.r22_names(a) for v in mapping.values())
     for a in P.ASPECTS:
         got = D.names_label('mm_val', 'unified', a)
-        assert got.shape == (5769,) and not got[D.frame('mm_val', 'unified')['labels'][a]['t'] < 0].any()
+        f = D.frame('mm_val', 'unified')
+        codes = mt_data.labels(f['names'], a)
+        own = [mt_paths.CLASSES[a][y] if y >= 0 else None for y in codes]
+        assert got.shape == (5769,) and np.array_equal(got, slow_names_label(f['text'], own, a))
 
 
 def test_val_calls_read_no_held_label(monkeypatch):
-    held_names = set(rt_data.names('held'))
     calls = []
     real_rt, real_mt = rt_data.labels, mt_data.labels
     test_keys = set(mt_data.keys('test'))
@@ -203,8 +329,8 @@ def test_val_calls_read_no_held_label(monkeypatch):
         D.frame('mm_val', 'narrative')
         D.names_label('mm_val', 'unified', a)
         D.label_share('mm_val', 'unified', a)
-    assert calls and ('rt', 'held') not in calls and ('mt', True) not in calls
-    assert held_names
+    assert ('rt', 'val') in calls and ('mt', False) in calls
+    assert ('rt', 'held') not in calls and ('mt', True) not in calls
 
 
 # ------------------------------------------------------------------------------------------ fixture stores
@@ -213,16 +339,26 @@ def smoke_frame(monkeypatch, n):
     return n
 
 
-def test_smoke_takes_first_paintings(monkeypatch):
-    full = D.frame('art_held', 'caption')
+@pytest.mark.parametrize('set_name,kind', [('art_val', 'caption'), ('art_held', 'caption'),
+                                         ('mm_val', 'narrative'), ('mm_test', 'unified')])
+def test_smoke_takes_first_paintings(monkeypatch, set_name, kind):
+    full = D.frame(set_name, kind)
+    masks = {a: D.names_label(set_name, kind, a) for a in P.ASPECTS}
+    images = D.image(set_name, 'plain')
     monkeypatch.setattr(P, 'SMOKE', 3)
-    f = D.frame('art_held', 'caption')
+    f = D.frame(set_name, kind)
     keep = full['tp'] < 3
-    assert f['n_i'] == 3 and f['names'] == full['names'][:3] and np.array_equal(f['sample_id'], full['sample_id'][keep])
+    assert f['n_i'] == 3 and f['names'] == full['names'][:3]
+    if 'sample_id' in full:
+        assert np.array_equal(f['sample_id'], full['sample_id'][keep])
     assert f['n_t'] == int(keep.sum()) and f['text'] == [t for t, k in zip(full['text'], keep) if k]
-    assert np.array_equal(f['labels']['genre']['i'], full['labels']['genre']['i'][:3])
-    m = D.frame('mm_test', 'narrative')
-    assert m['n_i'] == m['n_t'] == 3 and m['names'] == mt_data.keys('test')[:3]
+    assert np.array_equal(f['tp'], full['tp'][keep])
+    assert np.array_equal(f['ip'], np.arange(3))
+    for a in P.ASPECTS:
+        assert np.array_equal(f['labels'][a]['t'], full['labels'][a]['t'][keep])
+        assert np.array_equal(f['labels'][a]['i'], full['labels'][a]['i'][:3])
+        assert np.array_equal(D.names_label(set_name, kind, a), masks[a][keep])
+    assert np.array_equal(D.image(set_name, 'plain'), images[:3])
 
 
 def test_teacher_art_held_fixture(monkeypatch, tmp_path):
@@ -257,6 +393,16 @@ def test_smoke_store_refused_outside_smoke(tmp_path):
         D.read_store(tmp_path / 's', [1, 2], 'ids', PROMPTS['default'], 2048, np.float16)
 
 
+def test_store_root_refused_even_for_non_smoke_store(monkeypatch, tmp_path):
+    monkeypatch.setattr(P, 'SMOKE', 0)
+    monkeypatch.setattr(P, 'STORE_ROOT', tmp_path)
+    keys = mt_data.keys('test')
+    write_store(tmp_path / P.MMART_TEXT_STORE.name / 'narrative/default/test',
+                np.ones((len(keys), 2048)), PROMPTS['default'], keys=keys, smoke=False)
+    with pytest.raises(AssertionError, match='TCL_STORES requires TCL_SMOKE'):
+        D.plain_text('mm_test', 'narrative')
+
+
 def test_store_with_missing_id_or_bad_width_crashes(tmp_path):
     write_store(tmp_path / 's', np.ones((4, 2048)), PROMPTS['default'], ids=[1, 2, 3, 4])
     with pytest.raises(AssertionError):
@@ -266,6 +412,16 @@ def test_store_with_missing_id_or_bad_width_crashes(tmp_path):
     write_store(tmp_path / 'z', np.zeros((4, 2048)), PROMPTS['default'], ids=[1, 2, 3, 4])
     with pytest.raises(AssertionError):
         D.read_store(tmp_path / 'z', [1, 2], 'ids', PROMPTS['default'], 2048, np.float16)
+
+
+def test_store_with_wrong_done_count_crashes(tmp_path):
+    path = tmp_path / 'bad_count'
+    write_store(path, np.ones((4, 2048)), PROMPTS['default'], ids=[1, 2, 3, 4])
+    done = json.loads((path / 'done.json').read_text())
+    done['count'] = 5
+    (path / 'done.json').write_text(json.dumps(done))
+    with pytest.raises(AssertionError, match='store rows, ids and count differ'):
+        D.read_store(path, [1, 2], 'ids', PROMPTS['default'], 2048, np.float16)
 
 
 def test_roberta_art_held_fixture(monkeypatch, tmp_path):

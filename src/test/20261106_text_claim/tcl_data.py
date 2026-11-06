@@ -15,6 +15,7 @@ key (C6), never by row position. TCL_SMOKE=N (tcl_paths.SMOKE) keeps the first N
 marked smoke is read only then. tcl_paths.STORE_ROOT, when set, is the base of the new stores (folder names below it
 are the stores' own names).
 """
+import hashlib
 import json
 import re
 from functools import lru_cache
@@ -68,6 +69,7 @@ def read_store(path, wanted, id_kind, instruction, width, dtype):
 
 def store_base(store):
     """The base of a new store: tcl_paths' constant, or its own folder name under STORE_ROOT (smoke)."""
+    assert P.STORE_ROOT is None or P.SMOKE, 'TCL_STORES requires TCL_SMOKE'
     return store if P.STORE_ROOT is None else Path(P.STORE_ROOT) / store.name
 
 
@@ -157,27 +159,40 @@ def _frame_full(set_name, kind):
             t = c['emotion'].copy() if a == 'emotion' else painting[a][c['pid']]
             labels[a] = dict(t=t, i=painting[a].copy())
         n_i = len(c['names'])
-        return dict(n_i=n_i, n_t=len(c['pid']), tp=c['pid'].copy(), ip=np.arange(n_i, dtype=np.int64), labels=labels,
-                    names=list(c['names']), text=list(c['text']), sample_id=c['sample_id'].copy())
-    keys = mt_data.keys(SPLIT[set_name])
-    n = len(keys)
-    labels = {}
-    for a in P.ASPECTS:
-        y = mt_data.labels(keys, a)
-        labels[a] = dict(t=y, i=y.copy())
-    return dict(n_i=n, n_t=n, tp=np.arange(n, dtype=np.int64), ip=np.arange(n, dtype=np.int64), labels=labels,
-                names=list(keys), text=list(_mm_texts(set_name)[kind]))
+        f = dict(n_i=n_i, n_t=len(c['pid']), tp=c['pid'].copy(), ip=np.arange(n_i, dtype=np.int64), labels=labels,
+                 names=list(c['names']), text=list(c['text']), sample_id=c['sample_id'].copy())
+    else:
+        keys = mt_data.keys(SPLIT[set_name])
+        n = len(keys)
+        labels = {}
+        for a in P.ASPECTS:
+            y = mt_data.labels(keys, a)
+            labels[a] = dict(t=y, i=y.copy())
+        f = dict(n_i=n, n_t=n, tp=np.arange(n, dtype=np.int64), ip=np.arange(n, dtype=np.int64), labels=labels,
+                 names=list(keys), text=list(_mm_texts(set_name)[kind]))
+    for value in f.values():
+        if isinstance(value, np.ndarray):
+            value.setflags(write=False)
+    for lab in labels.values():
+        for value in lab.values():
+            value.setflags(write=False)
+    return f
 
 
 def frame(set_name, kind):
-    """See the module doc. Under TCL_SMOKE=N: the first N paintings and their texts. A fresh dict; arrays are copies."""
+    """See the module doc. Under TCL_SMOKE=N: the first N paintings and their texts.
+
+    Returns fresh dicts, lists and writable array copies; cached frame arrays are read-only.
+    """
     f = _frame_full(set_name, kind)
     if not P.SMOKE:
-        return dict(f, labels={a: dict(v) for a, v in f['labels'].items()})
+        return dict({k: v.copy() if isinstance(v, np.ndarray) else v for k, v in f.items()},
+                    names=list(f['names']), text=list(f['text']),
+                    labels={a: {row: y.copy() for row, y in v.items()} for a, v in f['labels'].items()})
     keep = f['tp'] < P.SMOKE
     out = dict(n_i=min(P.SMOKE, f['n_i']), n_t=int(keep.sum()), tp=f['tp'][keep], names=f['names'][:P.SMOKE],
                text=[t for t, k in zip(f['text'], keep) if k],
-               labels={a: dict(t=v['t'][keep], i=v['i'][:P.SMOKE]) for a, v in f['labels'].items()})
+               labels={a: dict(t=v['t'][keep], i=v['i'][:P.SMOKE].copy()) for a, v in f['labels'].items()})
     out['ip'] = np.arange(out['n_i'], dtype=np.int64)
     if 'sample_id' in f:
         out['sample_id'] = f['sample_id'][keep]
@@ -337,5 +352,11 @@ def gate_iv():
                 art_val_paintings=P.N_PAINTINGS['art_val'], art_val_captions=P.N_CAPTIONS['art_val'],
                 mm_val_keys=P.N_PAINTINGS['mm_val'])
     assert got == want, (got, want)
-    assert len(set(test)) == len(test) and test == mt_data.order(test), "MMArt test keys not in r15's order"
+    assert len(set(test)) == len(test), 'MMArt test keys are not unique'
+    # r15 cmd_cutsets hashes lexical key order; evaluation order sorts each key's digest.
+    cutsets = tx_data.read_json(P.R15_ROUND / 'records/cutsets.json')
+    digest = hashlib.sha256('\n'.join(sorted(test)).encode('utf-8')).hexdigest()
+    assert digest == cutsets['test']['sha256'], 'MMArt test membership differs from r15 cutsets'
+    assert test == sorted(test, key=lambda k: hashlib.sha256(k.encode('utf-8')).hexdigest()), \
+        "MMArt test keys not in r15's order"
     return got
