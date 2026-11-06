@@ -787,11 +787,11 @@ def stage3_dir():
     return P.OUT / 'stage3'
 
 
-def write_part(res):
+def write_part(res, voided):
     folder = stage3_dir()
     folder.mkdir(parents=True, exist_ok=True)
     path = folder / f'{NAMES[res["part"]]}.json'
-    path.write_text(json.dumps(clean(res), indent=1, allow_nan=False) + '\n')
+    path.write_text(json.dumps(clean(dict(res, voided=voided)), indent=1, allow_nan=False) + '\n')
     return path
 
 
@@ -804,8 +804,14 @@ def write_summary():
     folder = stage3_dir()
     parts = {n: json.loads((folder / f'{name}.json').read_text()) for n, name in NAMES.items()
              if (folder / f'{name}.json').exists()}
-    lines = ['# Stage 3 diagnostics: numbers only', '', f'smoke: {bool(P.SMOKE)}', '',
-             '| part | file | records | missing |', '|---|---|---|---|']
+    voided = []
+    for p in parts.values():
+        for entry in p['voided']:
+            if entry not in voided:
+                voided.append(entry)
+    lines = ['# Stage 3 diagnostics: numbers only', '', f'smoke: {bool(P.SMOKE)}', '', '## Voided (§6)', '']
+    lines += [f'- {v["what"]}: {v["key"]}: {v["why"]}' for v in voided] or ['none']
+    lines += ['', '| part | file | records | missing |', '|---|---|---|---|']
     for n, p in parts.items():
         lines.append(f'| {n} | {NAMES[n]}.json | {sum(len(v) for v in p["sections"].values())} | {len(p["missing"])} |')
     if 1 in parts:
@@ -849,6 +855,9 @@ def main(argv=None):
     if not P.SMOKE and not P.record_path('verdicts.json').exists():
         print(f'refused: {P.record_path("verdicts.json")} is absent; stage 3 runs after the verdicts', file=sys.stderr)
         return 2
+    outcomes = P.OUT / 'stage2/outcomes.json'
+    assert P.SMOKE or outcomes.is_file(), outcomes
+    voided = json.loads(outcomes.read_text())['voided'] if outcomes.exists() else []
     recs = {g: P.read_committed_record(f'stage1_{g}.json') for g in groups}
     ctx = Context(recs, args.device)
     for n in sorted(set(args.parts)):
@@ -857,7 +866,7 @@ def main(argv=None):
             continue
         started = time.monotonic()
         res = PARTS[n](ctx)
-        path = write_part(res)
+        path = write_part(res, voided)
         print(f'part {n}: {path.name}, {sum(len(v) for v in res["sections"].values())} records, {len(res["missing"])} missing, '
               f'{time.monotonic() - started:.1f}s', flush=True)
     write_summary()

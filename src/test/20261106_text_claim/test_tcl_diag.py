@@ -341,3 +341,41 @@ def test_main_keeps_guard_when_neither_record_exists(world, monkeypatch):
     monkeypatch.setattr(tcl_score, 'held_guard', guard)
     with pytest.raises(FileNotFoundError, match='stage1_art.json'):
         D.main(['--device', 'cpu', '--parts', '8'])
+
+
+@pytest.mark.parametrize('smoke', [0, 6])
+@pytest.mark.parametrize('voided', [[], [dict(what='diagnostic', key='mm_test/formal', why='store failed'),
+                                      dict(what='cell_claims', key='art_held', why='gate iv failed')]])
+def test_voided_reaches_part_and_summary_from_outcomes(world, monkeypatch, smoke, voided):
+    records = world / 'records'
+    records.mkdir()
+    for group, rec in make_recs().items():
+        (records / f'stage1_{group}.json').write_text(json.dumps(rec))
+    (records / 'verdicts.json').write_text('{}')
+    monkeypatch.setattr(P, 'SMOKE', smoke)
+    monkeypatch.setattr(P, 'RECORDS', records)
+    monkeypatch.setattr(P, 'read_committed_record', lambda name: json.loads((records / name).read_text()))
+    monkeypatch.setitem(D.PARTS, 8, lambda ctx: D.result(8, D.NAMES[8], D.Reader(), dict(stores=[])))
+    args = ['--device', 'cpu', '--parts', '8']
+    part = world / 'stage3/part8_truncation.json'
+    summary = world / 'stage3/summary.md'
+    if smoke:
+        assert D.main(args) == 0
+        assert json.loads(part.read_text())['voided'] == []
+        assert '## Voided (§6)\n\nnone\n' in summary.read_text()
+    else:
+        with pytest.raises(AssertionError, match='outcomes.json'):
+            D.main(args)
+    outcomes = world / 'stage2/outcomes.json'
+    outcomes.parent.mkdir()
+    outcomes.write_text(json.dumps(dict(voided=voided)))
+    assert D.main(args) == 0
+    assert json.loads(part.read_text())['voided'] == voided
+    outcomes.unlink()
+    D.write_summary()                                             # a standalone part carries the void list
+    text = summary.read_text()
+    assert text.index('## Voided (§6)') < text.index('| part |')
+    for entry in voided:
+        assert f'- {entry["what"]}: {entry["key"]}: {entry["why"]}' in text
+    if not voided:
+        assert '## Voided (§6)\n\nnone\n' in text
