@@ -1967,3 +1967,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-06-r23-build-3-handoff.md
 - New chat: tab 'r23 build 3', session 0ee403f2-8ccd-4a1f-8732-ea673e82aed0
 
+[brief] CoSiR: r23 build 3 -> r23 build 4 (2026-11-06 07:12 Amsterdam)
+- Done: tickets 5 and 6 are fixed, rechecked and merged, so tickets 1 to 8 are done. All 411 tests pass on the merged code.
+- State: no held score exists. Replay gate (iii) still passes all 8 clauses: Table 2's largest difference is 2.65e-4 against a bar of 3e-4.
+- Next: build tickets 9 and 10 side by side, run the end-to-end smoke, final review, merge to main, cut to the run chat.
+- Blocked: nothing. The cut came from the context meter (past 200k tokens), not from a problem.
+- Handoff: docs/superpowers/handoffs/2026-11-06-r23-build-4-handoff.md
+- New chat: tab 'r23 build 4', session a6e0cc2d-4e46-4685-a827-2c56524eb359
+
