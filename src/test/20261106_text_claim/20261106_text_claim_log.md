@@ -1711,7 +1711,7 @@ These are build-time findings, read from the handoff. Measured run evidence belo
 a. **C13's inputs.** The keys and painting labels come from the frozen readers `rt_data.names`, `rt_data.labels`, `mt_data.keys`, `mt_data.labels`; the spec treats them as inputs. All joins, caption labels, rows and logic are C13's own code. A fault in those four readers would be shared.
 b. **`pass` with a void (agent default, finding F7).** An item with a difference counts as a failure unless every SC that reads it is in `c13_void`. It then goes to `void_differences` and does not fail. With an empty `c13_void` nothing changes.
 c. **The chain was stopped once and restarted** for the context cut, during its D13 sleep. No result depends on it.
-d. **Measured cost.** Extraction ran 3 to 4 times faster than the estimate; D13 still held the `--est` jobs for 19:00. The report gives measured times.
+d. **Measured cost.** At build time, extraction ran 3 to 4 times faster than the estimate (the full run later measured 95.67 minutes against about 1.5 h); D13 still held the `--est` jobs for 19:00. The report gives measured times.
 e. **C13's cache** takes about 61 GB on `/data/SSD2` (reviewer's estimate), far over the spec's 2 GB for run outputs. Only C13 uses it; it is on the deletion list.
 f. **Weak tests, T1 to T4 of `rereview.md`.** The code is right; these tests would not catch every change of it. Not fixed: they change no number.
 g. **Not checked before tonight:** the full held derive, `compare` on real outputs, the real `tcl_forward` path at full size, the AP gap on c*, late fusion and teacher rows at full size.
@@ -1878,7 +1878,6 @@ Outputs remain at `/data/SSD2/cosir_r23/20261106_text_claim` (79G), including `s
 
 Storage: left on disk and listed on .scratch/pending_deletions.md for the next storage summary; the decision is the user's at the wrap-up.
 
-Would remove after the user's storage decision: C13 row and score caches except `compare_*.json`, the superseded `c13_prefix`, review smoke and mutant scratch, merged build worktrees, and the gate trace after this log quotes it. Nothing was deleted.
 Git evidence:
 
 ```text
