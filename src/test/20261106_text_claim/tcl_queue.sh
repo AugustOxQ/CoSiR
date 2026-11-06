@@ -43,7 +43,7 @@ val)
   gpu_short stage0 extract_roberta
   gpu_short stage0 gate_i
   gpu_short stage0 gate_ii
-  gpu_est stage0 gate_iii 20
+  gpu_short stage0 gate_iii
   cpu_short stage0 gate_iv
   gpu_est stage1 score_art_val 15
   for k in narrative formal emotional historical unified; do gpu_short stage1 "score_mm_val_$k"; done
