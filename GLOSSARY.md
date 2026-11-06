@@ -25,5 +25,7 @@ The project's terms, written by the grill (research loop step 5) and used by bri
 | CLAY | an outside method (CVPR 2026, arXiv 2604.11539): training-free; it projects a frozen CLIP image onto the subspace spanned by text values of a condition (for example 50 or 100 emotion words); r18 runs it on CLIP L/14 (user, 2026-11-03) |
 | TURTLE | a label-free clustering method (ICML 2024): it searches for the partition whose linear classifiers separate the classes with the largest margin in a frozen space; needs the cluster count; r18 uses it in place of k-means (user, 2026-11-03) |
 | TEMI | a label-free clustering method (BMVC 2023): clustering heads trained on frozen features with a teacher copy and nearest-neighbour pairs; needs the cluster count; r18 runs it after TURTLE (user, 2026-11-03) |
+| late fusion | a weighted sum of two models' cosines for the same query and gallery item: (1 - a) c* cosine + a plain Qwen cosine, with weight a on plain Qwen; the field's name for score-level joining; old name in reports 2027-01-09 and 2027-01-10: joined scores (user, 2026-11-06) |
+| WIN, LEVEL, BELOW | the outcome of one paired comparison from its 95% interval: WIN when the lower bound is above 0; LEVEL when not WIN and the lower bound is above minus the seed range; BELOW otherwise (r14 §3.4; user, 2026-11-06) |
 
 The conditioned line's terms (aspect, episode, reader, AFF, B′ scorers, held read and the rest) are archived: [glossary of the conditioned line](archive/v2_conditioned/GLOSSARY.md).
