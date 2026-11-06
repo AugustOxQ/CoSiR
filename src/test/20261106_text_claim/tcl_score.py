@@ -59,13 +59,16 @@ def _save(path, **arrays):
     os.replace(tmp, path)
 
 
-def _complete(path, aspects):
-    """A score file is complete when it holds exactly its keys (rename makes a partial write impossible)."""
+def _complete(path, aspects, q_pid):
+    """A score file is complete when its keys, query IDs, dtypes and column lengths match the frame."""
     if not Path(path).exists():
         return False
     with np.load(path, allow_pickle=False) as z:
-        return set(z.files) == {'q_pid', 'first_rank'} | {f'ap__{a}{s}' for a in aspects
-                                                        for s in ('', '__no_leak', '__cross_painting')}
+        keys = {'q_pid', 'first_rank'} | {f'ap__{a}{s}' for a in aspects
+                                         for s in ('', '__no_leak', '__cross_painting')}
+        return (set(z.files) == keys and np.array_equal(z['q_pid'], q_pid)
+                and all(z[k].shape == q_pid.shape and z[k].dtype == (np.int64 if k == 'q_pid' else np.float32)
+                        for k in keys))
 
 
 def _plan(row, head):
@@ -90,7 +93,7 @@ def plan(set_name, rows=None):
     return out
 
 
-def unit_done(set_name, kind, row, head, seed, out=None):
+def unit_done(set_name, kind, row, head, seed, fr, out=None):
     """Every score file of the row, head and seed is complete (and, on validation, so are its means)."""
     aspects, directions = _plan(row, head)
     if set_name in ('art_val', 'mm_val'):
@@ -100,7 +103,10 @@ def unit_done(set_name, kind, row, head, seed, out=None):
         with np.load(path, allow_pickle=False) as z:
             if set(z.files) != {'t', 'i', 'n_t', 'n_i'}:
                 return False
-    return all(_complete(P.score_path(set_name, kind, row, head, seed, d, r, out=out), aspects)
+            if (int(z['n_t']), int(z['n_i'])) != (fr['n_t'], 0 if row == 'roberta' else fr['n_i']):
+                return False
+    return all(_complete(P.score_path(set_name, kind, row, head, seed, d, r, out=out), aspects,
+                         fr['tp'] if d[0] == 't' else fr['ip'])
                for d in directions for r in P.READOUTS)
 
 
@@ -115,7 +121,7 @@ def score_unit(set_name, kind, row, head, seed, text, image, fr, flags, device, 
     assert text.shape[0] == fr['n_t'] and (image is None) == text_only
     assert text_only or image.shape[0] == fr['n_i']
     aspects, directions = _plan(row, head)
-    if unit_done(set_name, kind, row, head, seed, out=out):
+    if unit_done(set_name, kind, row, head, seed, fr, out=out):
         return
     mt, mi = unit_means(set_name, kind, row, head, seed, text, image, out, val_n)
     pid = dict(t=fr['tp'], i=fr['ip'])
@@ -124,7 +130,7 @@ def score_unit(set_name, kind, row, head, seed, text, image, fr, flags, device, 
         q, g = (text if direction[0] == 't' else image), (text if direction[2] == 't' else image)
         for readout in P.READOUTS:
             path = P.score_path(set_name, kind, row, head, seed, direction, readout, out=out)
-            if _complete(path, aspects):
+            if _complete(path, aspects, pid[direction[0]]):
                 continue
             started = time.monotonic()
             result = evaluate(q, g, pid[direction[0]], pid[direction[2]], entries, direction == 't2t', readout, device,
@@ -173,11 +179,11 @@ def run(set_name, kinds=None, rows=None, device='cuda', block=BLOCK, out=None):
     assert set(kinds) <= set(P.kinds(P.GROUP[set_name])), (set_name, kinds)
     cuda = torch.device(device).type == 'cuda'
     for kind in kinds:
-        todo = [u for u in plan(set_name, rows) if not unit_done(set_name, kind, *u, out=out)]
+        fr = tcl_data.frame(set_name, kind)
+        todo = [u for u in plan(set_name, rows) if not unit_done(set_name, kind, *u, fr, out=out)]
         print(f'{set_name}/{kind}: {len(todo)} of {len(plan(set_name, rows))} units to score', flush=True)
         if not todo:
             continue
-        fr = tcl_data.frame(set_name, kind)
         flags = {a: tcl_data.names_label(set_name, kind, a) for a in P.ASPECTS}
         val_n = None
         if P.VAL_OF[set_name] != set_name:
