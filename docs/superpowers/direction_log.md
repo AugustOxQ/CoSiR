@@ -11,7 +11,7 @@ weekly and stage reports.
 
 The conditioned line's log (2026-09-28 to 2026-10-15, rounds 1 to 9, parked ideas) is archived: [direction log](../../archive/v2_conditioned/docs/superpowers/direction_log.md).
 
-## Now (2026-11-05)
+## Now (2026-11-06)
 
 The new line builds a condition-free model over PercepT: one Qwen3-VL-Embedding instruction per aspect, buddy graphs
 on each view, one shared trunk with emotion, style and genre heads, read once on the default image. On ArtELingo, c*
@@ -33,7 +33,7 @@ and closed (user, 2026-11-05): good overall; against the teacher, 46 of 48 AMI a
 ArtELingo emotion that gap comes from one class, contentment (report 2027-01-07); genre labels alone reach ACC level with
 both models, and ARI close to c* and below the teacher. After the weekly meeting, text-to-text and cross-modal retrieval are top priority (user, 2026-11-05). r22, an exploration on validation with seed 0,
 is read (user, 2026-11-05): c*'s caption side beats plain Qwen and the teacher's text in 6 of 9 label cells (bar 5; 5 of 9 with one fixed read-out),
-with emotion below the teacher, and pair hits below plain Qwen, which the user expected. Next (user, 2026-11-05): two short checks on validation, then the claim loop as r23. The pair-hit limit waits for
+with emotion below the teacher, and pair hits below plain Qwen, which the user expected. The two short checks are read (user, 2026-11-06): on older saved models the own-caption term raises pair hits and lowers label hits; joined c* and plain Qwen scores pass the rule at one weight, a = 0.7, which the user reads as important, with no clear reason yet why that weight helps. Next: the claim loop as r23. The pair-hit limit waits for
 the user's talk with the other authors. r20 (figure) and r21 (head variants) wait. The stage note's form still waits for the user. Deadlines:
 abstract 2026-11-10, paper 2026-11-16, supplementary 2026-11-23.
 Reporting (user, 2026-11-04): r17's results enter the weekly report of 2026-11-04 only after the user's reading in the r20
@@ -96,6 +96,18 @@ r17.
   GPU h by our arithmetic, not measured; a small spec must settle D9 against D25 (never run; deferred by the user
   (2026-11-05): worth doing, not top priority;
   [proposed in](../reports/auto/percept/2027-01-06_outside_methods.md))
+
+## 2026-11-06 · Pair-hit checks read: the own-caption term matters; joined scores work at a = 0.7, with no clear reason yet; the claim loop comes next
+
+- **Read:** validation, seed 0, so no claim. Own-caption term on recipes R0-5 (on) and R6-5 (off), both older than c*: best-head pair R@10 rises +0.0814
+  [+0.0773, +0.0858] text to image and +0.1214 [+0.1110, +0.1338] image to text, 59% and 57% of the gap to plain Qwen; label mAP is lower in all 9 cells.
+  Joined scores: only a = 0.7 passes the rule. Its pair R@10 is 0.3215, 0.4954, 0.1952 against plain Qwen's 0.3102, 0.5068, 0.1823; all 9 label cells are above
+  plain Qwen and 5 of 9 above both comparators.
+- **Meaning (C):** an important finding. The own-caption term on or off matters here. There is no clear explanation why a = 0.7 helps, but it works (user).
+- **Our reading, opened after the user's:** it agrees on the term and on the value of joined scores. It differs in two points. The term is a trade-off, since it
+  costs label hits, and its effect on c* itself is not known. "Works" holds on validation only: one grid point, one seed, and the weight picked on the scored rows.
+- **Why a = 0.7 helps:** not tested. A likely cause is that the two scores make different errors (agent, not checked).
+- **Links:** [report](../reports/auto/percept/2027-01-10_pair_hit_checks.md) · [user-read report](../user_read/2026-11-05_pair_hit_checks.md) · [rule](../../src/test/20261105_text_retrieval/20261105_text_retrieval_log.md)
 
 ## 2026-11-05 · Text retrieval read: c* above both comparators in 6 of 9 label cells, below plain Qwen on pair hits, as the user expected; short checks, then the claim loop
 
