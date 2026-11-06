@@ -44,8 +44,11 @@ def is_bar_store(key, group):
 
 
 # ---------------------------------------------------------------------------------------------------- score files
-def _n_queries(set_name, direction):
-    return P.N_CAPTIONS[set_name] if P.GROUP[set_name] == 'art' and direction != 'i2t' else P.N_PAINTINGS[set_name]
+def _n_queries(set_name, direction, n_caption):
+    if P.GROUP[set_name] == 'art' and direction != 'i2t':
+        # Smoke keeps every caption of the selected paintings, so its count varies.
+        return n_caption if P.SMOKE else P.N_CAPTIONS[set_name]
+    return min(P.SMOKE or P.N_PAINTINGS[set_name], P.N_PAINTINGS[set_name])
 
 
 def _load(set_name, kind, row, head, seed, direction, readout, aspect, role):
@@ -57,7 +60,8 @@ def _load(set_name, kind, row, head, seed, direction, readout, aspect, role):
         column = 'first_rank' if aspect is None else f'ap__{aspect}'
         assert {'q_pid', column} <= set(score.files), f'missing score columns: {path}'
         pid, values = score['q_pid'], score[column]
-    n_q, n_i = _n_queries(set_name, direction), P.N_PAINTINGS[set_name]
+    n_q = _n_queries(set_name, direction, len(pid))
+    n_i = min(P.SMOKE or P.N_PAINTINGS[set_name], P.N_PAINTINGS[set_name])
     assert pid.shape == (n_q,) and pid.dtype == np.int64, f'query IDs: {path}'
     assert ((pid >= 0) & (pid < n_i)).all(), f'painting positions: {path}'
     if direction == 'i2t' or P.GROUP[set_name] == 'mm':
@@ -179,14 +183,17 @@ def run(draws=P.N_DRAWS):
     status = P.read_committed_record('status.json')
     group_why, diagnostics = _group_voids(status)
     cells, why = [], {sc: [] for sc in P.SC_OF.values()}
+    c13_void = status.get('c13_void', [])
+    for sc in c13_void:
+        why[sc].append('C13 difference over 1e-6 remains after tracing')
     for g in GROUPS:
         scs = [P.SC_OF[(c, g)] for c in CANDIDATES]
-        for sc in scs:
-            why[sc] += group_why[g]
         record = _read_stage1(g)
         if record is None:
-            for sc in scs:
-                why[sc].append('stage 1 record missing')
+            group_why[g].append('stage 1 record missing')
+        for sc in scs:
+            why[sc] += group_why[g]
+        if record is None:
             continue
         group_void = bool(group_why[g])
         for candidate in CANDIDATES:
@@ -205,7 +212,14 @@ def run(draws=P.N_DRAWS):
                             if not why[target]:
                                 why[target].append(f'score file missing: {miss.path} ({name})')
                     continue
-                row['claim_voided'] = group_void
+                except AssertionError as error:
+                    if not group_void:
+                        raise
+                    reason = f'invalid score cell {name}: {error}'
+                    group_why[g].append(reason)
+                    why[sc].append(reason)
+                    continue
+                row['claim_voided'] = group_void or sc in c13_void
                 cells.append(row)
     outcomes = dict(verdicts={}, voided=[])
     for g in GROUPS:

@@ -1,5 +1,6 @@
 """Fixture checks of text-claim design §3.4 (interval, outcomes, pair cells), §3.5 and §6 (verdicts, inconclusive)."""
 import copy
+import inspect
 import json
 
 import numpy as np
@@ -20,7 +21,7 @@ PAIR_PLAIN = dict(readout='center')
 @pytest.fixture(autouse=True)
 def scratch(tmp_path, monkeypatch):
     monkeypatch.setattr(p, 'OUT', tmp_path)
-    monkeypatch.setattr(p, 'SMOKE', 1)
+    monkeypatch.setattr(p, 'SMOKE', 3)
     monkeypatch.setitem(p.N_PAINTINGS, 'art_held', 3)
     monkeypatch.setitem(p.N_PAINTINGS, 'mm_test', 3)
     monkeypatch.setitem(p.N_CAPTIONS, 'art_held', 4)
@@ -439,6 +440,8 @@ def test_line_e_missing_stage1_record_voids_that_set_and_does_not_crash_the_othe
     cells, outcomes = run()
     assert_inconclusive(outcomes, ('SC1', 'SC3'))
     assert cells_of(cells, 'art') == []
+    assert void_keys(outcomes, 'cell_claims') == ['art_held']
+    assert 'stage 1 record missing' in next(v['why'] for v in outcomes['voided'] if v['what'] == 'cell_claims')
     assert_set_untouched(tmp_path, cells, outcomes, base, 'mm', ('SC2', 'SC4'))
 
 
@@ -539,3 +542,185 @@ def test_write_is_sorted_deterministic_and_has_the_index_fields(tmp_path):
                           'seed_range', 'outcome', 'n_query', 'n_units', 'claim_voided'}
     oc.main(draws=DRAWS)
     assert {n: (folder / n).read_bytes() for n in first} == first
+
+
+# -------------------------------------------------------------- review fault regressions
+def test_fails_leaves_cell_claims_standing(tmp_path):
+    setup(tmp_path, art=dict(nP=8))
+    cells, outcomes = run()
+    assert outcomes['verdicts']['SC1']['verdict'] == outcomes['verdicts']['SC3']['verdict'] == 'fails'
+    art = [c for c in cells if c['group'] == 'art']
+    assert len(art) == 38 and {c['claim_voided'] for c in art} == {False}
+
+
+def wide(monkeypatch, n=8):
+    monkeypatch.setattr(p, 'SMOKE', n)
+    monkeypatch.setitem(p.N_PAINTINGS, 'art_held', n)
+    monkeypatch.setitem(p.N_CAPTIONS, 'art_held', n)
+    return list(range(n))
+
+
+def test_outcome_reads_the_lower_bound_not_the_point_or_upper(tmp_path, monkeypatch):
+    pid = wide(monkeypatch)
+    d = np.array([.5, .5, .5, -.25, -.25, -.25, .125, .125])
+    for seed in p.SEEDS:
+        write_ap('art', 'cstar', 'emotion', seed, 'emotion', 't2i', 'center', 0.25 + (d > 0) * d + 0.25, pid)
+    write_ap('art', 'plain', 'all', 'x', 'emotion', 't2i', 'r0', 0.5 - (d < 0) * d, pid)
+    got = oc.label_cell('art', 'cstar', 'plain', 'emotion', 't2i', stage1_record('art'), 2000)
+    assert got['lower'] < 0 < got['point'] < got['upper'] and got['outcome'] != 'WIN'
+
+
+def test_q_reads_the_lower_bound_not_the_point(tmp_path, monkeypatch):
+    pid = wide(monkeypatch)
+    for seed in p.SEEDS:
+        write_rank('art', 'late', 'style', seed, 't2i', 'center_k10', [1, 1, 1, 1, np.nan, np.nan, 1, 1], pid)
+    write_rank('art', 'plain', 'all', 'x', 't2i', 'center', [np.nan, np.nan, 1, 1, 1, 1, 1, 1], pid)
+    got = oc.pair_cell('art', 't2i', stage1_record('art'), 2000)
+    assert got['point'] == 0.0 and got['lower'] < p.PAIR_LIMIT and got['above_limit'] is False
+
+
+def varied_record(group='art'):
+    rec = stage1_record(group)
+    kind = p.BAR_KIND[group]
+    for i, (a, d) in enumerate(CELLS):
+        n = p.ASPECTS.index(a) + p.DIRECTIONS.index(d)
+        rec['picks'][kind]['cstar'][a][d] = rec['picks'][kind]['late'][a][d] = p.READOUTS[n % 3]
+        rec['picks'][kind]['plain'][a][d] = rec['picks'][kind]['teacher'][a][d] = p.READOUTS[(n + 1) % 3]
+    rec['pair_picks'][kind] = {
+        't2i': dict(late=dict(head='style', readout='center_k10'), plain=dict(readout='center')),
+        'i2t': dict(late=dict(head='genre', readout='r0'), plain=dict(readout='center_k10'))}
+    return rec
+
+
+def test_each_cell_reads_its_own_pick_when_picks_differ_by_cell(tmp_path):
+    setup(tmp_path)
+    rec = varied_record()
+    for a, d in CELLS:
+        for cand in ('cstar', 'late'):
+            for comp in ('plain', 'teacher'):
+                got = oc.label_cell('art', cand, comp, a, d, rec, 20)
+                assert got['candidate_readout'] == rec['picks']['caption'][cand][a][d]
+                assert got['comparator_readout'] == rec['picks']['caption'][comp][a][d]
+    for d in p.PAIR_DIRECTIONS:
+        got = oc.pair_cell('art', d, rec, 20)
+        want = rec['pair_picks']['caption'][d]
+        assert (got['head'], got['candidate_readout'], got['comparator_readout']) == (
+            want['late']['head'], want['late']['readout'], want['plain']['readout'])
+
+
+def test_pair_mean_uses_all_five_seeds(tmp_path):
+    pid = [0, 0, 1, 2]
+    for seed in p.SEEDS:
+        write_rank('art', 'late', 'style', seed, 't2i', 'center_k10', [1 if seed < 4 else 11] * 4, pid)
+    write_rank('art', 'plain', 'all', 'x', 't2i', 'center', [1] * 4, pid)
+    got = oc.pair_cell('art', 't2i', stage1_record('art'), 20)
+    assert got['point'] == pytest.approx(-0.2, abs=1e-12)
+
+
+def test_pair_nan_in_plain_stays_a_miss(tmp_path):
+    pid = [0, 0, 1, 2]
+    for seed in p.SEEDS:
+        write_rank('art', 'late', 'style', seed, 't2i', 'center_k10', [1] * 4, pid)
+    write_rank('art', 'plain', 'all', 'x', 't2i', 'center', [1, np.nan, 1, 1], pid)
+    got = oc.pair_cell('art', 't2i', stage1_record('art'), 20)
+    assert got['n_query'] == 4 and got['point'] == 0.25
+
+
+def test_uncommitted_stage1_is_refused_not_read_as_missing(tmp_path, monkeypatch):
+    baseline(tmp_path)
+    real = p.read_committed_record
+
+    def refuse(name):
+        if name == 'stage1_mm.json':
+            raise RuntimeError('not committed')
+        return real(name)
+    monkeypatch.setattr(p, 'read_committed_record', refuse)
+    with pytest.raises(RuntimeError):
+        run()
+
+
+def test_defaults_are_the_specs_draws():
+    assert inspect.signature(oc.run).parameters['draws'].default == 10000
+    assert inspect.signature(oc.main).parameters['draws'].default == 10000
+
+
+@pytest.mark.parametrize('sc', ['SC1', 'SC2', 'SC3', 'SC4'])
+def test_c13_voids_only_the_named_verdict_and_its_cell_claims(tmp_path, sc):
+    base = baseline(tmp_path)
+    write_record('status.json', status_with(c13_void=[sc]))
+    cells, outcomes = run()
+    assert_inconclusive(outcomes, [sc])
+    assert void_keys(outcomes, 'cell_claims') == []
+    assert 'C13' in outcomes['voided'][0]['why']
+    assert len(cells) == len(base[0])
+    for cell, original in zip(cells, base[0]):
+        assert cell == dict(original, claim_voided=cell['sc'] == sc)
+    for other in outcomes['verdicts'].keys() - {sc}:
+        assert outcomes['verdicts'][other] == base[1]['verdicts'][other]
+
+
+def test_c13_list_combines_with_a_set_gate_void(tmp_path):
+    base = baseline(tmp_path)
+    write_record('status.json', status_with(c13_void=['SC2', 'SC3'], gate_iv=dict(art=False, mm=True)))
+    cells, outcomes = run()
+    assert_inconclusive(outcomes, ['SC1', 'SC2', 'SC3'])
+    assert void_keys(outcomes, 'cell_claims') == ['art_held']
+    assert outcomes['verdicts']['SC4'] == base[1]['verdicts']['SC4']
+    assert all(c['claim_voided'] == (c['sc'] != 'SC4') for c in cells)
+
+
+def test_empty_c13_list_leaves_verdicts_and_claims_standing(tmp_path):
+    base = baseline(tmp_path)
+    write_record('status.json', status_with(c13_void=[]))
+    assert run() == base
+
+
+@pytest.mark.parametrize('group', ['art', 'mm'])
+@pytest.mark.parametrize('direction', p.DIRECTIONS)
+@pytest.mark.parametrize('smoke', [2, 5])
+def test_smoke_load_uses_selected_paintings_and_variable_caption_count(tmp_path, monkeypatch, group, direction, smoke):
+    monkeypatch.setattr(p, 'SMOKE', smoke)
+    n_i = min(smoke, p.N_PAINTINGS[HELD[group]])
+    # All captions of the selected paintings remain; their count is not the full set's count.
+    pid = [0, 0, 1, 1, 1] if group == 'art' and direction != 'i2t' else list(range(n_i))
+    write_ap(group, 'plain', 'all', 'x', 'emotion', direction, 'r0', [0.5] * len(pid), pid)
+    got_pid, _ = oc._load(HELD[group], p.BAR_KIND[group], 'plain', 'all', 'x', direction, 'r0',
+                         'emotion', 'comparator')
+    np.testing.assert_array_equal(got_pid, pid)
+
+
+@pytest.mark.parametrize('direction', ['t2i', 't2t'])
+def test_full_run_still_checks_the_caption_count(tmp_path, monkeypatch, direction):
+    monkeypatch.setattr(p, 'SMOKE', 0)
+    write_ap('art', 'plain', 'all', 'x', 'emotion', direction, 'r0', [0.5] * 3, [0, 1, 2])
+    with pytest.raises(AssertionError, match='query IDs'):
+        oc._load('art_held', 'caption', 'plain', 'all', 'x', direction, 'r0', 'emotion', 'comparator')
+
+
+@pytest.mark.parametrize('group', ['art', 'mm'])
+@pytest.mark.parametrize('voided', [True, False])
+def test_bad_score_assertion_is_skipped_only_for_a_gate_voided_set(tmp_path, group, voided):
+    base = baseline(tmp_path)
+    write_record('status.json', status_with(gate_iv={g: not (voided and g == group) for g in OWN}))
+    path = path_of(group, 'plain', 'all', 'x', 'i2t', 'r0')
+    np.savez(path, q_pid=np.arange(99, dtype=np.int64), first_rank=np.ones(99, dtype=np.float32),
+             **{f'ap__{a}': np.full(99, 0.5, dtype=np.float32) for a in p.ASPECTS})
+    if not voided:
+        with pytest.raises(AssertionError, match='query IDs'):
+            run()
+        return
+    cells, outcomes = run()
+    assert_inconclusive(outcomes, OWN[group])
+    assert void_keys(outcomes, 'cell_claims') == [SET_OF[group]]
+    assert all(c['claim_voided'] for c in cells_of(cells, group))
+    assert not any(c['comparator'] == 'plain' and c['direction'] == 'i2t' for c in cells_of(cells, group)
+                   if c['cell'] == 'label')
+    assert any('query IDs' in v['why'] for v in outcomes['voided'])
+    other = 'mm' if group == 'art' else 'art'
+    assert_set_untouched(tmp_path, cells, outcomes, base, other, OTHER[group])
+
+
+def test_extraction_store_keys_equal_the_verdict_gate_keys():
+    import tcl_extract
+
+    assert [r[0] for r in tcl_extract.stores_to_check()] == oc.gate_i_keys()
