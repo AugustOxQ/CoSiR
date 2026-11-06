@@ -250,6 +250,13 @@ def gate_i(device):
             cos = np.sum(got * ref, axis=1)
             entry.update(parity_min_cosine=float(cos.min()), parity_mean_cosine=float(cos.mean()), parity_n=len(cos),
                          parity=bool(cos.min() >= PARITY_BAR))
+            if not entry['parity'] and s != 'art_held' and r != 'plain':
+                # MMArt teacher: no reference, so this is a rerun test. encode_texts sorts by length, so 200 rows alone pad
+                # differently from the store's batches (a faithful store fell to 0.99847). Repeat the store's own batches;
+                # the bar stays. parity_min_cosine keeps the first value.
+                full = tx_data.unit(encoder.encode_texts(list(D.frame(s, k)['text']), batch_size=64))[:PARITY_ROWS]
+                same = np.sum(full * ref, axis=1)
+                entry.update(parity_same_batches_min_cosine=float(same.min()), parity=bool(same.min() >= PARITY_BAR))
         else:
             entry['parity'] = None if ok else False       # RoBERTa: same code as the s2 store, no reference row set
         entry['pass'] = bool(ok and entry['parity'] is not False)
