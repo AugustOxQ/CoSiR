@@ -1935,3 +1935,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-05-r23-decide-handoff.md
 - New chat: tab 'r23 decide', session f89dacc0-c7b3-4cac-818a-aa9c5c2e41af
 
+[brief] CoSiR: r23 decide -> r23 decide 2 (2026-11-06 03:41 Amsterdam)
+- Done: r22 read, two short checks read, and decision A taken; reports committed.
+- State: at a = 0.7, joined pair R@10 is 0.3215, 0.4954, 0.1952 against plain Qwen's 0.3102, 0.5068, 0.1823. 5 of 9 label cells stay above both comparators.
+- Next: short grill and short spec of the claim loop, with c* as the main row and joined scores as one extra row.
+- Blocked: nothing. The pair-hit limit waits for the user's talk with the other authors.
+- Handoff: docs/superpowers/handoffs/2026-11-06-r23-decide-2-handoff.md
+- New chat: tab 'r23 decide 2', session 88455088-ddbb-4074-8cbe-a09cc630ef5c
+
