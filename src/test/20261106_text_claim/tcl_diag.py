@@ -694,6 +694,14 @@ def part6(ctx):
                     rec = meta(set_name, kind, row, h, d, ro, len(scs[0]['q_pid']), seeds_of(row))
                     put(rec, 'r10', [summarize_pair(s['first_rank'].astype(np.float64))['r10'] for s in scs], seeds_of(row))
                     pair.append(rec)
+            for head in P.ASPECTS:
+                for ro in P.READOUTS:
+                    scs = R.seeds(set_name, kind, 'teacher', head, d, ro)
+                    if scs is not None:
+                        rec = meta(set_name, kind, 'teacher', head, d, ro, len(scs[0]['q_pid']), seeds_of('teacher'))
+                        put(rec, 'r10', [summarize_pair(s['first_rank'].astype(np.float64))['r10'] for s in scs],
+                            seeds_of('teacher'))
+                        pair.append(rec)
     for kind in (P.BAR_KIND['mm'], 'unified'):
         if not ctx.has_kind(R, set_name, kind):
             continue
@@ -720,7 +728,8 @@ def part6(ctx):
     return result(6, 'part6_mmart_other_texts', R,
                   dict(label=label, pair=pair, no_leak=no_leak, label_word_share=share), definitions=dict(
                       label='map at the stage 1 pick of the row, kind, aspect and direction',
-                      pair='R@10 for c* and late fusion at the late fusion pair pick of the kind, plain at its pair pick',
+                      pair='R@10 for c* and late fusion at the late fusion pair pick of the kind, plain at its pair pick; '
+                           'teacher at each head and read-out (no pair pick)',
                       no_leak='map of the no_leak entry at the same picks',
                       label_word_share='tcl_data.label_share: share of labelled rows whose text names its own label'))
 

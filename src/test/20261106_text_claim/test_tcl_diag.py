@@ -379,3 +379,48 @@ def test_voided_reaches_part_and_summary_from_outcomes(world, monkeypatch, smoke
         assert f'- {entry["what"]}: {entry["key"]}: {entry["why"]}' in text
     if not voided:
         assert '## Voided (§6)\n\nnone\n' in text
+
+
+def test_part6_pair_includes_teacher_at_every_head_and_readout(world, monkeypatch):
+    recs = make_recs()
+    mm = recs['mm']
+    picks = mm['picks']['narrative']
+    mm['picks'] = {kind: dict(picks, teacher=picks['cstar']) for kind in P.KINDS}
+    mm['pair_picks'] = {kind: mm['pair_picks']['narrative'] for kind in P.KINDS}
+    monkeypatch.setattr(tcl_data, 'label_share', lambda *args: 0.0)
+    others = [kind for kind in P.KINDS if kind != P.BAR_KIND['mm']]
+    expected = {}
+    pid = fake_frame('mm_test', 'formal')['tp']
+    n_query = len(pid)
+
+    def write_score(path, ranks):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        cols = {f'ap__{a}{suffix}': np.full(n_query, 0.5, np.float32)
+                for a in P.ASPECTS for suffix in ('', '__no_leak')}
+        np.savez(path, q_pid=pid, first_rank=ranks, **cols)
+
+    for kind in others:
+        for h, head in enumerate(P.ASPECTS):
+            for r, ro in enumerate(P.READOUTS):
+                for d in P.PAIR_DIRECTIONS:
+                    ranks = np.where(np.arange(n_query) < 1 + (h * 3 + r) % n_query, 1, 20).astype(np.float32)
+                    path = P.score_path('mm_test', kind, 'teacher', head, 'x', d, ro)
+                    write_score(path, ranks)
+                    expected[kind, head, d, ro] = float(np.mean(ranks <= 10))
+        for d in P.PAIR_DIRECTIONS:
+            for row, head, ro in (('cstar', 'genre' if d == 't2i' else 'style', 'r0' if d == 't2i' else 'center_k10'),
+                                  ('late', 'genre' if d == 't2i' else 'style', 'r0' if d == 't2i' else 'center_k10'),
+                                  ('plain', 'all', 'center' if d == 't2i' else 'r0')):
+                for seed in D.seeds_of(row):
+                    path = P.score_path('mm_test', kind, row, head, seed, d, ro)
+                    write_score(path, np.full(n_query, 1, np.float32))
+    res = D.part6(D.Context(recs, 'cpu'))
+    pair = res['sections']['pair']
+    teacher = [r for r in pair if r['row'] == 'teacher']
+    assert len(teacher) == len(others) * len(P.ASPECTS) * len(P.READOUTS) * len(P.PAIR_DIRECTIONS)
+    assert {(r['kind'], r['head'], r['direction'], r['readout']): r['r10'] for r in teacher} == expected
+    assert all(r['seed'] == 'x' and not r['mean_over_seeds'] and r['n_query'] == n_query for r in teacher)
+    existing = [r for r in pair if r['row'] != 'teacher']
+    assert len(existing) == len(others) * len(P.PAIR_DIRECTIONS) * 3
+    assert {r['row'] for r in existing} == {'cstar', 'late', 'plain'}
+    assert all(r['r10'] == 1.0 for r in existing)
