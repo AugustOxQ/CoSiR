@@ -22,6 +22,34 @@ def load(set_name, kind):
     return c[:, mask], m[mask], pid[mask], f['labels']['genre']['t'][mask]
 
 
+def no_leak():
+    """Added after the class table was read, so outside the pre-written design: the same class differences with the texts
+    that name their own genre removed from queries and gallery (r23's saved `__no_leak` entry), and the share of texts that
+    name it, per class and text kind."""
+    picks = record('mm')['picks']['narrative']
+    pid, m = saved('mm_test', 'narrative', 'plain', 'all', 'x', 't2t', picks['plain']['genre']['t2t'], 'genre__no_leak')
+    c = np.stack([saved('mm_test', 'narrative', 'cstar', 'genre', s, 't2t', picks['cstar']['genre']['t2t'], 'genre__no_leak')[1]
+                  for s in P.SEEDS])
+    mask = matched(c, m)
+    c, m, pid = c[:, mask], m[mask], pid[mask]
+    y = D.frame('mm_test', 'narrative')['labels']['genre']['t'][mask]
+    named = {f'mm_test/{k}': (D.names_label('mm_test', k, 'genre'), D.frame('mm_test', k)['labels']['genre']['t']) for k in P.KINDS}
+    art = D.frame('art_held', 'caption')['labels']['genre']['t']
+    named['art_held/caption'] = (D.names_label('art_held', 'caption', 'genre'), art)
+    out = dict(overall=interval(c, m, pid), cstar=float(c.mean()), plain=float(m.mean()), classes=[])
+    for code, name in enumerate(mt_paths.CLASSES['genre']):
+        keep = y == code
+        share = {}
+        for key, (flag, yy) in named.items():
+            side_code = D.r22_names('genre').index(D.class_map('genre')[name]) if key.startswith('art') else code
+            k = yy == side_code
+            share[key] = float(flag[k].mean()) if k.any() else None
+        out['classes'].append(dict(class_name=name, n_query=int(keep.sum()), cstar=float(c[:, keep].mean()) if keep.any() else None,
+                                   plain=float(m[keep].mean()) if keep.any() else None,
+                                   difference=float(c[:, keep].mean() - m[keep].mean()) if keep.any() else None, names_own_label=share))
+    return out
+
+
 def main():
     c, m, pid, y = load('mm_test', 'narrative')
     overall = float(c.mean() - m.mean())
@@ -56,7 +84,7 @@ def main():
     result = dict(classes=rows, overall=dict(cstar=float(c.mean()), plain=float(m.mean()), difference=overall),
                   macro=dict(cstar=macro_c, plain=macro_m),
                   gap_share={f'top_{n}': sum(r['contribution'] for r in ranked[:n]) / overall for n in (1, 2)},
-                  reference=dict(cstar=.4564, plain=.4701, difference=-.0137, reproduced=True))
+                  reference=dict(cstar=.4564, plain=.4701, difference=-.0137, reproduced=True), no_leak=no_leak())
     write(ROUND / 'records/b_classes.json', result)
     print('| Class | Queries | Share | c* AP | Plain AP | Difference | 95% interval | Contribution | Gap without | val | formal | emotional | historical | unified | Art caption |')
     print('|' + '---|' * 15)
@@ -64,6 +92,11 @@ def main():
         b = r['beside']
         extra = [b[k] for k in ('mm_val/narrative', 'mm_test/formal', 'mm_test/emotional', 'mm_test/historical', 'mm_test/unified', 'art_held/caption')]
         print(f"| {r['class_name']} | {r['n_query']} | {r['share']:.4f} | {r['cstar']:.4f} | {r['plain']:.4f} | {r['difference']:+.4f} | [{r['interval']['lower']:+.4f}, {r['interval']['upper']:+.4f}] | {r['contribution']:+.4f} | {r['difference_without']:+.4f} | " + ' | '.join('null' if v is None else f'{v:+.4f}' for v in extra) + ' |')
+    nl = result['no_leak']
+    print(f"no_leak overall: {nl['overall']['point']:+.4f} [{nl['overall']['lower']:+.4f}, {nl['overall']['upper']:+.4f}]")
+    for r in nl['classes']:
+        print(r['class_name'], r['n_query'], None if r['difference'] is None else round(r['difference'], 4),
+              {k.split('/')[1]: None if v is None else round(v, 3) for k, v in r['names_own_label'].items()})
     print(f"Overall: c*={c.mean():.6f}, plain={m.mean():.6f}, difference={overall:+.6f}; macro={macro_c:.6f}/{macro_m:.6f}; gap shares={result['gap_share']}")
 
 

@@ -269,5 +269,168 @@
     "plain": 0.4701,
     "difference": -0.0137,
     "reproduced": true
+  },
+  "no_leak": {
+    "overall": {
+      "point": -0.01425040926853155,
+      "lower": -0.019446012617877026,
+      "upper": -0.008377959565885615,
+      "n_units": 12764,
+      "n_query": 12764
+    },
+    "cstar": 0.4477265357213525,
+    "plain": 0.46197694498988406,
+    "classes": [
+      {
+        "class_name": "abstract_painting",
+        "n_query": 1007,
+        "cstar": 0.5598592952411722,
+        "plain": 0.5892519741332992,
+        "difference": -0.029392678892127044,
+        "names_own_label": {
+          "mm_test/narrative": 0.11744084136722173,
+          "mm_test/formal": 0.6301489921121823,
+          "mm_test/emotional": 0.2532865907099036,
+          "mm_test/historical": 0.978965819456617,
+          "mm_test/unified": 0.9141104294478528,
+          "art_held/caption": 0.03930817610062893
+        }
+      },
+      {
+        "class_name": "cityscape",
+        "n_query": 871,
+        "cstar": 0.42073251422661456,
+        "plain": 0.3887314445004466,
+        "difference": 0.03200106972616795,
+        "names_own_label": {
+          "mm_test/narrative": 0.013590033975084938,
+          "mm_test/formal": 0.144960362400906,
+          "mm_test/emotional": 0.027180067950169876,
+          "mm_test/historical": 0.031710079275198186,
+          "mm_test/unified": 0.06795016987542468,
+          "art_held/caption": 0.002250351617440225
+        }
+      },
+      {
+        "class_name": "genre_painting",
+        "n_query": 2215,
+        "cstar": 0.273835286204083,
+        "plain": 0.2547686220157227,
+        "difference": 0.019066664188360283,
+        "names_own_label": {
+          "mm_test/narrative": 0.0,
+          "mm_test/formal": 0.002257336343115124,
+          "mm_test/emotional": 0.0004514672686230248,
+          "mm_test/historical": 0.1435665914221219,
+          "mm_test/unified": 0.0853273137697517,
+          "art_held/caption": 0.0
+        }
+      },
+      {
+        "class_name": "illustration",
+        "n_query": 356,
+        "cstar": 0.07268788771850339,
+        "plain": 0.05977324915401051,
+        "difference": 0.012914638564492875,
+        "names_own_label": {
+          "mm_test/narrative": 0.0,
+          "mm_test/formal": 0.0,
+          "mm_test/emotional": 0.0,
+          "mm_test/historical": 0.23876404494382023,
+          "mm_test/unified": 0.09831460674157304,
+          "art_held/caption": 0.003926701570680628
+        }
+      },
+      {
+        "class_name": "landscape",
+        "n_query": 2303,
+        "cstar": 0.589370711561886,
+        "plain": 0.6383057248479793,
+        "difference": -0.04893501328609329,
+        "names_own_label": {
+          "mm_test/narrative": 0.07547169811320754,
+          "mm_test/formal": 0.6523484544359694,
+          "mm_test/emotional": 0.3307908470493778,
+          "mm_test/historical": 0.4897631473303894,
+          "mm_test/unified": 0.6828582898434363,
+          "art_held/caption": 0.041990049751243784
+        }
+      },
+      {
+        "class_name": "nude_painting",
+        "n_query": 400,
+        "cstar": 0.18896685351990164,
+        "plain": 0.16787551794666797,
+        "difference": 0.02109133557323367,
+        "names_own_label": {
+          "mm_test/narrative": 0.033816425120772944,
+          "mm_test/formal": 0.2898550724637681,
+          "mm_test/emotional": 0.3864734299516908,
+          "mm_test/historical": 0.007246376811594203,
+          "mm_test/unified": 0.34299516908212563,
+          "art_held/caption": 0.23016905071521457
+        }
+      },
+      {
+        "class_name": "portrait",
+        "n_query": 2941,
+        "cstar": 0.5548603350736786,
+        "plain": 0.6169671205457317,
+        "difference": -0.06210678547205306,
+        "names_own_label": {
+          "mm_test/narrative": 0.048835705045278135,
+          "mm_test/formal": 0.5410737386804657,
+          "mm_test/emotional": 0.14391979301423027,
+          "mm_test/historical": 0.397477360931436,
+          "mm_test/unified": 0.3321474773609314,
+          "art_held/caption": 0.040103608431582706
+        }
+      },
+      {
+        "class_name": "religious_painting",
+        "n_query": 1370,
+        "cstar": 0.5313423063230776,
+        "plain": 0.4975707125000275,
+        "difference": 0.03377159382305006,
+        "names_own_label": {
+          "mm_test/narrative": 0.0,
+          "mm_test/formal": 0.014598540145985401,
+          "mm_test/emotional": 0.029927007299270073,
+          "mm_test/historical": 0.4985401459854015,
+          "mm_test/unified": 0.3386861313868613,
+          "art_held/caption": 0.044000814829904256
+        }
+      },
+      {
+        "class_name": "sketch_and_study",
+        "n_query": 778,
+        "cstar": 0.07409743100098289,
+        "plain": 0.07296556967447074,
+        "difference": 0.0011318613265121485,
+        "names_own_label": {
+          "mm_test/narrative": 0.10161662817551963,
+          "mm_test/formal": 0.24942263279445728,
+          "mm_test/emotional": 0.302540415704388,
+          "mm_test/historical": 0.11662817551963048,
+          "mm_test/unified": 0.2113163972286374,
+          "art_held/caption": 0.05818540433925049
+        }
+      },
+      {
+        "class_name": "still_life",
+        "n_query": 523,
+        "cstar": 0.5770260577633207,
+        "plain": 0.5526050533743194,
+        "difference": 0.0244210043890013,
+        "names_own_label": {
+          "mm_test/narrative": 0.11655405405405406,
+          "mm_test/formal": 0.43074324324324326,
+          "mm_test/emotional": 0.25844594594594594,
+          "mm_test/historical": 0.16385135135135134,
+          "mm_test/unified": 0.5016891891891891,
+          "art_held/caption": 0.03774486383182035
+        }
+      }
+    ]
   }
 }
