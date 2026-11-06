@@ -113,6 +113,20 @@ def test_table2_clause_crashes_when_the_paired_queries_differ():
         R.clause_table2([item], draws=2000)
 
 
+def test_table2_clause_crashes_when_the_point_value_differs_from_r22s_mean():
+    item = synthetic_item()
+    item['mean'] += 1e-3                      # the bounds are untouched: only the point check can see it
+    with pytest.raises(AssertionError, match='point differs'):
+        R.clause_table2([item], draws=2000)
+
+
+def test_the_default_number_of_draws_is_10000():
+    import inspect
+    assert P.N_DRAWS == 10000
+    for f in (R.run_gate, R.clause_table2):
+        assert inspect.signature(f).parameters['draws'].default == 10000
+
+
 def test_table2_items_are_read_from_r22s_own_files():
     items = R.table2_items()
     assert len(items) == 18 and {i['key'][2] for i in items} == {'plain', 'teacher'}
@@ -204,7 +218,7 @@ def test_core_clause_fails_when_one_number_is_wrong(cell):
 def test_core_clause_catches_a_flipped_means_pair_in_image_to_text(monkeypatch):
     src = FakeSource()
     ref = core_reference(src)
-    monkeypatch.setattr(R, 'means_for', lambda d, tm, im: (tm, im) if d != 't2t' else (tm, tm))
+    monkeypatch.setattr(R.tcl_score, 'query_gallery_means', lambda d, tm, im: (tm, im) if d != 't2t' else (tm, tm))
     got = R.clause_core(src, ref, 'cpu')
     assert got['pass'] is False and got['worst'] > 1e-3
 
@@ -270,6 +284,25 @@ def test_late_label_clause_fails_on_one_wrong_number():
     ref['label'][0.7, 'style', 'i2t'] -= 2e-5
     got = R.clause_late_label(R.late_scores(src, 'cpu'), ref)
     assert got['pass'] is False and got['worst'] == pytest.approx(2e-5, rel=0.05)
+
+
+@pytest.mark.parametrize('readout', P.READOUTS)
+def test_late_label_clause_crashes_on_a_nan_at_any_readout(readout):
+    src = FakeSource(seed=2)
+    ref = late_reference(src)
+    late = R.late_scores(src, 'cpu')
+    assert R.clause_late_label(late, ref)['pass'] is True
+    late[0.7, 'style']['i2t', readout]['ap']['style'] = float('nan')
+    with pytest.raises(AssertionError):
+        R.clause_late_label(late, ref)
+
+
+def test_late_pair_clause_crashes_when_late_lacks_an_alpha_that_r22_has():
+    src = FakeSource(seed=2)
+    ref = late_reference(src)
+    late = {k: v for k, v in R.late_scores(src, 'cpu').items() if k[0] != 0.7}
+    with pytest.raises(AssertionError):
+        R.clause_late_pair(late, ref)
 
 
 def test_late_pair_clause_fails_on_a_wrong_r10_head_or_readout():
@@ -373,18 +406,20 @@ def test_mmart_label_join_matches_by_key_and_class_name():
     R.check_label_join(names, frame_labels, classes, r22_keys, r22_codes, r22_books)
 
 
-@pytest.mark.parametrize('mutate', ['emotion name', 'unlabelled', 'merged classes', 'missing key'])
+@pytest.mark.parametrize('mutate', ['emotion name', 'unlabelled', 'r22 unlabelled', 'merged classes', 'missing key'])
 def test_mmart_label_join_crashes_when_the_labels_differ(mutate):
     names, classes, frame_labels, r22_keys, r22_codes, r22_books = join_case()
     if mutate == 'emotion name':
         r22_books['emotion'] = ['amusement', 'awe', 'fear']
-    elif mutate == 'unlabelled':
+    elif mutate == 'unlabelled':            # r22 labels a row the frame leaves unlabelled
         r22_codes['style'][0] = 0
+    elif mutate == 'r22 unlabelled':        # the frame labels a row r22 leaves unlabelled
+        r22_codes['style'][1] = -1
     elif mutate == 'merged classes':
         r22_codes['genre'][:] = 5
     else:
         r22_keys[0] = 'other'
-    with pytest.raises(AssertionError):
+    with pytest.raises(AssertionError, match='unlabelled rows differ' if 'unlabelled' in mutate else None):
         R.check_label_join(names, frame_labels, classes, r22_keys, r22_codes, r22_books)
 
 
@@ -442,3 +477,39 @@ def test_full_rows_lifts_smoke_inside_and_restores_it():
         assert P.SMOKE == 7
     finally:
         P.SMOKE = before
+
+
+def stub_gate_inputs(monkeypatch):
+    """gate_iii without data: sources, references and Table 2 items are placeholders; `run_gate` is the test's."""
+    for name in ('core_reference_r22', 'late_reference_r22', 'mmart_reference_r22', 'table2_items'):
+        monkeypatch.setattr(R, name, lambda: None)
+    monkeypatch.setattr(R, 'Source', lambda *args: None)
+
+
+def test_gate_iii_removes_an_older_gate_file_when_the_run_crashes(tmp_path, monkeypatch):
+    stub_gate_inputs(monkeypatch)
+    old = tmp_path / 'stage0/gate_iii.json'
+    old.parent.mkdir(parents=True)
+    old.write_text('{"clauses": {}, "overall": true}')
+
+    def crash(*args, **kwargs):
+        raise AssertionError('non-finite value in a clause')
+    monkeypatch.setattr(R, 'run_gate', crash)
+    with pytest.raises(AssertionError):
+        R.gate_iii('cpu', out=tmp_path)
+    assert not old.exists()
+
+
+def test_gate_iii_writes_the_file_it_reports(tmp_path, monkeypatch):
+    stub_gate_inputs(monkeypatch)
+    ok = {'pass': True, 'worst': 0.0, 'n': 1}
+    monkeypatch.setattr(R, 'run_gate', lambda *args, **kwargs: {'one': ok})
+    assert R.gate_iii('cpu', out=tmp_path)['overall'] is True
+    assert json.loads((tmp_path / 'stage0/gate_iii.json').read_text())['overall'] is True
+
+
+@pytest.mark.parametrize('overall, code', [(True, 0), (False, 1)])
+def test_main_returns_exit_code_zero_for_a_pass_and_one_for_a_fail(monkeypatch, overall, code):
+    seen = []
+    monkeypatch.setattr(R, 'gate_iii', lambda device: seen.append(device) or {'clauses': {}, 'overall': overall})
+    assert R.main(['cpu']) == code and seen == ['cpu']

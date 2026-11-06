@@ -26,6 +26,7 @@ import tcl_paths as P
 import tcl_data
 import tcl_forward
 import tcl_metrics
+import tcl_score
 
 TOL_REPLAY, TOL_HAND, TOL_TABLE2 = 1e-5, 1e-12, 3e-4
 
@@ -40,11 +41,15 @@ def compare(got, want, tol):
     return {'pass': bool(worst <= tol), 'worst': worst, 'n': len(diffs)}
 
 
+def gate_path(out=None):
+    return Path(P.OUT if out is None else out) / 'stage0/gate_iii.json'
+
+
 def write_gate(clauses, out=None):
     """OUT/stage0/gate_iii.json: {"clauses": {name: {"pass", "worst", "n"}}, "overall": bool}."""
     assert clauses and all(set(c) == {'pass', 'worst', 'n'} for c in clauses.values())
     doc = {'clauses': clauses, 'overall': bool(all(c['pass'] for c in clauses.values()))}
-    path = Path(P.OUT if out is None else out) / 'stage0/gate_iii.json'
+    path = gate_path(out)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(doc, indent=2, allow_nan=False) + '\n')
     return doc
@@ -156,12 +161,6 @@ def clause_table2(items, interval=tcl_metrics.painting_interval, draws=P.N_DRAWS
 
 
 # ------------------------------------------------------------------------------------------------ scoring through the new code
-def means_for(direction, text_mean, image_mean):
-    """The (query, gallery) pair of means for a direction: `fit_means` returns (text, image); image to text is flipped by
-    hand, and text to text uses the text mean twice."""
-    return {'t2i': (text_mean, image_mean), 'i2t': (image_mean, text_mean), 't2t': (text_mean, text_mean)}[direction]
-
-
 def finite_mean(x):
     return float(x[np.isfinite(x)].mean())
 
@@ -170,7 +169,7 @@ def score_all(frame, text, image, aspects, device, readouts=P.READOUTS, directio
     """Rank every (direction, readout) with the new `evaluate`, means fitted on these rows (`fit_means`), labels from the
     frame. Returns {(direction, readout): {'ap': {aspect: label mAP}, 'pair': summarize_pair(first hit ranks)}}."""
     assert len(text) == frame['n_t'] and len(image) == frame['n_i']
-    text_mean, image_mean = tcl_metrics.fit_means(text, image)
+    text_mean, image_mean = tcl_metrics.fit_means(text, image)         # the pair is ordered by tcl_score, as in the verdict
     out = {}
     for d in directions:
         q, q_pid = (text, frame['tp']) if d[0] == 't' else (image, frame['ip'])
@@ -178,7 +177,7 @@ def score_all(frame, text, image, aspects, device, readouts=P.READOUTS, directio
         labels = {a: dict(q=frame['labels'][a][d[0]], g=frame['labels'][a][d[2]]) for a in aspects}
         for ro in readouts:
             got = tcl_metrics.evaluate(q, g, q_pid, g_pid, labels, d == 't2t', ro, device,
-                                       means=means_for(d, text_mean, image_mean))
+                                       means=tcl_score.query_gallery_means(d, text_mean, image_mean))
             out[d, ro] = {'ap': {a: finite_mean(v) for a, v in got['ap'].items()},
                           'pair': tcl_metrics.summarize_pair(got['first_rank'])}
     return out
@@ -238,8 +237,12 @@ def late_scores(src, device, alphas=GATE_ALPHAS):
 
 def clause_late_label(late, ref):
     """Label mAP of each head's late fusion per cell: the best read-out's value, as r22's `label`."""
-    got = {(a, head, d): max(late[a, head][d, ro]['ap'][head] for ro in P.READOUTS)
-           for (a, head) in late for d in P.DIRECTIONS}
+    got = {}
+    for (a, head) in late:
+        for d in P.DIRECTIONS:
+            values = [late[a, head][d, ro]['ap'][head] for ro in P.READOUTS]
+            assert np.isfinite(values).all(), ('non-finite label mAP at a read-out', a, head, d)     # max would drop a NaN
+            got[a, head, d] = max(values)
     return compare(got, ref['label'], TOL_REPLAY)
 
 
@@ -253,6 +256,7 @@ def best_head(late, a, d):
 def clause_late_pair(late, ref):
     """Pair R@10 of the picked head and read-out per alpha and direction, and the pick itself (a different head or
     read-out counts as a difference of 1)."""
+    assert set(ref['pair']) == {(a, d) for a, _ in late for d in P.DIRECTIONS}, 'late and r22 have different cells'
     got, want = {}, {}
     for a in sorted({a for a, _ in late}):
         for d in P.DIRECTIONS:
@@ -411,14 +415,22 @@ def run_gate(art, mm, refs, items, device, draws=P.N_DRAWS):
 
 
 def gate_iii(device='cuda', out=None):
-    """Spec §3.5 (iii) on the full validation sets (TCL_SMOKE does not apply). Writes OUT/stage0/gate_iii.json."""
+    """Spec §3.5 (iii) on the full validation sets (TCL_SMOKE does not apply). Writes OUT/stage0/gate_iii.json.
+    An older file is removed first: a crash must not leave an earlier pass on disk."""
+    gate_path(out).unlink(missing_ok=True)
     with full_rows():
         refs = dict(core=core_reference_r22(), late=late_reference_r22(), mmart=mmart_reference_r22())
         clauses = run_gate(Source('art_val', P.CAPTION, device), Source('mm_val', MM_KIND, device), refs, table2_items(), device)
     return write_gate(clauses, out)
 
 
-if __name__ == '__main__':
-    result = gate_iii(sys.argv[1] if len(sys.argv) > 1 else 'cuda')
+def main(argv=None):
+    """Run the gate, print the overall result, return the exit code: 0 for a pass, 1 for a fail (a crash raises)."""
+    argv = sys.argv[1:] if argv is None else argv
+    result = gate_iii(argv[0] if argv else 'cuda')
     print('gate iii overall:', 'pass' if result['overall'] else 'FAIL')
-    sys.exit(0 if result['overall'] else 1)
+    return 0 if result['overall'] else 1
+
+
+if __name__ == '__main__':
+    sys.exit(main())
