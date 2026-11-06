@@ -45,7 +45,7 @@ Local GPU, 18:45 to 18:58. Commits on the build branch: part b 21abd9e0, part c 
 
 - **Gates.** Image rows: minimum cosine 0.99999988 on 200 shared paintings. Rows of the new path against r23's forward, cut by the same row lists: largest difference 7.5e-8. Scoring path against r23's saved per-query AP: 12 units
   (c* and plain Qwen, 3 directions, both sets), largest difference 0.
-- **Answers to the three questions.** Shared paintings with MMArt text and labels equal r23's new paintings in all four counts (8, 3, 9, 0), so the paintings are not the cause. Text changes the counts, and labels change none.
+- **Answers to the three questions.** Shared paintings with MMArt text and labels equal r23's new paintings in all four counts (8, 3, 9, 0), so the paintings do not change the counts. Text changes the counts, and labels change none (label swaps move 24 of 36 point estimates and 4 and 1 outcome words).
   Portrait holds 102% of the gap and portrait plus landscape 167%, so the miss is a class effect.
 - **Labels agree:** genre 100% of 9,401 paintings, style 96.8% of 11,528, emotion 43.4% of 11,398. Genre cells are the same under both label sets for this reason, which is not a bug.
 - **Words:** captions mean 14.5 and median 14; narrative mean 70.6 and median 71.

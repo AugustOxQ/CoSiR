@@ -1,4 +1,4 @@
-# Short check of the MMArt miss: the failure comes with MMArt's text, not its paintings or labels
+# Short check of the MMArt miss: the failed counts follow MMArt's text, not its paintings or labels
 
 > 2026-11-06 (sequence name 2027-01-12) · Spec: none, small loop; design in the [round log](../../../../src/test/20261106_miss_check/20261106_miss_check_log.md), written before any number · Decision rule: none (exploration) · Checks the failed verdicts of [report 2027-01-11](2027-01-11_text_claim.md)
 
@@ -16,12 +16,12 @@
 | Shared | MMArt narrative | MMArt | 8 | 3 | 9 | 0 |
 | New (r23) | MMArt narrative | MMArt | 8 | 3 | 9 | 0 |
 
-- **The paintings are not the cause.** On paintings from held ArtELingo, MMArt's text and labels give the same four counts as r23's new paintings.
-- **The labels are not the cause.** A label swap changes no count. Genre labels agree on 100% of 9,401 paintings, style on 96.8% of 11,528, emotion on 43.4% of 11,398.
+- **The paintings do not change the counts.** On paintings from held ArtELingo, MMArt's text and labels give the same four WIN counts as r23's new paintings. Single cells still move: the missed cell is -0.0176 and BELOW here, -0.0137 and LEVEL on the new paintings.
+- **The labels do not change the counts.** A label swap keeps all four WIN counts. It moves the emotion and style point estimates (24 of 36 comparisons per swap), and the outcome word of 4 cells with captions and 1 with narrative text. Genre labels agree on 100% of 9,401 paintings, style on 96.8% of 11,528, emotion on 43.4% of 11,398.
 - **The text changes the counts.** With MMArt labels on both sides, c* loses 3 WINs over the teacher's text, and all 3 are genre cells (table in Results). Its 3 style WINs stay.
 - **The miss sits in two large classes.** Portrait is -0.0605 [-0.0688, -0.0519] and landscape is -0.0483 [-0.0567, -0.0393]. Together they are 42% of queries and hold 167% of the gap; portrait alone holds 102%. Without portrait the gap is +0.0003.
 - **The other classes.** Abstract is also below, -0.0272 [-0.0410, -0.0089]. The other 7 of 10 classes are above plain Qwen.
-- **Label words are not the cause.** With texts that name their own genre removed, the gap stays: -0.0143 [-0.0194, -0.0084]. Few narrative texts name it: 4.9% for portrait, 7.5% for landscape.
+- **Explicit label words do not explain the miss.** With texts that name their own genre removed, the gap stays: -0.0143 [-0.0194, -0.0084]. Few narrative texts name it: 4.9% for portrait, 7.5% for landscape.
 
 **What it does not show.**
 
@@ -42,7 +42,7 @@ c. **Take the claims to the paper (r23's option a).** One writing chat. The text
 <details>
 <summary>Our reading and recommendation (open after writing yours)</summary>
 
-**Our reading.** r23's MMArt failure is a text effect, not a failure on new paintings. We are confident in this for narrative text: the counts match exactly on paintings the claim already covers, and a label swap moves nothing. The firm wording is that c*'s caption side holds on ArtELingo's captions and loses its genre WINs on MMArt's narrative text. Its style WINs and its image side are not touched by this result.
+**Our reading.** r23's MMArt failure is a text effect, not a failure on new paintings. We are confident in this for narrative text: the counts match on paintings the claim already covers, and a label swap changes no count. The firm wording is that c*'s caption side keeps its ArtELingo counts with ArtELingo's captions and loses its genre WINs on MMArt's narrative text. Its style WINs stay. These checks do not test the image side alone.
 
 The reason is open. The spec's prior named it before the run: the text is generated, long and new to the caption side. Nothing here tests which of these matters. The class pattern fits a shift in how the caption side treats long text, but we did not test that either.
 
@@ -76,11 +76,11 @@ MMArt test, narrative text, genre, text to text, c* against plain Qwen, 13,420 q
 | nude_painting | 414 | 0.0308 | 0.1882 | 0.1662 | +0.0220 [+0.0130, +0.0313] | +0.0007 | +0.0223 | +0.0558 |
 | illustration | 356 | 0.0265 | 0.0707 | 0.0579 | +0.0128 [+0.0098, +0.0160] | +0.0003 | +0.0320 | +0.0102 |
 
-Every class keeps its sign on validation. Every class is above plain Qwen on ArtELingo captions. Macro mAP is above plain Qwen because each class counts once, and the three classes below are outnumbered.
+Every class keeps its sign on validation. Every class is above plain Qwen on ArtELingo captions. With each class counted once, the differences average +0.0020, which is the macro gap.
 
 ### Part c: the genre and style cells, c* against the teacher's text
 
-Shared paintings, MMArt labels, so only the text differs. Emotion is not in the table: its cells are not WIN under either text.
+Shared paintings and MMArt labels are fixed. Each text uses r23's read-outs for that text, and read-out pairs differ in 15 of the 36 comparisons. Emotion is not in the table: its cells are not WIN under either text.
 
 | Cell | ArtELingo captions | MMArt narrative |
 |---|---|---|
@@ -97,7 +97,7 @@ c* against plain Qwen on genre text to text, the missed cell: -0.0176 [-0.0230, 
 
 ## Analysis
 
-Our reading: the check answers where the failure comes from, and it leaves why open. The three questions written before the run have clear answers: the shared rows equal the new rows, text changes the counts, and labels do not. The genre labels are identical on both sets, so genre cells cannot move under a label swap; this fits r23's cause sitting in the text.
+Our reading: the check answers where the failure comes from, and it leaves why open. The three questions written before the run have clear answers: the shared rows match the new rows in all four counts, text changes the counts, and labels do not. The genre labels are identical on both sets, so genre cells cannot move under a label swap; this fits r23's cause sitting in the text.
 
 ## Deviations
 
