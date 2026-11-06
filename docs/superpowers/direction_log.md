@@ -33,7 +33,7 @@ and closed (user, 2026-11-05): good overall; against the teacher, 46 of 48 AMI a
 ArtELingo emotion that gap comes from one class, contentment (report 2027-01-07); genre labels alone reach ACC level with
 both models, and ARI close to c* and below the teacher. After the weekly meeting, text-to-text and cross-modal retrieval are top priority (user, 2026-11-05). r22, an exploration on validation with seed 0,
 is read (user, 2026-11-05): c*'s caption side beats plain Qwen and the teacher's text in 6 of 9 label cells (bar 5; 5 of 9 with one fixed read-out),
-with emotion below the teacher, and pair hits below plain Qwen, which the user expected. The two short checks are read (user, 2026-11-06): on older saved models the own-caption term raises pair hits and lowers label hits; joined c* and plain Qwen scores pass the rule at one weight, a = 0.7, which the user reads as important, with no clear reason yet why that weight helps. Next: the claim loop as r23, with c* as the main row and late fusion (joined scores, a = 0.7) as one extra row (user, 2026-11-06); its [spec](specs/2026-11-06-text-claim-design.md) is approved (user, 2026-11-06 05:09), build and run unattended, report by 2026-11-07. The pair-hit limit waits for
+with emotion below the teacher, and pair hits below plain Qwen, which the user expected. The two short checks are read (user, 2026-11-06): on older saved models the own-caption term raises pair hits and lowers label hits; joined c* and plain Qwen scores pass the rule at one weight, a = 0.7, which the user reads as important, with no clear reason yet why that weight helps. r23, the claim loop for the caption side, is read (user, 2026-11-06): c* and late fusion (joined scores, a = 0.7) hold on held ArtELingo and fail on MMArt; the user reads the ArtELingo holds as good and the MMArt failures as no surprise. Next: r24, a short check (exploration, small loop, in the r24 decide chat): the missed MMArt cell per class, and the 11,528 shared MMArt rows. Then back to the what-is-missing table to see what is left (user, 2026-11-06). The pair-hit limit waits for
 the user's talk with the other authors. r20 (figure) and r21 (head variants) wait. The stage note's form still waits for the user. Deadlines:
 abstract 2026-11-10, paper 2026-11-16, supplementary 2026-11-23.
 Reporting (user, 2026-11-04): r17's results enter the weekly report of 2026-11-04 only after the user's reading in the r20
@@ -96,6 +96,20 @@ r17.
   GPU h by our arithmetic, not measured; a small spec must settle D9 against D25 (never run; deferred by the user
   (2026-11-05): worth doing, not top priority;
   [proposed in](../reports/auto/percept/2027-01-06_outside_methods.md))
+
+## 2026-11-06 · Text claim read: c* and late fusion hold on ArtELingo and fail on MMArt; a short check of the miss, then the what-is-missing table
+
+- **Read:** frozen c* and late fusion on data that shaped nothing. WIN over plain Qwen / over the teacher's text, of 9: c*, ArtELingo 9 / 6, holds; c*, MMArt 8 / 3, fails;
+  late fusion, ArtELingo 9 / 5, holds; late fusion, MMArt 9 / 0, fails. c*'s miss on MMArt is genre text to text, 0.4564 against plain Qwen's 0.4701, -0.0137 [-0.0190, -0.0078].
+  Late fusion's fifth WIN on ArtELingo is style image to text, +0.0009 [+0.0005, +0.0012]; its pair bar passes, lowest lower bound -0.0143 against -0.02. No verdict is void.
+- **Meaning (C):** the claim holds on ArtELingo, which is good; the failure on MMArt is no surprise (user).
+- **Our reading, opened after the user's:** it agrees on both. It adds three points. c*'s claim over the teacher's text is a style and genre claim: all 3 emotion cells are BELOW on both sets.
+  Late fusion's hold is correct under the rule and thin, since its count over the teacher's text depends on the read-out (4, 2, 5). The cause of the MMArt miss is not known.
+- **Decided (A):** options b and c of the brief as a short check: the missed cell per class, and the 11,528 shared MMArt rows. Then back to the what-is-missing table to see what is left.
+  Our recommendation was option a, with b beside it, and c later; the user chose b and c and leaves a until the table is read. Type exploration, small loop (user; type and size agent default).
+- **Idea (B):** none needed for this check.
+- **Why:** the user wants to see where the miss comes from and what is left before writing.
+- **Links:** [report](../reports/auto/percept/2027-01-11_text_claim.md) · [user-read report](../user_read/2026-11-06_text_claim.md) · [spec](specs/2026-11-06-text-claim-design.md) · [handoff](handoffs/2026-11-06-r24-decide-handoff.md)
 
 ## 2026-11-06 · Pair-hit checks read: the own-caption term matters; joined scores work at a = 0.7, with no clear reason yet; the claim loop comes next
 
