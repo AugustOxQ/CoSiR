@@ -34,7 +34,7 @@ ArtELingo emotion that gap comes from one class, contentment (report 2027-01-07)
 both models, and ARI close to c* and below the teacher. After the weekly meeting, text-to-text and cross-modal retrieval are top priority (user, 2026-11-05). r22, an exploration on validation with seed 0,
 is read (user, 2026-11-05): c*'s caption side beats plain Qwen and the teacher's text in 6 of 9 label cells (bar 5; 5 of 9 with one fixed read-out),
 with emotion below the teacher, and pair hits below plain Qwen, which the user expected. The two short checks are read (user, 2026-11-06): on older saved models the own-caption term raises pair hits and lowers label hits; joined c* and plain Qwen scores pass the rule at one weight, a = 0.7, which the user reads as important, with no clear reason yet why that weight helps. r23, the claim loop for the caption side, is read (user, 2026-11-06): c* and late fusion (joined scores, a = 0.7) hold on held ArtELingo and fail on MMArt; the user reads the ArtELingo holds as good and the MMArt failures as no surprise. r24, a short check of the miss, is read (user, 2026-11-08): the failed MMArt counts follow its narrative text, not its paintings or labels; c*'s miss sits in portrait and landscape; the user reads it as not fully explaining why, with interesting findings and directions. Next: the what-is-missing table (the 11-04 coverage tables, updated with r17 to r24), then the plan update (user, 2026-11-08). The pair-hit limit waits for
-the user's talk with the other authors. r20 (figure) and r21 (head variants) wait. The stage note's form still waits for the user. Deadlines:
+the user's talk with the other authors. The what-is-missing table is read (user, 2026-11-08): writing starts in a paper chat (related work, method, experiments, then abstract, introduction and conclusion as draft v1.1; an ARS review and a revision; compact versions last; a temporary title and abstract registered by 11-10). Beside it, r20 makes the qualitative and teaser figures and scores retrieval for the eight ablation removals. r21, the second instructed embedder and the other checks wait until after 11-16. The stage note's form still waits for the user. Deadlines:
 abstract 2026-11-10, paper 2026-11-16, supplementary 2026-11-23.
 Reporting (user, 2026-11-04): r17's results enter the weekly report of 2026-11-04 only after the user's reading in the r20
 chat, and they stay out of the stage report of 2026-11-04 (29 October to 3 November); the next stage report starts from
@@ -97,6 +97,23 @@ r17.
   GPU h by our arithmetic, not measured; a small spec must settle D9 against D25 (never run; deferred by the user
   (2026-11-05): worth doing, not top priority;
   [proposed in](../reports/auto/percept/2027-01-06_outside_methods.md))
+
+## 2026-11-08 · What-is-missing table read: the planned comparisons are done; writing starts, with the cluster figure and an ablation retrieval check beside it
+
+- **Read:** the [what-is-missing page](../user_read/2026-11-08_what_is_missing.md). 15 of 23 to-do items are done or done in part. The cluster figure (r20) and the head variants (r21) wait; the photo model from random weights has no run.
+  The eight-removal ablation of c* (report 2026-12-28; held, five seeds) has clustering AMI only. Its held exports and weights are saved (`/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/{held,weights}`), so its retrieval check is small.
+- **Meaning (C):** none; a status table, not results.
+- **Decided (A):** the paper is written in this order (user): (1) related work, a detailed backup draft first; (2) the method, detailed, with figures; (3) one experiment section; (4) abstract, introduction and conclusion together.
+  Then the four form draft v1.1, which gets an ARS review check and a revision (user's own addition).
+  - Related work groups: (a) conditional similarity in datasets, (b) conditional similarity in models, (c) general VLMs and MLLMs (user), plus (d) learning from a teacher's neighbours: distillation, neighbour graphs, deep clustering (user, after seeing the recommendation).
+  - Experiment section: setup, clustering on Qwen across datasets, retrieval, ablation, qualitative (user), plus "other encoders" and "photos"; the limits go in the conclusion (user, after seeing the recommendation).
+  - Compact versions of all sections at the end, when the page budget is known (user, after seeing the recommendation). A temporary title and abstract first, to register by 11-10 (user, after seeing the recommendation).
+  - Runs beside the writing (user, after seeing the recommendation): r20 now, for the qualitative figure and a page-1 teaser figure; the retrieval check of the eight ablation removals now.
+    The second instructed embedder (item 17) goes to the supplementary (agent's reading of the user's "yes"; the user can move it earlier). After 11-16: the photo model from random weights, r21, TURTLE selection and TEMI, MMArt's other texts.
+- **Idea (B):** none.
+- **Why:** writing is the critical path (abstract 11-10, paper 11-16). For the main paper, only the qualitative figure and the ablation's retrieval column are missing.
+- **Storage:** nothing new on disk.
+- **Links:** [what-is-missing page](../user_read/2026-11-08_what_is_missing.md) · [facts inventory](../../src/test/20261108_what_is_missing/facts_inventory.md) · [paper handoff](handoffs/2026-11-08-paper-v1.1-handoff.md) · [r20 handoff](handoffs/2026-11-08-r20-decide-handoff.md)
 
 ## 2026-11-08 · Miss check read: MMArt's failed counts follow its text; the reason stays open; the what-is-missing table and a plan update next
 
