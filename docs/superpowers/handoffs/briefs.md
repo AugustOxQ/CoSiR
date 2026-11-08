@@ -2023,3 +2023,19 @@
 - Handoff: docs/superpowers/handoffs/2026-11-06-r24-decide-handoff.md
 - New chat: tab 'r24 decide', session ea240ca6-b814-4b47-a5f7-af18b5416043
 
+[brief] CoSiR: r24 decide -> paper v1.1 (2026-11-08 23:52 Amsterdam)
+- Done: the user read the what-is-missing table and set the writing order and structure (2026-11-08).
+- State: related work and method exist as v1 (11-02). There is no abstract, introduction or experiments section. Every main-paper result exists, except the qualitative figure and the ablation's retrieval column (r20 makes both, in its own tab).
+- Next: a temporary title and abstract with the user (registration closes 11-11 12:59 here); then the detailed related work.
+- Blocked: nothing. The wording of c*'s pair hits waits for the user's talk with the other authors.
+- Handoff: docs/superpowers/handoffs/2026-11-08-paper-v1.1-handoff.md
+- New chat: tab 'paper v1.1', session 116c719b-0cee-44b4-8450-03a59687901b
+
+[brief] CoSiR: r24 decide -> r20 decide (2026-11-08 23:52 Amsterdam)
+- Done: the user read the what-is-missing table and set the writing plan (2026-11-08). The paper chat writes in its own tab.
+- State: no qualitative figure exists. The eight ablation removals of c* have clustering AMI only (held, five seeds); their held exports and weights are saved.
+- Next: design both figures with the user, build them from saved outputs, then design and run the retrieval check.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-08-r20-decide-handoff.md
+- New chat: tab 'r20 decide', session 9b0d8336-1f49-41be-9dc2-5ead4979f4ea
+
