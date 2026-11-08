@@ -37,7 +37,7 @@ a. **The what-is-missing table.** Your stated next step. No GPU; it takes the co
 b. **The shared rows on the other four MMArt texts.** About 50 minutes of GPU with the same code (our estimate). It could show whether all MMArt texts behave as narrative does.
 c. **Take the claims to the paper (r23's option a).** One writing chat. The text limit above changes how MMArt is worded. The wording of c*'s pair numbers still waits for your talk with the other authors.
 
-**Your reading.**
+**Your reading.** (user, 2026-11-08) This does not fully explain why, but it shows some interesting findings and directions.
 
 <details>
 <summary>Our reading and recommendation (open after writing yours)</summary>

@@ -11,7 +11,7 @@ weekly and stage reports.
 
 The conditioned line's log (2026-09-28 to 2026-10-15, rounds 1 to 9, parked ideas) is archived: [direction log](../../archive/v2_conditioned/docs/superpowers/direction_log.md).
 
-## Now (2026-11-06)
+## Now (2026-11-08)
 
 The new line builds a condition-free model over PercepT: one Qwen3-VL-Embedding instruction per aspect, buddy graphs
 on each view, one shared trunk with emotion, style and genre heads, read once on the default image. On ArtELingo, c*
@@ -33,7 +33,7 @@ and closed (user, 2026-11-05): good overall; against the teacher, 46 of 48 AMI a
 ArtELingo emotion that gap comes from one class, contentment (report 2027-01-07); genre labels alone reach ACC level with
 both models, and ARI close to c* and below the teacher. After the weekly meeting, text-to-text and cross-modal retrieval are top priority (user, 2026-11-05). r22, an exploration on validation with seed 0,
 is read (user, 2026-11-05): c*'s caption side beats plain Qwen and the teacher's text in 6 of 9 label cells (bar 5; 5 of 9 with one fixed read-out),
-with emotion below the teacher, and pair hits below plain Qwen, which the user expected. The two short checks are read (user, 2026-11-06): on older saved models the own-caption term raises pair hits and lowers label hits; joined c* and plain Qwen scores pass the rule at one weight, a = 0.7, which the user reads as important, with no clear reason yet why that weight helps. r23, the claim loop for the caption side, is read (user, 2026-11-06): c* and late fusion (joined scores, a = 0.7) hold on held ArtELingo and fail on MMArt; the user reads the ArtELingo holds as good and the MMArt failures as no surprise. Next: r24, a short check (exploration, small loop, in the r24 decide chat): the missed MMArt cell per class, and the 11,528 shared MMArt rows. Then back to the what-is-missing table to see what is left (user, 2026-11-06). The pair-hit limit waits for
+with emotion below the teacher, and pair hits below plain Qwen, which the user expected. The two short checks are read (user, 2026-11-06): on older saved models the own-caption term raises pair hits and lowers label hits; joined c* and plain Qwen scores pass the rule at one weight, a = 0.7, which the user reads as important, with no clear reason yet why that weight helps. r23, the claim loop for the caption side, is read (user, 2026-11-06): c* and late fusion (joined scores, a = 0.7) hold on held ArtELingo and fail on MMArt; the user reads the ArtELingo holds as good and the MMArt failures as no surprise. r24, a short check of the miss, is read (user, 2026-11-08): the failed MMArt counts follow its narrative text, not its paintings or labels; c*'s miss sits in portrait and landscape; the user reads it as not fully explaining why, with interesting findings and directions. Next: the what-is-missing table (the 11-04 coverage tables, updated with r17 to r24), then the plan update (user, 2026-11-08). The pair-hit limit waits for
 the user's talk with the other authors. r20 (figure) and r21 (head variants) wait. The stage note's form still waits for the user. Deadlines:
 abstract 2026-11-10, paper 2026-11-16, supplementary 2026-11-23.
 Reporting (user, 2026-11-04): r17's results enter the weekly report of 2026-11-04 only after the user's reading in the r20
@@ -90,12 +90,27 @@ r17.
   of about 203 ms (never tried; not chosen by the user, 2026-11-05; [proposed in](../reports/auto/percept/2027-01-05_past_picks.md))
 - Emotion and style on new artists: a data search first, since SemArt has neither label (never tried; not chosen by the
   user, 2026-11-05; [proposed in](../reports/auto/percept/2027-01-05_past_picks.md))
+- MMArt's text, what drives the miss: the shared rows on MMArt's other four texts (about 50 min GPU, our estimate), and tests that separate author, length and texts per painting (never run; the user sees directions in them, 2026-11-08; the plan update decides; [proposed in](../reports/auto/percept/2027-01-12_miss_check.md))
 - TEMI, r18's third stage: a second clustering method at its paper's settings, up to 10 GPU h (never run; deferred by
   the user (2026-11-05): worth doing, not top priority; [proposed in](specs/2026-11-03-outside-methods-design.md))
 - The one-off TURTLE selection on validation, then plain-image TURTLE at the chosen setting: about 134 fits, about 4
   GPU h by our arithmetic, not measured; a small spec must settle D9 against D25 (never run; deferred by the user
   (2026-11-05): worth doing, not top priority;
   [proposed in](../reports/auto/percept/2027-01-06_outside_methods.md))
+
+## 2026-11-08 · Miss check read: MMArt's failed counts follow its text; the reason stays open; the what-is-missing table and a plan update next
+
+- **Read:** an exploration on r23's picks, label mAP, no bar. On the 11,528 paintings in both held ArtELingo and MMArt, WIN counts of 9 (c* over plain Qwen / over the teacher's text; late fusion the same):
+  ArtELingo captions 9 / 6 and 9 / 4 with either label set; MMArt narrative text 8 / 3 and 9 / 0 with either label set, the same as r23's new MMArt paintings. The 3 WINs c* loses over the teacher's text are all genre cells; its 3 style WINs stay.
+  c*'s missed cell (genre, text to text) sits in portrait, -0.0605 [-0.0688, -0.0519], and landscape, -0.0483 [-0.0567, -0.0393]: 42% of queries, 167% of the gap. Texts that name their genre do not explain it.
+- **Meaning (C):** this does not fully explain why, but it shows some interesting findings and directions (user).
+- **Our reading, opened after the user's:** it agrees that the reason is open. Ours says firmly that the miss is a text effect for narrative text, not new paintings or labels.
+  It differs in weight: we read the open reason as a limit to word in the paper and said the other four MMArt texts can wait; the user sees directions in it.
+- **Decided (A):** first the what-is-missing table (the two coverage tables of the 11-04 stage report, updated with r17 to r24), then check what is missing and update the plan (user; option a of the brief, which was also our recommendation).
+- **Idea (B):** none.
+- **Why:** the user wants to see what is left before the paper deadlines.
+- **Storage:** deleted as recommended (user): r23's C13 caches (78 GB on SSD2, JSON kept), r23 scratch, worktrees and branches; the TURTLE packs stay deferred. Ledger rows of 2026-11-08.
+- **Links:** [report](../reports/auto/percept/2027-01-12_miss_check.md) · [user-read report](../user_read/2026-11-06_miss_check.md) · [round log](../../src/test/20261106_miss_check/20261106_miss_check_log.md)
 
 ## 2026-11-06 · Text claim read: c* and late fusion hold on ArtELingo and fail on MMArt; a short check of the miss, then the what-is-missing table
 
