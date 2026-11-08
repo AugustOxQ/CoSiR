@@ -226,3 +226,7 @@ src/test/20261027_recipe_sweep/outputs
 
 # Weekly deck figure with third-party dataset images; the repo is public. Rebuild with its build_examples.py.
 docs/reports/assets/2026-11-04_weekly/slides/examples_slide.png
+# r20: the outputs folder is a link to /data/SSD2
+src/test/20261109_r20_figures/outputs
+!src/test/20261109_r20_figures/ret_full/ablation_ret.json
+!src/test/20261109_r20_figures/r20_sanity.json

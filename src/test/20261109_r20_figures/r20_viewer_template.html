@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>CoSiR candidate qualitative figures (review page)</title>
+<style>
+  :root { --ink:#1d2330; --muted:#5b6475; --line:#d6dae3; --bg:#f6f7fa; --card:#fff; --accent:#2a5bd7; --ok:#1c7c3a; --no:#9aa1af; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); }
+  header { background:var(--card); border-bottom:1px solid var(--line); padding:12px 20px; }
+  h1 { font-size:19px; margin:0 0 6px; }
+  .note { color:var(--muted); font-size:14px; max-width:1200px; }
+  .note b { color:var(--ink); }
+  nav { display:flex; gap:4px; padding:10px 20px 0; border-bottom:1px solid var(--line); background:var(--card); }
+  nav button { font:inherit; border:1px solid var(--line); border-bottom:none; background:#eef0f5; padding:7px 16px; border-radius:6px 6px 0 0; cursor:pointer; }
+  nav button.on { background:var(--bg); font-weight:600; border-color:var(--line); position:relative; top:1px; }
+  .controls { display:flex; flex-wrap:wrap; gap:12px 18px; padding:12px 20px; background:var(--card); border-bottom:1px solid var(--line); align-items:center; }
+  .controls label { display:flex; flex-direction:column; font-size:12px; color:var(--muted); gap:2px; }
+  .controls select { font:inherit; font-size:14px; padding:4px 6px; border:1px solid var(--line); border-radius:4px; background:#fff; color:var(--ink); }
+  .controls .chk { flex-direction:row; align-items:center; gap:6px; font-size:14px; color:var(--ink); }
+  .status { font-size:12px; color:var(--muted); margin-left:auto; }
+  main { padding:14px 20px 40px; }
+  .cols { display:grid; grid-template-columns: 1fr 1fr; gap:18px; align-items:start; }
+  .col h2 { font-size:16px; margin:0 0 8px; padding-bottom:4px; border-bottom:2px solid var(--accent); }
+  .col.plain h2 { border-bottom-color:#8a8f9c; }
+  .row { background:var(--card); border:1px solid var(--line); border-radius:6px; padding:8px 10px; margin-bottom:10px; }
+  .rh { font-size:13.5px; margin-bottom:6px; }
+  .rh .t { font-weight:600; }
+  .rh .s { color:var(--muted); }
+  .badge { display:inline-block; font-size:11.5px; background:#fff3d6; color:#7a5200; border:1px solid #f0d58a; padding:0 6px; border-radius:9px; margin-left:6px; }
+  .thumbs { display:flex; gap:6px; flex-wrap:wrap; }
+  .th { height:128px; min-width:60px; background:#e7e9ef; border-radius:3px; display:block; }
+  img.th { cursor:help; }
+  .empty { color:var(--muted); font-style:italic; font-size:13px; }
+  #tip { position:fixed; z-index:10; pointer-events:none; background:#1d2330; color:#fff; font-size:13px; padding:6px 9px; border-radius:5px; max-width:380px; display:none; white-space:pre-line; }
+  .strip { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
+  .sq { border:2px solid transparent; border-radius:6px; padding:3px; background:var(--card); cursor:pointer; text-align:center; font-size:12px; color:var(--muted); }
+  .sq.on { border-color:var(--accent); color:var(--ink); font-weight:600; }
+  .sq img { height:84px; display:block; border-radius:3px; }
+  .query { display:flex; gap:16px; background:var(--card); border:1px solid var(--line); border-radius:6px; padding:10px; margin-bottom:12px; align-items:flex-start; }
+  .query img { height:240px; border-radius:4px; }
+  .query .meta { font-size:14px; }
+  .query .meta div { margin-bottom:3px; }
+  .nb { display:flex; flex-direction:column; width:auto; }
+  .nb .lab { font-size:12.5px; max-width:220px; line-height:1.3; margin-top:3px; }
+  .nb .lab .ok { color:var(--ok); font-weight:600; }
+  .nb .lab .no { color:var(--no); }
+  .tz { background:var(--card); border:1px solid var(--line); border-radius:6px; padding:8px 10px; margin-bottom:10px; }
+  .tz h3 { font-size:14px; margin:0 0 6px; }
+  .tz .sum { font-size:13.5px; margin-bottom:6px; }
+  .tz .sum b { color:var(--ok); }
+  .hidden { display:none !important; }
+</style>
+</head>
+<body>
+<header>
+  <h1>CoSiR candidate qualitative figures (review page, not the paper figure)</h1>
+  <div class="note">
+    Every candidate design is computed by fixed rules, so you can compare them before choosing.
+    <b>c*</b> is our model, seed 0 (one head per aspect); <b>Plain Qwen image</b> is the frozen Qwen3-VL-Embedding-2B image without instruction.
+    Clusters are k-means (r17 code, state 0) on all paintings; only <b>public-domain</b> paintings are shown (artist died 1955 or earlier, per Wikidata).
+    Cluster rules: <b>per class</b> (for each class, the cluster with the largest share of that class), <b>purity</b> (6 purest clusters with at least 20 labelled members), <b>random</b> (6 clusters drawn with seed 0 among clusters with at least 20 members).
+    Painting rules: <b>centre</b> (closest to the cluster centre) or <b>random</b> (seed 0); near copies (plain cosine 0.95 or more) are skipped. Shares ignore unlabelled paintings.
+    Hover over a thumbnail for its key, artist and labels.
+  </div>
+</header>
+<nav>
+  <button id="tabC" class="on">Cluster figure</button>
+  <button id="tabT">Teaser</button>
+</nav>
+
+<section id="paneC">
+  <div class="controls">
+    <label>Set<select id="cSet"></select></label>
+    <label>Aspect<select id="cAspect"></select></label>
+    <label>Number of clusters<select id="cK"></select></label>
+    <label>Cluster rule<select id="cCR"></select></label>
+    <label>Painting rule<select id="cPR"></select></label>
+    <label>Paintings per row<select id="cN"></select></label>
+    <span class="status" id="cStatus"></span>
+  </div>
+  <main>
+    <div class="cols">
+      <div class="col"><h2>c* (our model)</h2><div id="colCstar"></div></div>
+      <div class="col plain"><h2>Plain Qwen image</h2><div id="colPlain"></div></div>
+    </div>
+  </main>
+</section>
+
+<section id="paneT" class="hidden">
+  <div class="controls">
+    <label>Set<select id="tSet"></select></label>
+    <label>Neighbours per row<select id="tN"></select></label>
+    <label class="chk"><input type="checkbox" id="tPlain" checked> show the plain-image row</label>
+    <span class="status" id="tStatus"></span>
+  </div>
+  <main>
+    <div class="note" style="margin-bottom:8px">Candidates are ranked by the fixed rule (most distinct neighbours over the three heads first, then mean agreement). Click one to look at it.</div>
+    <div class="strip" id="strip"></div>
+    <div id="teaser"></div>
+  </main>
+</section>
+
+<div id="tip"></div>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+function h(tag, attrs, ...kids) {
+  const e = document.createElement(tag);
+  for (const k in (attrs || {})) {
+    if (k === 'class') e.className = attrs[k];
+    else if (k === 'text') e.textContent = attrs[k];
+    else e.setAttribute(k, attrs[k]);
+  }
+  for (const c of kids) if (c != null) e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
+  return e;
+}
+function clear(e) { while (e.firstChild) e.removeChild(e.firstChild); }
+const pretty = s => (s == null ? 'none' : String(s).replace(/_/g, ' '));
+const pct = v => (v == null ? 'n/a' : Math.round(v * 100) + '%');
+const ASP = ['emotion', 'style', 'genre'];
+const CRULE = {per_class: 'per class', purity: 'purity', random: 'random clusters'};
+const PRULE = {centre: 'centre (closest to the cluster centre)', random: 'random (seed 0)'};
+
+let DATA = null, MANI = null;
+const THUMB = {}, BIG = {}, LOADED = {};
+const cs = {set: 'artelingo', aspect: 'emotion', k: '20', cr: 'per_class', pr: 'centre', n: 6};
+const ts = {set: 'artelingo', n: 5, plain: true, sel: 0};
+
+async function getJSON(p) { const r = await fetch(p); if (!r.ok) throw new Error(p + ' ' + r.status); return r.json(); }
+
+function opts(sel, items, cur) {
+  clear(sel);
+  for (const [v, t] of items) { const o = h('option', {value: String(v), text: t}); if (String(v) === String(cur)) o.selected = true; sel.appendChild(o); }
+}
+
+// ---- thumbnails: one JSON per chunk, fetched in order after a set is chosen; the page redraws as chunks arrive
+let redrawTimer = null;
+function redrawSoon() { if (redrawTimer) return; redrawTimer = setTimeout(() => { redrawTimer = null; renderAll(); }, 60); }
+async function loadThumbs(set) {
+  if (LOADED[set]) return;
+  LOADED[set] = true; THUMB[set] = {}; BIG[set] = {};
+  try {
+    if (MANI.big && MANI.big[set]) { Object.assign(BIG[set], await getJSON('data/' + MANI.big[set])); redrawSoon(); }
+    let done = 0;
+    for (const f of MANI.thumbs[set]) {
+      Object.assign(THUMB[set], await getJSON('data/' + f));
+      done += 1; setStatus(set + ': thumbnail files ' + done + ' / ' + MANI.thumbs[set].length);
+      redrawSoon();
+    }
+  } catch (e) { setStatus('thumbnail load failed: ' + e.message); }
+}
+function setStatus(t) { $('cStatus').textContent = t; $('tStatus').textContent = t; }
+function src(set, key, big) {
+  const b = big && BIG[set] && BIG[set][key];
+  const t = b || (THUMB[set] && THUMB[set][key]);
+  return t ? 'data:image/jpeg;base64,' + t : null;
+}
+
+// ---- hover tooltip
+function tipText(P, key) {
+  const p = P[key]; if (!p) return key;
+  return key + '\n' + p.artist + (p.death_year != null ? ' (died ' + p.death_year + ')' : '') + '\nemotion: ' + pretty(p.labels.emotion) +
+    '\nstyle: ' + pretty(p.labels.style) + '\ngenre: ' + pretty(p.labels.genre);
+}
+function thumb(set, key, big) {
+  const P = DATA.sets[set].paintings;
+  const s = src(set, key, big);
+  const e = s ? h('img', {class: 'th', src: s, alt: key}) : h('div', {class: 'th'});
+  e.dataset.tip = tipText(P, key);
+  return e;
+}
+document.addEventListener('mousemove', ev => {
+  const t = ev.target, tip = $('tip');
+  if (t && t.dataset && t.dataset.tip) {
+    tip.textContent = t.dataset.tip; tip.style.display = 'block';
+    tip.style.left = Math.min(ev.clientX + 14, window.innerWidth - 400) + 'px'; tip.style.top = (ev.clientY + 16) + 'px';
+  } else tip.style.display = 'none';
+});
+
+// ---- cluster figure
+function rowHeader(rule, r, i) {
+  const maj = 'majority "' + pretty(r.majority) + '" ' + pct(r.majority_share);
+  const facts = 'cluster ' + r.cluster + ' | ' + maj + ' | size ' + r.size + ' | labelled ' + r.labelled + ' | public domain ' + r.pd_members;
+  let title;
+  if (rule === 'per_class') title = 'Class "' + pretty(r['class']) + '": ' + pct(r.class_share) + ' of the cluster\'s labelled members';
+  else if (rule === 'purity') title = '#' + (i + 1) + ' purity ' + pct(r.majority_share);
+  else title = 'Draw ' + (i + 1);
+  const badge = r.dup ? h('span', {class: 'badge', text: 'same cluster serves another class'}) : null;
+  return h('div', {class: 'rh'}, h('span', {class: 't', text: title}), badge, h('br'), h('span', {class: 's', text: facts}));
+}
+function renderCluster() {
+  const S = DATA.sets[cs.set];
+  const panel = S.panels[cs.aspect][cs.k][cs.cr][cs.pr];
+  for (const [model, el] of [['cstar', $('colCstar')], ['plain', $('colPlain')]]) {
+    clear(el);
+    panel[model].forEach((r, i) => {
+      const keys = r.paintings.slice(0, cs.n);
+      const box = h('div', {class: 'thumbs'});
+      for (const k of keys) box.appendChild(thumb(cs.set, k, false));
+      if (!keys.length) box.appendChild(h('span', {class: 'empty', text: 'no public-domain painting in this cluster'}));
+      else if (keys.length < cs.n) box.appendChild(h('span', {class: 'empty', text: 'only ' + keys.length + ' public-domain paintings (after skipping near copies)'}));
+      el.appendChild(h('div', {class: 'row'}, rowHeader(cs.cr, r, i), box));
+    });
+  }
+}
+
+// ---- teaser
+function renderTeaser() {
+  const S = DATA.sets[ts.set], T = S.teaser, P = S.paintings;
+  const strip = $('strip'), out = $('teaser');
+  clear(strip); clear(out);
+  if (!T.length) { out.appendChild(h('div', {class: 'empty', text: 'no candidate passes the rule in this set'})); return; }
+  if (ts.sel >= T.length) ts.sel = 0;
+  T.forEach((t, i) => {
+    const s = src(ts.set, t.query, false);
+    const sq = h('div', {class: 'sq' + (i === ts.sel ? ' on' : '')}, s ? h('img', {src: s}) : h('div', {class: 'th'}), h('div', {text: '#' + t.rank}));
+    sq.addEventListener('click', () => { ts.sel = i; renderTeaser(); });
+    strip.appendChild(sq);
+  });
+  const t = T[ts.sel], q = P[t.query];
+  const qimg = src(ts.set, t.query, true);
+  out.appendChild(h('div', {class: 'query'},
+    qimg ? h('img', {src: qimg}) : h('div', {class: 'th'}),
+    h('div', {class: 'meta'},
+      h('div', {class: 'rh'}, h('span', {class: 't', text: 'Query #' + t.rank + ' of ' + T.length})),
+      h('div', {text: t.query}),
+      h('div', {text: q.artist + (q.death_year != null ? ' (died ' + q.death_year + ')' : '')}),
+      h('div', {text: 'emotion: ' + pretty(q.labels.emotion)}),
+      h('div', {text: 'style: ' + pretty(q.labels.style)}),
+      h('div', {text: 'genre: ' + pretty(q.labels.genre)}),
+      h('div', {class: 's', text: t.distinct + ' distinct paintings over the three head lists; mean agreement ' + pct(t.mean_agreement) +
+        '; ' + S.teaser_info.queries + ' queries, ' + S.teaser_info.gallery + ' gallery paintings, ' + S.teaser_info.kept_by_rule + ' pass the rule'}))));
+  const n = ts.n;
+  for (const a of ASP) {
+    const H = t.heads[a], nbs = H.neighbours.slice(0, n);
+    let m = 0;
+    const box = h('div', {class: 'thumbs'});
+    for (const k of nbs) {
+      const l = P[k].labels[a], ok = l != null && l === q.labels[a];
+      if (ok) m += 1;
+      box.appendChild(h('div', {class: 'nb'}, thumb(ts.set, k, false),
+        h('div', {class: 'lab'}, h('span', {class: ok ? 'ok' : 'no', text: (ok ? '✓ ' : '✗ ') + pretty(l)}))));
+    }
+    out.appendChild(h('div', {class: 'tz'}, h('h3', {text: a + ' (c* ' + a + ' head)'}),
+      h('div', {class: 'sum'}, h('b', {text: m + ' of ' + nbs.length}), ' share the query\'s ' + a + ' label "' + pretty(q.labels[a]) + '"' +
+        (a === 'genre' ? ' (an unlabelled neighbour counts as no match)' : '')), box));
+  }
+  if (ts.plain) {
+    const nbs = t.plain.neighbours.slice(0, n), box = h('div', {class: 'thumbs'});
+    const m = {emotion: 0, style: 0, genre: 0};
+    for (const k of nbs) {
+      const lines = [];
+      for (const a of ASP) {
+        const l = P[k].labels[a], ok = l != null && l === q.labels[a];
+        if (ok) m[a] += 1;
+        lines.push(h('div', {}, h('span', {class: ok ? 'ok' : 'no', text: (ok ? '✓ ' : '✗ ') + a + ': ' + pretty(l)})));
+      }
+      box.appendChild(h('div', {class: 'nb'}, thumb(ts.set, k, false), h('div', {class: 'lab'}, ...lines)));
+    }
+    out.appendChild(h('div', {class: 'tz'}, h('h3', {text: 'plain image (no head)'}),
+      h('div', {class: 'sum'}, h('b', {text: 'emotion ' + m.emotion + ' of ' + nbs.length}), ', ', h('b', {text: 'style ' + m.style + ' of ' + nbs.length}),
+        ', ', h('b', {text: 'genre ' + m.genre + ' of ' + nbs.length}), ' share the query\'s label in that aspect'), box));
+  }
+}
+
+function renderAll() {
+  if (!DATA) return;
+  if (!$('paneC').classList.contains('hidden')) renderCluster(); else renderTeaser();
+}
+
+function fillClusterControls() {
+  const S = DATA.sets[cs.set], c = S.counts[cs.aspect];
+  const items = c.ks.map(k => [k, k === c.class_count ? (k === 20 ? '20 (also the class count)' : k + ' (class count)') : String(k)]);
+  if (!c.ks.map(String).includes(cs.k)) cs.k = String(c.ks[0]);
+  opts($('cK'), items, cs.k);
+}
+function initControls() {
+  const sets = Object.keys(DATA.sets);
+  opts($('cSet'), sets.map(s => [s, s === 'artelingo' ? 'ArtELingo held' : 'MMArt test']), cs.set);
+  opts($('tSet'), sets.map(s => [s, s === 'artelingo' ? 'ArtELingo held' : 'MMArt test']), ts.set);
+  opts($('cAspect'), ASP.map(a => [a, a]), cs.aspect);
+  opts($('cCR'), Object.entries(CRULE), cs.cr);
+  opts($('cPR'), Object.entries(PRULE), cs.pr);
+  opts($('cN'), [3, 4, 5, 6].map(v => [v, String(v)]), cs.n);
+  opts($('tN'), [3, 4, 5].map(v => [v, String(v)]), ts.n);
+  fillClusterControls();
+  $('cSet').addEventListener('change', e => { cs.set = e.target.value; ts.set = cs.set; $('tSet').value = ts.set; ts.sel = 0; fillClusterControls(); loadThumbs(cs.set); renderAll(); });
+  $('cAspect').addEventListener('change', e => { cs.aspect = e.target.value; fillClusterControls(); renderAll(); });
+  $('cK').addEventListener('change', e => { cs.k = e.target.value; renderAll(); });
+  $('cCR').addEventListener('change', e => { cs.cr = e.target.value; renderAll(); });
+  $('cPR').addEventListener('change', e => { cs.pr = e.target.value; renderAll(); });
+  $('cN').addEventListener('change', e => { cs.n = +e.target.value; renderAll(); });
+  $('tSet').addEventListener('change', e => { ts.set = e.target.value; cs.set = ts.set; $('cSet').value = cs.set; ts.sel = 0; fillClusterControls(); loadThumbs(ts.set); renderAll(); });
+  $('tN').addEventListener('change', e => { ts.n = +e.target.value; renderAll(); });
+  $('tPlain').addEventListener('change', e => { ts.plain = e.target.checked; renderAll(); });
+  $('tabC').addEventListener('click', () => tab(true));
+  $('tabT').addEventListener('click', () => tab(false));
+}
+function tab(c) {
+  $('paneC').classList.toggle('hidden', !c); $('paneT').classList.toggle('hidden', c);
+  $('tabC').classList.toggle('on', c); $('tabT').classList.toggle('on', !c);
+  renderAll();
+}
+async function init() {
+  try {
+    DATA = await getJSON('data/candidates.json');
+    MANI = await getJSON('data/manifest.json');
+  } catch (e) { document.body.appendChild(h('pre', {text: 'Could not load data: ' + e.message + '\nServe this folder with: python3 -m http.server'})); return; }
+  initControls(); renderAll(); loadThumbs(cs.set);
+}
+init();
+</script>
+</body>
+</html>

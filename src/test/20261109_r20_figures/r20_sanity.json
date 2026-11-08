@@ -1,0 +1,29 @@
+{
+  "source": "/data/SSD2/cosir_r11/20261029_retrieval/outputs/stage1/verdict.json",
+  "aspect": "emotion",
+  "recorded": 0.26416703442260353,
+  "computed": 0.26416703442260353,
+  "difference": 0.0,
+  "matches_1e_6": true,
+  "per_seed": [
+    0.26383237949274796,
+    0.2647096409158409,
+    0.2646591614909257,
+    0.26299853448246185,
+    0.264635455731041
+  ],
+  "seconds": 19.10442248219624,
+  "input_sha256": {
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40/emotion__s0.npz": "45f9994d075e692ab1b854029dae8aa2243b96746116a23373a3babe077bedea",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40/emotion__s0.json": "3b1e2d420c28d9c8a0c58ce4f7f41e12ab9bb061ac5a6e204d3c0c46923daae1",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40/emotion__s1.npz": "20746ff46f3ebeaf9978ceccbf5a91f3f561f1d968baeb11e24b4fe32168f011",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40/emotion__s1.json": "a02f5ebae54fca0353e6897dc982285e2a5d7a6d2787aac4ce7157f3f7dada5b",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40/emotion__s2.npz": "6dc2a4ec4af93fc9e6d4b1f9e58ea8c8caa9b5b7acf2220c7a5f24e7b59f3cf0",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40/emotion__s2.json": "0f858a81d7b58388b700fc3244429684bb4ecf16d848fecb3069eb0a5fae5cf0",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40/emotion__s3.npz": "18c0957ca65bf79b115448a56440070e237931754fd5d6213ec20a5009bc0674",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40/emotion__s3.json": "ed8300093e6bcfbfd4128d6172b6f4ffb85195541b2fd5c42088fbd33b12c2bc",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40/emotion__s4.npz": "13222fa6cc3b39ba6c59199890c3d2ced7a2c06b6d250e4f3b035615484cd3cc",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40/emotion__s4.json": "f05794a0e2c43791c9173070ca02a7e33e3463cc1ed8b0c8cd4d7e4dc3e171f1"
+  },
+  "code_sha256": "492c104a80822abd7bd2031176a461fe4e6bbe14362c53539d15608d27de6f42"
+}
