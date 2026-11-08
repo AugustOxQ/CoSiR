@@ -1,0 +1,31 @@
+You are doing a fact-finding read in the repo /project/CoSiR (a research project). Read only; write one file. Delete nothing; list what you would remove. Keep command output short (long output to a file, then grep or tail). No waits over about 4 minutes.
+
+GOAL
+Update the "what we have and what is missing" tables of the stage report of 2026-11-04 with the results of rounds r17 to r24, which ran after it. Facts only, each cell with its source report. No recommendations.
+
+START FROM (the old tables, as of 2026-11-04)
+- docs/reports/stage/2026-11-04_datasets_and_retrieval.md, section "## What we have and what is missing" (about line 443 to the end of "### Gaps and what fills them"): tables "Clustering coverage", "Retrieval coverage", "Gaps and what fills them". Many cells say "filling: <round name>"; those rounds have now finished.
+- docs/user_read/2026-11-03_experiment_overview.md, sections "The to-do list" (items 1 to 23) and "The plan (decided 2026-11-03)" (loops r17 to r22).
+
+THE ROUNDS SINCE THEN (read each report's results brief and "What ran"; the direction log entries say what the user decided)
+- r17 "New scores from saved outputs": docs/reports/auto/percept/2027-01-04_new_scores.md and its check 2027-01-07_teacher_gap.md
+- r18 "Outside methods" (TPIPS, CLAY, TURTLE; TEMI not run): 2027-01-06_outside_methods.md
+- r19 "Past our own picks" (three new encoders, SemArt new artists, cost table): 2027-01-05_past_picks.md
+- r22 text retrieval exploration (validation): 2027-01-09_text_retrieval.md; pair-hit checks: 2027-01-10_pair_hit_checks.md
+- r23 text claim test (held ArtELingo, MMArt test): 2027-01-11_text_claim.md
+- r24 short check of the MMArt miss: 2027-01-12_miss_check.md
+- r20 (qualitative figure) and r21 (head variants: DEC loss, deeper heads) have not run.
+- docs/superpowers/direction_log.md: "## Now" and "## Parked ideas", and the entries dated 2026-11-05 to 2026-11-08 (decisions, what was parked or deferred).
+
+WRITE /tmp/claude-0/-project-CoSiR/ea240ca6-b814-4b47-a5f7-af18b5416043/scratchpad/missing/facts.md with these parts:
+
+1. "Clustering coverage" and "Retrieval coverage" (image retrieval, told and untold): the same rows and columns as the old tables (methods by ArtELingo held, MMArt test, Affection test, EmoSet test, SemArt new artists). Add rows the rounds added (for example TURTLE on c* heads, untold retrieval) if they fit. In each cell: which encoders, claim or descriptive, and the outcome in a few words (for example "Four encoders, claim: WIN in all AMI cells; ARI/ACC vs teacher 22 of 48" or "not run" or "not planned"). Use the reports' own outcome words (WIN, LEVEL, BELOW, holds, fails, qualified). Put the source as a short report date (r17 = 01-04 and so on) at the end of each cell.
+2. A new table "Text retrieval coverage" (text to image, image to text, text to text): rows c*'s caption side, late fusion (c* joined with plain Qwen at a = 0.7), plain Qwen, the teacher's text, and any other row the reports have; columns the data sets used (validation, ArtELingo held, MMArt test, MMArt shared rows, any other). Same cell style. Include pair hits (R@10) as a separate line per cell where the reports have them, but for c*'s pair hits write only the numbers, no reading or wording of them.
+3. "Status of the to-do list": one row per overview item 1 to 23, plus each gap the old "Gaps and what fills them" table added after the overview. Columns: item, loop, status (done / done, partly / not run: parked / not run: deferred / not run: waiting / paper text only), outcome in at most 15 words, source. Also list every item in "## Parked ideas" of the direction log that was added on or after 2026-11-02, one line each, with its status.
+4. "Open points named by the reports": a flat list of limits, open questions and "not tested" items the r17 to r24 reports name (each at most 20 words, with its source). Group duplicates.
+5. "Facts I could not settle": anything unclear, with what you checked.
+
+RULES
+- Numbers only as the reports print them; never compute new ones. When a report and the direction log differ, give both and say so.
+- One constraint: the limit on c*'s pair-hit numbers is not worded by any agent. In text retrieval cells, write c*'s pair-hit numbers bare, with no word such as "limit", "weak", "below" beyond the outcome label a report prints.
+- Plain short sentences. Under about 25 KB. When done, print one line: the file path and its size.

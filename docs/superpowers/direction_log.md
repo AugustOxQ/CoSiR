@@ -196,8 +196,8 @@ r17.
 ## 2026-11-05 · Outside methods read: c* above TPIPS and CLAY in most cells, default TURTLE is a weak test; r18 closes, the paper rows come later
 
 - **Read:** 337 cells, each with its own label and no overall verdict: 330 WIN, 6 LEVEL, 1 BELOW, 0 void. Qwen c*
-  against TPIPS: 34 of 35 WIN, one LEVEL (ArtELingo emotion AMI, 0.1024 against 0.0718). Qwen and CLIP L/14 c* against
-  CLAY: 66 of 70 WIN, the four others all style (0.1024 against 0.0676); the one BELOW is MMArt CLIP L/14 style
+  against TPIPS: 34 of 35 WIN, one LEVEL (ArtELingo emotion ARI, 0.0605 against 0.0550; corrected 2026-11-08 against the report, which gives 0.1024 against 0.0718 as an AMI example). Qwen and CLIP L/14 c* against
+  CLAY: 66 of 70 WIN, the four others all style (the 0.1024 against 0.0676 first written here is the report's AMI example, not a style cell; corrected 2026-11-08); the one BELOW is MMArt CLIP L/14 style
   accuracy. c* against the plain image with TURTLE on both sides: 114 of 116 WIN. c* with k-means against the plain
   image with TURTLE: 116 of 116 WIN. TURTLE ran at its released code's default settings, without its hyperparameter
   selection, and scored below k-means in 203 of 232 diagnostic comparisons (170 with the whole interval below zero).
