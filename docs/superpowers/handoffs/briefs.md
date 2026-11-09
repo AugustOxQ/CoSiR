@@ -2039,3 +2039,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-08-r20-decide-handoff.md
 - New chat: tab 'r20 decide', session 9b0d8336-1f49-41be-9dc2-5ead4979f4ea
 
+[brief] CoSiR: r20 decide -> r20 report (2026-11-09 04:22 Amsterdam)
+- Done: the ablation retrieval check (9 models, held, 5 seeds) and both paper figures (cluster figure, page-1 teaser), kept by the user.
+- State: the retrieval removals follow the clustering ablation's pattern; c*'s values match r11's exactly.
+- Next: write the short auto report and the user-read report, ask for the user's reading (decision C), then the wrap-up.
+- Blocked: nothing; one open question (a teacher version of the figures).
+- Handoff: docs/superpowers/handoffs/2026-11-09-r20-report-handoff.md
+- New chat: tab 'r20 report', session cdeed73c-8a02-4c6f-a7c7-f804c142cfac
+
