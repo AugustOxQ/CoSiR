@@ -42,3 +42,21 @@ fixed before the paintings were seen.
   2,736 thumbnails) through `res-queue cpu --short`. Page at `outputs/viewer/index.html`, served on localhost:8766,
   checked by headless screenshots (Playwright of the DustDevilVis env, run isolated, screenshots only): both tabs
   render, no page errors.
+
+## Design picks (2026-11-09 01:05)
+
+| Point | Decision | Who |
+|---|---|---|
+| Review page | opened, read | user |
+| Teaser | candidate #2 of ArtELingo held (Childe Hassam, "Old Lyme Bridge"); 5 neighbours; plain-image row kept | user picked #2; count and row agent default |
+| Cluster figure | ArtELingo held, 20 clusters, per-class rule, one class per aspect by the largest share gain of c* over the plain image (sadness 0.45/0.25, Ukiyo-e 0.93/0.14, sketch and study 0.51/0.28), 4 paintings nearest the centre; all classes to the supplementary | agent, on the user's request ("you give your selected ones") |
+| Dot-as-dash artist match | keep | user |
+
+The class rule favours c*; the caption says so. An Opus `high` worker builds `fig_clusters` and `fig_teaser` in the
+paper folder (`docs/paper/cvpr2027_aspect_spaces/figures/`) with a look-and-fix loop.
+- 01:20 figures built (Opus `high` worker, three renders each): `fig_clusters` 6.875 x 1.2 in (1.5 MB PDF),
+  `fig_teaser` 6.875 x 2.3 in (2.3 MB PDF), scripts in the paper folder's `figures/src/`, two draft captions in
+  `captions.md`. Controller viewed both PNGs. Paper repo commit eb4bb74.
+- 04:20 user: keep both figures as they are (user); the all-classes supplementary figure later (user); cut to a fresh
+  chat for the reports and the wrap-up (user, after seeing the recommendation). Open: compare also with the teacher?
+  Agent's recommendation: main figures stay plain image only; a teacher version goes to the supplementary.
