@@ -60,3 +60,14 @@ paper folder (`docs/paper/cvpr2027_aspect_spaces/figures/`) with a look-and-fix 
 - 04:20 user: keep both figures as they are (user); the all-classes supplementary figure later (user); cut to a fresh
   chat for the reports and the wrap-up (user, after seeing the recommendation). Open: compare also with the teacher?
   Agent's recommendation: main figures stay plain image only; a teacher version goes to the supplementary.
+
+## Report and reading (2026-11-09 04:25 to 2026-11-10 19:50)
+
+- 2026-11-09 04:40 short auto report [2027-01-13](../../../docs/reports/auto/percept/2027-01-13_ablation_retrieval.md) and the
+  user-read report, after a Codex cold read (gpt-6-luna) and a Codex fidelity check (gpt-6.1-sol) and one fix wave.
+- Decision C (user, 2026-11-10, before ours): the content correction and the instructed graphs matter much for style and
+  possibly emotion, not for genre; the buddy terms also help style and emotion; the relational term carries genre; all
+  four parts contribute, with no redundancy.
+- Teacher version of the figures (user, after seeing the recommendation): the main figures stay as they are (plain
+  image only); a teacher version goes to the supplementary with the all-classes figure.
+

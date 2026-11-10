@@ -36,7 +36,7 @@ a. **Retrieval in the paper's ablation table.** Add the mAP Δ column beside hel
 b. **A teacher version of the figures** for the supplementary, with the all-classes figure, before 11-23. CPU minutes from saved outputs. It shows where c* and its teacher differ in clusters and neighbours.
 c. **Keep the paper's ablation in clustering only.** The retrieval table stays in this report. No cost.
 
-**Your reading.** <left for the user>
+**Your reading.** (user, 2026-11-10) "So seems content correction and instructed graphs means a lot to style and possibly emotion, but not so much for genre. buddy term also help style and emotion. relational term seems really lower the genre. So all four parts actually contribute and no redundency."
 
 <details>
 <summary>Our reading and recommendation (open after writing yours)</summary>
@@ -126,4 +126,4 @@ Removing the shared trunk changes retrieval by less than one seed range in each 
 ## Files and storage
 
 - **Outputs:** `src/test/20261109_r20_figures/ret_full/ablation_ret.{md,json}` (in git); figure candidates and the review page under `outputs/` → `/data/SSD2/cosir_r20/20261109_r20_figures/`; the paper figures in `docs/paper/cvpr2027_aspect_spaces/figures/`.
-- **Storage:** `/data/SSD2/cosir_r20/20261109_r20_figures/` is 32 MB (review page 17 MB, smoke outputs 12 MB); the untracked `ret_smoke/` is 120 KB. Nothing of 1 GB or more. The decision is made at the wrap-up.
+- **Storage:** `/data/SSD2/cosir_r20/20261109_r20_figures/` is 32 MB (review page 17 MB, smoke outputs 12 MB); the untracked `ret_smoke/` is 120 KB. Nothing of 1 GB or more. At the wrap-up (user, 2026-11-10) the smoke outputs were deleted; the review page and the figure inputs stay until the supplementary figures.

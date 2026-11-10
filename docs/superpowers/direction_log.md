@@ -11,7 +11,7 @@ weekly and stage reports.
 
 The conditioned line's log (2026-09-28 to 2026-10-15, rounds 1 to 9, parked ideas) is archived: [direction log](../../archive/v2_conditioned/docs/superpowers/direction_log.md).
 
-## Now (2026-11-08)
+## Now (2026-11-10)
 
 The new line builds a condition-free model over PercepT: one Qwen3-VL-Embedding instruction per aspect, buddy graphs
 on each view, one shared trunk with emotion, style and genre heads, read once on the default image. On ArtELingo, c*
@@ -34,7 +34,7 @@ ArtELingo emotion that gap comes from one class, contentment (report 2027-01-07)
 both models, and ARI close to c* and below the teacher. After the weekly meeting, text-to-text and cross-modal retrieval are top priority (user, 2026-11-05). r22, an exploration on validation with seed 0,
 is read (user, 2026-11-05): c*'s caption side beats plain Qwen and the teacher's text in 6 of 9 label cells (bar 5; 5 of 9 with one fixed read-out),
 with emotion below the teacher, and pair hits below plain Qwen, which the user expected. The two short checks are read (user, 2026-11-06): on older saved models the own-caption term raises pair hits and lowers label hits; joined c* and plain Qwen scores pass the rule at one weight, a = 0.7, which the user reads as important, with no clear reason yet why that weight helps. r23, the claim loop for the caption side, is read (user, 2026-11-06): c* and late fusion (joined scores, a = 0.7) hold on held ArtELingo and fail on MMArt; the user reads the ArtELingo holds as good and the MMArt failures as no surprise. r24, a short check of the miss, is read (user, 2026-11-08): the failed MMArt counts follow its narrative text, not its paintings or labels; c*'s miss sits in portrait and landscape; the user reads it as not fully explaining why, with interesting findings and directions. Next: the what-is-missing table (the 11-04 coverage tables, updated with r17 to r24), then the plan update (user, 2026-11-08). The pair-hit limit waits for
-the user's talk with the other authors. The what-is-missing table is read (user, 2026-11-08): writing starts in a paper chat (related work, method, experiments, then abstract, introduction and conclusion as draft v1.1; an ARS review and a revision; compact versions last; a temporary title and abstract registered by 11-10). Beside it, r20 makes the qualitative and teaser figures and scores retrieval for the eight ablation removals. r21, the second instructed embedder and the other checks wait until after 11-16. The stage note's form still waits for the user. Deadlines:
+the user's talk with the other authors. The what-is-missing table is read (user, 2026-11-08): writing starts in a paper chat (related work, method, experiments, then abstract, introduction and conclusion as draft v1.1; an ARS review and a revision; compact versions last; a temporary title and abstract registered by 11-10). r20 is read and closed (user, 2026-11-10): both paper figures are kept, and in held image retrieval the eight ablation removals follow the clustering ablation (report 2027-01-13); the retrieval column goes into the paper's ablation table, and a teacher version of the figures into the supplementary. r21, the second instructed embedder and the other checks wait until after 11-16. The stage note's form still waits for the user. Deadlines:
 abstract 2026-11-10, paper 2026-11-16, supplementary 2026-11-23.
 Reporting (user, 2026-11-04): r17's results enter the weekly report of 2026-11-04 only after the user's reading in the r20
 chat, and they stay out of the stage report of 2026-11-04 (29 October to 3 November); the next stage report starts from
@@ -97,6 +97,31 @@ r17.
   GPU h by our arithmetic, not measured; a small spec must settle D9 against D25 (never run; deferred by the user
   (2026-11-05): worth doing, not top priority;
   [proposed in](../reports/auto/percept/2027-01-06_outside_methods.md))
+
+## 2026-11-10 · r20 read: the ablation's parts carry retrieval as they carry clustering; the retrieval column goes into the paper's ablation table
+
+- **Read:** held ArtELingo image-to-image retrieval, label mAP, seeds 0 to 4, removal minus c* (c* 0.2642 / 0.3110 /
+  0.5896, plain image 0.2424 / 0.1801 / 0.4760; emotion / style / genre): without the instructed graphs emotion
+  -0.0208, style -0.1223 (near the plain image); without the buddy terms -0.0181, -0.0981; without the content
+  correction -0.0068, -0.0577; without the relational term genre -0.1287 (0.4610, below the plain image). The other
+  four removals change each aspect by under 0.01; 18 of 24 sign classes agree with held AMI. Both paper figures
+  (cluster figure, page-1 teaser) are built and kept (user, 2026-11-09).
+- **Meaning (C):** "So seems content correction and instructed graphs means a lot to style and possibly emotion, but
+  not so much for genre. buddy term also help style and emotion. relational term seems really lower the genre. So all
+  four parts actually contribute and no redundency." (user, before ours). Ours: the same split by aspect; emotion is
+  clear (the instructed graphs hold 96% of c*'s small emotion gain); the three graph parts form one chain, so their
+  losses overlap and are not separate shares; the direct teacher's raise in clustering does not carry over to
+  retrieval. Where they differ: "possibly emotion", and "no redundancy" (each part is needed, but the shares overlap).
+- **Decided (A):** the retrieval column goes beside held AMI in the paper's ablation table, with the three graph parts
+  worded as one chain (user, after seeing the recommendation); a teacher version of both figures goes to the
+  supplementary with the all-classes figure (user, after seeing the recommendation). No new experiment loop now:
+  writing goes on in the paper chat, and r21 and the other checks wait until after 11-16. Small loop closed.
+- **Why:** retrieval is the paper's second task; the check shows the ablation holds there too.
+- **Storage:** r20's smoke outputs deleted (user, 2026-11-10); nothing of 1 GB or more.
+- **Links:** [report 2027-01-13](../reports/auto/percept/2027-01-13_ablation_retrieval.md) ·
+  [user-read](../user_read/2026-11-09_ablation_retrieval.md) ·
+  [round log](../../src/test/20261109_r20_figures/20261109_r20_figures_log.md) ·
+  [handoff](handoffs/2026-11-09-r20-report-handoff.md)
 
 ## 2026-11-08 · What-is-missing table read: the planned comparisons are done; writing starts, with the cluster figure and an ablation retrieval check beside it
 
