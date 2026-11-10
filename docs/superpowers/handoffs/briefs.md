@@ -2055,3 +2055,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-10-paper-writing-handoff.md
 - New chat: tab 'paper writing', session 49cf8e7f-dd10-4a68-9123-104da879607a
 
+[brief] CoSiR: paper writing -> paper method (2026-11-10 20:36 Amsterdam)
+- Done: /duck-outline (thinking template, four checks, storyline, page plan); an early experiments section for v1.2, every table cell checked by Codex.
+- State: v1.2 has the experiments only (about 2,100 words, 9 tables). Two outline checks fail on the contribution wording, not on the results.
+- Next: the user answers items 1 to 5 (contributions, method layout, related work); then /duck-write guides the user's method writing.
+- Blocked: the user's answers; registration by 11-11 12:59 (the user's alone).
+- Handoff: docs/superpowers/handoffs/2026-11-10-paper-method-writing-handoff.md
+- New chat: tab 'paper method', session a4f23a0e-d05e-4aba-a596-d5121e389531
+
