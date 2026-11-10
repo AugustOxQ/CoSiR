@@ -2047,3 +2047,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-09-r20-report-handoff.md
 - New chat: tab 'r20 report', session cdeed73c-8a02-4c6f-a7c7-f804c142cfac
 
+[brief] CoSiR: paper v1.1 -> paper writing (2026-11-10 19:59 Amsterdam)
+- Done: related work and method v1.1 drafted, checked by Codex and pushed; Figure 1 shows the text path; r20's ablation decisions are in the drafting brief.
+- State: v1.1 has the related work (5,861 words) and the method (7,662 words); no outline, introduction, experiments or conclusion yet. Paper due 11-17 12:59 Amsterdam.
+- Next: Ducktor guides the user's writing: outline (/duck-outline), then introduction (/duck-intro), then each section (/duck-write).
+- Blocked: the user registers on OpenReview by 11-11 12:59 Amsterdam; the final name and the wording of contribution 2 are open.
+- Handoff: docs/superpowers/handoffs/2026-11-10-paper-writing-handoff.md
+- New chat: tab 'paper writing', session 49cf8e7f-dd10-4a68-9123-104da879607a
+
