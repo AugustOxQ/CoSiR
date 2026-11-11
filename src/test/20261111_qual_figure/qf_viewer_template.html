@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>CoSiR qualitative figure, section 4.6: candidates (review page)</title>
+<style>
+  :root { --ink:#1d2330; --muted:#5b6475; --line:#d6dae3; --bg:#f6f7fa; --card:#fff; --accent:#2a5bd7; --ok:#1c7c3a; --diff:#b25a00; --no:#7d8493; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); }
+  header { background:var(--card); border-bottom:1px solid var(--line); padding:12px 20px; }
+  h1 { font-size:19px; margin:0 0 6px; }
+  details summary { cursor:pointer; color:var(--accent); font-size:14px; }
+  .rules { margin:6px 0 0; padding-left:20px; font-size:13.5px; color:var(--muted); max-width:1250px; }
+  .rules li { margin-bottom:3px; }
+  .counts { font-size:13.5px; margin-top:8px; max-width:1250px; }
+  .counts b { color:var(--ink); }
+  nav { display:flex; gap:4px; padding:10px 20px 0; border-bottom:1px solid var(--line); background:var(--card); }
+  nav button { font:inherit; border:1px solid var(--line); border-bottom:none; background:#eef0f5; padding:7px 16px; border-radius:6px 6px 0 0; cursor:pointer; }
+  nav button.on { background:var(--bg); font-weight:600; position:relative; top:1px; }
+  .controls { display:flex; gap:14px; padding:10px 20px; background:var(--card); border-bottom:1px solid var(--line); align-items:center; font-size:13px; color:var(--muted); }
+  .controls select { font:inherit; font-size:14px; padding:4px 6px; border:1px solid var(--line); border-radius:4px; }
+  main { padding:14px 20px 40px; }
+  .blk { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:10px 12px; margin-bottom:16px; }
+  .head { display:flex; align-items:baseline; gap:14px; margin-bottom:8px; flex-wrap:wrap; }
+  .id { font-size:30px; font-weight:700; color:var(--accent); letter-spacing:.5px; }
+  .stats { font-size:13.5px; }
+  .stats b { color:var(--ink); }
+  .stats .sub { color:var(--muted); }
+  .rowl { font-size:13.5px; font-weight:600; margin:8px 0 4px; }
+  .rowl .s { font-weight:400; color:var(--muted); margin-left:6px; }
+  .strip { display:flex; gap:8px; flex-wrap:wrap; align-items:flex-start; }
+  .card { display:flex; flex-direction:column; width:auto; max-width:222px; padding:3px; border:2px solid transparent; border-radius:5px; }
+  .card.fig { border-color:var(--accent); background:#eef3ff; }
+  .card img, .card .ph { height:128px; border-radius:3px; display:block; background:#e7e9ef; min-width:60px; }
+  .card.big img, .card.big .ph { height:320px; max-width:440px; }
+  .card.big { max-width:446px; }
+  .card .cap { font-size:12px; line-height:1.3; margin-top:3px; }
+  .card .art { color:var(--ink); font-weight:600; }
+  .card .yr { color:var(--muted); }
+  .card .cos { color:var(--muted); font-variant-numeric: tabular-nums; }
+  .card .ok { color:var(--ok); font-weight:600; }
+  .card .diff { color:var(--diff); font-weight:600; }
+  .card .no { color:var(--no); }
+  .badge { font-size:11px; background:#dfe8ff; color:#1f3f9c; border:1px solid #b6c8f5; padding:0 5px; border-radius:8px; align-self:flex-start; margin-bottom:2px; }
+  .pairrow { display:flex; gap:26px; align-items:flex-start; flex-wrap:wrap; }
+  h2.grp { font-size:18px; margin:22px 0 8px; padding-bottom:4px; border-bottom:2px solid var(--accent); }
+  .empty { color:var(--muted); font-style:italic; }
+  .hidden { display:none !important; }
+</style>
+</head>
+<body>
+<header>
+  <h1>CoSiR qualitative figure, section 4.6: candidates (review page, not the paper figure)</h1>
+  <div>Pick candidates by their ID (a1, b4, c-style-1, ...). Our model is c* (seed 0, one head per aspect); the baseline is the plain Qwen3-VL-Embedding-2B image. A green label matches the query (in the pair: the partner) in the aspect that the rule uses; an orange label differs from the partner in the far aspect.</div>
+  <details><summary>Rules (as run)</summary><ol class="rules" id="rules"></ol></details>
+  <div class="counts" id="counts"></div>
+</header>
+<nav>
+  <button id="tabA" class="on">(a) same subject, different feeling</button>
+  <button id="tabB">(b) close in one aspect, far in another</button>
+  <button id="tabC">Cluster figure (class count)</button>
+</nav>
+<section id="paneA"><main id="mainA"></main></section>
+<section id="paneB" class="hidden"><main id="mainB"></main></section>
+<section id="paneC" class="hidden">
+  <div class="controls">Aspect <select id="cAspect"></select><span id="cNote"></span></div>
+  <main id="mainC"></main>
+</section>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+function h(tag, attrs, ...kids) {
+  const e = document.createElement(tag);
+  for (const k in (attrs || {})) {
+    if (k === 'class') e.className = attrs[k];
+    else if (k === 'text') e.textContent = attrs[k];
+    else e.setAttribute(k, attrs[k]);
+  }
+  for (const c of kids) if (c != null) e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
+  return e;
+}
+function clear(e) { while (e.firstChild) e.removeChild(e.firstChild); }
+const pretty = s => (s == null ? 'none' : String(s).replace(/_/g, ' '));
+const slug = s => String(s).replace(/-/g, ' ');
+const pct = v => (v == null ? 'n/a' : (v * 100).toFixed(v < 0.1 ? 1 : 0) + '%');
+const ASP = ['emotion', 'style', 'genre'];
+
+let DATA = null, MANI = null;
+const THUMB = {}, BIG = {};
+let tab_ = 'A', cAspect = 'emotion';
+
+async function getJSON(p) { const r = await fetch(p); if (!r.ok) throw new Error(p + ' ' + r.status); return r.json(); }
+
+let redrawTimer = null;
+function redrawSoon() { if (redrawTimer) return; redrawTimer = setTimeout(() => { redrawTimer = null; renderAll(); }, 80); }
+async function loadThumbs() {
+  try {
+    if (MANI.big) { Object.assign(BIG, await getJSON('data/' + MANI.big)); redrawSoon(); }
+    for (const f of MANI.thumbs) { Object.assign(THUMB, await getJSON('data/' + f)); redrawSoon(); }
+  } catch (e) { $('counts').appendChild(h('div', {text: 'thumbnail load failed: ' + e.message})); }
+}
+
+// card: thumbnail, then artist, death year and the three labels; mark(aspect) returns 'ok', 'diff' or ''
+function card(key, opts) {
+  opts = opts || {};
+  const p = DATA.paintings[key];
+  const b = opts.big && BIG[key], t = b || THUMB[key];
+  const img = t ? h('img', {src: 'data:image/jpeg;base64,' + t, alt: key, title: key}) : h('div', {class: 'ph'});
+  const cap = h('div', {class: 'cap'}, h('div', {class: 'art', text: slug(p.artist)}),
+    h('div', {class: 'yr', text: p.death_year != null ? 'died ' + p.death_year : 'death year unknown'}));
+  for (const a of ASP) {
+    const m = opts.mark ? opts.mark(a) : '';
+    cap.appendChild(h('div', {}, h('span', {class: m || 'no', text: (m === 'ok' ? '✓ ' : m === 'diff' ? '≠ ' : '') + a + ': ' + pretty(p.labels[a])})));
+  }
+  if (opts.cos != null) cap.appendChild(h('div', {class: 'cos', text: 'cos ' + opts.cos.toFixed(3)}));
+  const kids = [];
+  if (opts.badge) kids.push(h('span', {class: 'badge', text: opts.badge}));
+  kids.push(img, cap);
+  return h('div', {class: 'card' + (opts.big ? ' big' : '') + (opts.fig ? ' fig' : ''), title: key}, ...kids);
+}
+
+// ---- panel (a)
+function renderA() {
+  const el = $('mainA'); clear(el);
+  const C = DATA.panel_a;
+  if (!C.length) { el.appendChild(h('div', {class: 'empty', text: 'no query passes the rule'})); return; }
+  for (const c of C) {
+    const q = DATA.paintings[c.query], k = c.counts;
+    const markFor = nb => (a => (a === 'emotion' || a === 'genre') && nb.labels[a] != null && nb.labels[a] === q.labels[a] ? 'ok' : '');
+    const blk = h('div', {class: 'blk'});
+    blk.appendChild(h('div', {class: 'head'}, h('span', {class: 'id', text: c.id}),
+      h('span', {class: 'stats'}, h('b', {text: 'e_ours ' + k.e_ours}), ' of 5 share the query\'s emotion (' + pretty(c.query_emotion) + '); ',
+        h('b', {text: 'e_plain ' + k.e_plain}), '; ', h('b', {text: 'g_plain ' + k.g_plain}), ' share its genre in the plain image; ',
+        h('b', {text: 'g_ours ' + k.g_ours}), ' in our emotion head. ', h('span', {class: 'sub', text: c.query})),
+    ));
+    blk.appendChild(h('div', {class: 'rowl', text: 'query'}));
+    blk.appendChild(h('div', {class: 'strip'}, card(c.query, {big: true})));
+    for (const [name, list, sub] of [['plain image', c.plain, 'top 5 by cosine'], ['ours, emotion head', c.ours, 'top 5 by cosine']]) {
+      blk.appendChild(h('div', {class: 'rowl'}, name, h('span', {class: 's', text: sub})));
+      const row = h('div', {class: 'strip'});
+      for (const nb of list) row.appendChild(card(nb.key, {cos: nb.cos, mark: markFor(nb)}));
+      blk.appendChild(row);
+    }
+    el.appendChild(blk);
+  }
+}
+
+// ---- panel (b)
+function renderB() {
+  const el = $('mainB'); clear(el);
+  const groups = {};
+  for (const c of DATA.panel_b) (groups[c.A + '/' + c.B] = groups[c.A + '/' + c.B] || []).push(c);
+  for (const [A, B] of DATA.header.pairs) {
+    const g = groups[A + '/' + B] || [];
+    const info = DATA.counts.panel_b.pairs[A + '/' + B];
+    el.appendChild(h('h2', {class: 'grp', text: 'near in ' + A + ', far in ' + B}));
+    el.appendChild(h('div', {class: 'stats', text: 'candidates before the pick: ' + info.candidates_after_pair_dedup + ' (' + info.candidates_raw + ' before pair dedup), over ' + info.P + ' paintings'}));
+    if (!g.length) el.appendChild(h('div', {class: 'empty', text: 'no candidate'}));
+    for (const c of g) {
+      const blk = h('div', {class: 'blk'});
+      blk.appendChild(h('div', {class: 'head'}, h('span', {class: 'id', text: c.id}),
+        h('span', {class: 'stats'}, h('b', {text: A + ' head: '}), 'j is rank ' + c.a_rank + ' of 5 for i, cos ' + c.a_cos.toFixed(3) + '; ',
+          h('b', {text: B + ' head: '}), 'rank ' + c.b_rank + ' of ' + c.gallery + ' (percentile ' + pct(c.b_percentile) + '), cos ' + c.b_cos.toFixed(3) + '; ',
+          h('b', {text: 'plain image: '}), 'cos ' + c.plain_cos.toFixed(3) + ', rank percentile ' + pct(c.plain_percentile))));
+      const mk = (own, other) => a => (a === A && own[a] != null && own[a] === other[a]) ? 'ok' : (a === B && own[a] !== other[a]) ? 'diff' : '';
+      blk.appendChild(h('div', {class: 'pairrow'}, card(c.key_i, {big: true, mark: mk(c.labels_i, c.labels_j)}), card(c.key_j, {big: true, mark: mk(c.labels_j, c.labels_i)})));
+      el.appendChild(blk);
+    }
+  }
+}
+
+// ---- cluster figure
+function renderC() {
+  const el = $('mainC'); clear(el);
+  const rows = DATA.clusters[cAspect];
+  $('cNote').textContent = rows.length + ' classes at the class count ' + DATA.header.class_count[cAspect] + ', sorted by gain = c* share - plain share; the first is the rule\'s pick; the first 4 paintings of a row are in the figure (blue frame)';
+  for (const r of rows) {
+    const blk = h('div', {class: 'blk'});
+    blk.appendChild(h('div', {class: 'head'}, h('span', {class: 'id', text: r.id}),
+      h('span', {class: 'stats'}, h('b', {text: pretty(r['class'])}), ' gain ' + (r.gain >= 0 ? '+' : '') + r.gain.toFixed(3) + ' (c* ' + pct(r.cstar.share) + ', plain ' + pct(r.plain.share) + ')')));
+    for (const [name, S] of [['ours (c*)', r.cstar], ['plain image', r.plain]]) {
+      blk.appendChild(h('div', {class: 'rowl'}, name, h('span', {class: 's', text: 'share ' + pct(S.share) + ' of the cluster\'s labelled members, cluster size ' + S.size + ' (cluster ' + S.cluster + ')'})));
+      const row = h('div', {class: 'strip'});
+      S.paintings.forEach((k, i) => row.appendChild(card(k, {fig: i < S.in_figure.length, badge: i < S.in_figure.length ? 'in figure' : null,
+        mark: a => (a === cAspect && DATA.paintings[k].labels[a] === r['class']) ? 'ok' : ''})));
+      blk.appendChild(row);
+    }
+    el.appendChild(blk);
+  }
+}
+
+function renderAll() {
+  if (!DATA) return;
+  if (tab_ === 'A') renderA(); else if (tab_ === 'B') renderB(); else renderC();
+}
+function setTab(t) {
+  tab_ = t;
+  for (const x of ['A', 'B', 'C']) { $('pane' + x).classList.toggle('hidden', x !== t); $('tab' + x).classList.toggle('on', x === t); }
+  renderAll();
+}
+function fillHeader() {
+  const ol = $('rules');
+  for (const r of DATA.header.rules) ol.appendChild(h('li', {text: r}));
+  const c = DATA.counts, a = c.panel_a;
+  const cl = Object.entries(a.kept_by_rule_per_emotion_class).map(([k, v]) => k + ' ' + v).join(', ');
+  const fl = Object.entries(a.final_per_emotion_class).map(([k, v]) => k + ' ' + v).join(', ');
+  const cnt = $('counts');
+  cnt.appendChild(h('div', {}, h('b', {text: 'Set: '}), c.set_size + ' paintings, ' + c.public_domain + ' public domain, ' + c.usable + ' usable (teaser painting removed)' + (DATA.header.smoke ? ' [SMOKE RUN]' : '') + '. Made ' + DATA.header.made + '.'));
+  cnt.appendChild(h('div', {}, h('b', {text: 'Panel (a): '}), a.queries + ' queries; ' + a.kept_by_rule + ' pass the filter (per emotion class: ' + cl + '); ' + a.final + ' kept after the cap of 2 per class (' + fl + ').'));
+  const pp = Object.entries(c.panel_b.pairs).map(([k, v]) => k.replace('/', ' near, ') + ' far: ' + v.candidates_after_pair_dedup).join('; ');
+  cnt.appendChild(h('div', {}, h('b', {text: 'Panel (b): '}), 'candidates per ordered pair (after pair dedup, before the pick): ' + pp + '. ' + c.panel_b.final + ' kept.'));
+  cnt.appendChild(h('div', {}, h('b', {text: 'Clusters: '}), 'rows per aspect: ' + Object.entries(c.clusters).map(([k, v]) => k + ' ' + v).join(', ') + '.'));
+}
+async function init() {
+  try {
+    DATA = await getJSON('data/candidates.json');
+    MANI = await getJSON('data/manifest.json');
+  } catch (e) { document.body.appendChild(h('pre', {text: 'Could not load data: ' + e.message + '\nServe this folder with: python3 -m http.server'})); return; }
+  fillHeader();
+  const sel = $('cAspect');
+  for (const a of ASP) sel.appendChild(h('option', {value: a, text: a}));
+  sel.addEventListener('change', e => { cAspect = e.target.value; renderAll(); });
+  $('tabA').addEventListener('click', () => setTab('A'));
+  $('tabB').addEventListener('click', () => setTab('B'));
+  $('tabC').addEventListener('click', () => setTab('C'));
+  renderAll(); loadThumbs();
+}
+init();
+</script>
+</body>
+</html>

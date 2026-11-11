@@ -23,3 +23,19 @@ caption can state the rule and that the example was picked among its candidates.
 
 - 09:18 a Sonnet `high` worker writes `qf_cand.py`, `qf_view.py`, `qf_figs.py`, `test_qf.py` (imports r20's code),
   runs the smoke and the full steps (CPU, `res-queue cpu --short`), and builds the review page.
+- 09:23 worker done. Code: `qf_cand.py` (rules), `qf_view.py` (page), `qf_figs.py` (CLI), `qf_viewer_template.html`,
+  `qf_viewer_check.js` (node check, stub from r20), `test_qf.py` (12 passed; panel (b) checked against brute force).
+  Smoke (800 rows) 8 s; full `candidates` 33 s through `res-queue cpu --short`; full `viewer` 1 s; page 3.95 MB.
+  Commands, from `/project/CoSiR` with the env python: `qf_figs.py candidates [--smoke]`, `qf_figs.py viewer
+  [--smoke]`, `node src/test/20261111_qual_figure/qf_viewer_check.js <outputs/viewer>`; serve the page with
+  `python3 -m http.server` inside `outputs/viewer` (it loads its data with fetch).
+- Counts (ArtELingo test): 9,150 public-domain paintings, 9,149 without the teaser painting.
+  - Panel (a): 7,565 queries; 21 pass the filter (amusement 3, awe 8, contentment 7, fear 2, sadness 1); the cap of 2
+    per class keeps 9 (a1 to a9), since only five emotion classes pass.
+  - Panel (b): 18 pairs (b1 to b18), 3 per ordered pair; candidates per ordered pair after the (i, j) / (j, i) dedup:
+    emotion/style 6,874, emotion/genre 2,762, style/emotion 13,030, style/genre 4,638, genre/emotion 14,225,
+    genre/style 10,625.
+  - Clusters: first pick by gain contentment (+0.141), Ukiyo-e (+0.772), still life (+0.546).
+- Worker's interpretations: a rank tie in (b) does not count as nearer; the gain uses r20's stored shares (4
+  decimals). Page marks: in (a) emotion and genre labels green when they match the query; in (b) the A label green
+  when it matches the partner, the B label orange when it differs.
