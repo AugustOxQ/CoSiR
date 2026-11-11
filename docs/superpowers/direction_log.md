@@ -11,7 +11,7 @@ weekly and stage reports.
 
 The conditioned line's log (2026-09-28 to 2026-10-15, rounds 1 to 9, parked ideas) is archived: [direction log](../../archive/v2_conditioned/docs/superpowers/direction_log.md).
 
-## Now (2026-11-10)
+## Now (2026-11-11)
 
 The new line builds a condition-free model over PercepT: one Qwen3-VL-Embedding instruction per aspect, buddy graphs
 on each view, one shared trunk with emotion, style and genre heads, read once on the default image. On ArtELingo, c*
@@ -34,7 +34,7 @@ ArtELingo emotion that gap comes from one class, contentment (report 2027-01-07)
 both models, and ARI close to c* and below the teacher. After the weekly meeting, text-to-text and cross-modal retrieval are top priority (user, 2026-11-05). r22, an exploration on validation with seed 0,
 is read (user, 2026-11-05): c*'s caption side beats plain Qwen and the teacher's text in 6 of 9 label cells (bar 5; 5 of 9 with one fixed read-out),
 with emotion below the teacher, and pair hits below plain Qwen, which the user expected. The two short checks are read (user, 2026-11-06): on older saved models the own-caption term raises pair hits and lowers label hits; joined c* and plain Qwen scores pass the rule at one weight, a = 0.7, which the user reads as important, with no clear reason yet why that weight helps. r23, the claim loop for the caption side, is read (user, 2026-11-06): c* and late fusion (joined scores, a = 0.7) hold on held ArtELingo and fail on MMArt; the user reads the ArtELingo holds as good and the MMArt failures as no surprise. r24, a short check of the miss, is read (user, 2026-11-08): the failed MMArt counts follow its narrative text, not its paintings or labels; c*'s miss sits in portrait and landscape; the user reads it as not fully explaining why, with interesting findings and directions. Next: the what-is-missing table (the 11-04 coverage tables, updated with r17 to r24), then the plan update (user, 2026-11-08). The pair-hit limit waits for
-the user's talk with the other authors. The what-is-missing table is read (user, 2026-11-08): writing starts in a paper chat (related work, method, experiments, then abstract, introduction and conclusion as draft v1.1; an ARS review and a revision; compact versions last; a temporary title and abstract registered by 11-10). r20 is read and closed (user, 2026-11-10): both paper figures are kept, and in held image retrieval the eight ablation removals follow the clustering ablation (report 2027-01-13); the retrieval column goes into the paper's ablation table, and a teacher version of the figures into the supplementary. r21, the second instructed embedder and the other checks wait until after 11-16. The stage note's form still waits for the user. Deadlines:
+the user's talk with the other authors. The what-is-missing table is read (user, 2026-11-08): writing starts in a paper chat (related work, method, experiments, then abstract, introduction and conclusion as draft v1.1; an ARS review and a revision; compact versions last; a temporary title and abstract registered by 11-10). r20 is read and closed (user, 2026-11-10): both paper figures are kept, and in held image retrieval the eight ablation removals follow the clustering ablation (report 2027-01-13); the retrieval column goes into the paper's ablation table, and a teacher version of the figures into the supplementary. r21 (a DEC loss on every head of c*, as rows of the paper's ablation table) was moved forward by the user (2026-11-11) and is specced; build and run follow today. The second instructed embedder and the other checks wait until after 11-16. The stage note's form still waits for the user. Deadlines:
 abstract 2026-11-10, paper 2026-11-16, supplementary 2026-11-23.
 Reporting (user, 2026-11-04): r17's results enter the weekly report of 2026-11-04 only after the user's reading in the r20
 chat, and they stay out of the stage report of 2026-11-04 (29 October to 3 November); the next stage report starts from
@@ -97,6 +97,31 @@ r17.
   GPU h by our arithmetic, not measured; a small spec must settle D9 against D25 (never run; deferred by the user
   (2026-11-05): worth doing, not top priority;
   [proposed in](../reports/auto/percept/2027-01-06_outside_methods.md))
+- DEC as a fine-tune of the saved c* models (DEC's own order: train, then DEC), in place of DEC inside c*'s training
+  (never tried; not chosen by the user, 2026-11-11, who chose PercepT's order; proposed in the r21 decide chat,
+  [handoff](handoffs/2026-11-11-r21-build-handoff.md))
+
+## 2026-11-11 · r21 decide: a DEC loss on every head of c*, three forms, as ablation rows; spec approved, build next
+
+- **Read:** no new result. The user moved r21 forward from after 11-16 (05:40, in a DustDevilVis chat;
+  [decide handoff](handoffs/2026-11-11-r21-decide-handoff.md)). Facts: one c* training takes 3.5 to 5.3 min per seed;
+  c*'s heads reach their best validation loss early (seed 0: epochs 4, 1, 18)
+  ([facts brief](../../src/test/20261111_r21_dec_heads/r21_facts_brief.md)).
+- **Meaning (C):** none; no results read.
+- **Decided (A):** r21 now, DEC only (to-do item 4); the deeper head (item 18) waits (user; the deeper head: user,
+  after seeing the recommendation). Type: a sweep on validation (seed 0), then an ablation on the test set (seeds 0 to
+  4); medium loop, step 3 skipped since the literature check of 10-20 covers DEC from a good start (agent default).
+- **Idea (B):** DEC inside c*'s training after a warm-up, its target recomputed each epoch as in PercepT, c*'s losses
+  kept (user, 2b, "we mimic the training of PercepT ... since the initial distribution might be not quite good"; ours
+  was 2a, a fine-tune of saved c*). Three forms: plain, a pull toward the start clusters, a pull toward the teacher's
+  clusters (user, after seeing the recommendation; first "maybe"). The result is ablation rows beside the eight
+  removals, and c* stays the paper's model (user, 1a). Silhouette is measured beside AMI and mAP, and a PercepT-like
+  figure of tighter clusters is decided at the read (user's idea; measuring: user, after seeing the recommendation).
+  One joint row on all three heads, no arm per aspect; the ablation table's mAP; ArtELingo only; k = class count;
+  build today, run today or tonight (user, after seeing the recommendation).
+- **Why:** a reviewer may ask whether PercepT's clustering loss would help c*; PercepT's own ablation shows DEC +0.02
+  AMI on ArtELingo and −0.03 on Affection, and the literature check found no published gain on strong features.
+- **Links:** [spec](specs/2026-11-11-r21-dec-heads-design.md) · [build handoff](handoffs/2026-11-11-r21-build-handoff.md)
 
 ## 2026-11-10 · r20 read: the ablation's parts carry retrieval as they carry clustering; the retrieval column goes into the paper's ablation table
 
