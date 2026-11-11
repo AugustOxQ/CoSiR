@@ -2135,3 +2135,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-11-r21-decide-handoff.md
 - New chat: tab 'r21 decide', session ca058c8e-f0f6-4090-8fcd-bdfc8fb5b15f
 
+[brief] CoSiR: paper experiments 2 -> paper sec4 tables (2026-11-11 06:01 Amsterdam)
+- Done: Table 2 (clustering, class count) filled except BERTopic, VLM2Vec and PercepT on CLIP L/14; cluster-count range scored for 8 of 11 rows.
+- State: ours best in all three Table 2 columns, 0.102 / 0.411 / 0.510 against the teacher's 0.089 / 0.406 / 0.501.
+- Next: design and fill the retrieval table (4.3) with the user; skip the 4.2 text for now.
+- Blocked: the user's 11:00 meeting; ask nothing about it until the user says it is over.
+- Handoff: docs/superpowers/handoffs/2026-11-11-paper-sec4-tables-handoff.md
+- New chat: tab 'paper sec4 tables', session a33a2ed0-c392-40e0-bee6-821149f7a86a
+
