@@ -97,3 +97,7 @@ Spec: `docs/superpowers/specs/2026-11-11-r21-dec-heads-design.md`. Decision line
     that length; the teacher pull's target is as flat as q.
   - Fix wave (Codex `gpt-6.1-sol` high, worktree `/project/CoSiR-r21-fixwave`): F1 the stage 1 sheet shows DEC's own
     cluster shares (last DEC epoch) beside the k-means shares; F2 `collect_rows` refuses an arm without an `ok` run record.
+- 08:27: fix wave (0f05d2f5, Codex) re-reviewed (Sonnet `high`): no must-fix; reverting the fix fails 7 new tests;
+  should-fix (for S2 the sheet's DEC shares are the last epoch's, not the scored best epoch's) fixed in the sheet note
+  (b05aaa00). Merged (c3c6a3bb); `r21-dec-heads` merged into main (7704f331) and pushed.
+- 08:28: all r21 tests on main in one process: 186 passed (124 s, one CPU slot).
