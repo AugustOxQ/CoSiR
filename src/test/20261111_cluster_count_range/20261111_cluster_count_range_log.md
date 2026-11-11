@@ -132,3 +132,97 @@ No k-means run left an empty cluster: every state at every K used exactly K clus
 | crl | genre | 10 | 0.4282651634165209 | 0.4357880196528127, 0.40813825866084036, 0.4408692119359096 | 0.4282651634165209 |
 | crl | genre | 16 | 0.42513888700636854 | 0.440545396707094, 0.4126556420221903, 0.4222156222898213 | '-' |
 | crl | genre | 20 | 0.432930161896796 | 0.43230713553724304, 0.4336604727798103, 0.43282287737333464 | 0.432930161896796 |
+
+## Addendum 2026-11-11: VLM2Vec-V2 and BERTopic on the same grid
+Plumbing only. Two more rows of Table 2 (r25's comparators) on the same K grid. Nothing in `20261111_paper_baselines/`,
+`/data/SSD2/cosir_r25/` or the 52 existing cells was written; `records/cells.json` got 26 new cells appended
+(the script asserts the old 52 are unchanged; no git baseline, the file is not tracked) and a `header_r25_rows` key.
+
+### Code
+- `kr_grid_r25.py` (CoSiR env): imports r25's `pb_score.load_vlm2vec` / `load_bertopic` (embedding sha, keys, meta, partition sidecar checks) and r17's `ns_metrics.partitions` / `score_partitions` unchanged. `--gate` writes `records/gate_r25.json`; `--grid --append records/cells.json` scores both rows.
+- `kr_bertopic_fit.py` (`/root/venvs/bertopic/bin/python`): calls r25's `pb_bertopic.run_seed` unchanged, one fresh default BERTopic fit per (UMAP seed 0 to 2, K), `nr_topics` = K + 1 (outliers present), outliers reassigned (distributions, then embeddings). Reads r25's MiniLM cache and `held_docs.json` read only, writes only to the folder given by `--out`.
+- VLM2Vec: `/data/SSD2/pre_extract/artelingo/vlm2vec_v2/{emotion,style,genre}/` (emb, keys, meta), k-means = `ns_metrics.partitions` (mini-batch, n_init 3, batch 4096, states 0 to 2), mean AMI over the states.
+- BERTopic: MiniLM embeddings `/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/minilm.npy`. Partitions at K = 9, 10, 20, 27 are r25's (`topics_k{K}_seed{s}.npz`, legacy `topics_seed{s}.npz` for 20); K = 5, 8, 16, 40 are new, in `/data/SSD2/cosir_paper/20261111_cluster_count_range/outputs/bertopic/topics_k{K}_seed{s}.npz` with a JSON sidecar each (names hash, n HDBSCAN topics, outliers before and after, seconds, versions, npz sha256). A partition at K is scored against every aspect whose grid contains K (K = 10: style and genre; 20: all three; 5 and 16: emotion and genre; 8: emotion; 40: style; 9: emotion; 27: style).
+
+### Gate (all 12 recorded r25 cells, `comp` in `20261111_paper_baselines/records/cells.json`)
+Max |diff| = 0.0 (bit-identical), tolerance 1e-6. PASS.
+
+| id | reference | ours | diff |
+|---|---|---|---|
+| bertopic/emotion/ami/9 | 0.037521540764450294 | 0.037521540764450294 | 0.0e+00 |
+| bertopic/emotion/ami/20 | 0.06620297846034479 | 0.06620297846034479 | 0.0e+00 |
+| bertopic/genre/ami/10 | 0.26047158886368543 | 0.26047158886368543 | 0.0e+00 |
+| bertopic/genre/ami/20 | 0.3092043551789912 | 0.3092043551789912 | 0.0e+00 |
+| bertopic/style/ami/20 | 0.09359249418927225 | 0.09359249418927225 | 0.0e+00 |
+| bertopic/style/ami/27 | 0.10500601951531363 | 0.10500601951531363 | 0.0e+00 |
+| vlm2vec/emotion/ami/9 | 0.06377259570732573 | 0.06377259570732573 | 0.0e+00 |
+| vlm2vec/emotion/ami/20 | 0.07100613895961792 | 0.07100613895961792 | 0.0e+00 |
+| vlm2vec/genre/ami/10 | 0.4593010201144143 | 0.4593010201144143 | 0.0e+00 |
+| vlm2vec/genre/ami/20 | 0.4594993944514876 | 0.4594993944514876 | 0.0e+00 |
+| vlm2vec/style/ami/20 | 0.3699943225623416 | 0.3699943225623416 | 0.0e+00 |
+| vlm2vec/style/ami/27 | 0.3729743958098484 | 0.3729743958098484 | 0.0e+00 |
+
+### Refit check (K = 10, all three seeds, new fit path against r25's saved partitions)
+Refit by `kr_bertopic_fit.py` into `/data/SSD2/cosir_paper/20261111_cluster_count_range/outputs/bertopic_refit_gate/` (scratch, kept).
+Labels identical in all 12,281 rows for every seed (0 rows differ, AMI between = 1.0, npz files byte-identical: same sha256). HDBSCAN topics 92 / 87 / 91 and outliers before reassignment 5384 / 5102 / 5134 (seeds 0, 1, 2) equal r25's. BERTopic, UMAP, HDBSCAN arguments and package versions equal r25's sidecars.
+
+| seed | labels identical | rows differing | AMI between | HDBSCAN topics | outliers before |
+|---|---|---|---|---|---|
+| 0 | True | 0 | 1.0 | 92 | 5384 |
+| 1 | True | 0 | 1.0 | 87 | 5102 |
+| 2 | True | 0 | 1.0 | 91 | 5134 |
+
+### New BERTopic fits (K = 5, 8, 16, 40)
+HDBSCAN found 92 / 87 / 91 real topics and 5384 / 5102 / 5134 outliers (seeds 0 / 1 / 2), the same as in r25's fits; reduction to K always succeeded, the distributions pass reassigned all outliers (0 left, the embeddings pass was not needed), every partition has exactly K non-empty clusters. 12 fits, 8 to 10 s each.
+
+### Run times
+Gate: 137 s foreground (CPU queue was busy, exit 75; run under the 8-thread setting without a slot). Refit K = 10: 97 s foreground, same reason. New fits: 173 s inside the script through `res-queue cpu` (label `paper:kgrid2_fit`, log `logs/fit_new_k.log`). Grid scoring: 68 s inside the script through the queue (`paper:kgrid2_score`, log `logs/grid_r25.log`); the 12 gate cells were reproduced again inside it, diff 0.
+
+### Grid (mean AMI over the three states; G marks a gate cell: r25 recorded value reproduced exactly)
+| aspect | K | VLM2Vec-V2 | BERTopic | gate |
+|---|---|---|---|---|
+| emotion | 5 | 0.063 | 0.031 | -- |
+| emotion | 8 | 0.066 | 0.036 | -- |
+| emotion | 9 | 0.064 | 0.038 | GG |
+| emotion | 16 | 0.072 | 0.054 | -- |
+| emotion | 20 | 0.071 | 0.066 | GG |
+| style | 10 | 0.341 | 0.059 | -- |
+| style | 20 | 0.370 | 0.094 | GG |
+| style | 27 | 0.373 | 0.105 | GG |
+| style | 40 | 0.378 | 0.108 | -- |
+| genre | 5 | 0.435 | 0.245 | -- |
+| genre | 10 | 0.459 | 0.260 | GG |
+| genre | 16 | 0.466 | 0.293 | -- |
+| genre | 20 | 0.459 | 0.309 | GG |
+
+Every k-means state at every K used exactly K clusters (`n_clusters_used`).
+
+### Exact values (also in `records/cells.json`)
+| row | aspect | K | mean | per state / seed (0,1,2) | gate ref |
+|---|---|---|---|---|---|
+| vlm2vec | emotion | 5 | 0.06270590058751178 | 0.06321754243579471, 0.062023158241039336, 0.0628770010857013 | '-' |
+| vlm2vec | emotion | 8 | 0.06593060283968576 | 0.06497252431626202, 0.0663097245624985, 0.06650955964029671 | '-' |
+| vlm2vec | emotion | 9 | 0.06377259570732573 | 0.061442908734598796, 0.06461672203526066, 0.0652581563521177 | 0.06377259570732573 |
+| vlm2vec | emotion | 16 | 0.07200360021970541 | 0.06931077841084439, 0.07367859221794491, 0.07302143003032689 | '-' |
+| vlm2vec | emotion | 20 | 0.07100613895961792 | 0.0699916185581456, 0.07047770420523088, 0.07254909411547729 | 0.07100613895961792 |
+| vlm2vec | style | 10 | 0.3409932893757075 | 0.3309736011714167, 0.34611124623639716, 0.34589502071930855 | '-' |
+| vlm2vec | style | 20 | 0.3699943225623416 | 0.36852987724692154, 0.3692524739806496, 0.3722006164594535 | 0.3699943225623416 |
+| vlm2vec | style | 27 | 0.3729743958098484 | 0.36864147121951, 0.37626554596577416, 0.37401617024426115 | 0.3729743958098484 |
+| vlm2vec | style | 40 | 0.37774930511529486 | 0.3741718286922552, 0.3786016621790315, 0.3804744244745979 | '-' |
+| vlm2vec | genre | 5 | 0.43457561401919814 | 0.43938006572585253, 0.4252135731363379, 0.43913320319540394 | '-' |
+| vlm2vec | genre | 10 | 0.4593010201144143 | 0.47027126526333674, 0.45289829766715933, 0.4547334974127468 | 0.4593010201144143 |
+| vlm2vec | genre | 16 | 0.4664662352024587 | 0.4462365395757638, 0.4806224383114992, 0.47253972772011327 | '-' |
+| vlm2vec | genre | 20 | 0.4594993944514876 | 0.47385211452174697, 0.4434016505015452, 0.46124441833117064 | 0.4594993944514876 |
+| bertopic | emotion | 5 | 0.03136393563683861 | 0.03568673084897716, 0.02946418641728922, 0.028940889644249474 | '-' |
+| bertopic | emotion | 8 | 0.036411964564117584 | 0.04587399551709729, 0.03388127429770504, 0.029480623877550433 | '-' |
+| bertopic | emotion | 9 | 0.037521540764450294 | 0.04614398261063758, 0.03407926461502229, 0.032341375067691004 | 0.037521540764450294 |
+| bertopic | emotion | 16 | 0.05417006463156083 | 0.06342718829544935, 0.054390297930680356, 0.04469270766855278 | '-' |
+| bertopic | emotion | 20 | 0.06620297846034479 | 0.06975928445775437, 0.07261828399086959, 0.05623136693241039 | 0.06620297846034479 |
+| bertopic | style | 10 | 0.05873459661495645 | 0.05706532335308226, 0.05930724688381053, 0.059831219607976556 | '-' |
+| bertopic | style | 20 | 0.09359249418927225 | 0.0878904844120766, 0.09579861325399135, 0.09708838490174883 | 0.09359249418927225 |
+| bertopic | style | 27 | 0.10500601951531363 | 0.08911879970442722, 0.11479020155143604, 0.11110905729007767 | 0.10500601951531363 |
+| bertopic | style | 40 | 0.10822640691889363 | 0.09704389021354803, 0.11512217610987034, 0.11251315443326247 | '-' |
+| bertopic | genre | 5 | 0.24517615664768322 | 0.23544772518436902, 0.25012982074203444, 0.2499509240166462 | '-' |
+| bertopic | genre | 10 | 0.26047158886368543 | 0.267611577413806, 0.2644303254054983, 0.24937286377175194 | 0.26047158886368543 |
+| bertopic | genre | 16 | 0.2932866272899837 | 0.2946075695718726, 0.3228404457933832, 0.2624118665046954 | '-' |
+| bertopic | genre | 20 | 0.3092043551789912 | 0.30009600467260156, 0.32400608774771505, 0.3035109731166569 | 0.3092043551789912 |

@@ -1,0 +1,4 @@
+seed 0, K=10: HDBSCAN=92, final=10, outliers={'after_hdbscan': 5384, 'after_reduce_topics': 5384, 'after_default_outliers': 0, 'after_embedding_outliers': 0}, 60.2s
+seed 1, K=10: HDBSCAN=87, final=10, outliers={'after_hdbscan': 5102, 'after_reduce_topics': 5102, 'after_default_outliers': 0, 'after_embedding_outliers': 0}, 18.8s
+seed 2, K=10: HDBSCAN=91, final=10, outliers={'after_hdbscan': 5134, 'after_reduce_topics': 5134, 'after_default_outliers': 0, 'after_embedding_outliers': 0}, 17.7s
+done in 96.8s

@@ -1,0 +1,367 @@
+{
+ "passed": true,
+ "tolerance": 1e-06,
+ "max_abs_diff": 0.0,
+ "cells": [
+  {
+   "id": "bertopic/emotion/ami/9",
+   "row": "bertopic",
+   "aspect": "emotion",
+   "k": 9,
+   "mean": 0.037521540764450294,
+   "per_state": [
+    0.04614398261063758,
+    0.03407926461502229,
+    0.032341375067691004
+   ],
+   "n_labelled": 12281,
+   "source_inputs": "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/topics_k9_seed{0,1,2}.npz",
+   "n_clusters_used": [
+    9,
+    9,
+    9
+   ],
+   "seconds": 0.13019418716430664,
+   "gate": true,
+   "reference_id": "bertopic/emotion/ami/9",
+   "reference": 0.037521540764450294,
+   "diff": 0.0
+  },
+  {
+   "id": "bertopic/emotion/ami/20",
+   "row": "bertopic",
+   "aspect": "emotion",
+   "k": 20,
+   "mean": 0.06620297846034479,
+   "per_state": [
+    0.06975928445775437,
+    0.07261828399086959,
+    0.05623136693241039
+   ],
+   "n_labelled": 12281,
+   "source_inputs": "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/topics_seed{0,1,2}.npz",
+   "n_clusters_used": [
+    20,
+    20,
+    20
+   ],
+   "seconds": 0.12040281295776367,
+   "gate": true,
+   "reference_id": "bertopic/emotion/ami/20",
+   "reference": 0.06620297846034479,
+   "diff": 0.0
+  },
+  {
+   "id": "bertopic/genre/ami/10",
+   "row": "bertopic",
+   "aspect": "genre",
+   "k": 10,
+   "mean": 0.26047158886368543,
+   "per_state": [
+    0.267611577413806,
+    0.2644303254054983,
+    0.24937286377175194
+   ],
+   "n_labelled": 9949,
+   "source_inputs": "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/topics_k10_seed{0,1,2}.npz",
+   "n_clusters_used": [
+    10,
+    10,
+    10
+   ],
+   "seconds": 0.10190868377685547,
+   "gate": true,
+   "reference_id": "bertopic/genre/ami/10",
+   "reference": 0.26047158886368543,
+   "diff": 0.0
+  },
+  {
+   "id": "bertopic/genre/ami/20",
+   "row": "bertopic",
+   "aspect": "genre",
+   "k": 20,
+   "mean": 0.3092043551789912,
+   "per_state": [
+    0.30009600467260156,
+    0.32400608774771505,
+    0.3035109731166569
+   ],
+   "n_labelled": 9949,
+   "source_inputs": "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/topics_seed{0,1,2}.npz",
+   "n_clusters_used": [
+    20,
+    20,
+    20
+   ],
+   "seconds": 0.05267000198364258,
+   "gate": true,
+   "reference_id": "bertopic/genre/ami/20",
+   "reference": 0.3092043551789912,
+   "diff": 0.0
+  },
+  {
+   "id": "bertopic/style/ami/20",
+   "row": "bertopic",
+   "aspect": "style",
+   "k": 20,
+   "mean": 0.09359249418927225,
+   "per_state": [
+    0.0878904844120766,
+    0.09579861325399135,
+    0.09708838490174883
+   ],
+   "n_labelled": 12281,
+   "source_inputs": "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/topics_seed{0,1,2}.npz",
+   "n_clusters_used": [
+    20,
+    20,
+    20
+   ],
+   "seconds": 0.08069777488708496,
+   "gate": true,
+   "reference_id": "bertopic/style/ami/20",
+   "reference": 0.09359249418927225,
+   "diff": 0.0
+  },
+  {
+   "id": "bertopic/style/ami/27",
+   "row": "bertopic",
+   "aspect": "style",
+   "k": 27,
+   "mean": 0.10500601951531363,
+   "per_state": [
+    0.08911879970442722,
+    0.11479020155143604,
+    0.11110905729007767
+   ],
+   "n_labelled": 12281,
+   "source_inputs": "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/topics_k27_seed{0,1,2}.npz",
+   "n_clusters_used": [
+    27,
+    27,
+    27
+   ],
+   "seconds": 0.19960451126098633,
+   "gate": true,
+   "reference_id": "bertopic/style/ami/27",
+   "reference": 0.10500601951531363,
+   "diff": 0.0
+  },
+  {
+   "id": "vlm2vec/emotion/ami/9",
+   "row": "vlm2vec",
+   "aspect": "emotion",
+   "k": 9,
+   "mean": 0.06377259570732573,
+   "per_state": [
+    0.061442908734598796,
+    0.06461672203526066,
+    0.0652581563521177
+   ],
+   "n_labelled": 12281,
+   "source_inputs": "/data/SSD2/pre_extract/artelingo/vlm2vec_v2/emotion/emb.npy (+keys.json, meta.json)",
+   "n_clusters_used": [
+    9,
+    9,
+    9
+   ],
+   "seconds": 12.735255718231201,
+   "gate": true,
+   "reference_id": "vlm2vec/emotion/ami/9",
+   "reference": 0.06377259570732573,
+   "diff": 0.0
+  },
+  {
+   "id": "vlm2vec/emotion/ami/20",
+   "row": "vlm2vec",
+   "aspect": "emotion",
+   "k": 20,
+   "mean": 0.07100613895961792,
+   "per_state": [
+    0.0699916185581456,
+    0.07047770420523088,
+    0.07254909411547729
+   ],
+   "n_labelled": 12281,
+   "source_inputs": "/data/SSD2/pre_extract/artelingo/vlm2vec_v2/emotion/emb.npy (+keys.json, meta.json)",
+   "n_clusters_used": [
+    20,
+    20,
+    20
+   ],
+   "seconds": 16.291267156600952,
+   "gate": true,
+   "reference_id": "vlm2vec/emotion/ami/20",
+   "reference": 0.07100613895961792,
+   "diff": 0.0
+  },
+  {
+   "id": "vlm2vec/genre/ami/10",
+   "row": "vlm2vec",
+   "aspect": "genre",
+   "k": 10,
+   "mean": 0.4593010201144143,
+   "per_state": [
+    0.47027126526333674,
+    0.45289829766715933,
+    0.4547334974127468
+   ],
+   "n_labelled": 9949,
+   "source_inputs": "/data/SSD2/pre_extract/artelingo/vlm2vec_v2/genre/emb.npy (+keys.json, meta.json)",
+   "n_clusters_used": [
+    10,
+    10,
+    10
+   ],
+   "seconds": 9.889557361602783,
+   "gate": true,
+   "reference_id": "vlm2vec/genre/ami/10",
+   "reference": 0.4593010201144143,
+   "diff": 0.0
+  },
+  {
+   "id": "vlm2vec/genre/ami/20",
+   "row": "vlm2vec",
+   "aspect": "genre",
+   "k": 20,
+   "mean": 0.4594993944514876,
+   "per_state": [
+    0.47385211452174697,
+    0.4434016505015452,
+    0.46124441833117064
+   ],
+   "n_labelled": 9949,
+   "source_inputs": "/data/SSD2/pre_extract/artelingo/vlm2vec_v2/genre/emb.npy (+keys.json, meta.json)",
+   "n_clusters_used": [
+    20,
+    20,
+    20
+   ],
+   "seconds": 29.161062240600586,
+   "gate": true,
+   "reference_id": "vlm2vec/genre/ami/20",
+   "reference": 0.4594993944514876,
+   "diff": 0.0
+  },
+  {
+   "id": "vlm2vec/style/ami/20",
+   "row": "vlm2vec",
+   "aspect": "style",
+   "k": 20,
+   "mean": 0.3699943225623416,
+   "per_state": [
+    0.36852987724692154,
+    0.3692524739806496,
+    0.3722006164594535
+   ],
+   "n_labelled": 12281,
+   "source_inputs": "/data/SSD2/pre_extract/artelingo/vlm2vec_v2/style/emb.npy (+keys.json, meta.json)",
+   "n_clusters_used": [
+    20,
+    20,
+    20
+   ],
+   "seconds": 30.211181163787842,
+   "gate": true,
+   "reference_id": "vlm2vec/style/ami/20",
+   "reference": 0.3699943225623416,
+   "diff": 0.0
+  },
+  {
+   "id": "vlm2vec/style/ami/27",
+   "row": "vlm2vec",
+   "aspect": "style",
+   "k": 27,
+   "mean": 0.3729743958098484,
+   "per_state": [
+    0.36864147121951,
+    0.37626554596577416,
+    0.37401617024426115
+   ],
+   "n_labelled": 12281,
+   "source_inputs": "/data/SSD2/pre_extract/artelingo/vlm2vec_v2/style/emb.npy (+keys.json, meta.json)",
+   "n_clusters_used": [
+    27,
+    27,
+    27
+   ],
+   "seconds": 24.30773162841797,
+   "gate": true,
+   "reference_id": "vlm2vec/style/ami/27",
+   "reference": 0.3729743958098484,
+   "diff": 0.0
+  }
+ ],
+ "refit_k10": [
+  {
+   "seed": 0,
+   "names_identical": true,
+   "labels_identical": true,
+   "n_differing": 0,
+   "ami_between": 1.0,
+   "hdbscan_topics": [
+    92,
+    92
+   ],
+   "outliers_before": [
+    5384,
+    5384
+   ],
+   "versions_equal": true,
+   "bertopic_source_sha_equal": true,
+   "umap_args_equal": true,
+   "hdbscan_args_equal": true,
+   "refit_seconds": 60.17274165805429,
+   "npz_sha256_new": "2a575d4d8f4837eb6b044c4e8cfdef0bdaa41051af21037550770dc76b14c624",
+   "npz_sha256_r25": "2a575d4d8f4837eb6b044c4e8cfdef0bdaa41051af21037550770dc76b14c624"
+  },
+  {
+   "seed": 1,
+   "names_identical": true,
+   "labels_identical": true,
+   "n_differing": 0,
+   "ami_between": 1.0,
+   "hdbscan_topics": [
+    87,
+    87
+   ],
+   "outliers_before": [
+    5102,
+    5102
+   ],
+   "versions_equal": true,
+   "bertopic_source_sha_equal": true,
+   "umap_args_equal": true,
+   "hdbscan_args_equal": true,
+   "refit_seconds": 18.82595093594864,
+   "npz_sha256_new": "78eba5c2e2dd3a78d9465e8f74d23a1879a3c96c8d136a135c060b0778ca6f77",
+   "npz_sha256_r25": "78eba5c2e2dd3a78d9465e8f74d23a1879a3c96c8d136a135c060b0778ca6f77"
+  },
+  {
+   "seed": 2,
+   "names_identical": true,
+   "labels_identical": true,
+   "n_differing": 0,
+   "ami_between": 1.0,
+   "hdbscan_topics": [
+    91,
+    91
+   ],
+   "outliers_before": [
+    5134,
+    5134
+   ],
+   "versions_equal": true,
+   "bertopic_source_sha_equal": true,
+   "umap_args_equal": true,
+   "hdbscan_args_equal": true,
+   "refit_seconds": 17.716813849750906,
+   "npz_sha256_new": "54edb84d3afcc0c7352c8435ca03946aca4b64cad9c8eb06dbc8115ee26751fb",
+   "npz_sha256_r25": "54edb84d3afcc0c7352c8435ca03946aca4b64cad9c8eb06dbc8115ee26751fb"
+  }
+ ],
+ "refit_dir": "/data/SSD2/cosir_paper/20261111_cluster_count_range/outputs/bertopic_refit_gate",
+ "r25_dir": "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic",
+ "total_seconds": 123.49710416793823,
+ "code_commit": "832ef83a142c2b14f3fb7ef900a0a5454f545e85"
+}

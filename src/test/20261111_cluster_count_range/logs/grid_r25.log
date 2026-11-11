@@ -1,0 +1,27 @@
+vlm2vec/emotion/ami/5      mean=0.0627059006 used=[5, 5, 5] 2.7s
+vlm2vec/emotion/ami/8      mean=0.0659306028 used=[8, 8, 8] 4.1s
+vlm2vec/emotion/ami/9      mean=0.0637725957 diff=+0.00e+00 used=[9, 9, 9] 3.9s
+vlm2vec/emotion/ami/16     mean=0.0720036002 used=[16, 16, 16] 6.5s
+vlm2vec/emotion/ami/20     mean=0.0710061390 diff=+0.00e+00 used=[20, 20, 20] 5.9s
+vlm2vec/style/ami/10       mean=0.3409932894 used=[10, 10, 10] 4.0s
+vlm2vec/style/ami/20       mean=0.3699943226 diff=+0.00e+00 used=[20, 20, 20] 7.2s
+vlm2vec/style/ami/27       mean=0.3729743958 diff=+0.00e+00 used=[27, 27, 27] 7.0s
+vlm2vec/style/ami/40       mean=0.3777493051 used=[40, 40, 40] 9.8s
+vlm2vec/genre/ami/5        mean=0.4345756140 used=[5, 5, 5] 2.0s
+vlm2vec/genre/ami/10       mean=0.4593010201 diff=+0.00e+00 used=[10, 10, 10] 2.9s
+vlm2vec/genre/ami/16       mean=0.4664662352 used=[16, 16, 16] 4.6s
+vlm2vec/genre/ami/20       mean=0.4594993945 diff=+0.00e+00 used=[20, 20, 20] 6.5s
+bertopic/emotion/ami/5     mean=0.0313639356 used=[5, 5, 5] 0.1s
+bertopic/emotion/ami/8     mean=0.0364119646 used=[8, 8, 8] 0.1s
+bertopic/emotion/ami/9     mean=0.0375215408 diff=+0.00e+00 used=[9, 9, 9] 0.1s
+bertopic/emotion/ami/16    mean=0.0541700646 used=[16, 16, 16] 0.1s
+bertopic/emotion/ami/20    mean=0.0662029785 diff=+0.00e+00 used=[20, 20, 20] 0.1s
+bertopic/style/ami/10      mean=0.0587345966 used=[10, 10, 10] 0.1s
+bertopic/style/ami/20      mean=0.0935924942 diff=+0.00e+00 used=[20, 20, 20] 0.0s
+bertopic/style/ami/27      mean=0.1050060195 diff=+0.00e+00 used=[27, 27, 27] 0.1s
+bertopic/style/ami/40      mean=0.1082264069 used=[40, 40, 40] 0.1s
+bertopic/genre/ami/5       mean=0.2451761566 used=[5, 5, 5] 0.0s
+bertopic/genre/ami/10      mean=0.2604715889 diff=+0.00e+00 used=[10, 10, 10] 0.0s
+bertopic/genre/ami/16      mean=0.2932866273 used=[16, 16, 16] 0.0s
+bertopic/genre/ami/20      mean=0.3092043552 diff=+0.00e+00 used=[20, 20, 20] 0.0s
+GRID: 26 cells, 12 gate cells, max |diff| = 0.000e+00, 68s

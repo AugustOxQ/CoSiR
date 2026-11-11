@@ -1,0 +1,589 @@
+{
+ "header": {
+  "protocol": "ns_metrics.partitions: MiniBatchKMeans n_init 3, batch 4096, random states 0,1,2, float32, thread limit KMEANS_THREADS[artelingo]; all 12,281 held rows clustered, AMI on rows with y >= 0; mean over the 3 states (TURTLE: saved fits, starts 0,1,2, no refit)",
+  "code_commit": "26e0952b27a7ffc0559515f81db0180ba52bf084",
+  "dirty_note": "git HEAD of the checkout; scored code files are unchanged tracked files",
+  "clay_text_set": "A",
+  "held_split": "held",
+  "total_seconds": 118.73506450653076,
+  "only_existing": true
+ },
+ "cells": [
+  {
+   "id": "turtle/emotion/ami/9",
+   "row": "turtle",
+   "aspect": "emotion",
+   "k": 9,
+   "mean": 0.06685289656462441,
+   "per_state": [
+    0.06873547492270032,
+    0.06497035940185755,
+    0.06685285536931536
+   ],
+   "n_labelled": 12281,
+   "source_inputs": "/data/SSD2/cosir_r18/20261103_outside_methods/outputs/parts/turtle/artelingo/qwen/plain/k{K}__start{0,1,2}.npz",
+   "n_clusters_used": [
+    9,
+    9,
+    9
+   ],
+   "seconds": 0.06096458435058594,
+   "gate": true,
+   "reference_id": "SC5/artelingo/qwen/emotion/ami/9/plain_turtle",
+   "reference": 0.06685289656462441,
+   "diff": 0.0
+  },
+  {
+   "id": "turtle/emotion/ami/20",
+   "row": "turtle",
+   "aspect": "emotion",
+   "k": 20,
+   "mean": 0.06958172727290952,
+   "per_state": [
+    0.06995643704412323,
+    0.07056990142603989,
+    0.0682188433485655
+   ],
+   "n_labelled": 12281,
+   "source_inputs": "/data/SSD2/cosir_r18/20261103_outside_methods/outputs/parts/turtle/artelingo/qwen/plain/k{K}__start{0,1,2}.npz",
+   "n_clusters_used": [
+    20,
+    20,
+    20
+   ],
+   "seconds": 0.06432104110717773,
+   "gate": true,
+   "reference_id": "SC5/artelingo/qwen/emotion/ami/20/plain_turtle",
+   "reference": 0.06958172727290952,
+   "diff": 0.0
+  },
+  {
+   "id": "turtle/style/ami/20",
+   "row": "turtle",
+   "aspect": "style",
+   "k": 20,
+   "mean": 0.21753700869069328,
+   "per_state": [
+    0.21297714841813487,
+    0.21717413257688312,
+    0.22245974507706193
+   ],
+   "n_labelled": 12281,
+   "source_inputs": "/data/SSD2/cosir_r18/20261103_outside_methods/outputs/parts/turtle/artelingo/qwen/plain/k{K}__start{0,1,2}.npz",
+   "n_clusters_used": [
+    20,
+    20,
+    20
+   ],
+   "seconds": 0.08339476585388184,
+   "gate": true,
+   "reference_id": "SC5/artelingo/qwen/style/ami/20/plain_turtle",
+   "reference": 0.21753700869069328,
+   "diff": 0.0
+  },
+  {
+   "id": "turtle/style/ami/27",
+   "row": "turtle",
+   "aspect": "style",
+   "k": 27,
+   "mean": 0.21527952369467815,
+   "per_state": [
+    0.21373607255875232,
+    0.212562167784862,
+    0.2195403307404201
+   ],
+   "n_labelled": 12281,
+   "source_inputs": "/data/SSD2/cosir_r18/20261103_outside_methods/outputs/parts/turtle/artelingo/qwen/plain/k{K}__start{0,1,2}.npz",
+   "n_clusters_used": [
+    27,
+    27,
+    27
+   ],
+   "seconds": 0.08711814880371094,
+   "gate": true,
+   "reference_id": "SC5/artelingo/qwen/style/ami/27/plain_turtle",
+   "reference": 0.21527952369467815,
+   "diff": 0.0
+  },
+  {
+   "id": "turtle/genre/ami/10",
+   "row": "turtle",
+   "aspect": "genre",
+   "k": 10,
+   "mean": 0.43603166292491774,
+   "per_state": [
+    0.4291976464560248,
+    0.4276576910585161,
+    0.4512396512602125
+   ],
+   "n_labelled": 9949,
+   "source_inputs": "/data/SSD2/cosir_r18/20261103_outside_methods/outputs/parts/turtle/artelingo/qwen/plain/k{K}__start{0,1,2}.npz",
+   "n_clusters_used": [
+    10,
+    10,
+    10
+   ],
+   "seconds": 0.05466008186340332,
+   "gate": true,
+   "reference_id": "SC5/artelingo/qwen/genre/ami/10/plain_turtle",
+   "reference": 0.43603166292491774,
+   "diff": 0.0
+  },
+  {
+   "id": "turtle/genre/ami/20",
+   "row": "turtle",
+   "aspect": "genre",
+   "k": 20,
+   "mean": 0.42856354194142643,
+   "per_state": [
+    0.42869449298587753,
+    0.433954253711739,
+    0.4230418791266627
+   ],
+   "n_labelled": 9949,
+   "source_inputs": "/data/SSD2/cosir_r18/20261103_outside_methods/outputs/parts/turtle/artelingo/qwen/plain/k{K}__start{0,1,2}.npz",
+   "n_clusters_used": [
+    20,
+    20,
+    20
+   ],
+   "seconds": 0.058843374252319336,
+   "gate": true,
+   "reference_id": "SC5/artelingo/qwen/genre/ami/20/plain_turtle",
+   "reference": 0.42856354194142643,
+   "diff": 0.0
+  },
+  {
+   "id": "tpips/emotion/ami/9",
+   "row": "tpips",
+   "aspect": "emotion",
+   "k": 9,
+   "mean": 0.07182557630263418,
+   "per_state": [
+    0.07498916266291636,
+    0.06658743889686007,
+    0.07390012734812614
+   ],
+   "n_labelled": 12281,
+   "source_inputs": "/data/SSD2/pre_extract/artelingo_full/tpips_8b/emotion/emb.npy (held rows by keys.json)",
+   "n_clusters_used": [
+    9,
+    9,
+    9
+   ],
+   "seconds": 10.080880641937256,
+   "gate": true,
+   "reference_id": "SC1/artelingo/qwen/emotion/ami/9/tpips",
+   "reference": 0.07182557630263418,
+   "diff": 0.0
+  },
+  {
+   "id": "tpips/emotion/ami/20",
+   "row": "tpips",
+   "aspect": "emotion",
+   "k": 20,
+   "mean": 0.07723914743576017,
+   "per_state": [
+    0.07884813725179103,
+    0.07706455364285102,
+    0.07580475141263845
+   ],
+   "n_labelled": 12281,
+   "source_inputs": "/data/SSD2/pre_extract/artelingo_full/tpips_8b/emotion/emb.npy (held rows by keys.json)",
+   "n_clusters_used": [
+    20,
+    20,
+    20
+   ],
+   "seconds": 16.748934984207153,
+   "gate": true,
+   "reference_id": "SC1/artelingo/qwen/emotion/ami/20/tpips",
+   "reference": 0.07723914743576017,
+   "diff": 0.0
+  },
+  {
+   "id": "tpips/style/ami/20",
+   "row": "tpips",
+   "aspect": "style",
+   "k": 20,
+   "mean": 0.3243210078059277,
+   "per_state": [
+    0.31986689778685573,
+    0.3302019005235859,
+    0.32289422510734156
+   ],
+   "n_labelled": 12281,
+   "source_inputs": "/data/SSD2/pre_extract/artelingo_full/tpips_8b/style/emb.npy (held rows by keys.json)",
+   "n_clusters_used": [
+    20,
+    20,
+    20
+   ],
+   "seconds": 17.35760521888733,
+   "gate": true,
+   "reference_id": "SC1/artelingo/qwen/style/ami/20/tpips",
+   "reference": 0.3243210078059277,
+   "diff": 0.0
+  },
+  {
+   "id": "tpips/style/ami/27",
+   "row": "tpips",
+   "aspect": "style",
+   "k": 27,
+   "mean": 0.3316347713760315,
+   "per_state": [
+    0.3275589634508302,
+    0.3363342560072231,
+    0.33101109467004114
+   ],
+   "n_labelled": 12281,
+   "source_inputs": "/data/SSD2/pre_extract/artelingo_full/tpips_8b/style/emb.npy (held rows by keys.json)",
+   "n_clusters_used": [
+    27,
+    27,
+    27
+   ],
+   "seconds": 21.7502601146698,
+   "gate": true,
+   "reference_id": "SC1/artelingo/qwen/style/ami/27/tpips",
+   "reference": 0.3316347713760315,
+   "diff": 0.0
+  },
+  {
+   "id": "tpips/genre/ami/10",
+   "row": "tpips",
+   "aspect": "genre",
+   "k": 10,
+   "mean": 0.4961005226813753,
+   "per_state": [
+    0.48333357801144083,
+    0.48662808879060887,
+    0.5183399012420761
+   ],
+   "n_labelled": 9949,
+   "source_inputs": "/data/SSD2/pre_extract/artelingo_full/tpips_8b/genre/emb.npy (held rows by keys.json)",
+   "n_clusters_used": [
+    10,
+    10,
+    10
+   ],
+   "seconds": 9.969579219818115,
+   "gate": true,
+   "reference_id": "SC1/artelingo/qwen/genre/ami/10/tpips",
+   "reference": 0.4961005226813753,
+   "diff": 0.0
+  },
+  {
+   "id": "tpips/genre/ami/20",
+   "row": "tpips",
+   "aspect": "genre",
+   "k": 20,
+   "mean": 0.4769237419200227,
+   "per_state": [
+    0.47833794369288496,
+    0.4712383187314201,
+    0.481194963335763
+   ],
+   "n_labelled": 9949,
+   "source_inputs": "/data/SSD2/pre_extract/artelingo_full/tpips_8b/genre/emb.npy (held rows by keys.json)",
+   "n_clusters_used": [
+    20,
+    20,
+    20
+   ],
+   "seconds": 22.047666311264038,
+   "gate": true,
+   "reference_id": "SC1/artelingo/qwen/genre/ami/20/tpips",
+   "reference": 0.4769237419200227,
+   "diff": 0.0
+  },
+  {
+   "id": "clay/emotion/ami/9",
+   "row": "clay",
+   "aspect": "emotion",
+   "k": 9,
+   "mean": 0.06764750458422945,
+   "per_state": [
+    0.06673193707674117,
+    0.0717107230468459,
+    0.06449985362910128
+   ],
+   "n_labelled": 12281,
+   "source_inputs": "/data/SSD2/cosir_r18/20261103_outside_methods/outputs/clay/artelingo_held/A/emotion.npz (text set A)",
+   "n_clusters_used": [
+    9,
+    9,
+    9
+   ],
+   "seconds": 2.238138437271118,
+   "gate": true,
+   "reference_id": "SC3/artelingo/qwen/emotion/ami/9/clay",
+   "reference": 0.06764750458422945,
+   "diff": 0.0
+  },
+  {
+   "id": "clay/emotion/ami/20",
+   "row": "clay",
+   "aspect": "emotion",
+   "k": 20,
+   "mean": 0.07286497979852812,
+   "per_state": [
+    0.07282092533530202,
+    0.07157344297416594,
+    0.0742005710861164
+   ],
+   "n_labelled": 12281,
+   "source_inputs": "/data/SSD2/cosir_r18/20261103_outside_methods/outputs/clay/artelingo_held/A/emotion.npz (text set A)",
+   "n_clusters_used": [
+    20,
+    20,
+    20
+   ],
+   "seconds": 2.5383684635162354,
+   "gate": true,
+   "reference_id": "SC3/artelingo/qwen/emotion/ami/20/clay",
+   "reference": 0.07286497979852812,
+   "diff": 0.0
+  },
+  {
+   "id": "clay/style/ami/20",
+   "row": "clay",
+   "aspect": "style",
+   "k": 20,
+   "mean": 0.3994693490840693,
+   "per_state": [
+    0.40208607280862235,
+    0.39621880468873294,
+    0.40010316975485255
+   ],
+   "n_labelled": 12281,
+   "source_inputs": "/data/SSD2/cosir_r18/20261103_outside_methods/outputs/clay/artelingo_held/A/style.npz (text set A)",
+   "n_clusters_used": [
+    20,
+    20,
+    20
+   ],
+   "seconds": 3.4630115032196045,
+   "gate": true,
+   "reference_id": "SC3/artelingo/qwen/style/ami/20/clay",
+   "reference": 0.3994693490840693,
+   "diff": 0.0
+  },
+  {
+   "id": "clay/style/ami/27",
+   "row": "clay",
+   "aspect": "style",
+   "k": 27,
+   "mean": 0.40606567571999497,
+   "per_state": [
+    0.39972996045516695,
+    0.40834343818810553,
+    0.4101236285167126
+   ],
+   "n_labelled": 12281,
+   "source_inputs": "/data/SSD2/cosir_r18/20261103_outside_methods/outputs/clay/artelingo_held/A/style.npz (text set A)",
+   "n_clusters_used": [
+    27,
+    27,
+    27
+   ],
+   "seconds": 3.5681519508361816,
+   "gate": true,
+   "reference_id": "SC3/artelingo/qwen/style/ami/27/clay",
+   "reference": 0.40606567571999497,
+   "diff": 0.0
+  },
+  {
+   "id": "clay/genre/ami/10",
+   "row": "clay",
+   "aspect": "genre",
+   "k": 10,
+   "mean": 0.4854320772940263,
+   "per_state": [
+    0.4874396813157345,
+    0.4895949921512677,
+    0.4792615584150768
+   ],
+   "n_labelled": 9949,
+   "source_inputs": "/data/SSD2/cosir_r18/20261103_outside_methods/outputs/clay/artelingo_held/A/genre.npz (text set A)",
+   "n_clusters_used": [
+    10,
+    10,
+    10
+   ],
+   "seconds": 2.5143799781799316,
+   "gate": true,
+   "reference_id": "SC3/artelingo/qwen/genre/ami/10/clay",
+   "reference": 0.4854320772940263,
+   "diff": 0.0
+  },
+  {
+   "id": "clay/genre/ami/20",
+   "row": "clay",
+   "aspect": "genre",
+   "k": 20,
+   "mean": 0.46291895869294386,
+   "per_state": [
+    0.45742302841713056,
+    0.47046171767647416,
+    0.460872129985227
+   ],
+   "n_labelled": 9949,
+   "source_inputs": "/data/SSD2/cosir_r18/20261103_outside_methods/outputs/clay/artelingo_held/A/genre.npz (text set A)",
+   "n_clusters_used": [
+    20,
+    20,
+    20
+   ],
+   "seconds": 2.7310290336608887,
+   "gate": true,
+   "reference_id": "SC3/artelingo/qwen/genre/ami/20/clay",
+   "reference": 0.46291895869294386,
+   "diff": 0.0
+  },
+  {
+   "id": "crl/emotion/ami/9",
+   "row": "crl",
+   "aspect": "emotion",
+   "k": 9,
+   "mean": 0.07703790450839205,
+   "per_state": [
+    0.0739914027873991,
+    0.07737464264423206,
+    0.07974766809354498
+   ],
+   "n_labelled": 12281,
+   "source_inputs": "clip_l14 img store held rows + /data/SSD2/cosir_r11/20261029_retrieval/outputs/crl/emotion_text.npy (in memory)",
+   "n_clusters_used": [
+    9,
+    9,
+    9
+   ],
+   "seconds": 0.6557950973510742,
+   "gate": true,
+   "reference_id": "SC5/artelingo/clip_l14/emotion/ami/9/crl",
+   "reference": 0.07703790450839205,
+   "diff": 0.0
+  },
+  {
+   "id": "crl/emotion/ami/20",
+   "row": "crl",
+   "aspect": "emotion",
+   "k": 20,
+   "mean": 0.07857334633972195,
+   "per_state": [
+    0.07863076434605779,
+    0.08009414652878456,
+    0.07699512814432347
+   ],
+   "n_labelled": 12281,
+   "source_inputs": "clip_l14 img store held rows + /data/SSD2/cosir_r11/20261029_retrieval/outputs/crl/emotion_text.npy (in memory)",
+   "n_clusters_used": [
+    20,
+    20,
+    20
+   ],
+   "seconds": 0.3656136989593506,
+   "gate": true,
+   "reference_id": "SC5/artelingo/clip_l14/emotion/ami@20/20/crl",
+   "reference": 0.07857334633972195,
+   "diff": 0.0
+  },
+  {
+   "id": "crl/style/ami/20",
+   "row": "crl",
+   "aspect": "style",
+   "k": 20,
+   "mean": 0.3873050627860066,
+   "per_state": [
+    0.38644600610825725,
+    0.38140810004467274,
+    0.39406108220508984
+   ],
+   "n_labelled": 12281,
+   "source_inputs": "clip_l14 img store held rows + /data/SSD2/cosir_r11/20261029_retrieval/outputs/crl/style_text.npy (in memory)",
+   "n_clusters_used": [
+    20,
+    20,
+    20
+   ],
+   "seconds": 0.8290114402770996,
+   "gate": true,
+   "reference_id": "SC5/artelingo/clip_l14/style/ami@20/20/crl",
+   "reference": 0.3873050627860066,
+   "diff": 0.0
+  },
+  {
+   "id": "crl/style/ami/27",
+   "row": "crl",
+   "aspect": "style",
+   "k": 27,
+   "mean": 0.39039690415578976,
+   "per_state": [
+    0.39333706551992265,
+    0.387702244288554,
+    0.3901514026588925
+   ],
+   "n_labelled": 12281,
+   "source_inputs": "clip_l14 img store held rows + /data/SSD2/cosir_r11/20261029_retrieval/outputs/crl/style_text.npy (in memory)",
+   "n_clusters_used": [
+    27,
+    27,
+    27
+   ],
+   "seconds": 0.43941235542297363,
+   "gate": true,
+   "reference_id": "SC5/artelingo/clip_l14/style/ami/27/crl",
+   "reference": 0.39039690415578976,
+   "diff": 0.0
+  },
+  {
+   "id": "crl/genre/ami/10",
+   "row": "crl",
+   "aspect": "genre",
+   "k": 10,
+   "mean": 0.4282651634165209,
+   "per_state": [
+    0.4357880196528127,
+    0.40813825866084036,
+    0.4408692119359096
+   ],
+   "n_labelled": 9949,
+   "source_inputs": "clip_l14 img store held rows + /data/SSD2/cosir_r11/20261029_retrieval/outputs/crl/genre_text.npy (in memory)",
+   "n_clusters_used": [
+    10,
+    10,
+    10
+   ],
+   "seconds": 0.689321756362915,
+   "gate": true,
+   "reference_id": "SC5/artelingo/clip_l14/genre/ami/10/crl",
+   "reference": 0.4282651634165209,
+   "diff": 0.0
+  },
+  {
+   "id": "crl/genre/ami/20",
+   "row": "crl",
+   "aspect": "genre",
+   "k": 20,
+   "mean": 0.432930161896796,
+   "per_state": [
+    0.43230713553724304,
+    0.4336604727798103,
+    0.43282287737333464
+   ],
+   "n_labelled": 9949,
+   "source_inputs": "clip_l14 img store held rows + /data/SSD2/cosir_r11/20261029_retrieval/outputs/crl/genre_text.npy (in memory)",
+   "n_clusters_used": [
+    20,
+    20,
+    20
+   ],
+   "seconds": 0.3339719772338867,
+   "gate": true,
+   "reference_id": "SC5/artelingo/clip_l14/genre/ami@20/20/crl",
+   "reference": 0.432930161896796,
+   "diff": 0.0
+  }
+ ]
+}
