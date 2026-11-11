@@ -2071,3 +2071,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-11-paper-latex-handoff.md
 - New chat: tab 'paper latex', session f69e4623-7c5c-47d8-bd61-3075712ad44e
 
+[brief] CoSiR: paper latex -> paper method (2026-11-11 03:29 Amsterdam)
+- Done: related work (b) trimmed; method opening, 3.1 and 3.2 written and revised after the user's read; /duck-figure audit of Figure 1.
+- State: the paper builds (4 pages); 3.3 to 3.5 are headings only; Figure 1 and 2 are the old v1.1 drawings.
+- Next: an agent redraws Figure 1 (user chose this); answer item 2 below; then 3.3.
+- Blocked: OpenReview registration by 11-11 12:59 (the user's alone).
+- Handoff: docs/superpowers/handoffs/2026-11-11-paper-method-figure-handoff.md
+- New chat: tab 'paper method', session 6f69495a-681c-4383-9201-a7d01d8319b6
+
