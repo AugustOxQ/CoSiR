@@ -49,3 +49,10 @@ Spec: `docs/superpowers/specs/2026-11-11-r21-dec-heads-design.md`. Decision line
 - 2026-11-11 07:05: `r21_table.py` (CLI `table`, `diag`, `regress`) and `test_r21_table.py` (37 tests: word rule at the
   interval edges, pairing, cells, silhouette against scikit-learn, DEC statistics, two real-file checks on r10's tree).
   No existing file edited. Held (test) exports are read by design (stage 2); nothing here tunes or selects on them.
+
+## Build chat 3 (2026-11-11, from 07:48)
+
+- 07:55: Codex has no implementer room (five-hour window 60% left, 80% needed; resets 10:09), so Claude workers again.
+  Started in parallel: review of `r21_gate0b.py` (Opus `high`) and ticket 04 (Sonnet `medium`, worktree
+  `/project/CoSiR-r21-t04`, branch `r21/t04`). GPU smoke of ticket 03 queued (`res-queue gpu`, label `r21:smoke`,
+  behind r25 and r26; estimated start 08:48).
