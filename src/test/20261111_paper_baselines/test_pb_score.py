@@ -1,5 +1,6 @@
 """Stand-in data only: loader contracts, r17 score direction, gates and write guards."""
 import json
+import hashlib
 import sys
 from pathlib import Path
 
@@ -8,7 +9,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import pb_score as s
-from pb_io import write_json
+from pb_io import file_sha, write_json
 from rt_stats import outcome
 
 
@@ -17,21 +18,31 @@ def make_vlm(tmp_path, names, rows=None):
     root.mkdir()
     write_json(root / 'keys.json', names)
     np.save(root / 'emb.npy', np.eye(len(names), dtype=np.float32) if rows is None else rows)
+    write_json(root / 'meta.json', dict(aspect='emotion', instruction=s.P.INSTRUCTIONS['emotion'],
+                                       emb_sha256=file_sha(root / 'emb.npy'), n=s.P.N_HELD, limit=None))
     return root
+
+
+def refresh_emb_hash(root):
+    meta = json.loads((root / 'meta.json').read_text())
+    meta['emb_sha256'] = file_sha(root / 'emb.npy')
+    write_json(root / 'meta.json', meta)
 
 
 def test_vlm_names_and_rows(tmp_path):
     names = ['a', 'b', 'c']
     root = make_vlm(tmp_path, names)
     rows, hashes = s.load_vlm2vec(tmp_path, 'emotion', names)
-    assert rows.dtype == np.float32 and rows.shape == (3, 3) and len(hashes) == 2
+    assert rows.dtype == np.float32 and rows.shape == (3, 3) and len(hashes) == 3
     with pytest.raises(ValueError, match='names.*order'):
         s.load_vlm2vec(tmp_path, 'emotion', names[::-1])
     np.save(root / 'emb.npy', rows * 1.01)
+    refresh_emb_hash(root)
     with pytest.raises(ValueError, match='unit norm'):
         s.load_vlm2vec(tmp_path, 'emotion', names)
     rows[0, 0] = np.nan
     np.save(root / 'emb.npy', rows)
+    refresh_emb_hash(root)
     with pytest.raises(ValueError, match='finite'):
         s.load_vlm2vec(tmp_path, 'emotion', names)
 
@@ -45,7 +56,9 @@ def test_vlm_refuses_wrong_shape(tmp_path, rows):
 
 def make_topics(root, names, topics):
     for seed in s.P.UMAP_SEEDS:
-        np.savez(root / f'topics_seed{seed}.npz', names=names, topics=topics)
+        path = root / f'topics_seed{seed}.npz'
+        np.savez(path, names=names, topics=topics)
+        write_json(path.with_suffix('.json'), dict(npz_sha256=file_sha(path), smoke=False, seed=seed))
 
 
 def test_bertopic_names_values_and_distinct_count(tmp_path):
@@ -53,7 +66,7 @@ def test_bertopic_names_values_and_distinct_count(tmp_path):
     good = np.tile(np.arange(20, dtype=np.int32), 2)
     make_topics(tmp_path, names, good)
     parts, hashes = s.load_bertopic(tmp_path, names)
-    assert parts.dtype == np.int32 and parts.shape == (3, 40) and len(hashes) == 3
+    assert parts.dtype == np.int32 and parts.shape == (3, 40) and len(hashes) == 6
     with pytest.raises(ValueError, match='names.*order'):
         s.load_bertopic(tmp_path, names[::-1])
     for bad in (-1, 20):
@@ -75,6 +88,88 @@ def test_missing_comparator_is_error(tmp_path):
         s.load_vlm2vec(tmp_path, 'emotion', ['a'])
     with pytest.raises(FileNotFoundError, match='bertopic.*missing'):
         s.load_bertopic(tmp_path, ['a'])
+
+
+@pytest.mark.parametrize('field,value', [('aspect', 'style'), ('instruction', 'wrong instruction'),
+                                        ('emb_sha256', 'old-file'), ('n', 2000), ('limit', 2000)])
+def test_vlm_refuses_wrong_metadata(tmp_path, field, value):
+    root = make_vlm(tmp_path, ['a', 'b', 'c'])
+    meta = json.loads((root / 'meta.json').read_text())
+    meta[field] = value
+    write_json(root / 'meta.json', meta)
+    with pytest.raises(ValueError, match=field):
+        s.load_vlm2vec(tmp_path, 'emotion', ['a', 'b', 'c'])
+
+
+@pytest.mark.parametrize('field', ['aspect', 'instruction', 'emb_sha256', 'n', 'limit'])
+def test_vlm_requires_metadata_fields(tmp_path, field):
+    root = make_vlm(tmp_path, ['a', 'b', 'c'])
+    meta = json.loads((root / 'meta.json').read_text())
+    meta.pop(field)
+    write_json(root / 'meta.json', meta)
+    with pytest.raises(ValueError, match=field):
+        s.load_vlm2vec(tmp_path, 'emotion', ['a', 'b', 'c'])
+
+
+def test_vlm_requires_metadata_file(tmp_path):
+    root = tmp_path / 'emotion'
+    root.mkdir()
+    np.save(root / 'emb.npy', np.eye(3, dtype=np.float32))
+    write_json(root / 'keys.json', ['a', 'b', 'c'])
+    with pytest.raises(FileNotFoundError, match='meta.json'):
+        s.load_vlm2vec(tmp_path, 'emotion', ['a', 'b', 'c'])
+
+
+def test_vlm_hashes_and_loads_one_snapshot(tmp_path, monkeypatch):
+    names = ['a', 'b', 'c']
+    root = make_vlm(tmp_path, names)
+    path = root / 'emb.npy'
+    original_bytes = path.read_bytes()
+    original_read_bytes = Path.read_bytes
+    original_load = np.load
+    reads = []
+
+    def read_then_replace(p):
+        data = original_read_bytes(p)
+        if p == path:
+            reads.append(p)
+            np.save(path, np.eye(3, dtype=np.float32)[::-1])
+        return data
+
+    def load_snapshot(source, *args, **kwargs):
+        assert hasattr(source, 'getvalue'), 'np.load must consume the checked byte snapshot'
+        assert source.getvalue() == original_bytes
+        return original_load(source, *args, **kwargs)
+
+    monkeypatch.setattr(Path, 'read_bytes', read_then_replace)
+    monkeypatch.setattr(s.np, 'load', load_snapshot)
+    rows, hashes = s.load_vlm2vec(tmp_path, 'emotion', names)
+    assert reads == [path]
+    assert np.array_equal(rows, np.eye(3, dtype=np.float32))
+    assert hashes[str(path)] == hashlib.sha256(original_bytes).hexdigest()
+    assert hashes[str(path)] != file_sha(path)
+
+
+@pytest.mark.parametrize('field,value', [('smoke', True), ('seed', 1), ('smoke', None), ('seed', None)])
+def test_bertopic_checks_sidecar_seed_and_smoke(tmp_path, field, value):
+    names = [f'p{i}' for i in range(20)]
+    make_topics(tmp_path, names, np.arange(20, dtype=np.int32))
+    side = tmp_path / 'topics_seed0.json'
+    meta = json.loads(side.read_text())
+    if value is None:
+        meta.pop(field)
+    else:
+        meta[field] = value
+    write_json(side, meta)
+    with pytest.raises(ValueError, match=field):
+        s.load_bertopic(tmp_path, names)
+
+
+def test_bertopic_requires_sidecar(tmp_path):
+    names = [f'p{i}' for i in range(20)]
+    np.savez(tmp_path / 'topics_seed0.npz', names=names, topics=np.arange(20, dtype=np.int32))
+    with pytest.raises(FileNotFoundError, match='topics_seed0.json'):
+        s.load_bertopic(tmp_path, names)
 
 
 def standins():

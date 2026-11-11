@@ -1,5 +1,21 @@
 # Ticket B implementation and validation
 
+Fix-round correction: the original BERTopic smoke below used an incomplete MiniLM cache and is **invalid
+as BERTopic evidence**. The model silently fell back to Transformer + mean Pooling without Normalize,
+with max_seq_length 512 and non-unit outputs. The controller repaired the cache at revision 1110a243.
+The runner now requires exactly Transformer, mean-only Pooling, Normalize, max_seq_length 256, and
+unit rows within strict deviation < 1e-4; it does not pass `normalize_embeddings`. Module names,
+pooling mode and sequence length are recorded in minilm.json. No real-data run was made in this fix round.
+
+Legacy embedding caches lacking these checks are rebuilt before seed skip decisions. A seed whose
+embeddings_sha256 differs from the current minilm.npy is not complete. The scorer now requires
+VLM2Vec meta.json and verifies its aspect, exact instruction, emb_sha256, n=12281 and limit=None.
+It hashes and loads the same byte snapshot. BERTopic sidecars are also required, with smoke=false,
+the expected seed and a matching NPZ checksum.
+
+Fix-round folder tests: **58 passed in 4.46s**, with the requested CoSiR Python and thread settings.
+Nothing was deleted. The retained `fix_regression_red.log` can be removed after review.
+
 The runner uses `/root/venvs/bertopic/bin/python`; the scorer uses
 `/root/miniconda3/envs/CoSiR/bin/python`. Set `PYTHONDONTWRITEBYTECODE=1` on every invocation.
 The scorer imports r17's implementation unchanged. Shared paths and decisions were not edited.
@@ -49,7 +65,7 @@ MiniLM encoding took 7.701 seconds; BERTopic fit took 13.927 seconds, and the wh
 HDBSCAN found **16 real topics**. Reduction passed **17**, including `-1`, and kept 16 real topics
 under the explicit smoke exception. Outliers: **651** after HDBSCAN, **651** after reduction,
 **0** after default reassignment, **0** at the embedding stage (that pass was unnecessary).
-The observed default MiniLM max sequence length was **512**; longest smoke document: 202 tokens;
+The invalid fallback MiniLM max sequence length was **512**; longest smoke document: 202 tokens;
 documents exceeding the limit: 0. Encoding did not add normalization.
 
 The scratch folder contains `minilm.npy`, `minilm.json`, `topics_seed0.npz`, `topics_seed0.json`.
@@ -89,7 +105,7 @@ included where the implementation resolves an API detail that can affect the res
 | Choice | Main alternative | Where | Could affect verdict/claim? |
 |---|---|---|---|
 | Current BERTopic 0.17.4 and installed component defaults, with a version audit guard | Older BERTopic/UMAP versions or tutorial presets | `pb_bertopic.make_model` | yes |
-| Cached MiniLM on CPU, default encoding/max sequence length (observed 512), no added normalization or chunking | Normalize embeddings, change truncation length, or aggregate chunks | `document_embeddings` | yes |
+| Complete cached MiniLM on CPU: Transformer, mean Pooling, Normalize, max sequence length 256; validate unit rows without encode-time normalization | Accept an incomplete-cache fallback, change truncation length, or aggregate chunks | `document_embeddings` | yes |
 | Account for `-1` in `nr_topics`: 21 when present, 20 otherwise | Always pass 20, which would leave 19 real topics with outliers | `reduction_count` | yes |
 | Stop production if HDBSCAN finds fewer than 20 real topics; smoke retains the available count | Tune HDBSCAN or substitute k-means to force 20 | `reduction_count` | yes |
 | Default distributions reassignment then embeddings only for survivors, default threshold 0; stop if any remain | c-TF-IDF/probability reassignment or unconditional argmax fallback | `run_seed` | yes |

@@ -7,6 +7,8 @@ PB_SMOKE=1 PB_OUTPUTS=<scratch> uses r17's 40 smoke draws and refuses --record.
 All three candidate gates pass before scoring; cells are written together only after every requested cell succeeds.
 """
 import argparse
+import hashlib
+import io
 import json
 import sys
 import time
@@ -43,23 +45,31 @@ def check_topics(topics, n, path, k=P.K):
 
 def load_vlm2vec(store, aspect, names):
     root = Path(store) / aspect
-    path, key_path = root / 'emb.npy', root / 'keys.json'
-    for p in (path, key_path):
+    path, key_path, meta_path = root / 'emb.npy', root / 'keys.json', root / 'meta.json'
+    for p in (path, key_path, meta_path):
         if not p.is_file():
             raise FileNotFoundError(f'vlm2vec/{aspect}: required comparator input missing: {p}')
-    keys = json.loads(key_path.read_text())
+    key_bytes, meta_bytes = key_path.read_bytes(), meta_path.read_bytes()
+    keys, meta = json.loads(key_bytes), json.loads(meta_bytes)
     # Side extractors may store just the ordered list, or a named list with provenance.
     check_names(keys['names'] if isinstance(keys, dict) else keys, names, key_path)
-    rows = np.load(path, allow_pickle=False)
+    # Hash and decode exactly one snapshot, even if a producer replaces emb.npy concurrently.
+    emb_bytes = path.read_bytes()
+    emb_sha = hashlib.sha256(emb_bytes).hexdigest()
+    expected = dict(aspect=aspect, instruction=P.INSTRUCTIONS[aspect], emb_sha256=emb_sha,
+                    n=P.N_HELD, limit=None)
+    for field, value in expected.items():
+        if field not in meta or meta[field] != value:
+            raise ValueError(f'{meta_path}: {field} must be {value!r}, got {meta.get(field)!r}')
+    rows = np.load(io.BytesIO(emb_bytes), allow_pickle=False)
     if (rows.ndim != 2 or rows.shape[0] != len(names) or rows.shape[1] < 1
             or not np.issubdtype(rows.dtype, np.floating) or not np.isfinite(rows).all()):
         raise ValueError(f'{path}: need finite floating embedding rows [n, d], got {rows.shape} {rows.dtype}')
     deviation = float(np.abs(np.linalg.norm(rows.astype(np.float64), axis=1) - 1).max())
     if not deviation < NS.TOL_UNIT:
         raise ValueError(f'{path}: rows not unit norm (max deviation {deviation}, tolerance {NS.TOL_UNIT})')
-    hashes = {str(p): file_sha(p) for p in (path, key_path)}
-    if (root / 'meta.json').is_file():
-        hashes[str(root / 'meta.json')] = file_sha(root / 'meta.json')
+    hashes = {str(path): emb_sha, str(key_path): hashlib.sha256(key_bytes).hexdigest(),
+              str(meta_path): hashlib.sha256(meta_bytes).hexdigest()}
     return rows.astype(np.float32), hashes
 
 
@@ -67,20 +77,23 @@ def load_bertopic(root, names):
     parts, hashes = [], {}
     for seed in P.UMAP_SEEDS:
         path = Path(root) / f'topics_seed{seed}.npz'
-        if not path.is_file():
-            raise FileNotFoundError(f'bertopic: required comparator input missing: {path}')
-        with np.load(path, allow_pickle=False) as z:
+        side = path.with_suffix('.json')
+        for p in (path, side):
+            if not p.is_file():
+                raise FileNotFoundError(f'bertopic: required comparator input missing: {p}')
+        topic_bytes, meta_bytes = path.read_bytes(), side.read_bytes()
+        hashes[str(path)] = hashlib.sha256(topic_bytes).hexdigest()
+        hashes[str(side)] = hashlib.sha256(meta_bytes).hexdigest()
+        meta = json.loads(meta_bytes)
+        if meta.get('npz_sha256') != hashes[str(path)]:
+            raise ValueError(f'{path}: sidecar npz_sha256 mismatch')
+        if meta.get('smoke') is not False:
+            raise ValueError(f'{side}: smoke must be false for held scoring')
+        if meta.get('seed') != seed:
+            raise ValueError(f'{side}: seed must be {seed}, got {meta.get("seed")!r}')
+        with np.load(io.BytesIO(topic_bytes), allow_pickle=False) as z:
             check_names(z['names'].tolist(), names, path)
             parts.append(check_topics(z['topics'], len(names), path))
-        hashes[str(path)] = file_sha(path)
-        side = path.with_suffix('.json')
-        if side.is_file():
-            meta = json.loads(side.read_text())
-            if meta['npz_sha256'] != hashes[str(path)]:
-                raise ValueError(f'{path}: sidecar npz_sha256 mismatch')
-            if meta.get('smoke'):
-                raise ValueError(f'{path}: smoke partition cannot be used for held scoring')
-            hashes[str(side)] = file_sha(side)
     return np.stack(parts).astype(np.int32), hashes
 
 

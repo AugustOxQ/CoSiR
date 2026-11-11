@@ -9,4 +9,9 @@ Scope: single agent; edit only this round; preserve shared paths and decisions; 
 4. Record source defaults, run evidence and result-shaping choices; review and prepare commit. Complete.
 
 ## Next Step
-Commit the reviewed task files, verify a clean worktree, and hand back without pushing.
+Fix round in main: tests passed; commit only the reviewed task files and hand back without pushing.
+
+## Fix round (main checkout)
+1. Reproduce review findings with stand-in models and stores. Complete (30 failed before fixes).
+2. Enforce MiniLM module/length/unit checks, cache/seed provenance and comparator sidecars. Complete.
+3. Run folder tests and review scoped changes. Complete (58 passed); scoped commit prepared, no push.

@@ -1,4 +1,9 @@
 {
+  "fix_round": {
+    "folder_tests_passed": 58,
+    "folder_tests_seconds": 4.46,
+    "real_data_runs": false
+  },
   "full_runs_performed": false,
   "gate": {
     "aspects": {
@@ -66,6 +71,7 @@
     }
   },
   "smoke_exit_code": 0,
+  "smoke_invalid_reason": "Independent review B1: incomplete HF cache produced fallback Transformer + mean Pooling without Normalize, max_seq_length 512 and non-unit embeddings. Historical smoke metadata retained; controller reruns the repaired model.",
   "smoke_partition": {
     "bertopic_source": "/root/venvs/bertopic/lib/python3.11/site-packages/bertopic/_bertopic.py",
     "bertopic_source_sha256": "4fb30201881399ad4d7d1addb6fbc702b989af0c7d9d539a17ea0c30a17ef901",
@@ -256,6 +262,7 @@
     }
   },
   "smoke_queue_minutes": 0.46,
+  "smoke_valid": false,
   "tests": {
     "bertopic_helpers": {
       "passed": 11,

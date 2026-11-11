@@ -9,6 +9,8 @@
 - _reduce_to_n_topics subtracts self._outliers from nr_topics, so production requests 21 with outliers, 20 without. Smoke found 16 real topics and requested 17 including -1.
 - Default reduce_outliers strategy is distributions, threshold 0. Embeddings strategy also defaults to threshold 0; fail if any outlier remains after both prescribed passes.
 - Smoke: first 2,000 input docs, seed 0, HDBSCAN 16 topics / 651 outliers, after distributions 0, embeddings pass unnecessary. MiniLM 7.701 seconds; fit/reduction/reassignment 14.174 seconds; queue 0.46 minutes.
-- In installed sentence-transformers 6.2.0, cached MiniLM reports max_seq_length=512; longest smoke doc 202 tokens, none exceeds the limit. Do not override defaults.
+- Correction from independent review: the original MiniLM cache lacked model modules/configuration, causing a silent fallback with max_seq_length=512 and non-unit rows. That smoke is invalid as BERTopic evidence. The controller repaired revision 1110a243; require Transformer, mean-only Pooling, Normalize, max_seq_length=256 and unit output rows.
 - pip check reports inherited environment conflicts (GPU/data/telemetry packages); venv installation additionally exposes the inherited cuda-python 12.9.7 vs torch's cuda-bindings>=13 requirement. CPU BERTopic smoke succeeds; no base packages changed.
 - Real gate PASS in 110.211s; candidate mean equals r18 exactly for all aspects: emotion 0.10658729378204021, style 0.40664322288431654, genre 0.5001038781216712. Genre label count 9,949 passed.
+- Fix round: pb_vlm2vec writes aspect, instruction, emb_sha256 (file bytes), n, and limit (None for full extraction). The scorer must require and validate these fields.
+- Fix round: embedding cache validation must precede seed skip checks; otherwise old partitions can prevent the repaired model from being loaded at all.

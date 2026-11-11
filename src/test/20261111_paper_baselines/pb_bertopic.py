@@ -23,6 +23,9 @@ AUDITED_VERSION = '0.17.4'
 UMAP_ARGS = dict(n_neighbors=15, n_components=5, min_dist=0.0, metric='cosine', low_memory=False)
 PACKAGES = ('bertopic', 'sentence-transformers', 'transformers', 'torch', 'numpy', 'scipy',
             'scikit-learn', 'umap-learn', 'hdbscan', 'numba', 'pynndescent')
+MINILM_MODULES = ['Transformer', 'Pooling', 'Normalize']
+MINILM_MAX_SEQ_LENGTH = 256
+MINILM_UNIT_TOL = 1e-4
 
 
 def versions():
@@ -98,34 +101,61 @@ def make_model(seed):
     return model, audit
 
 
+def check_minilm_model(model):
+    """Reject SentenceTransformer's silent fallback when the cached model files are incomplete."""
+    from sentence_transformers.base.modules import Normalize, Transformer
+    from sentence_transformers.sentence_transformer.modules import Pooling
+    modules = list(model)
+    if [type(m) for m in modules] != [Transformer, Pooling, Normalize]:
+        raise ValueError(f'MiniLM requires modules {MINILM_MODULES}; got {[type(m).__name__ for m in modules]}')
+    if modules[1].pooling_mode != 'mean':
+        raise ValueError('MiniLM requires mean-only Pooling')
+    if model.max_seq_length != MINILM_MAX_SEQ_LENGTH:
+        raise ValueError(f'MiniLM requires max_seq_length={MINILM_MAX_SEQ_LENGTH}; got {model.max_seq_length}')
+    return dict(modules=[type(m).__name__ for m in modules], pooling_mode='mean',
+                max_seq_length=model.max_seq_length)
+
+
+def check_minilm_rows(emb, n):
+    if (emb.ndim != 2 or emb.shape[0] != n or emb.shape[1] < 1
+            or emb.dtype != np.float32 or not np.isfinite(emb).all()):
+        raise ValueError('MiniLM returned invalid embeddings')
+    deviation = float(np.abs(np.linalg.norm(emb.astype(np.float64), axis=1) - 1).max())
+    if not deviation < MINILM_UNIT_TOL:
+        raise ValueError(f'MiniLM rows must be unit norm (max deviation {deviation}, tolerance {MINILM_UNIT_TOL})')
+
+
 def document_embeddings(docs, names, out, input_sha, force=False):
-    """Default SentenceTransformer encoding (no extra normalization), on CPU, once for all seeds."""
+    """Require the complete MiniLM model, with its own Normalize module, on CPU once for all seeds."""
     path, side = out / 'minilm.npy', out / 'minilm.json'
     provenance = dict(model=P.MINILM, names_sha256=names_sha(names), input_sha256=input_sha,
-                      n_docs=len(docs), versions=versions(), device='cpu', normalize_embeddings=False)
+                      n_docs=len(docs), versions=versions(), device='cpu', normalization='model Normalize module')
     if path.exists() and side.exists() and not force:
         meta = json.loads(side.read_text())
-        if any(meta.get(k) != v for k, v in provenance.items()) or meta['sha256'] != file_sha(path):
-            raise ValueError(f'{path}: stale/corrupt embedding cache; use --force or a separate --out')
-        emb = np.load(path, allow_pickle=False)
-        if emb.shape != (len(docs), meta['embedding_dimension']) or emb.dtype != np.float32 or not np.isfinite(emb).all():
-            raise ValueError(f'{path}: invalid cached embeddings')
-        return emb, meta
+        # Old fallback caches have no verified module specification: rebuild them automatically.
+        checked_model = (meta.get('modules') == MINILM_MODULES and meta.get('pooling_mode') == 'mean'
+                         and meta.get('max_seq_length') == MINILM_MAX_SEQ_LENGTH)
+        if checked_model:
+            if any(meta.get(k) != v for k, v in provenance.items()) or meta['sha256'] != file_sha(path):
+                raise ValueError(f'{path}: stale/corrupt embedding cache; use --force or a separate --out')
+            emb = np.load(path, allow_pickle=False)
+            check_minilm_rows(emb, len(docs))
+            if emb.shape[1] != meta['embedding_dimension']:
+                raise ValueError(f'{path}: invalid cached embedding dimension')
+            return emb, meta
     from sentence_transformers import SentenceTransformer
     start = time.monotonic()
     model = SentenceTransformer(P.MINILM, device='cpu', local_files_only=True)
+    model_spec = check_minilm_model(model)
     lengths = []
     for i in range(0, len(docs), 128):
         batch = model.tokenizer(docs[i:i + 128], truncation=False, padding=False,
                                 return_length=True, verbose=False)
         lengths.extend(batch['length'])
-    emb = model.encode(docs, device='cpu', convert_to_numpy=True, show_progress_bar=False,
-                       normalize_embeddings=False).astype(np.float32)
-    if emb.ndim != 2 or emb.shape[0] != len(docs) or not np.isfinite(emb).all():
-        raise ValueError('MiniLM returned invalid embeddings')
+    emb = model.encode(docs, device='cpu', convert_to_numpy=True, show_progress_bar=False).astype(np.float32)
+    check_minilm_rows(emb, len(docs))
     atomic_write(path, lambda f: np.save(f, emb, allow_pickle=False), binary=True)
-    meta = dict(provenance, sha256=file_sha(path), embedding_dimension=int(emb.shape[1]),
-                max_seq_length=model.max_seq_length,
+    meta = dict(provenance, **model_spec, sha256=file_sha(path), embedding_dimension=int(emb.shape[1]),
                 n_docs_exceed_max_seq_length=int(np.sum(np.asarray(lengths) > model.max_seq_length)),
                 token_count_rule='untruncated tokenizer length including special tokens',
                 max_document_tokens=int(max(lengths)), seconds=time.monotonic() - start)
@@ -140,6 +170,9 @@ def seed_done(path, names, input_sha, smoke):
     meta = json.loads(side.read_text())
     if meta['npz_sha256'] != file_sha(path) or meta['input_sha256'] != input_sha or meta['smoke'] != smoke:
         raise ValueError(f'{path}: stale/corrupt completed seed; use --force')
+    embeddings = path.parent / 'minilm.npy'
+    if not embeddings.is_file() or meta.get('embeddings_sha256') != file_sha(embeddings):
+        return False
     with np.load(path, allow_pickle=False) as z:
         if z['names'].tolist() != names:
             raise ValueError(f'{path}: names differ from input order')
@@ -197,6 +230,8 @@ def main(argv=None):
     input_sha = file_sha(input_path)
     smoke = a.limit is not None
     seeds = P.UMAP_SEEDS if a.seed is None else (a.seed,)
+    # Repair legacy embedding caches before deciding whether their partitions can be reused.
+    emb, meta = document_embeddings(docs, names, a.out, input_sha, a.force)
     todo = []
     for seed in seeds:
         if not a.force and seed_done(a.out / f'topics_seed{seed}.npz', names, input_sha, smoke):
@@ -205,7 +240,6 @@ def main(argv=None):
             todo.append(seed)
     if not todo:
         return 0
-    emb, meta = document_embeddings(docs, names, a.out, input_sha, a.force)
     for seed in todo:
         run_seed(docs, names, emb, meta, a.out, seed, input_sha, smoke)
     return 0
