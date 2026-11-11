@@ -2159,3 +2159,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-11-paper-sec4-tables-2-handoff.md
 - New chat: tab 'paper sec4 tables 2', session 12b49f57-5d07-45da-ba69-dccef204601a
 
+[brief] CoSiR: r21 build -> r21 build 2 (2026-11-11 06:50 Amsterdam)
+- Done: ticket 01 (DEC math) merged; 02 (trainer) and 05 (scoring) built, not yet reviewed; 05 reproduces the saved validation AMI exactly.
+- State: DEC off matches c*'s frozen loop bit for bit on a synthetic cohort; q is almost flat on unit head outputs, so λ ∈ {1, 10} may be weak.
+- Next: Opus reviews of 02 and 05, then tickets 03, 04, 06, the final review, merge, the run handoff.
+- Blocked: nothing; Codex had no room for implementer jobs (Claude workers build).
+- Handoff: docs/superpowers/handoffs/2026-11-11-r21-build-2-handoff.md
+- New chat: tab 'r21 build 2', session 888cc12a-f7e7-4899-8318-8e3cfaaf1c99
+
