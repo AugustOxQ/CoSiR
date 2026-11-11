@@ -1,0 +1,163 @@
+"""r21: the pure math of a DEC loss on c*'s unit head outputs (ticket 01).
+
+No file reads and no training loop. DEC follows our PercepT build
+(`20261018_percept_core/pc_sept.py`, imported, never edited): Student-t soft
+assignments (alpha = 1) of unit head outputs z [n, d] to centres [k, d], a
+target P from a full pass over the fit paintings, KL(P || q), and PercepT's
+balance term. Tensors in and out are torch; k-means works on numpy.
+"""
+import sys
+from pathlib import Path
+
+import numpy as np
+import torch
+from sklearn.cluster import KMeans
+from torch.nn import functional as F
+
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE.parent / '20261018_percept_core'))
+import pc_sept  # noqa: E402
+
+LAMBDA_BALANCE = pc_sept.LAMBDA_BALANCE  # 1000, PercepT's ratio to the DEC term
+BALANCE_CLAMP = 1e-8  # pc_sept's clamp on the mean assignment before the log
+FORMS = ('plain', 'start', 'teacher')  # 'off' never reaches this module
+ROW_SUM_ATOL = 1e-4
+
+
+def _rows(name, a, d=None):
+    """Assert `a` is a finite 2-d tensor (with d columns if given)."""
+    assert torch.is_tensor(a) and a.ndim == 2, f'{name}: need a 2-d tensor'
+    assert torch.isfinite(a).all(), f'{name}: not finite'
+    if d is not None:
+        assert a.shape[1] == d, f'{name}: {a.shape[1]} columns, need {d}'
+
+
+def _dist(name, a):
+    _rows(name, a)
+    assert torch.allclose(a.sum(1), torch.ones(a.shape[0]), atol=ROW_SUM_ATOL), \
+        f'{name}: rows do not sum to 1'
+
+
+def soft_assign(z, centres):
+    """Student-t soft assignments q [n, k] (alpha = 1), pc_sept's."""
+    _rows('z', z)
+    _rows('centres', centres, d=z.shape[1])
+    return pc_sept.soft_assignments(z, centres)
+
+
+def target(q_full):
+    """Target P [n, k], detached, from q of a full pass over all fit paintings.
+
+    The column frequency q.sum(0) is taken over every row passed, so the caller
+    passes the whole fit set, never a batch.
+    """
+    _dist('q_full', q_full)
+    return pc_sept.target_distribution(q_full)
+
+
+def dec_kl(p, q):
+    """KL(P || q), `F.kl_div(q.log(), p, 'batchmean')` as pc_sept's loop."""
+    _dist('p', p)
+    _dist('q', q)
+    assert p.shape == q.shape
+    return F.kl_div(q.log(), p, reduction='batchmean', log_target=False)
+
+
+def pull_kl(r, q):
+    """KL(r || q) in the same form; r is q0 (start pull) or t (teacher pull)."""
+    return dec_kl(r, q)
+
+
+def balance_kl(q):
+    """PercepT's KL(uniform || mean q), summed over clusters, mean q clamped."""
+    _dist('q', q)
+    mean_q = q.mean(dim=0)
+    uniform = torch.full_like(mean_q, 1.0 / mean_q.shape[0])
+    return F.kl_div(mean_q.clamp_min(BALANCE_CLAMP).log(), uniform, reduction='sum')
+
+
+def dec_block(q, p, r, settings):
+    """lam * (KL(P||q) + [KL(r||q) if a pull] + [1000 * KL(u||mean q) if balance]).
+
+    `settings` is the arm's dict (form, lam, balance). The pull is present for
+    the forms `start` and `teacher` and then `r` is required; for `plain` `r`
+    must be None. The balance mean is over the rows of `q` passed.
+    Returns (total tensor, parts): the unweighted terms as floats, keys
+    `kl_p`, and `pull` / `balance` when present.
+    """
+    form = settings['form']
+    assert form in FORMS, f'form {form!r}'
+    assert (r is not None) == (form != 'plain'), f'pull target r does not match form {form!r}'
+    lam = float(settings['lam'])
+    assert lam >= 0.0 and np.isfinite(lam)
+    assert isinstance(settings['balance'], bool)
+    kl_p = dec_kl(p, q)
+    inner = kl_p
+    parts = {'kl_p': kl_p.item()}
+    if r is not None:
+        pull = pull_kl(r, q)
+        inner = inner + pull
+        parts['pull'] = pull.item()
+    if settings['balance']:
+        bal = balance_kl(q)
+        inner = inner + LAMBDA_BALANCE * bal
+        parts['balance'] = bal.item()
+    return lam * inner, parts
+
+
+def kmeans_centres(z, k, seed):
+    """PercepT's centre start: KMeans(k, n_init=10, random_state=seed) on z.
+
+    Returns float32 centres [k, d] as a torch tensor.
+    """
+    _rows('z', z)
+    assert z.shape[0] >= k
+    km = KMeans(n_clusters=k, n_init=10, random_state=seed).fit(z.detach().cpu().numpy())
+    return torch.from_numpy(km.cluster_centers_.astype(np.float32))
+
+
+def teacher_clusters(x_unit, k):
+    """D12: KMeans(k, n_init=10, random_state=0) on the unit instructed image.
+
+    `x_unit` is a numpy array [n, d]. Returns (centres float32 [k, d],
+    labels int64 [n]) as numpy.
+    """
+    x = np.asarray(x_unit)
+    assert x.ndim == 2 and np.isfinite(x).all() and x.shape[0] >= k
+    km = KMeans(n_clusters=k, n_init=10, random_state=0).fit(x)
+    return km.cluster_centers_.astype(np.float32), km.labels_.astype(np.int64)
+
+
+def teacher_soft(x_unit, centres):
+    """t [n, k]: Student-t (alpha = 1) soft assignments in the teacher's space."""
+    x = torch.as_tensor(np.asarray(x_unit), dtype=torch.float32)
+    c = torch.as_tensor(np.asarray(centres), dtype=torch.float32)
+    return soft_assign(x, c)
+
+
+def cluster_means(z, labels, k):
+    """Mean of z per teacher cluster, float32 [k, d] (the teacher form's start centres)."""
+    _rows('z', z)
+    labels = np.asarray(labels)
+    assert labels.shape == (z.shape[0],) and labels.min() >= 0 and labels.max() < k
+    counts = np.bincount(labels, minlength=k)
+    assert (counts > 0).all(), f'empty teacher cluster: {np.flatnonzero(counts == 0)}'
+    idx = torch.from_numpy(labels.astype(np.int64))
+    sums = torch.zeros(k, z.shape[1], dtype=torch.float64).index_add_(0, idx, z.double())
+    return (sums / torch.from_numpy(counts).double()[:, None]).float()
+
+
+def changed_fraction(prev_argmax, cur_argmax):
+    """Fraction of paintings whose cluster differs between two passes (S1's input)."""
+    prev = np.asarray(prev_argmax)
+    cur = np.asarray(cur_argmax)
+    assert prev.shape == cur.shape and prev.ndim == 1 and prev.size > 0
+    return float((prev != cur).mean())
+
+
+def cluster_shares(argmax, k):
+    """(largest share, smallest share) of the k clusters; the smallest is 0 if one is empty."""
+    a = np.asarray(argmax)
+    assert a.ndim == 1 and a.size > 0 and a.min() >= 0 and a.max() < k
+    shares = np.bincount(a, minlength=k) / a.size
+    return float(shares.max()), float(shares.min())
