@@ -14,7 +14,9 @@ Arguments added to `ct2_d2.run`'s signature:
               dec_data[aspect]['k']        int, the class count (number of centres), all forms
               dec_data[aspect]['feats']    teacher form only: float32 [n_fit, d] unit rows, the teacher's image features
                                            of the head's fit paintings, in the head's fit-node order
-                                           (`graphs[aspect]['fit_node_ids']`, which equals `s['fit']`)
+                                           (`graphs[aspect]['fit_node_ids']`, which equals `s['fit']` as a set)
+              dec_data[aspect]['fit_node_ids']  teacher form only: the node IDs the `feats` rows were extracted for;
+                                           asserted equal, in order, to `graphs[aspect]['fit_node_ids']`
               dec_data[aspect]['centres']  teacher form only: float32 [k, d], the cached teacher k-means centres
             The teacher's cluster of a painting is its nearest centre (the argmax of t), as k-means labels it.
 
@@ -38,7 +40,8 @@ Recorded: every history entry gets a `dec` dict when DEC is on. Warm-up entries:
 `start_epoch` and the shares at DEC start). DEC entries: `phase='dec'`, `start_epoch`, `batches`, `kl`, `pull`,
 `balance` (means over the epoch's batches of the unweighted terms; None when the form has no such term), `changed`,
 `away`, `share_max`, `share_min`; the last entry also `stop_reason` in changed | dec_epochs | patience | max_epochs.
-`train_loss` and `dev_loss` stay c*'s loss alone. The state carries `dec_start_epoch` and `stop_reason`.
+Every `dec` dict also has `seconds_end`: the DEC epoch-end work (full pass, k-means at the start, the stop rule),
+which `seconds` (c*'s, unchanged) leaves out. `train_loss` and `dev_loss` stay c*'s loss alone. The state carries `dec_start_epoch` and `stop_reason`.
 """
 import copy
 import json
@@ -68,7 +71,10 @@ STOP_RULES = ('S1', 'S2')
 
 def validate_dec(dec, aspects, dec_data, max_epochs, graphs):
     """Assert the arm settings and `dec_data`; return True when DEC is on."""
-    if dec is None or dec['form'] == 'off':
+    if dec is None:
+        return False
+    if dec['form'] == 'off':  # the c* rerun: the four other settings are null (index, "Shared interfaces")
+        assert all(dec.get(key) is None for key in ('lam', 'warmup', 'stop', 'balance')), f'off settings {dec}'
         return False
     assert set(dec) == {'form', 'lam', 'warmup', 'stop', 'balance'}, f'dec keys {sorted(dec)}'
     assert dec['form'] in r21_dec.FORMS and dec['stop'] in STOP_RULES
@@ -81,7 +87,9 @@ def validate_dec(dec, aspects, dec_data, max_epochs, graphs):
         d = dec_data[aspect]
         assert isinstance(d['k'], int) and d['k'] >= 2
         if dec['form'] == 'teacher':
-            assert set(d) == {'k', 'feats', 'centres'}
+            assert set(d) == {'k', 'feats', 'centres', 'fit_node_ids'}
+            # The feats rows must be in the head's fit order: the extraction's node IDs must equal the head's.
+            assert np.array_equal(d['fit_node_ids'], graphs[aspect]['fit_node_ids']), 'teacher rows not in fit order'
             n = len(graphs[aspect]['fit_node_ids'])
             assert d['feats'].shape[0] == n and d['feats'].ndim == 2 and d['feats'].dtype == np.float32
             assert d['centres'].shape == (d['k'], d['feats'].shape[1]) and d['centres'].dtype == np.float32
@@ -306,12 +314,14 @@ def run(s, inputs, graphs, manifests, row, name, aspects, seed, device, outdir,
             assert np.isfinite(dev_loss)
             st['history'].append(dict(epoch=st['epoch'], step=step,
                                       train_loss=st['total'] / len(st['fit_pairs']), dev_loss=dev_loss,
-                                      seconds=time.monotonic() - st['tick']))
+                                      seconds=time.monotonic() - st['tick']))  # c*'s seconds: no DEC epoch-end work
             if row['form'] == 'c':
                 st['history'][-1]['mask_penalty'] = float((5e-4 * F.relu(views[aspect]['img'].mask).abs().sum()).detach())
             if dec_on:
+                end = time.monotonic()
                 st['active'] = _dec_epoch_end(st, dec, views[aspect], tensors[aspect]['fit']['img'], opt,
                                               dev_loss, max_epochs)
+                st['history'][-1]['dec']['seconds_end'] = time.monotonic() - end  # DEC epoch-end work, apart from `seconds`
             elif dev_loss < st['best']:
                 st['best'], st['best_epoch'], st['stale'] = dev_loss, st['epoch'], 0
                 st['best_state'] = copy.deepcopy(views[aspect].state_dict())

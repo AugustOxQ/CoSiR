@@ -36,7 +36,10 @@ def small_batch(monkeypatch):
 
 @pytest.fixture
 def world():
-    """Three heads on 2048-dim inputs with three blobs; fit nodes 0..299, dev nodes 300..399."""
+    """Three heads on 2048-dim inputs with three blobs; fit nodes 100..399, dev nodes 0..99.
+
+    Node IDs differ from fit positions (pairs, P and q0 rows count positions), so any use of an ID as a position fails.
+    """
     rng = np.random.default_rng(5)
     row = copy.deepcopy(ms_train.ROWS['T1'])
     inputs, graphs = {}, {}
@@ -45,11 +48,14 @@ def world():
         img = blob[rng.integers(0, K, N_ALL)] + 0.5 * rng.normal(size=(N_ALL, 2048)).astype(np.float32)
         cap = img + 0.5 * rng.normal(size=(N_ALL, 2048)).astype(np.float32)
         inputs[aspect] = dict(img=img, cap=cap)
-        fit, dev = np.arange(N_FIT), np.arange(N_FIT, N_ALL)
+        fit, dev = np.arange(N_ALL - N_FIT, N_ALL), np.arange(N_DEV)
         graphs[aspect] = dict(fit_node_ids=fit, dev_node_ids=dev, rows={GRAPH_ROWS[aspect]: dict(
             fit=_pairs(rng, N_FIT, PAIRS[aspect]), dev=_pairs(rng, N_DEV, 60))})
     row['graphs'] = dict(GRAPH_ROWS)
-    return dict(row=row, inputs=inputs, graphs=graphs)
+    # What the distilled rows read from `s`: the node sets, the teacher's row count and its recorded hashes.
+    s = dict(fit=graphs['emotion']['fit_node_ids'], dev=graphs['emotion']['dev_node_ids'], first=np.arange(N_ALL),
+             data_sha256={f'{a}.img': ct2_d2._sha_array(inputs[a]['img']) for a in ASPECTS})
+    return dict(row=row, inputs=inputs, graphs=graphs, s=s)
 
 
 class Saved:
@@ -75,7 +81,7 @@ def go(runner, world, tmp_path, monkeypatch, seed=0, max_epochs=3, **kwargs):
     saved = Saved()
     monkeypatch.setattr(ct2_d2, 'make_config', _make_config)
     monkeypatch.setattr(ct2_d2, 'save_output', saved)
-    runner(None, world['inputs'], world['graphs'], None, world['row'], 'T', ASPECTS, seed,
+    runner(world['s'], world['inputs'], world['graphs'], None, world['row'], 'T', ASPECTS, seed,
            torch.device('cpu'), tmp_path, max_epochs=max_epochs, **kwargs)
     return saved.out
 
@@ -84,10 +90,28 @@ def _loss_history(entries):
     return [{k: v for k, v in e.items() if k in ('epoch', 'step', 'train_loss', 'dev_loss')} for e in entries]
 
 
-def test_dec_off_equals_frozen_loop_bit_for_bit(world, tmp_path, monkeypatch):
-    frozen = go(ct2_d2.run, world, tmp_path, monkeypatch)
+def _distilled(world):
+    """The world with a distilled row (D3: direct image distillation, the teacher is the instructed image input)."""
+    row = copy.deepcopy(ms_train.ROWS['D3'])
+    row.update(graphs=dict(GRAPH_ROWS), inputs='instructed')
+    return dict(world, row=row)
+
+
+# (case, row built from the world, patience, max_epochs): the default path of c*'s chain, a distilled row, and
+# patience 1 so that the heads stop at different epochs.
+PARITY = [('plain row', lambda w: w, 15, 3), ('distilled row', _distilled, 15, 3), ('patience 1', lambda w: w, 1, 5)]
+
+
+@pytest.mark.parametrize('case', PARITY, ids=[c[0] for c in PARITY])
+def test_dec_off_equals_frozen_loop_bit_for_bit(world, tmp_path, monkeypatch, case):
+    _, build, patience, max_epochs = case
+    world = build(world)
+    monkeypatch.setitem(ms_train.CONFIG, 'patience', patience)
+    frozen = go(ct2_d2.run, world, tmp_path, monkeypatch, max_epochs=max_epochs)
+    if patience == 1:  # the case is only worth its name when the heads stop at different epochs
+        assert len({len(frozen[a]['history']) for a in ASPECTS}) > 1
     for dec in (None, dict(form='off', lam=None, warmup=None, stop=None, balance=None)):
-        new = go(r21_train.run, world, tmp_path, monkeypatch, dec=dec)
+        new = go(r21_train.run, world, tmp_path, monkeypatch, max_epochs=max_epochs, dec=dec)
         for aspect in ASPECTS:
             assert _loss_history(new[aspect]['history']) == _loss_history(frozen[aspect]['history'])
             assert all(set(e) == set(f) for e, f in zip(new[aspect]['history'], frozen[aspect]['history']))
@@ -125,6 +149,41 @@ def test_lambda_zero_adds_exactly_zero_to_the_loss():
     term = hd.block(Identity(), z, ids)
     assert term.item() == 0.0
     assert torch.equal(base + term, base)
+
+
+def test_block_uses_the_rows_of_its_ids_not_a_prefix():
+    z = _blobs()
+    ids = torch.tensor([5, 40, 77])  # not a prefix: P and q0 rows must be taken at these positions
+    for form in ('start', 'teacher'):
+        settings = _settings(form, lam=0.7, balance=True)
+        teacher = None
+        if form == 'teacher':
+            feats = torch.nn.functional.normalize(z[:, :4] + 0.0, dim=1)
+            teacher = dict(feats=feats, centres=torch.eye(4)[:K])
+        hd = r21_train.HeadDec(settings, K, 0, torch.device('cpu'), teacher=teacher)
+        hd.start(z)
+        assert not torch.allclose(hd.p[ids], hd.p[:3]) and not torch.allclose(hd.r[ids], hd.r[:3])
+        total = hd.block(Identity(), z, ids)
+        expected, parts = r21_dec.dec_block(r21_dec.soft_assign(z[ids], hd.centres), hd.p[ids], hd.r[ids], settings)
+        assert total.item() == expected.item()
+        wrong, _ = r21_dec.dec_block(r21_dec.soft_assign(z[ids], hd.centres), hd.p[:3], hd.r[:3], settings)
+        assert abs(total.item() - wrong.item()) > 1e-6
+        assert hd.n_batches == 1 and hd.sums['kl_p'] == parts['kl_p']
+
+
+def test_end_epoch_recomputes_p_from_the_moved_centres():
+    z = _blobs()
+    hd = r21_train.HeadDec(_settings(), K, 0, torch.device('cpu'))
+    hd.start(z)
+    old_p = hd.p.clone()
+    hd.block(Identity(), z, torch.arange(0, 90, 2))
+    g = torch.Generator().manual_seed(0)
+    hd.centres.data = hd.centres.data + 0.3 * torch.randn(hd.centres.shape, generator=g)
+    hd.end_epoch(z)
+    with torch.no_grad():
+        expected = r21_dec.target(r21_dec.soft_assign(z, hd.centres.detach()))
+    assert not torch.allclose(old_p, expected)  # the move matters
+    assert torch.equal(hd.p, expected)
 
 
 def test_centres_receive_gradients_and_start_from_kmeans():
@@ -203,7 +262,8 @@ def _dec_data(world, form='plain', k=K):
             centres /= np.linalg.norm(centres, axis=1, keepdims=True)
             feats = centres[rng.integers(0, k, N_FIT)] + 0.1 * rng.normal(size=(N_FIT, 2048)).astype(np.float32)
             feats /= np.linalg.norm(feats, axis=1, keepdims=True)
-            data[aspect].update(feats=feats.astype(np.float32), centres=centres)
+            data[aspect].update(feats=feats.astype(np.float32), centres=centres,
+                                fit_node_ids=world['graphs'][aspect]['fit_node_ids'].copy())
     return data
 
 
@@ -241,6 +301,23 @@ def test_s1_stops_on_small_change_and_keeps_the_last_state(world, tmp_path, monk
     last = max(ASPECTS, key=lambda a: on[a]['history'][-1]['step'])
     for key, value in on[last]['final_state'].items():
         assert torch.equal(on[last]['best_state'][key], value), key
+
+
+def test_s1_best_state_is_the_last_state_not_the_best_dev_loss(world, tmp_path, monkeypatch):
+    monkeypatch.setattr(r21_train, 'S1_CHANGED', -1.0)
+    monkeypatch.setattr(r21_train, 'S1_MAX_DEC_EPOCHS', 3)
+    # DEC epochs are 2, 3, 4; the dev loss is lowest in the first of them (and in none of the later ones).
+    script = [5.0, 1.0, 3.0, 4.0, 0.125, 0.125]
+    seen = _script_dev(monkeypatch, {a: script for a in ASPECTS})
+    on = go(r21_train.run, world, tmp_path, monkeypatch, max_epochs=9, dec=_settings(warmup=1),
+            dec_data=_dec_data(world))
+    for aspect in ASPECTS:
+        o = on[aspect]
+        assert len(o['history']) == 4 and o['best_epoch'] == 4 and o['best'] == 4.0
+        assert o['state']['stop_reason'] == 'dec_epochs'
+        assert any(not torch.equal(seen[aspect][1][k], seen[aspect][3][k]) for k in seen[aspect][3])  # the states differ
+        for key, value in seen[aspect][3].items():  # the state at the end of the last DEC epoch
+            assert torch.equal(o['best_state'][key], value), key
 
 
 def test_s1_stops_at_the_dec_epoch_cap(world, tmp_path, monkeypatch):
@@ -337,6 +414,85 @@ def test_centres_are_their_own_adamw_group_and_get_updated(world, tmp_path, monk
         (p,) = group['params']
         assert p.shape == (K, 2048) and len(opt.state[p]) > 0  # AdamW stepped it: it got gradients
     assert opt.param_groups[0]['weight_decay'] == ms_train.CONFIG['weight_decay']
+
+
+def _spy_run(monkeypatch):
+    """Record, in call order, the train calls of ms_train.head_loss and the calls of HeadDec.block."""
+    real_loss, real_block = ms_train.head_loss, r21_train.HeadDec.block
+    events = []
+
+    def head_loss(models, *args, aspect=None, include_mask_penalty=True, **kwargs):
+        loss = real_loss(models, *args, aspect=aspect, include_mask_penalty=include_mask_penalty, **kwargs)
+        if include_mask_penalty:
+            events.append(('loss', aspect, np.array(kwargs['pairs']), float(loss.detach())))
+        return loss
+
+    def block(self, view_img, x_fit, ids):
+        events.append(('block', ids.cpu().numpy()))
+        return real_block(self, view_img, x_fit, ids)
+
+    monkeypatch.setattr(ms_train, 'head_loss', head_loss)
+    monkeypatch.setattr(r21_train.HeadDec, 'block', block)
+    return events
+
+
+def test_dec_batches_use_the_unique_fit_positions_of_both_pair_endpoints(world, tmp_path, monkeypatch):
+    monkeypatch.setattr(r21_train, 'S1_CHANGED', -1.0)
+    events = _spy_run(monkeypatch)
+    go(r21_train.run, world, tmp_path, monkeypatch, max_epochs=3, dec=_settings(), dec_data=_dec_data(world))
+    blocks = 0
+    for before, event in zip(events, events[1:]):
+        if event[0] != 'block':
+            continue
+        assert before[0] == 'loss'  # the block belongs to the head_loss call just before it
+        pairs, ids = before[2], event[1]
+        assert np.array_equal(ids, np.unique(pairs))
+        assert len(ids) > len(np.unique(pairs[:, 0])) and ids.max() < N_FIT  # both endpoints; positions, not node IDs
+        blocks += 1
+    assert blocks == sum(-(-PAIRS[a] // BATCH) * 2 for a in ASPECTS)  # DEC epochs 2 and 3 of each head
+
+
+def test_history_train_loss_is_cstars_loss_without_the_dec_term(world, tmp_path, monkeypatch):
+    monkeypatch.setattr(r21_train, 'S1_CHANGED', -1.0)
+    events = _spy_run(monkeypatch)
+    on = go(r21_train.run, world, tmp_path, monkeypatch, max_epochs=4, dec=_settings(warmup=1),
+            dec_data=_dec_data(world))
+    for aspect in ASPECTS:
+        calls = [(len(e[2]), e[3]) for e in events if e[0] == 'loss' and e[1] == aspect]
+        steps = -(-PAIRS[aspect] // BATCH)
+        assert len(calls) == 4 * steps
+        for epoch, entry in enumerate(on[aspect]['history']):
+            chunk = calls[epoch * steps:(epoch + 1) * steps]
+            assert entry['train_loss'] == pytest.approx(sum(n * v for n, v in chunk) / PAIRS[aspect], rel=1e-9)
+        assert on[aspect]['history'][-1]['dec']['kl'] > 0  # a DEC term was added to the loss that was stepped
+
+
+def test_every_dec_entry_has_the_epoch_end_seconds(world, tmp_path, monkeypatch):
+    monkeypatch.setattr(r21_train, 'S1_CHANGED', -1.0)
+    on = go(r21_train.run, world, tmp_path, monkeypatch, max_epochs=3, dec=_settings(), dec_data=_dec_data(world))
+    for aspect in ASPECTS:
+        history = on[aspect]['history']
+        assert all(e['dec']['seconds_end'] > 0.0 for e in history)
+        assert all('seconds' in e for e in history)  # c*'s own key stays
+
+
+def test_teacher_rows_must_be_in_fit_order(world, tmp_path, monkeypatch):
+    dec_data = _dec_data(world, 'teacher')
+    dec_data['style']['fit_node_ids'] = dec_data['style']['fit_node_ids'][::-1].copy()  # same set, other order
+    with pytest.raises(AssertionError, match='fit order'):
+        go(r21_train.run, world, tmp_path, monkeypatch, dec=_settings('teacher'), dec_data=dec_data)
+    dec_data = _dec_data(world, 'teacher')
+    del dec_data['emotion']['fit_node_ids']  # the key is required
+    with pytest.raises(AssertionError):
+        go(r21_train.run, world, tmp_path, monkeypatch, dec=_settings('teacher'), dec_data=dec_data)
+
+
+def test_off_settings_must_be_null(world, tmp_path, monkeypatch):
+    for key, value in dict(lam=1.0, warmup=1, stop='S1', balance=False).items():
+        dec = dict(form='off', lam=None, warmup=None, stop=None, balance=None)
+        dec[key] = value
+        with pytest.raises(AssertionError):
+            go(r21_train.run, world, tmp_path, monkeypatch, dec=dec)
 
 
 def test_dec_settings_are_asserted(world, tmp_path, monkeypatch):
