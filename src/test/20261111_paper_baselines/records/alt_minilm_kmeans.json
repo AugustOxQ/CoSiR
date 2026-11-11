@@ -1,0 +1,398 @@
+[
+  {
+    "aspect": "emotion",
+    "bootstrap_seed": 0,
+    "cand": 0.1024127745008577,
+    "cand_per_seed_ami": [
+      0.10170414948655143,
+      0.1014205620544615,
+      0.10422471043584887,
+      0.10367677595260098,
+      0.10103767457482578
+    ],
+    "candidate": "cstar",
+    "candidate_gate_note": "Not rerun: reuse exact gate and per-seed AMI from cells.json; score_cell still checks candidate mean against that gate.",
+    "comp": 0.08408421917428817,
+    "comp_per_state_ami": [
+      0.09505188647065285,
+      0.08034707681326402,
+      0.07685369423894768
+    ],
+    "comparator": "minilm_kmeans",
+    "comparator_states": [
+      0,
+      1,
+      2
+    ],
+    "d": 0.01832855532656953,
+    "encoder": "qwen",
+    "gate": {
+      "abs_difference": 0.0,
+      "cand": 0.1024127745008577,
+      "per_seed": [
+        0.10170414948655143,
+        0.1014205620544615,
+        0.10422471043584887,
+        0.10367677595260098,
+        0.10103767457482578
+      ],
+      "r18_cand": 0.1024127745008577,
+      "tolerance": 1e-09
+    },
+    "hi": 0.022360852455563445,
+    "id": "minilm_kmeans/emotion/ami/9",
+    "input_sha256s": {
+      "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/minilm.json": "6dd16b2d0f45228458cf29bd39b7e3a131e106f78a83bd6533b710960d391485",
+      "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/minilm.npy": "9608209e10535aa0a39a54a3b11535c42ee6a540dc3faef5de9c104bdbccda1f",
+      "/project/CoSiR/src/test/20261103_outside_methods/records/stage1_om_ranges.json": "2f30eb7c47299af32c53b093a05fe012c3ea5531594f2af4aa98478b54d859b0",
+      "/project/CoSiR/src/test/20261111_paper_baselines/records/cells.json": "90fc108c17a5fe0961c49cc5bdb27f3bfc576319e67d0fdb825d569fcf0a6fb1",
+      "candidate_partitions_array": "91207942aadfc931b3d2fe536e7fce343eeb0bd14ea75b20326e60c97808b34c",
+      "comparator_partitions_array": "6c431dca3fa92b43c75dc8408612ab7f731c7c7cc475996871903f58a970243a",
+      "labels_array": "64f919a5f2b049e5ac60d81c511820793ce7d48cdf25090f6d577a673e1d790e",
+      "names_newline_utf8": "a0b1139c6056fd858ddbd2ee1dd4bafd1453e590818c6aa59883364c0288a876"
+    },
+    "k": 9,
+    "label": "WIN",
+    "lo": 0.014257567297751473,
+    "metric": "ami",
+    "n_draws": 2000,
+    "n_labelled": 12281,
+    "n_rows": 12281,
+    "outcome": "WIN",
+    "r": 0.003627631477242557,
+    "r_source": "/project/CoSiR/src/test/20261103_outside_methods/records/stage1_om_ranges.json:artelingo/qwen/emotion/ami/9:r",
+    "set": "artelingo",
+    "smoke": false,
+    "split": "held"
+  },
+  {
+    "aspect": "emotion",
+    "bootstrap_seed": 0,
+    "cand": 0.10658729378204021,
+    "cand_per_seed_ami": [
+      0.10751887239964945,
+      0.1097603100100391,
+      0.10523190688437208,
+      0.10561631957244356,
+      0.1048090600436969
+    ],
+    "candidate": "cstar",
+    "candidate_gate_note": "Not rerun: reuse exact gate and per-seed AMI from cells.json; score_cell still checks candidate mean against that gate.",
+    "comp": 0.09150838833842272,
+    "comp_per_state_ami": [
+      0.09355649837909286,
+      0.0884087224148431,
+      0.09255994422133218
+    ],
+    "comparator": "minilm_kmeans",
+    "comparator_states": [
+      0,
+      1,
+      2
+    ],
+    "d": 0.015078905443617494,
+    "encoder": "qwen",
+    "gate": {
+      "abs_difference": 0.0,
+      "cand": 0.10658729378204021,
+      "per_seed": [
+        0.10751887239964945,
+        0.1097603100100391,
+        0.10523190688437208,
+        0.10561631957244356,
+        0.1048090600436969
+      ],
+      "r18_cand": 0.10658729378204021,
+      "tolerance": 1e-09
+    },
+    "hi": 0.019071054385388312,
+    "id": "minilm_kmeans/emotion/ami/20",
+    "input_sha256s": {
+      "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/minilm.json": "6dd16b2d0f45228458cf29bd39b7e3a131e106f78a83bd6533b710960d391485",
+      "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/minilm.npy": "9608209e10535aa0a39a54a3b11535c42ee6a540dc3faef5de9c104bdbccda1f",
+      "/project/CoSiR/src/test/20261103_outside_methods/records/stage1_om_ranges.json": "2f30eb7c47299af32c53b093a05fe012c3ea5531594f2af4aa98478b54d859b0",
+      "/project/CoSiR/src/test/20261111_paper_baselines/records/cells.json": "90fc108c17a5fe0961c49cc5bdb27f3bfc576319e67d0fdb825d569fcf0a6fb1",
+      "candidate_partitions_array": "b079ef8272060a35a68388dfe1ffb9205767de56703d1d757c9013b1af5b9bb0",
+      "comparator_partitions_array": "9e2a03ffc2113281869aaa1dabac649d5e61146e8d2add91796650f9e68194e9",
+      "labels_array": "64f919a5f2b049e5ac60d81c511820793ce7d48cdf25090f6d577a673e1d790e",
+      "names_newline_utf8": "a0b1139c6056fd858ddbd2ee1dd4bafd1453e590818c6aa59883364c0288a876"
+    },
+    "k": 20,
+    "label": "WIN",
+    "lo": 0.01109682444542505,
+    "metric": "ami",
+    "n_draws": 2000,
+    "n_labelled": 12281,
+    "n_rows": 12281,
+    "outcome": "WIN",
+    "r": 0.005878435780109215,
+    "r_source": "/project/CoSiR/src/test/20261103_outside_methods/records/stage1_om_ranges.json:artelingo/qwen/emotion/ami/20:r",
+    "set": "artelingo",
+    "smoke": false,
+    "split": "held"
+  },
+  {
+    "aspect": "style",
+    "bootstrap_seed": 0,
+    "cand": 0.4109255361955107,
+    "cand_per_seed_ami": [
+      0.40988274925321583,
+      0.41263567138830676,
+      0.41086361540419264,
+      0.41063120787595025,
+      0.41061443705588774
+    ],
+    "candidate": "cstar",
+    "candidate_gate_note": "Not rerun: reuse exact gate and per-seed AMI from cells.json; score_cell still checks candidate mean against that gate.",
+    "comp": 0.10743545651524267,
+    "comp_per_state_ami": [
+      0.10668638222693737,
+      0.10893218055627399,
+      0.10668780676251664
+    ],
+    "comparator": "minilm_kmeans",
+    "comparator_states": [
+      0,
+      1,
+      2
+    ],
+    "d": 0.30349007968026803,
+    "encoder": "qwen",
+    "gate": {
+      "abs_difference": 0.0,
+      "cand": 0.4109255361955107,
+      "per_seed": [
+        0.40988274925321583,
+        0.41263567138830676,
+        0.41086361540419264,
+        0.41063120787595025,
+        0.41061443705588774
+      ],
+      "r18_cand": 0.4109255361955107,
+      "tolerance": 1e-09
+    },
+    "hi": 0.30627213585631624,
+    "id": "minilm_kmeans/style/ami/27",
+    "input_sha256s": {
+      "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/minilm.json": "6dd16b2d0f45228458cf29bd39b7e3a131e106f78a83bd6533b710960d391485",
+      "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/minilm.npy": "9608209e10535aa0a39a54a3b11535c42ee6a540dc3faef5de9c104bdbccda1f",
+      "/project/CoSiR/src/test/20261103_outside_methods/records/stage1_om_ranges.json": "2f30eb7c47299af32c53b093a05fe012c3ea5531594f2af4aa98478b54d859b0",
+      "/project/CoSiR/src/test/20261111_paper_baselines/records/cells.json": "90fc108c17a5fe0961c49cc5bdb27f3bfc576319e67d0fdb825d569fcf0a6fb1",
+      "candidate_partitions_array": "d61c923339c4fa3bc821974545e0c28f9fc36f66e3c46b04ceea99497bab6539",
+      "comparator_partitions_array": "8b036803db35a526d5395398611a89debf32f6216eaf974380108d4b16fdd0a5",
+      "labels_array": "16fdb57d0cf64cc98e01527ddeac5ec3867cbb88a2efce256407a77409fec391",
+      "names_newline_utf8": "a0b1139c6056fd858ddbd2ee1dd4bafd1453e590818c6aa59883364c0288a876"
+    },
+    "k": 27,
+    "label": "WIN",
+    "lo": 0.29450165606382717,
+    "metric": "ami",
+    "n_draws": 2000,
+    "n_labelled": 12281,
+    "n_rows": 12281,
+    "outcome": "WIN",
+    "r": 0.008678457342291501,
+    "r_source": "/project/CoSiR/src/test/20261103_outside_methods/records/stage1_om_ranges.json:artelingo/qwen/style/ami/27:r",
+    "set": "artelingo",
+    "smoke": false,
+    "split": "held"
+  },
+  {
+    "aspect": "style",
+    "bootstrap_seed": 0,
+    "cand": 0.40664322288431654,
+    "cand_per_seed_ami": [
+      0.40665958740455416,
+      0.4034617010213204,
+      0.4072156901371417,
+      0.40646505343462075,
+      0.4094140824239456
+    ],
+    "candidate": "cstar",
+    "candidate_gate_note": "Not rerun: reuse exact gate and per-seed AMI from cells.json; score_cell still checks candidate mean against that gate.",
+    "comp": 0.10104001396034246,
+    "comp_per_state_ami": [
+      0.10193298337182245,
+      0.10409637991610451,
+      0.0970906785931004
+    ],
+    "comparator": "minilm_kmeans",
+    "comparator_states": [
+      0,
+      1,
+      2
+    ],
+    "d": 0.3056032089239741,
+    "encoder": "qwen",
+    "gate": {
+      "abs_difference": 0.0,
+      "cand": 0.40664322288431654,
+      "per_seed": [
+        0.40665958740455416,
+        0.4034617010213204,
+        0.4072156901371417,
+        0.40646505343462075,
+        0.4094140824239456
+      ],
+      "r18_cand": 0.40664322288431654,
+      "tolerance": 1e-09
+    },
+    "hi": 0.30914652820637595,
+    "id": "minilm_kmeans/style/ami/20",
+    "input_sha256s": {
+      "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/minilm.json": "6dd16b2d0f45228458cf29bd39b7e3a131e106f78a83bd6533b710960d391485",
+      "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/minilm.npy": "9608209e10535aa0a39a54a3b11535c42ee6a540dc3faef5de9c104bdbccda1f",
+      "/project/CoSiR/src/test/20261103_outside_methods/records/stage1_om_ranges.json": "2f30eb7c47299af32c53b093a05fe012c3ea5531594f2af4aa98478b54d859b0",
+      "/project/CoSiR/src/test/20261111_paper_baselines/records/cells.json": "90fc108c17a5fe0961c49cc5bdb27f3bfc576319e67d0fdb825d569fcf0a6fb1",
+      "candidate_partitions_array": "984b22008865ec005df795066952dc3bdc29a0a87a0d7bffeb1b2335918ac558",
+      "comparator_partitions_array": "9e2a03ffc2113281869aaa1dabac649d5e61146e8d2add91796650f9e68194e9",
+      "labels_array": "16fdb57d0cf64cc98e01527ddeac5ec3867cbb88a2efce256407a77409fec391",
+      "names_newline_utf8": "a0b1139c6056fd858ddbd2ee1dd4bafd1453e590818c6aa59883364c0288a876"
+    },
+    "k": 20,
+    "label": "WIN",
+    "lo": 0.2970681420009463,
+    "metric": "ami",
+    "n_draws": 2000,
+    "n_labelled": 12281,
+    "n_rows": 12281,
+    "outcome": "WIN",
+    "r": 0.010726282285881183,
+    "r_source": "/project/CoSiR/src/test/20261103_outside_methods/records/stage1_om_ranges.json:artelingo/qwen/style/ami/20:r",
+    "set": "artelingo",
+    "smoke": false,
+    "split": "held"
+  },
+  {
+    "aspect": "genre",
+    "bootstrap_seed": 0,
+    "cand": 0.5100704595257602,
+    "cand_per_seed_ami": [
+      0.5003355445541049,
+      0.5055500101860763,
+      0.5118191815182568,
+      0.5174186802326505,
+      0.515228881137713
+    ],
+    "candidate": "cstar",
+    "candidate_gate_note": "Not rerun: reuse exact gate and per-seed AMI from cells.json; score_cell still checks candidate mean against that gate.",
+    "comp": 0.288443511911962,
+    "comp_per_state_ami": [
+      0.3136584822931758,
+      0.2531862002043663,
+      0.298485853238344
+    ],
+    "comparator": "minilm_kmeans",
+    "comparator_states": [
+      0,
+      1,
+      2
+    ],
+    "d": 0.22162694761379825,
+    "encoder": "qwen",
+    "gate": {
+      "abs_difference": 0.0,
+      "cand": 0.5100704595257602,
+      "per_seed": [
+        0.5003355445541049,
+        0.5055500101860763,
+        0.5118191815182568,
+        0.5174186802326505,
+        0.515228881137713
+      ],
+      "r18_cand": 0.5100704595257602,
+      "tolerance": 1e-09
+    },
+    "hi": 0.23102987856958992,
+    "id": "minilm_kmeans/genre/ami/10",
+    "input_sha256s": {
+      "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/minilm.json": "6dd16b2d0f45228458cf29bd39b7e3a131e106f78a83bd6533b710960d391485",
+      "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/minilm.npy": "9608209e10535aa0a39a54a3b11535c42ee6a540dc3faef5de9c104bdbccda1f",
+      "/project/CoSiR/src/test/20261103_outside_methods/records/stage1_om_ranges.json": "2f30eb7c47299af32c53b093a05fe012c3ea5531594f2af4aa98478b54d859b0",
+      "/project/CoSiR/src/test/20261111_paper_baselines/records/cells.json": "90fc108c17a5fe0961c49cc5bdb27f3bfc576319e67d0fdb825d569fcf0a6fb1",
+      "candidate_partitions_array": "152d1a70a160971aa081d37c225fafed795ce6bd8a98bee58f6f62b9032df33e",
+      "comparator_partitions_array": "34e4dc8bbc2b50438f3e8e6831dbbfb219a338da2b5d6773cd07bf97f3706531",
+      "labels_array": "e7d63fe8c07768ea5b956a2dfd11baf1e832185d001e3aece9f3b6ece6f686dd",
+      "names_newline_utf8": "a0b1139c6056fd858ddbd2ee1dd4bafd1453e590818c6aa59883364c0288a876"
+    },
+    "k": 10,
+    "label": "WIN",
+    "lo": 0.21144320505633296,
+    "metric": "ami",
+    "n_draws": 2000,
+    "n_labelled": 9949,
+    "n_rows": 12281,
+    "outcome": "WIN",
+    "r": 0.01356068956441503,
+    "r_source": "/project/CoSiR/src/test/20261103_outside_methods/records/stage1_om_ranges.json:artelingo/qwen/genre/ami/10:r",
+    "set": "artelingo",
+    "smoke": false,
+    "split": "held"
+  },
+  {
+    "aspect": "genre",
+    "bootstrap_seed": 0,
+    "cand": 0.5001038781216712,
+    "cand_per_seed_ami": [
+      0.4950504728005592,
+      0.5057144380417714,
+      0.4998291425338697,
+      0.49872544414675674,
+      0.5011998930853987
+    ],
+    "candidate": "cstar",
+    "candidate_gate_note": "Not rerun: reuse exact gate and per-seed AMI from cells.json; score_cell still checks candidate mean against that gate.",
+    "comp": 0.2948834777290896,
+    "comp_per_state_ami": [
+      0.294385463157847,
+      0.3147268860599366,
+      0.2755380839694852
+    ],
+    "comparator": "minilm_kmeans",
+    "comparator_states": [
+      0,
+      1,
+      2
+    ],
+    "d": 0.2052204003925816,
+    "encoder": "qwen",
+    "gate": {
+      "abs_difference": 0.0,
+      "cand": 0.5001038781216712,
+      "per_seed": [
+        0.4950504728005592,
+        0.5057144380417714,
+        0.4998291425338697,
+        0.49872544414675674,
+        0.5011998930853987
+      ],
+      "r18_cand": 0.5001038781216712,
+      "tolerance": 1e-09
+    },
+    "hi": 0.2128893509334945,
+    "id": "minilm_kmeans/genre/ami/20",
+    "input_sha256s": {
+      "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/minilm.json": "6dd16b2d0f45228458cf29bd39b7e3a131e106f78a83bd6533b710960d391485",
+      "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/minilm.npy": "9608209e10535aa0a39a54a3b11535c42ee6a540dc3faef5de9c104bdbccda1f",
+      "/project/CoSiR/src/test/20261103_outside_methods/records/stage1_om_ranges.json": "2f30eb7c47299af32c53b093a05fe012c3ea5531594f2af4aa98478b54d859b0",
+      "/project/CoSiR/src/test/20261111_paper_baselines/records/cells.json": "90fc108c17a5fe0961c49cc5bdb27f3bfc576319e67d0fdb825d569fcf0a6fb1",
+      "candidate_partitions_array": "456a1932b690ef10f3a87269a4fa17c5fd11c237752850555333851f2fb49dbe",
+      "comparator_partitions_array": "9e2a03ffc2113281869aaa1dabac649d5e61146e8d2add91796650f9e68194e9",
+      "labels_array": "e7d63fe8c07768ea5b956a2dfd11baf1e832185d001e3aece9f3b6ece6f686dd",
+      "names_newline_utf8": "a0b1139c6056fd858ddbd2ee1dd4bafd1453e590818c6aa59883364c0288a876"
+    },
+    "k": 20,
+    "label": "WIN",
+    "lo": 0.19648226933701865,
+    "metric": "ami",
+    "n_draws": 2000,
+    "n_labelled": 9949,
+    "n_rows": 12281,
+    "outcome": "WIN",
+    "r": 0.01390536109142726,
+    "r_source": "/project/CoSiR/src/test/20261103_outside_methods/records/stage1_om_ranges.json:artelingo/qwen/genre/ami/20:r",
+    "set": "artelingo",
+    "smoke": false,
+    "split": "held"
+  }
+]
