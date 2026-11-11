@@ -2183,3 +2183,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-11-r25-report-handoff.md
 - New chat: tab 'r25 report', session 56e85397-814b-4e8a-a550-2a43133560f1
 
+[brief] CoSiR: paper sec4 tables 2 -> paper sec4 tables 3 (2026-11-11 08:09 Amsterdam)
+- Done: the MMArt table (4.4, own subsection), the first 4.2 paragraph on Table 2, the 4.1 sentences on the two PercepT versions, and a Table 3 scorer that passed both gates.
+- State: ours leads Table 2 on all three aspects. Table 3's VLM2Vec and PercepT (CLIP L/14) rows are still empty.
+- Next: run the VLM2Vec wait script now, then score PercepT (CLIP L/14) when r26 sends its test path and kept seeds.
+- Blocked: the user's 11:00 meeting. Ask nothing about it until the user says it is over.
+- Handoff: docs/superpowers/handoffs/2026-11-11-paper-sec4-tables-3-handoff.md
+- New chat: tab 'paper sec4 tables 3', session fbe2bfe2-feba-40d2-884a-0c2749fcf138
+
