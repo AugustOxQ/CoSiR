@@ -12,7 +12,8 @@ CLI (from the worktree root; Python of the CoSiR env):
       checked against r17's `records/stage1_ranges.json` to 6 decimals.
   python .../r21_score.py sheet [--seed 0]
       Stage 1 number sheet and picks over every arm in R21/train: `scores/stage1_sheet.{json,md}`,
-      `scores/stage1_picks.json`.
+      `scores/stage1_picks.json`. Picks only when gate 0c is PASS (else exit non-zero, no picks); each pick level is
+      write-once (a different pick exits non-zero unless `--force`, which logs the override).
 
 Held-data rule: `val` and `sheet` read validation exports only (`check_dev_path`); the test set is read only by
 `gate0a`, which is the scoring regression of §3.5 and shapes no choice.
@@ -22,11 +23,14 @@ identical to r20's `ct_held.painting_labels` on the held list, checked). AMI rea
 and not renormalised (r17's clustering form, `ns_data.cstar(unit=False)`); mAP reads unit rows (r11's retrieval form).
 """
 import argparse
+import copy
+import datetime
 import hashlib
 import json
 import math
 import sys
 import time
+import zoneinfo
 from pathlib import Path
 
 import numpy as np
@@ -46,6 +50,8 @@ TOL_AMI = 5e-7                                                     # "equal to 6
 TOL_MAP = 1e-9
 TOL_0C_AMI = 0.004
 TOL_0C_EPOCHS = 2
+EPS = 1e-12                                                        # float slack on the edges that are inclusive
+STOP_REASONS = ('changed', 'dec_epochs', 'patience', 'max_epochs')   # r21_train's `dec['stop_reason']`
 R21 = Path('/data/SSD2/cosir_r21/20261111_dec_heads')
 R10_FULL = Path('/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full')
 SCORES = R21 / 'scores'
@@ -91,7 +97,7 @@ def select(rows, ref_ami):
                          mean_d_ami=_mean({a: r['ami'][a] - ref_ami[a] for a in ASPECTS}), mean_map=_mean(r['map'])))
     cand.sort(key=lambda c: -c['mean_d_ami'])
     best = cand[0]['mean_d_ami']
-    band = [c for c in cand if best - c['mean_d_ami'] <= TIE_BAND + 1e-12]
+    band = [c for c in cand if best - c['mean_d_ami'] <= TIE_BAND + EPS]
     band.sort(key=lambda c: (-c['mean_map'], c['lam']))
     top = [c for c in band if (c['mean_map'], c['lam']) == (band[0]['mean_map'], band[0]['lam'])]
     beyond = len(top) > 1
@@ -179,6 +185,8 @@ def load_val(arm, aspect, seed, train_root=None):
     assert x.shape == (N_VAL, 2048) and x.dtype == np.float16 and np.isfinite(x).all(), (path, x.shape, x.dtype)
     cfg = side['config']
     assert cfg['mode'] == 'full' and cfg['smoke'] is False, path
+    got = (cfg.get('rg') or {}).get('arm')      # the arm name is `config['rg']['arm']` ('name' is the recipe, R6-5); rg_full checks it too
+    assert got == arm_dir(arm), f"{path}: sidecar config rg.arm {got!r}, the arm's folder is {arm_dir(arm)!r}"
     assert cfg['aspect'] == aspect and cfg['seed'] == seed and cfg['graph_row'] == GRAPH[aspect], path
     assert cfg['output_rows'] == N_VAL and cfg['names_sha256']['dev'] == rt_data.rs_vh.names_sha(names), path
     assert side['output_sha256'] == rt_data.rs_vh.file_sha(path), f'{path}: file hash differs from its sidecar'
@@ -232,38 +240,87 @@ def check_cstar_ranges(res):
     return out
 
 
+def code_hashes():
+    """SHA-256 of the files whose code computes a validation number (`val_aspect`): this file; r17's `ns_metrics` (k-means
+    partitions, AMI) and `ns_data` (labels); r11's `rt_data` (names, labels) and `rt_metrics` (retrieval AP); r20's `r20_ret`
+    (unit rows, `score_rows`). Keyed by file name."""
+    _deps()
+    files = [Path(__file__), Path(ns_metrics.__file__), Path(ns_data.__file__), Path(rt_data.__file__),
+             Path(r20_ret.rt_metrics.__file__), Path(r20_ret.__file__)]
+    return {f.name: hashlib.sha256(f.read_bytes()).hexdigest() for f in files}
+
+
 def val_cached(arm, seed, scores_dir=None, train_root=None, workers=8):
-    """`val_scores`, read from `scores/val/<arm>__s<seed>.json` when its recorded input hashes equal the current exports'
-    (every export is loaded and checked either way); else computed and written there."""
+    """`val_scores`, read from `scores/val/<arm>__s<seed>.json` when its recorded input hashes equal the current exports' and
+    its recorded `code_sha256` equals the scoring code's now (every export is loaded and checked either way); else computed
+    and written there with the code hashes."""
     scores_dir = Path(scores_dir or SCORES)
     path = scores_dir / 'val' / f'{arm}__s{seed}.json'
+    code = code_hashes()
     if path.exists():
         old = json.loads(path.read_text())
-        if all(old['aspects'][a]['input_sha256'] == load_val(arm, a, seed, train_root)[1]['output_sha256']
-               for a in ASPECTS):
+        if old.get('code_sha256') == code and all(
+                old['aspects'][a]['input_sha256'] == load_val(arm, a, seed, train_root)[1]['output_sha256'] for a in ASPECTS):
             return old
     res = val_scores(arm, seed, ASPECTS, train_root, workers)
+    res['code_sha256'] = code
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(res, indent=1, allow_nan=False) + '\n')
     return res
 
 
 # ================================================================================================ stage 1 sheet
+def head_dec(arm, aspect, side):
+    """(DEC epochs, DEC start epoch, stop reason) of one head from its sidecar's history, in r21_train's format: with DEC on
+    (any form but `off`) warm-up entries carry `dec={'phase': 'warmup'}` (epoch W also `start_epoch`), DEC entries
+    `dec={'phase': 'dec', 'start_epoch': ...}`, the last entry `dec['stop_reason']`. DEC off and saved c*: no `dec` key
+    anywhere, (0, None, None)."""
+    hist = side['history']
+    if arm == CSTAR or r21_arms.parse_arm(arm)['form'] == 'off':
+        assert not any('dec' in h for h in hist), f'{arm}/{aspect}: DEC entries in a DEC-off history'
+        return 0, None, None
+    where = f'{arm}/{aspect}'
+    assert all(isinstance(h.get('dec'), dict) and h['dec'].get('phase') in ('warmup', 'dec') for h in hist), where
+    phases = [h['dec']['phase'] for h in hist]
+    n_dec = phases.count('dec')
+    assert n_dec >= 1 and phases == ['warmup'] * (len(hist) - n_dec) + ['dec'] * n_dec, f'{where}: no DEC epoch, or not warm-up then DEC'
+    first = hist[len(hist) - n_dec]
+    start = first['dec']['start_epoch']
+    assert start == first['epoch'] and all(h['dec']['start_epoch'] == start for h in hist[len(hist) - n_dec:]), where
+    if n_dec < len(hist):
+        assert hist[len(hist) - n_dec - 1]['dec'].get('start_epoch') == start, f'{where}: warm-up epoch W has another start_epoch'
+    reason = hist[-1]['dec'].get('stop_reason')
+    assert reason in STOP_REASONS, f'{where}: the last history entry has stop_reason {reason!r}'
+    return n_dec, int(start), reason
+
+
 def make_row(arm, val, sides, record, ref_val):
     """One sheet row. val: `val_scores` of the arm; sides: {aspect: training sidecar}; record: the arm's `run__s<seed>.json`
-    (or None); ref_val: `val_scores` of saved c* with the same seed. DEC epochs = history entries that carry a `dec` entry
-    (the trainer's per-epoch DEC stats, index "Shared interfaces"); the stop reason is read from `record['heads'][aspect]
-    ['stop_reason']` and is None when the record does not carry it."""
+    (or None); ref_val: `val_scores` of saved c* with the same seed. DEC epochs = history entries with `dec['phase'] ==
+    'dec'`; DEC start epoch and stop reason are read from the sidecar's history (`head_dec`). When the run record has
+    `heads.<aspect>.stop_reason` / `dec_start_epoch` they must equal the sidecar's; with DEC off (no DEC stop rule) the
+    reason is the record's (c*'s: patience or max_epochs) or None."""
     assert val['aspects'].keys() == ref_val['aspects'].keys() == set(ASPECTS) == set(sides)
     v, r = val['aspects'], ref_val['aspects']
+    dec = {a: head_dec(arm, a, sides[a]) for a in ASPECTS}
+    heads = (record or {}).get('heads') or {}
+    stop = {}
+    for a in ASPECTS:
+        rec_a = heads.get(a) or {}
+        n, start, reason = dec[a]
+        if arm != CSTAR and r21_arms.parse_arm(arm)['form'] != 'off':
+            assert rec_a.get('stop_reason', reason) == reason, (arm, a, 'run record stop_reason', rec_a.get('stop_reason'), reason)
+            assert rec_a.get('dec_start_epoch', start) == start, (arm, a, 'run record dec_start_epoch', rec_a.get('dec_start_epoch'), start)
+            stop[a] = reason
+        else:
+            stop[a] = rec_a.get('stop_reason')
     row = dict(arm=arm, settings=None if arm == CSTAR else r21_arms.parse_arm(arm), seed=val['seed'],
                ami={a: v[a]['ami'] for a in ASPECTS}, map={a: v[a]['map'] for a in ASPECTS},
                d_ami={a: v[a]['ami'] - r[a]['ami'] for a in ASPECTS}, d_map={a: v[a]['map'] - r[a]['map'] for a in ASPECTS},
                largest_share={a: v[a]['largest_share']['max'] for a in ASPECTS},
                best_epoch={a: int(sides[a]['best_epoch']) for a in ASPECTS},
                epochs_run={a: len(sides[a]['history']) for a in ASPECTS},
-               dec_epochs={a: sum(isinstance(h.get('dec'), dict) for h in sides[a]['history']) for a in ASPECTS},
-               stop_reason={a: ((record or {}).get('heads', {}).get(a, {})).get('stop_reason') for a in ASPECTS})
+               dec_epochs={a: dec[a][0] for a in ASPECTS}, dec_start_epoch={a: dec[a][1] for a in ASPECTS}, stop_reason=stop)
     for a in ASPECTS:
         assert sides[a]['epochs_run'] == row['epochs_run'][a], (arm, a)
     row['mean_d_ami'] = _mean(row['d_ami'])
@@ -273,13 +330,14 @@ def make_row(arm, val, sides, record, ref_val):
 
 def zero_c_line(off_row, cstar_row):
     """Gate 0c (§3.5): the dec-off rerun's best epochs within `TOL_0C_EPOCHS` of the saved run's, and its validation AMI
-    within `TOL_0C_AMI` of the saved run's, per aspect (seed 0). 'pending' while the rerun has not run."""
+    within `TOL_0C_AMI` of the saved run's (both edges inclusive, `EPS` float slack on the AMI one), per aspect (seed 0).
+    'pending' while the rerun has not run."""
     if off_row is None:
         return dict(status='pending')
     assert off_row['seed'] == cstar_row['seed'] == 0
     epochs = {a: off_row['best_epoch'][a] - cstar_row['best_epoch'][a] for a in ASPECTS}
     ami = {a: off_row['ami'][a] - cstar_row['ami'][a] for a in ASPECTS}
-    ok = all(abs(e) <= TOL_0C_EPOCHS for e in epochs.values()) and all(abs(d) <= TOL_0C_AMI for d in ami.values())
+    ok = all(abs(e) <= TOL_0C_EPOCHS for e in epochs.values()) and all(abs(d) <= TOL_0C_AMI + EPS for d in ami.values())
     return dict(status='PASS' if ok else 'FAIL', best_epoch_diff=epochs, ami_diff=ami, rerun_best_epoch=off_row['best_epoch'],
                 saved_best_epoch=cstar_row['best_epoch'], tol_epochs=TOL_0C_EPOCHS, tol_ami=TOL_0C_AMI)
 
@@ -311,6 +369,8 @@ def sheet_markdown(doc):
         lines += ['', 'Arms with no complete export set at this seed: ' + ', '.join(doc['missing']) + '.']
     lines.append('')
     p = doc['picks']
+    if z['status'] != 'PASS':
+        lines.append(f"No picks: gate 0c is {z['status']} (spec 3.5: stop when 0c fails; picks need a PASS).")
     for key in ('stage1a',):
         if p.get(key):
             lines.append(f"Selection rule: highest mean over the aspects of (AMI - c* seed 0 AMI); ties within {TIE_BAND} go to "
@@ -326,11 +386,20 @@ def sheet_markdown(doc):
     return '\n'.join(lines) + '\n'
 
 
+def check_record(record, arm, seed):
+    """The run record `run__s<seed>.json` of folder `arm` is that arm's and that seed's: its arm, settings and seed."""
+    assert record['arm'] == arm, f"run record of arm {record['arm']!r} in folder {arm!r}"
+    assert record['settings'] == r21_arms.parse_arm(arm), f"{arm}: run record settings {record['settings']} differ from the name's"
+    assert record['seed'] == seed, f"{arm}: run record seed {record['seed']}, expected {seed}"
+
+
 def collect_rows(seed=0, train_root=None, scores_dir=None, workers=8):
     """Every arm folder under R21/full/train with its seed-`seed` validation exports: (cstar row, {arm: row}, missing).
     An arm with some but not all three exports is refused (a stage 1 run must finish)."""
     train_root = Path(train_root or R21 / 'full' / 'train')
     ref = val_cached(CSTAR, seed, scores_dir, workers=workers)
+    chk = check_cstar_ranges(ref)
+    assert all(c['ok'] for c in chk.values()), f'saved c* seed {seed} validation AMI differs from stage1_ranges.json: {chk}'
     cstar = make_row(CSTAR, ref, {a: load_val(CSTAR, a, seed)[1] for a in ASPECTS}, None, ref)
     rows, missing = {}, []
     for d in sorted(p for p in train_root.iterdir() if p.is_dir()):
@@ -346,6 +415,8 @@ def collect_rows(seed=0, train_root=None, scores_dir=None, workers=8):
         rec_path = d / f'run__s{seed}.json'
         assert 'train' in rec_path.parts and not ({'held', 'test'} & set(rec_path.parts)), rec_path
         record = json.loads(rec_path.read_text()) if rec_path.exists() else None
+        if record is not None:
+            check_record(record, arm, seed)
         rows[arm] = make_row(arm, val, sides, record, ref)
     return cstar, rows, missing
 
@@ -353,24 +424,77 @@ def collect_rows(seed=0, train_root=None, scores_dir=None, workers=8):
 def build_sheet(cstar, rows, missing, seed=0):
     ref_ami = cstar['ami']
     picks = dict(stage1a=None, stage1b=None)
-    if set(grid_1a()) <= set(rows):
+    zero_c = zero_c_line(rows.get('dec-off'), cstar) if seed == 0 else dict(status='pending')
+    if zero_c['status'] == 'PASS' and set(grid_1a()) <= set(rows):          # §3.5: no picks unless gate 0c passes
         picks['stage1a'] = pick_stage1a(rows, ref_ami)
         if set(grid_1b(r21_arms.parse_arm(picks['stage1a']['pick']))) <= set(rows):
             picks['stage1b'] = pick_stage1b(rows, ref_ami, picks['stage1a']['pick'])
     order = sorted(rows, key=lambda n: (n != 'dec-off', n))
     return dict(seed=seed, cstar=cstar, rows=[rows[n] for n in order], missing=missing, picks=picks,
-                zero_c=zero_c_line(rows.get('dec-off'), cstar) if seed == 0 else dict(status='pending'),
+                zero_c=zero_c,
                 n_settings=len([n for n in rows if n != 'dec-off']), tie_band=TIE_BAND)
 
 
+def pick_levels(picks):
+    """{level: selection} of a picks dict: 'stage1a', and 'stage1b.<form>' for each form picked after 1b."""
+    out = {'stage1a': picks['stage1a']} if picks.get('stage1a') else {}
+    out.update({f'stage1b.{f}': sel for f, sel in (picks.get('stage1b') or {}).items()})
+    return out
+
+
+def merge_picks(old, new, force=False):
+    """Stage 1's picks are frozen once written (spec 3.7), each level (the 1a pick, each form's pick after 1b) on its own.
+    Returns (merged, conflicts, overrides). A level absent from `old` is added; one present with the same pick is left as
+    it was written; one with another pick is a conflict {level, frozen, new} and, only with `force`, is replaced and logged
+    in `merged['overrides']` (kept from `old` and appended to)."""
+    merged = copy.deepcopy(old) if old else dict(stage1a=None, stage1b=None)
+    merged.setdefault('stage1a', None)
+    merged.setdefault('stage1b', None)
+    have = pick_levels(merged)
+    conflicts, overrides = [], []
+    when = datetime.datetime.now(zoneinfo.ZoneInfo('Europe/Amsterdam')).strftime('%Y-%m-%d %H:%M')
+    for level, sel in pick_levels(new).items():
+        if level in have and have[level]['pick'] == sel['pick']:
+            continue
+        if level in have:
+            conflicts.append(dict(level=level, frozen=have[level]['pick'], new=sel['pick']))
+            if not force:
+                continue
+            overrides.append(dict(time=when, level=level, frozen_pick=have[level]['pick'], new_pick=sel['pick'], reason='--force'))
+        if level == 'stage1a':
+            merged['stage1a'] = sel
+        else:
+            merged['stage1b'] = merged['stage1b'] or {}
+            merged['stage1b'][level.split('.', 1)[1]] = sel
+    if overrides:
+        merged['overrides'] = merged.get('overrides', []) + overrides
+    return merged, conflicts, overrides
+
+
 def cmd_sheet(args):
+    """Writes the sheet (JSON and markdown) always. Picks need gate 0c = PASS: else no picks are written, the 0c status is
+    printed and the exit is non-zero. Picks are write-once per level (`merge_picks`): a different pick exits non-zero
+    with both shown and nothing is written, unless `--force`, which logs the override in the picks file."""
     cstar, rows, missing = collect_rows(0, workers=args.workers)
     doc = build_sheet(cstar, rows, missing)
     SCORES.mkdir(parents=True, exist_ok=True)
+    picks_path = SCORES / 'stage1_picks.json'
+    status = doc['zero_c']['status']
+    merged = None
+    if status == 'PASS':
+        old = json.loads(picks_path.read_text()) if picks_path.exists() else None
+        merged, conflicts, overrides = merge_picks(old, doc['picks'], getattr(args, 'force', False))
+        if conflicts and not overrides:
+            lines = [f"  {c['level']}: frozen {c['frozen']}, new {c['new']}" for c in conflicts]
+            raise SystemExit('stage 1 picks are frozen once written (spec 3.7); the new picks differ, nothing written '
+                             '(use --force to override and log it):\n' + '\n'.join(lines))
     (SCORES / 'stage1_sheet.json').write_text(json.dumps(doc, indent=1, allow_nan=False) + '\n')
     (SCORES / 'stage1_sheet.md').write_text(sheet_markdown(doc))
-    (SCORES / 'stage1_picks.json').write_text(json.dumps(doc['picks'], indent=1, allow_nan=False) + '\n')
     print(sheet_markdown(doc))
+    if merged is None:
+        raise SystemExit(f"gate 0c is {status}: sheet written to {SCORES}/stage1_sheet.json, stage1_sheet.md; no picks "
+                         f"(spec 3.5: stop; trace gate 0c first)")
+    picks_path.write_text(json.dumps(merged, indent=1, allow_nan=False) + '\n')
     print(f'-> {SCORES}/stage1_sheet.json, stage1_sheet.md, stage1_picks.json')
 
 
@@ -480,6 +604,7 @@ def main(argv=None):
     p.add_argument('--workers', type=int, default=8, choices=range(1, 9))
     sh = sub.add_parser('sheet')
     sh.add_argument('--workers', type=int, default=8, choices=range(1, 9))
+    sh.add_argument('--force', action='store_true', help='override frozen stage 1 picks (logged in the picks file)')
     g = sub.add_parser('gate0a')
     g.add_argument('--aspects', nargs='+', default=list(ASPECTS), choices=ASPECTS)
     g.add_argument('--seeds', nargs='+', type=int, default=list(SEEDS), choices=SEEDS)
