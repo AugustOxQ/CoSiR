@@ -2063,3 +2063,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-10-paper-method-writing-handoff.md
 - New chat: tab 'paper method', session a4f23a0e-d05e-4aba-a596-d5121e389531
 
+[brief] CoSiR: paper method -> paper latex (2026-11-11 01:06 Amsterdam)
+- Done: private LaTeX repo CVPR2027-CoSiR-Paper (CVPR 2027 kit; Sections, Figures, Tables); related work parts (a) and (b) in the tone of the user's CBMI paper; part (c) a heading, one sentence and two TODOs.
+- State: the paper builds (3 pages with references); the related work is about 540 words; no fidelity check of it yet.
+- Next: ask the user which part comes next; write a part only when the user has set its skeleton and asks for it.
+- Blocked: OpenReview registration by 11-11 12:59 (the user's alone).
+- Handoff: docs/superpowers/handoffs/2026-11-11-paper-latex-handoff.md
+- New chat: tab 'paper latex', session f69e4623-7c5c-47d8-bd61-3075712ad44e
+
