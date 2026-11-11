@@ -71,3 +71,14 @@ The unit for VLM2Vec is stated as Qwen c*'s validation mAP ranges, as TPIPS (fie
   0.28019, genre 0.55895 (queries 12,281 / 12,281 / 9,949; none dropped). Record `records/vlm2vec.json` (a copy of
   `out/vlm2vec.json`, added with `git add -f`).
 - Table 3 (REPO `33a9764`): 0.248 / 0.280 / 0.559. Below CoSiR in all three aspects, so the bold is unchanged.
+
+## PercepT (CLIP L/14) row, scored (2026-11-11 20:07 to 20:11, "paper sec4 tables 7" tab)
+
+- r26's message: test files `test/k40/L1__s{seed}.npz` (seeds 0 to 4, all kept: none collapsed at k40), bit-equal to
+  r26's held outputs. `t3_run.py percept-clip --seeds 0,1,2,3,4 --test-dir <r26>/test/k40` (validation dir and file
+  pattern at their defaults) through `res-queue cpu --short` (3.7 min, exit 0). Log `logs/percept_clip.log`.
+- Pick on validation: `center+k10` (unit: CLIP L/14 c*'s ranges, as r17's matched pick). Test mAP: emotion 0.24164,
+  style 0.17674, genre 0.54024 (queries 12,281 / 12,281 / 9,949). Record `records/percept_clip.json` (`git add -f`).
+- Table 3 (REPO, after `609a3cf`): 0.242 / 0.177 / 0.540. Below CoSiR in all three aspects, so the bold is unchanged.
+  Table 2's row (0.064 / 0.262 / 0.474, r26's class-count AMI) was filled and committed by "paper experiments 2"
+  (REPO `609a3cf`).
