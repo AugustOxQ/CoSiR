@@ -375,6 +375,8 @@ def run_stage2(s, root, cut, seed, *, device=None, smoke=False, fit_tokens=None,
     if fit_tokens is None:
         fit_tokens = load_fit_tokens(s, store, device, smoke)
     assert len(fit_tokens) == len(ids['fit']) and fit_tokens.dtype == torch.float16
+    # Review S1: the tokens follow load_fit_tokens' painting order; the targets must follow the same paintings.
+    assert np.array_equal(ids['fit'], s['fit'][:200] if smoke else s['fit']), 'fit token / target painting order differs'
     with threadpool_limits(limits=8):
         mapper, history, epoch_seconds, state = train_mapper(fit_tokens, targets['fit'], config, k)
         rows = store.rows(s['all_painting_ids'][ids['dev']])
