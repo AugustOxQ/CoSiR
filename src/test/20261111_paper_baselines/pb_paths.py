@@ -30,6 +30,8 @@ SMOKE = int(os.environ.get('PB_SMOKE') or 0)
 SET = 'artelingo'
 SPLIT = 'held'                                 # ArtELingo's held split is the paper's test split (12,281 paintings)
 N_HELD = 12281
+N_VAL = 6152                                   # ArtELingo validation paintings (retrieval read-out picks)
+N_SPLIT = {'held': N_HELD, 'val': N_VAL}
 ASPECTS = ('emotion', 'style', 'genre')
 K = 20                                         # the paper's cluster count for every aspect
 CSTAR_ENC = 'qwen'
@@ -45,6 +47,8 @@ INPUTS = OUT / 'inputs'
 VLM2VEC_MODEL = 'VLM2Vec/VLM2Vec-V2.0'         # 2B, on Qwen2-VL-2B-Instruct
 VLM2VEC_CODE = Path('/data/SSD2/cosir_r25/ext/VLM2Vec')   # code checkout outside the repo (its top-level package is `src`)
 VLM2VEC_STORE = Path('/data/SSD2/pre_extract/artelingo/vlm2vec_v2')   # <aspect>/{emb.npy, keys.json, meta.json}
+VLM2VEC_VAL_STORE = Path('/data/SSD2/pre_extract/artelingo/vlm2vec_v2_val')   # validation rows, for Table 3's read-out picks
+VLM2VEC_STORES = {'held': VLM2VEC_STORE, 'val': VLM2VEC_VAL_STORE}
 VLM2VEC_ENV = Path('/root/venvs/vlm2vec')
 
 # The aspect instructions of the paper's Table 1 (Tables/instructions.tex), used verbatim; the extraction places them

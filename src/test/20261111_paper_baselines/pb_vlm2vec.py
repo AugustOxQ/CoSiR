@@ -76,11 +76,11 @@ def atomic_write(path, writer):
     tmp.replace(path)
 
 
-def read_inputs(limit):
-    d = json.loads((P.INPUTS / 'held_images.json').read_text())
+def read_inputs(limit, split='held'):
+    d = json.loads((P.INPUTS / f'{split}_images.json').read_text())
     names, images = d['names'], d['images']
-    assert names_sha(names) == d['names_sha256'], 'held_images.json: names_sha256 mismatch'
-    assert len(names) == len(images) == P.N_HELD, len(names)
+    assert names_sha(names) == d['names_sha256'], f'{split}_images.json: names_sha256 mismatch'
+    assert len(names) == len(images) == P.N_SPLIT[split], len(names)
     if limit:
         names, images = names[:limit], images[:limit]
     return names, images, d['names_sha256']
@@ -215,7 +215,7 @@ def run_aspects(a, model, processor, info, names, images, nsha, load_seconds):
                 'normalize': 'L2 in model (bf16) and again in float32 here', 'dim': int(emb.shape[1]),
                 'seconds': round(sec, 2), 'ms_per_image': round(1000 * sec / len(names), 2),
                 'peak_gpu_gb': round(torch.cuda.max_memory_allocated() / 2**30, 2), 'model_load_seconds': round(load_seconds, 2), 'n': len(names), 'emb_sha256': file_sha(d / 'emb.npy'),
-                'names_sha256': nsha, 'limit': a.limit or None,
+                'names_sha256': nsha, 'limit': a.limit or None, 'split': a.split,
                 'image_open': 'PIL Image.open(...).convert("RGB"), resized inside Qwen2VLImageProcessor'}
         atomic_write(d / 'meta.json', lambda f: f.write(json.dumps(meta, indent=1).encode()))
         nrm = np.linalg.norm(emb, axis=1)
@@ -259,14 +259,16 @@ def demo_check(model, processor):
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument('--limit', type=int, default=0)
-    ap.add_argument('--store', default=str(P.VLM2VEC_STORE))
+    ap.add_argument('--split', choices=('held', 'val'), default='held', help='val: OUT/inputs/val_images.json -> the validation store')
+    ap.add_argument('--store', default=None, help='default: pb_paths.VLM2VEC_STORES[split]')
     ap.add_argument('--force', action='store_true')
     ap.add_argument('--batch-size', type=int, default=DEFAULT_BATCH)
     ap.add_argument('--aspects', nargs='+', default=list(P.ASPECTS))
     ap.add_argument('--check', action='store_true', help='batch 1 vs batch 8 consistency on the first 8 images')
     ap.add_argument('--demo', action='store_true', help="reproduce the repo's README/demo similarities")
     a = ap.parse_args(argv)
-    names, images, nsha = read_inputs(a.limit)
+    a.store = a.store or str(P.VLM2VEC_STORES[a.split])
+    names, images, nsha = read_inputs(a.limit, a.split)
     todo = [x for x in a.aspects if not (complete(Path(a.store) / x, len(names)) and not a.force)]
     if not todo and not a.check and not a.demo:
         print('all aspects complete, nothing to do')
