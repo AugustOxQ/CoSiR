@@ -299,7 +299,8 @@ def make_row(arm, val, sides, record, ref_val):
     (or None); ref_val: `val_scores` of saved c* with the same seed. DEC epochs = history entries with `dec['phase'] ==
     'dec'`; DEC start epoch and stop reason are read from the sidecar's history (`head_dec`). When the run record has
     `heads.<aspect>.stop_reason` / `dec_start_epoch` they must equal the sidecar's; with DEC off (no DEC stop rule) the
-    reason is the record's (c*'s: patience or max_epochs) or None."""
+    reason is the record's (c*'s: patience or max_epochs) or None. DEC shares are the training paintings' argmax cluster
+    shares at the last DEC epoch (not the best epoch); they are None for DEC off and saved c*, and decide no picks."""
     assert val['aspects'].keys() == ref_val['aspects'].keys() == set(ASPECTS) == set(sides)
     v, r = val['aspects'], ref_val['aspects']
     dec = {a: head_dec(arm, a, sides[a]) for a in ASPECTS}
@@ -318,6 +319,8 @@ def make_row(arm, val, sides, record, ref_val):
                ami={a: v[a]['ami'] for a in ASPECTS}, map={a: v[a]['map'] for a in ASPECTS},
                d_ami={a: v[a]['ami'] - r[a]['ami'] for a in ASPECTS}, d_map={a: v[a]['map'] - r[a]['map'] for a in ASPECTS},
                largest_share={a: v[a]['largest_share']['max'] for a in ASPECTS},
+               dec_share_max={a: sides[a]['history'][-1]['dec']['share_max'] if dec[a][0] else None for a in ASPECTS},
+               dec_share_min={a: sides[a]['history'][-1]['dec']['share_min'] if dec[a][0] else None for a in ASPECTS},
                best_epoch={a: int(sides[a]['best_epoch']) for a in ASPECTS},
                epochs_run={a: len(sides[a]['history']) for a in ASPECTS},
                dec_epochs={a: dec[a][0] for a in ASPECTS}, dec_start_epoch={a: dec[a][1] for a in ASPECTS}, stop_reason=stop)
@@ -346,18 +349,22 @@ def sheet_markdown(doc):
     f = lambda x: f'{x:.4f}'
     lines = [f"# r21 stage 1 number sheet (validation, seed {doc['seed']})", '',
              'Validation split (6,152 paintings), AMI at the class count (9, 27, 10), image-to-image label mAP. '
-             'd = change from saved c* seed 0. Largest share = largest k-means cluster (class count) as a share of all rows.',
+             'd = change from saved c* seed 0. Largest share = largest k-means cluster (class count) as a share of all rows. '
+             'DEC shares max/min = training argmax cluster shares at the last DEC epoch; for S2 the scored state is the best epoch, '
+             'which can be up to 15 epochs earlier; diagnostic only, unused in picks.',
              '', '| run | ' + ' | '.join(f'{a} AMI (d) / mAP' for a in ASPECTS) +
-             ' | mean d AMI | mean mAP | largest share | best epoch | DEC epochs | stop |',
-             '|---|' + '---|' * (len(ASPECTS) + 6)]
+             ' | mean d AMI | mean mAP | largest share | DEC shares max/min | best epoch | DEC epochs | stop |',
+             '|---|' + '---|' * (len(ASPECTS) + 7)]
     for r in [doc['cstar']] + doc['rows']:
         cells = ' | '.join(f"{f(r['ami'][a])} ({r['d_ami'][a]:+.4f}) / {f(r['map'][a])}" for a in ASPECTS)
         share = '/'.join('%.2f' % r['largest_share'][a] for a in ASPECTS)
+        dec_share = ', '.join(f"{r['dec_share_max'][a]:.2f}/{r['dec_share_min'][a]:.2f}"
+                              if r['dec_share_max'][a] is not None else '-' for a in ASPECTS)
         best = '/'.join(str(r['best_epoch'][a]) for a in ASPECTS)
         dec = '/'.join(str(r['dec_epochs'][a]) for a in ASPECTS)
         why = '/'.join(str(r['stop_reason'][a] or 'n/a') for a in ASPECTS)
-        lines.append(f"| {r['arm']} | {cells} | {r['mean_d_ami']:+.4f} | {f(r['mean_map'])} | {share} | {best} | {dec} | {why} |")
-    lines += ['', 'Columns of the last four: per aspect in the order ' + ', '.join(ASPECTS) + '.', '']
+        lines.append(f"| {r['arm']} | {cells} | {r['mean_d_ami']:+.4f} | {f(r['mean_map'])} | {share} | {dec_share} | {best} | {dec} | {why} |")
+    lines += ['', 'Columns of the last five: per aspect in the order ' + ', '.join(ASPECTS) + '.', '']
     z = doc['zero_c']
     if z['status'] == 'pending':
         lines.append('Gate 0c: pending (no dec-off run yet).')
@@ -395,7 +402,7 @@ def check_record(record, arm, seed):
 
 def collect_rows(seed=0, train_root=None, scores_dir=None, workers=8):
     """Every arm folder under R21/full/train with its seed-`seed` validation exports: (cstar row, {arm: row}, missing).
-    An arm with some but not all three exports is refused (a stage 1 run must finish)."""
+    An arm with some but not all three exports is refused; complete exports require an ok run record."""
     train_root = Path(train_root or R21 / 'full' / 'train')
     ref = val_cached(CSTAR, seed, scores_dir, workers=workers)
     chk = check_cstar_ranges(ref)
@@ -410,13 +417,14 @@ def collect_rows(seed=0, train_root=None, scores_dir=None, workers=8):
             missing.append(arm)
             continue
         assert all(have), f'{arm}: validation exports of only some aspects at seed {seed}'
-        val = val_cached(arm, seed, scores_dir, train_root, workers)
-        sides = {a: load_val(arm, a, seed, train_root)[1] for a in ASPECTS}
         rec_path = d / f'run__s{seed}.json'
         assert 'train' in rec_path.parts and not ({'held', 'test'} & set(rec_path.parts)), rec_path
-        record = json.loads(rec_path.read_text()) if rec_path.exists() else None
-        if record is not None:
-            check_record(record, arm, seed)
+        assert rec_path.exists(), f'missing run record: {rec_path}'
+        record = json.loads(rec_path.read_text())
+        assert record['status'] == 'ok', f"{rec_path}: run status {record['status']!r}, expected 'ok'"
+        check_record(record, arm, seed)
+        val = val_cached(arm, seed, scores_dir, train_root, workers)
+        sides = {a: load_val(arm, a, seed, train_root)[1] for a in ASPECTS}
         rows[arm] = make_row(arm, val, sides, record, ref)
     return cstar, rows, missing
 
