@@ -2095,3 +2095,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-11-paper-method-figure1-final-handoff.md
 - New chat: tab 'paper method', session 261a4b9f-87e5-4a09-a6e9-e1efe34de305
 
+[brief] CoSiR: paper method -> r25 paper baselines (2026-11-11 05:03 Amsterdam)
+- Done: the paper chat wrote 4.1 (compared methods name BERTopic and VLM2Vec, two of PercepT's clustering baselines).
+- State: neither method has been run; the paper's main clustering table lists them with empty cells.
+- Next: run both on the ArtELingo test split (k-means k = 20 AMI per aspect), short auto report and user-read report.
+- Blocked: nothing; the cutoff is 2026-11-14, after which the rows leave the paper.
+- Handoff: docs/superpowers/handoffs/2026-11-11-r25-paper-baselines-handoff.md
+- New chat: tab 'r25 paper baselines', session a8d4e0fd-c558-4101-b584-e2c7ba0d2480
+
