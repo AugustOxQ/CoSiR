@@ -49,3 +49,10 @@ Spec: `docs/superpowers/specs/2026-11-11-r21-dec-heads-design.md`. Decision line
 - 2026-11-11 07:05: `r21_table.py` (CLI `table`, `diag`, `regress`) and `test_r21_table.py` (37 tests: word rule at the
   interval edges, pairing, cells, silhouette against scikit-learn, DEC statistics, two real-file checks on r10's tree).
   No existing file edited. Held (test) exports are read by design (stage 2); nothing here tunes or selects on them.
+
+## Ticket 04 (build, `r21/t04`)
+
+- 2026-11-11: `r21_run.py` gained `held` and `teacher` (module docstring has the CLI); new `r21_queue_lib.sh` and
+  `r21_queue_stage{0c,1a,1b,2}.sh` (each with `--dry-run`; 1b and 2 also `--picks FILE`). Plumbing check: held on r10's saved
+  c* seed 0 weights, CPU inference, differs from r10's GPU export by at most 6.1e-5 (one float16 step) on 0.13 to 0.15 % of
+  entries. Smoke: `train --arm dec-off --smoke` then `held`, sidecar fields equal r10's. Smoke output: scratchpad `t04/`.
