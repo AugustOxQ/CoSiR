@@ -9,6 +9,7 @@ Sources: `/data/SSD2/cosir_r17/20261103_new_scores/outputs/stage3/sweep/arteling
 | CoSiR (ours) | 0.091 | 0.100 | 0.102 | 0.108 | 0.107 |
 | Teacher (instructed) | 0.084 | 0.090 | 0.089 | 0.093 | 0.092 |
 | PercepT (Qwen3) | 0.056 | 0.067 | 0.068 | 0.077 | 0.080 |
+| PercepT (CLIP L/14) | 0.060 | 0.064 | 0.064 | 0.067 | 0.068 |
 | Plain embedding | 0.066 | 0.066 | 0.070 | 0.070 | 0.071 |
 | Plain + TURTLE | 0.069 | 0.067 | 0.067 | 0.068 | 0.070 |
 | TPIPS | 0.067 | 0.069 | 0.072 | 0.080 | 0.077 |
@@ -24,6 +25,7 @@ Sources: `/data/SSD2/cosir_r17/20261103_new_scores/outputs/stage3/sweep/arteling
 | CoSiR (ours) | 0.393 | 0.407 | 0.411 | 0.412 |
 | Teacher (instructed) | 0.385 | 0.403 | 0.406 | 0.408 |
 | PercepT (Qwen3) | 0.174 | 0.188 | 0.192 | 0.197 |
+| PercepT (CLIP L/14) | 0.233 | 0.256 | 0.262 | 0.263 |
 | Plain embedding | 0.206 | 0.223 | 0.235 | 0.231 |
 | Plain + TURTLE | 0.206 | 0.218 | 0.215 | 0.215 |
 | TPIPS | 0.274 | 0.324 | 0.332 | 0.345 |
@@ -39,6 +41,7 @@ Sources: `/data/SSD2/cosir_r17/20261103_new_scores/outputs/stage3/sweep/arteling
 | CoSiR (ours) | 0.472 | 0.510 | 0.508 | 0.500 |
 | Teacher (instructed) | 0.463 | 0.501 | 0.493 | 0.506 |
 | PercepT (Qwen3) | 0.418 | 0.424 | 0.432 | 0.423 |
+| PercepT (CLIP L/14) | 0.450 | 0.474 | 0.465 | 0.460 |
 | Plain embedding | 0.404 | 0.425 | 0.463 | 0.452 |
 | Plain + TURTLE | 0.401 | 0.436 | 0.433 | 0.429 |
 | TPIPS | 0.446 | 0.496 | 0.482 | 0.477 |

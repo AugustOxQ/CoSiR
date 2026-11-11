@@ -1,0 +1,17 @@
+res-queue: enqueued cpu short position 1, 0 ahead, estimated start 20:12
+res-queue: start cpu 20:12
+percept_clip/emotion/ami/5     mean=0.0601119348 1.1s
+percept_clip/emotion/ami/8     mean=0.0643328028 1.4s
+percept_clip/emotion/ami/9     mean=0.0635843018 diff=+0.00e+00 1.6s
+percept_clip/emotion/ami/16    mean=0.0667397309 2.0s
+percept_clip/emotion/ami/20    mean=0.0677857303 diff=+0.00e+00 2.2s
+percept_clip/style/ami/10      mean=0.2328846951 1.6s
+percept_clip/style/ami/20      mean=0.2563851128 diff=+0.00e+00 0.1s
+percept_clip/style/ami/27      mean=0.2621789112 diff=+0.00e+00 2.9s
+percept_clip/style/ami/40      mean=0.2628000059 3.3s
+percept_clip/genre/ami/5       mean=0.4504415822 0.1s
+percept_clip/genre/ami/10      mean=0.4744370236 diff=+0.00e+00 0.1s
+percept_clip/genre/ami/16      mean=0.4652182814 0.2s
+percept_clip/genre/ami/20      mean=0.4600508714 diff=+0.00e+00 0.1s
+GATE: 6 r26 cells, max |diff| = 0.000e+00; PASS; 18s
+res-queue: end cpu exit 0, 0.39 minutes run

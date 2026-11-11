@@ -226,3 +226,29 @@ Every k-means state at every K used exactly K clusters (`n_clusters_used`).
 | bertopic | genre | 10 | 0.26047158886368543 | 0.267611577413806, 0.2644303254054983, 0.24937286377175194 | 0.26047158886368543 |
 | bertopic | genre | 16 | 0.2932866272899837 | 0.2946075695718726, 0.3228404457933832, 0.2624118665046954 | '-' |
 | bertopic | genre | 20 | 0.3092043551789912 | 0.30009600467260156, 0.32400608774771505, 0.3035109731166569 | 0.3092043551789912 |
+
+## PercepT on CLIP L/14 (r26), 2026-11-11 20:12
+
+- Problem: the eleventh Table 2 row (PercepT at paper settings on CLIP L/14 with ModernBERT-GoEmotions, r26) had no
+  grid cells, so the figure showed 10 of 11 rows.
+- Inputs: r26's test probabilities `/data/SSD2/cosir_r26/20261111_percept_original/outputs/held/L1__k40__s{0..4}.npz`
+  (key `prob`, [12281, 40], float32). Checked equal to r26's exports `outputs/test/k40/L1__s{seed}.npz`, whose `names`
+  equal r17's `ns_data.keys('artelingo', 'held')`. Seeds 0 to 4 (r26 `po_scores.json`, cut k40: 5 in the mean, none
+  collapsed).
+- Code: `kr_grid_r26.py`, the same scorer as r26's `po_score.score_probs` (`ns_metrics.percept_partitions`, k-means on
+  the L2-normalised probabilities, states 0 to 2; masked `ns_metrics.ami`). Cell = mean over seeds of the mean over
+  states. Run through `res-queue cpu --short` (18 s). Log: `logs/kr_grid_r26.log`.
+- Gate: r26's six recorded cells (class count and k = 20, `po_scores.json` cuts.k40.table) reproduced with
+  max |diff| = 0.0. 13 cells appended to `records/cells.json` (row `percept_clip`, header `header_r26_row`), and
+  `records/percept_clip.json` (the {aspect, k, mean} list).
+- `kr_figure.py`: the row now reads from `records/cells.json` (`KR_ROWS["percept_clip"]`); `--percept-clip` stays as
+  an optional extra file. Figure and `figures/values.md` redrawn with all 11 rows; values checked against the grid log.
+- Result: ours is still the highest line at every grid count except genre at 20 clusters (teacher 0.5062, ours
+  0.5001). PercepT (CLIP L/14) is above PercepT (Qwen3) on style and genre at every count, and on emotion it is below
+  it from 9 clusters on.
+
+| Aspect | K | Mean AMI |
+|---|---:|---:|
+| emotion | 5 / 8 / 9 / 16 / 20 | 0.06011 / 0.06433 / 0.06358 / 0.06674 / 0.06779 |
+| style | 10 / 20 / 27 / 40 | 0.23288 / 0.25639 / 0.26218 / 0.26280 |
+| genre | 5 / 10 / 16 / 20 | 0.45044 / 0.47444 / 0.46522 / 0.46005 |

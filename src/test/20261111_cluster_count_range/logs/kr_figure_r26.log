@@ -1,0 +1,14 @@
+font: FreeSerif
+row                      emotion     style     genre
+Plain embedding              5/5       4/4       4/4
+Plain + TURTLE               5/5       4/4       4/4
+PercepT (Qwen3)              5/5       4/4       4/4
+PercepT (CLIP L/14)          5/5       4/4       4/4
+TPIPS                        5/5       4/4       4/4
+CLAY                         5/5       4/4       4/4
+CRL                          5/5       4/4       4/4
+VLM2Vec                      5/5       4/4       4/4
+BERTopic                     5/5       4/4       4/4
+Teacher (instructed)         5/5       4/4       4/4
+CoSiR (ours)                 5/5       4/4       4/4
+wrote /project/CoSiR/src/test/20261111_cluster_count_range/figures/supp_cluster_counts.pdf, .png, values.md
