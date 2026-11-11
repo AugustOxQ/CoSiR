@@ -105,7 +105,7 @@ def tree_listing(top=R10_OUTPUTS):
 def git_state():
     """(HEAD, dirty): dirty when a Python file of this round, the recipe sweep or 12-27 is modified or untracked."""
     def git(*args):
-        return subprocess.run(['git', *args], cwd=HERE, capture_output=True, text=True, check=True).stdout.strip()
+        return subprocess.run(['git', *args], cwd=rs_paths.ROUND, capture_output=True, text=True, check=True).stdout.strip()
     dirty = git('status', '--porcelain', '--', ':/src/test/20261111_r21_dec_heads/*.py',
                 ':/src/test/20261027_recipe_sweep/*.py', ':/src/test/20261027_relational_genre/*.py')
     return git('rev-parse', 'HEAD'), bool(dirty)
