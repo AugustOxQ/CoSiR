@@ -38,3 +38,14 @@ Spec: `docs/superpowers/specs/2026-11-11-r21-dec-heads-design.md`. Decision line
   give FAIL and a non-zero exit. CPU smoke of all four forms (`dec-off`, plain S1, start S2, teacher S1 and S2): every head
   reaches DEC epoch 2, histories finite, sidecars carry c*'s config fields, rerun skips, r10's tree unchanged. **GPU smoke
   not run** (GPU held by r25:extract). Merged (0ded9542).
+- 07:47: ticket 06 reviewed (Opus `high`: core right; F1 `complete` flag and default output, F2 row order resting on
+  the sidecar's claim; F3 to F7 minor) and fixed (2d3917d9, Sonnet `high`): `complete` needs the r21 and r10 trees and
+  the picked arms, the paper-facing stem is refused otherwise; held pairing also needs `image_sha256` equal to c*'s;
+  DEC statistics through `r21_score.head_dec`; 53 tests; 11 mutations killed; emotion regression at full draws still
+  exact (10 cells, diff 0). Merged.
+
+## Ticket 06 (build, `r21/t06`)
+
+- 2026-11-11 07:05: `r21_table.py` (CLI `table`, `diag`, `regress`) and `test_r21_table.py` (37 tests: word rule at the
+  interval edges, pairing, cells, silhouette against scikit-learn, DEC statistics, two real-file checks on r10's tree).
+  No existing file edited. Held (test) exports are read by design (stage 2); nothing here tunes or selects on them.
