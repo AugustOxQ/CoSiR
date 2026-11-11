@@ -1,0 +1,663 @@
+{
+  "mode": "full",
+  "complete": true,
+  "set": "artelingo",
+  "split": "held",
+  "encoder": "qwen",
+  "metric": "ami",
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "kmeans": {
+    "estimator": "MiniBatchKMeans",
+    "n_init": 3,
+    "batch_size": 4096,
+    "states": [
+      0,
+      1,
+      2
+    ],
+    "threads": 8,
+    "path": "ns_metrics.partitions + ns_clu.metric_table"
+  },
+  "class_count": {
+    "emotion": 9,
+    "style": 27,
+    "genre": 10
+  },
+  "class_count_source": {
+    "table": "ns_paths.CLASS_COUNT",
+    "record": "/data/SSD2/cosir_r17/20261103_new_scores/outputs/stage3/sweep/artelingo__qwen.json",
+    "labelled_classes": "ns_metrics.class_count(labels) checked equal"
+  },
+  "list_sha256": "a0b1139c6056fd858ddbd2ee1dd4bafd1453e590818c6aa59883364c0288a876",
+  "git_head": "832ef83a142c2b14f3fb7ef900a0a5454f545e85",
+  "record": "/data/SSD2/cosir_r17/20261103_new_scores/outputs/stage3/sweep/artelingo__qwen.json",
+  "record_sha256": "a4ac2552f24ed6c08c969cea8e39cea4d585a9c82ed9a44c3ef0f437affe65a3",
+  "code_sha256": "633827ba7f91fd68c6f97c64eb2df0f54fc27b6e3612a343a96ca28ddca5430b",
+  "input_sha256": {
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40/emotion__s0.npz": "45f9994d075e692ab1b854029dae8aa2243b96746116a23373a3babe077bedea",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40/emotion__s0.json": "3b1e2d420c28d9c8a0c58ce4f7f41e12ab9bb061ac5a6e204d3c0c46923daae1",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40/emotion__s1.npz": "20746ff46f3ebeaf9978ceccbf5a91f3f561f1d968baeb11e24b4fe32168f011",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40/emotion__s1.json": "a02f5ebae54fca0353e6897dc982285e2a5d7a6d2787aac4ce7157f3f7dada5b",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40/emotion__s2.npz": "6dc2a4ec4af93fc9e6d4b1f9e58ea8c8caa9b5b7acf2220c7a5f24e7b59f3cf0",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40/emotion__s2.json": "0f858a81d7b58388b700fc3244429684bb4ecf16d848fecb3069eb0a5fae5cf0",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40/emotion__s3.npz": "18c0957ca65bf79b115448a56440070e237931754fd5d6213ec20a5009bc0674",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40/emotion__s3.json": "ed8300093e6bcfbfd4128d6172b6f4ffb85195541b2fd5c42088fbd33b12c2bc",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40/emotion__s4.npz": "13222fa6cc3b39ba6c59199890c3d2ced7a2c06b6d250e4f3b035615484cd3cc",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40/emotion__s4.json": "f05794a0e2c43791c9173070ca02a7e33e3463cc1ed8b0c8cd4d7e4dc3e171f1",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40/style__s0.npz": "d73462b7f7e7b511675f321f6ce2f268a5f66a61eea34fdbb3a0a9a1912bbe0a",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40/style__s0.json": "618bff9c05e39102819c8da4cb1a18effd3c13681ba5ee4d13ee4a05913d1752",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40/style__s1.npz": "330c59cac0d693754f411ef91f53232dcb741a9c9b9fa14a491182b5b9349327",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40/style__s1.json": "00979beb25fc115c41f876e3cc06b62061fbf15604ce1269a33e9733092d2dd4",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40/style__s2.npz": "955c1fb1a7b4498c6e4545e02989d0febd0799064fdc78702bf6208914708803",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40/style__s2.json": "4a38c586d9c85e9d492c2cd19f3502cdf82fe0b3346223b9bda3a7bad80a5856",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40/style__s3.npz": "b1ba9924130f69cd859a9fa77978e68d8ed0abee0899da68ec57fb9b668fcd96",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40/style__s3.json": "dfdddf52cb7c85a83edfc73fc34bf9b60cbc5b27a7e015eff623799524972812",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40/style__s4.npz": "30f80e59a059dfd90b8b6ac072953c89f41679c5dadfe250ebc810b49913ae25",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40/style__s4.json": "48cacc0f922ea5c783595dd7973b366647c5df71946a658e622541059d1f7936",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40/genre__s0.npz": "3d5092aef7461a51637dff6685b3dae0ef71c4a9a7ed24b6d3be36848de49b39",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40/genre__s0.json": "b4134e62159c7e274309425952902cce25992444a69f5b51e4acfec1fae46150",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40/genre__s1.npz": "98d99c3ae750c9b63fd6e485a667893a6f4027dba7a536b0844e93c2d4ab2d0b",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40/genre__s1.json": "4329e7ec6b5096dc3a7a786322ae17d7b1c24ece2ca66ec1bb27531cbe3a6030",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40/genre__s2.npz": "e45e03d00f4df3a7e636436a6422b667bca5d779119e59b253ad544ccd714a9e",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40/genre__s2.json": "403122a9aab59efffb76bcde61d2be82f9ff2f0def9bf6ac1166edbd59c492c2",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40/genre__s3.npz": "bc9efe1aee41a67282b0a56e6e94e66bfb85f50301cb5ae12be7c37ab1d52ac3",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40/genre__s3.json": "a0ff0e99afc7b4675ea68f982c0bd1940eb03865ab64dec1bb08ef79cd8b843c",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40/genre__s4.npz": "2c121ea2a68edebcf82af1b0fa881a8748c0b6f690add3d314130dabcab6b65e",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40/genre__s4.json": "8058068e5111d40c3b27b3796be00afd9b38b1bedd537e0997d7d1916a51d581",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_instructed_graphs/emotion__s0.npz": "b18291ec8bb791575c52e3e5d81f7b0e05b4624d64b5cc74e35afe69d9f1095d",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_instructed_graphs/emotion__s0.json": "8408ea61e424a1faae7c3f8216247e47fccf53c872ad381c14865436acab6896",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_instructed_graphs/emotion__s1.npz": "fd9c3d38aae3cac450eae27fa045cc6355801a216b33c68db1e51285dc847dc9",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_instructed_graphs/emotion__s1.json": "2eb4f5d6918c3d5893f840b665708e0721f96ed1746e6e15a7e6833b7b43b93d",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_instructed_graphs/emotion__s2.npz": "531a28a86def2cc776c81ce3e8ccf1a0eac19efc3db4dd5c09684986f83f1b13",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_instructed_graphs/emotion__s2.json": "fb4da05a7bd82a98e8206f9a4ccd6faba98d9177756c5e528f706fb8c63fe4a4",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_instructed_graphs/emotion__s3.npz": "6c11101a6c418ea37cbb8d7a8fe8c8637d15564ca0de10f3d5dbaa925bcdac51",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_instructed_graphs/emotion__s3.json": "9c476969a4aa2c5614d91967375d5e9a1dba0132fa8ed5cdddce31363cae956e",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_instructed_graphs/emotion__s4.npz": "42b87c149a7cf182b99c065082633e9d4470a9017f5624b5f9727dd435a2d73a",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_instructed_graphs/emotion__s4.json": "7540c3d7c67fec53de3e9f45b3e811dc47cee10f3e681705b816d202253273df",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_instructed_graphs/style__s0.npz": "343153b97c323052f530a0f211545e5d8031c17f9a73159b5ffc5f32355a4fcf",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_instructed_graphs/style__s0.json": "fd06dd40a88c8fbde7b001aa1d94beaed010f6a20ea6a3cd7b480346d65ce440",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_instructed_graphs/style__s1.npz": "da1e5d1588ff6d8783dd8f8cc542e94075f06bbc849c708b8c7ca434f2346691",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_instructed_graphs/style__s1.json": "856934c7e58a35e4046140d94cb0e94497b17e7ec1b8dc141c11c4b8bd58d862",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_instructed_graphs/style__s2.npz": "ca8b35624f4e90df3100f3ab32cf4805cb19ec8966b541633d45363488d78050",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_instructed_graphs/style__s2.json": "69fc20e7eff4127ee654c0b6bf4a16ae94d763fb7fde06597783e5e2448176d7",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_instructed_graphs/style__s3.npz": "00c20472ddd09f6a048a99c84ac4709ae249df3e66e8ca3a10cca24f7c93f82f",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_instructed_graphs/style__s3.json": "abb71db0eb6657429c8e5e1fc55fa05a784e358ae5b78b681ea76b451214936f",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_instructed_graphs/style__s4.npz": "98c1985eaf70ad0289d6eb1fa54998ac7bcef3947904e7cfe01cef590caf21dd",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_instructed_graphs/style__s4.json": "143415e2f07c9853e6056ad2065e9ac2bf41db5314944902ba270b2f24793338",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_instructed_graphs/genre__s0.npz": "892f10f17c7c5105995ed9d34db5d51ad9b7054921161bd39edd8d52d4873b5e",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_instructed_graphs/genre__s0.json": "b082404bc9d398e8695a6f0fb260f8beea6e46595165ffccbdcd1b9d2399db01",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_instructed_graphs/genre__s1.npz": "8b3708a0d6fe3bb7e6c1e1b8e475250a669c67da904d7652f89f6666525cba0c",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_instructed_graphs/genre__s1.json": "eae8c09b66e667b0bf6076f77b8f5b895468e300f9a0badee2ef9a0290f60d3f",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_instructed_graphs/genre__s2.npz": "d800f2a670c1ffbe2623ce7b2e3243003e130f231df638e879f9e6ac89838097",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_instructed_graphs/genre__s2.json": "37f86c7981d166cc6eb569525f0b180f726d988d0c15fd49872bb48ef3259bfa",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_instructed_graphs/genre__s3.npz": "c681ca42543361fd177c5853a4ce6c6a7bdd42ed8663d272915ace439061bb6d",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_instructed_graphs/genre__s3.json": "3ce4113350919fa1a7a94cef7ec9153a3295e8d9cd19d78af2b8e2b1595ccbfa",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_instructed_graphs/genre__s4.npz": "d9174b61ce9f1b2461b187fd84eb27b51f57f751cc9786a339891f620bbc341c",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_instructed_graphs/genre__s4.json": "ea61238c795f74ebb56389df4f9a88288396c40f307aacdd0b344c1e81ccb2cc",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_content_correction/emotion__s0.npz": "dbc2f997c5209616a5c11790fd29cf8350b9972d90f800e41823f08a7c05600f",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_content_correction/emotion__s0.json": "0ab37f1eca98fc3965907451189ba97420a8c34652f6939f40f1b0d2ecdb950a",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_content_correction/emotion__s1.npz": "3dfefa291b0e11d91365ec7a62985ce1fb61fabb21318d2ab72ee683e9a51607",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_content_correction/emotion__s1.json": "fb5c8bb3f3907282cd3613fa55601a2084c9f763872decdefc84a21e5e228d6f",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_content_correction/emotion__s2.npz": "3167c27bf3918cabba19c954db12ebf70a4955219827b46b0f2f5a4f38f6b095",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_content_correction/emotion__s2.json": "5225596ea08cdde2848b4dc542f6aa1d3855d9fc0079f1ae714d68bdf7031e95",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_content_correction/emotion__s3.npz": "d3703450fb18985ec1684597c44af55744fb951262cfd572236243f3b0fe5796",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_content_correction/emotion__s3.json": "72875c322ca73e2bbb69a7e5e5a4b1153ec20bd212495c9c1f7ddc389849bfc0",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_content_correction/emotion__s4.npz": "427a7c6cee62040f1e4617adacfc17d9987d5ab2cf0e1c920dbf96789758153e",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_content_correction/emotion__s4.json": "700cd56d1fabab6f0421ba1806068f89903f02b561b925091b37c94d8c508b57",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_content_correction/style__s0.npz": "2174ac9a27bd0dd6a6199b7ca536e59970612805f43e7498e3f76f20e5c8e88b",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_content_correction/style__s0.json": "3b92dfdf3069b266c764ec1f21d2cbb11d3596ce86f833968462590c4decc402",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_content_correction/style__s1.npz": "b256ae034a0fc4acf3333907c4610ab4b5c4e6804cd9e10a5cd31fa4c1ba98e6",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_content_correction/style__s1.json": "48b4c8fc8f51e3d4d762fb45a035e5715530abedd62e84c79438fec9fd91c1f2",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_content_correction/style__s2.npz": "3bc428ce2e68e8017ee92163c546263cf6fdc012801e33f7e3ae58883ef772cd",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_content_correction/style__s2.json": "81575cb7650b5962e3da6e6b01878e49557eb5ace074e954631f366949573650",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_content_correction/style__s3.npz": "530290bc5faa34f086dc0d6af7b3de45fe1d232dc6354d9fbf86534833837805",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_content_correction/style__s3.json": "bb3ca2f405d878c0592e862056884de779e5cb3cdb6946a79ac39ef1618a323e",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_content_correction/style__s4.npz": "8a7b8ca2d649a1c4d16fc0cdc90a2c05407f7351ef19badbfb050bee3ddcfdb9",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_content_correction/style__s4.json": "771d5e35ba8599cf19fbd0715c0e77c59fb2069dbfb84aaea976b871006caf99",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_content_correction/genre__s0.npz": "ac4da2718a85d2b27a598bd902c6fadfc00ba068726ba5705011fd9a3dabb805",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_content_correction/genre__s0.json": "0c5bc699082c56fcdbf6842d3f42e4b6c1a14c4867fdce4e0fbe2d7687b30f94",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_content_correction/genre__s1.npz": "90254fa42fe6de3f9770273f5f4358fcbc005ffaa453515e877f54842c573c5a",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_content_correction/genre__s1.json": "27ef99edf84b9ed894545cac35ffa59d0fd63fb770dbc4fe62a07bfa4685a763",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_content_correction/genre__s2.npz": "807a46a5b2d5a78e2461b46ba7c57eadee1169fbcefaf909580de3b54e2734e6",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_content_correction/genre__s2.json": "d6fc4b1c4fd225d0f65f98fd5c4a27fe32643e2568e357f9c5b4a5e969b3d9f6",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_content_correction/genre__s3.npz": "fceea4f08839bc1d3e86a5b4554ce335a08c9376fce905e908cf7aa4f06fede2",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_content_correction/genre__s3.json": "1057f157a66511793d5097d28d43145b5863d11da5bcd615ed7e720d0d77876c",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_content_correction/genre__s4.npz": "7ee842a1f7ae97eb04b00f8c4cec28793b5d3f6d02610bc4d620de354a2dd119",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_content_correction/genre__s4.json": "6903601d32990d2b31303657b3c8e07fdf6867cdbdd87caf46977db0fe2df9b7",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_buddy/emotion__s0.npz": "6ca63c14142579fbcf9666f69fb08571ce819aea1bdf2b342cd61ca91ccd1e02",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_buddy/emotion__s0.json": "c30b0d8a61081d59eb92965335ec7a7428e65f5b63997e764a69e424f491990f",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_buddy/emotion__s1.npz": "0bd0481113354362000af916b22d4ed924ed6d4dfa0a2b23eeb1bb725eb82cdd",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_buddy/emotion__s1.json": "b8e9a907158af1583862dcbfb25362d82697ba3329b13ce3c7c2c08b061ff0c7",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_buddy/emotion__s2.npz": "a3877de3bd82faa90002da61edfd384fa5eff103de89b17a01ffb81730cf0775",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_buddy/emotion__s2.json": "17212e2634a20eb25299088c2cdcc1727cf6f0259438a86cddbdb8ec68471a33",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_buddy/emotion__s3.npz": "9f3e50c3d0d8373ff3cb7370d5fcb7e5ea0751718e884902978f98fadefd3207",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_buddy/emotion__s3.json": "7acf56e2792b2744a8c685c5cea4e16b0df4ad512879606906f2b60f92b8df22",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_buddy/emotion__s4.npz": "ffdc607b495860f0445df24ae2d67ef672f722e0cf657090e4753b0a59699b95",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_buddy/emotion__s4.json": "ac8992a90678feb2f11deadc1e0ae4979448fa8acd30325b373140b3490f003c",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_buddy/style__s0.npz": "1f29d5765e6dc5c81339ef2db9eaa19b71cbb548e4b59489519f054ff148d702",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_buddy/style__s0.json": "2847559e0cddd52ca97bb0c5b27c8ca0b956cf4bd22cef983055c17e3de19eb6",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_buddy/style__s1.npz": "b26301a015109be3a53b2d4cf7c3ff27dc79c1e0e6e67dc22d44b888c054289b",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_buddy/style__s1.json": "66e3b45ce3a9692439516bdaeebc625b4503e22683195cd5dd81950fe0215217",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_buddy/style__s2.npz": "bb37d6919a1d9c3a0f75aa861ae640ff7f188e59903e87a1eb36c3de069cf265",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_buddy/style__s2.json": "85881ca5ba1cb5319a05805c46c8e7358939801e36cf59e9234dfe11d4eddf58",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_buddy/style__s3.npz": "3179d0edeebc3779d103afe7a86d36ac6d2386e4d7d06d4703fcabce86afc3c6",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_buddy/style__s3.json": "9fa8e9917f2aa14e2d1329d2def61aba2000e329f35ad329d625553b9d7a4bd1",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_buddy/style__s4.npz": "3794bd277ba32427178267bb9ee09ba71f629302f3b05cc7c34f41be3d78433d",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_buddy/style__s4.json": "e09cf81811819136a28412a4714a2c019e1db6a02edf02f62dfa2b037f6074e9",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_buddy/genre__s0.npz": "f0a087ae1925bc0b53d59715f22ee81809ab7776e874e40892ee0e8d0c548884",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_buddy/genre__s0.json": "707700de33de3d98b8b9cc6cc4af7bbcc166b9c67a6715e770a217041ef3a91c",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_buddy/genre__s1.npz": "4b26fdb2437e5a62a78bac0c1027342180a6bec059e48e694762d81c3804a332",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_buddy/genre__s1.json": "d049dd87a7801567b716de57a8df33ba63e869116eeefe55202171c82e1dd9a2",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_buddy/genre__s2.npz": "deea3edddb8dfd782c1462d099b09f247ee4d9a965d4bc2c90d88e0fe72ad1b4",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_buddy/genre__s2.json": "1d6f023658ed3cc7717d2d13635056901842bac5a78e2ae963eacce5b8a5d0ca",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_buddy/genre__s3.npz": "c0cc9ab72c6b8f6fcd6a319631e52b6e4208720dc3af5929209b3dd0c6d685be",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_buddy/genre__s3.json": "2ef215cc7246a5f5b94a49b545ff04f69340aaae0fa6d9c0c9d489b8675b4a9d",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_buddy/genre__s4.npz": "cfd513fc40217e946a07719e4b5d70bfec792466b9b82fc4c6cb2ceacf7c8391",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_buddy/genre__s4.json": "81ac1edd16eced795f32300f7f8e01b8bda2c040e691b8651dbccd39eed9998a",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_relational/emotion__s0.npz": "95134bd542a371da806c62f855555af47ffd1220ec30f7629c7aad7e85103434",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_relational/emotion__s0.json": "5f5eb932f6a65a5bfa44552e20a0e0916a75987c6459a598db989824d2ba72c3",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_relational/emotion__s1.npz": "d4e5ddf3bba09f27a5f21809e3a0a34e97bdad86dd115557989b14ac9be47d5b",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_relational/emotion__s1.json": "e2f18046d6586fb13233bbff63bd645b0c7f61097b4d271f710654e48d71e75c",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_relational/emotion__s2.npz": "dc030325500a6d95bc3b07b5d6d13b892a4fdc19a3535c2df1bf40ae7979f2ec",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_relational/emotion__s2.json": "dcb4d9eee96145faa37fc8fe2fa2c1145a0b63f3d7b383bc657d245454da8fc9",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_relational/emotion__s3.npz": "949cf50ed2272812eb330ba8315d8bde1044aef04ab4349b3e79a0f03469ea1c",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_relational/emotion__s3.json": "71ba3ea33ed39e3e3a7d5ac701e2989b9ac7b1b6c01ce0d12c9932f5f2d2ae8d",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_relational/emotion__s4.npz": "22b811f21f5b4d31bdbf9ef10fec95555ca13dae4c6f7b3a4a0904c43fe756e7",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_relational/emotion__s4.json": "4debdb80646e83feb596dd61ef4f2ba9a435b08bfbf80d8b581b4aaac4343c83",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_relational/style__s0.npz": "a08bda9c2b9009e98c94b8bb7d7a040844cf41aa90621b77d4cfd5c029386a77",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_relational/style__s0.json": "05e69d478159c5b4c1fdd92f769c34bddf2bedfb0f1ae3c6411e82e30acd9626",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_relational/style__s1.npz": "c190f1d77b0106ff24192914b00bf29b7d7fb968fea717985c1d90837547c700",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_relational/style__s1.json": "658d64fa858d8aae6ba545c4473efadd2782c30077ef6242199260322f23a862",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_relational/style__s2.npz": "73876088b8b80897cac61a541a3b512fdaee2e8cdf777fe4a08441a63ebfd5ff",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_relational/style__s2.json": "eb368001446a9a444e363c822edc9ce5950cae60459f2b002d629cd55ce67749",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_relational/style__s3.npz": "06ab27f5e8a8c757f91b906f6caec453454c1dc4f8e4bc10c164e50a8630e2a6",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_relational/style__s3.json": "03c47aa4191e85fb75c5eb7df93583934fd131396ec279cfd3e1443b9d0b0c7b",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_relational/style__s4.npz": "7c4c0df64b7a913b4d66af036d6bf47643ea707abd46d07aa12d773b39ce87f6",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_relational/style__s4.json": "aeab23fc458572c52b2f3887e61b197d29df1c5c457a148812e429cf250ef19c",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_relational/genre__s0.npz": "f930dc25588c6891dc2c569610da90a15ef5e4c7eff8a0852bca21dadac49d91",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_relational/genre__s0.json": "53cc18f3290bb1b26c126cb0eae6b32cf967424f20885fbc3e1b058fd8fdd3c5",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_relational/genre__s1.npz": "5e3a8715478c84547f188f165b58ebaa13e997d373ce55e9346c5f3fc5c07ca2",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_relational/genre__s1.json": "504342b9a4e23cca13a2b81de93d7ae64597305e95088b078e4302dca29e578c",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_relational/genre__s2.npz": "bb45ce0f3ad721a1730fecfefdb8f9a2bbd1cd34d1d7a2bf6ec0c811126240ee",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_relational/genre__s2.json": "7c8681eda702ba0255d7c3481bc4263a0fe66095722986fc81a00fd59cdf88ad",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_relational/genre__s3.npz": "53463a73da9b7c85fa5583831be43e91826fb95c8bd959ce2b3195df92a8d8a3",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_relational/genre__s3.json": "8f1603bba929b69ee42dd11a4324e6a4ba88ae2b8e12ffa9cbfe9f9332968b10",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_relational/genre__s4.npz": "c378c9f5d76b1a1261cb9c77d21768ff686d5b3195f0c542eb01a080b0701e4e",
+    "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full/held/k11=40-no_relational/genre__s4.json": "d3ff2b2214154e1abba23a230e06b9bd44a9a90e6a3ebe43b23d132b58ca0d2d"
+  },
+  "arms": {
+    "k11=40": {
+      "emotion": {
+        "k": 9,
+        "seeds": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "ami_per_seed": [
+          0.10170414948655143,
+          0.1014205620544615,
+          0.10422471043584887,
+          0.10367677595260098,
+          0.10103767457482578
+        ],
+        "ami_mean": 0.1024127745008577,
+        "n_labelled": 12281,
+        "fit_seconds": [
+          4.476141768041998,
+          4.955604410264641,
+          4.954361096955836,
+          4.818637516815215,
+          4.254833525046706
+        ]
+      },
+      "style": {
+        "k": 27,
+        "seeds": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "ami_per_seed": [
+          0.40988274925321583,
+          0.41263567138830676,
+          0.41086361540419264,
+          0.41063120787595025,
+          0.41061443705588774
+        ],
+        "ami_mean": 0.4109255361955107,
+        "n_labelled": 12281,
+        "fit_seconds": [
+          9.399364278186113,
+          10.472400217782706,
+          10.625514662824571,
+          10.64058005809784,
+          11.114008050877601
+        ]
+      },
+      "genre": {
+        "k": 10,
+        "seeds": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "ami_per_seed": [
+          0.5003355445541049,
+          0.5055500101860763,
+          0.5118191815182568,
+          0.5174186802326505,
+          0.515228881137713
+        ],
+        "ami_mean": 0.5100704595257602,
+        "n_labelled": 9949,
+        "fit_seconds": [
+          5.367885919287801,
+          5.2335235443897545,
+          4.949760261923075,
+          5.4829968069680035,
+          5.440405752044171
+        ]
+      }
+    },
+    "k11=40-no_instructed_graphs": {
+      "emotion": {
+        "k": 9,
+        "seeds": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "ami_per_seed": [
+          0.06582374424476116,
+          0.06972451724039129,
+          0.07025206994589361,
+          0.07085415121374362,
+          0.07240280370459107
+        ],
+        "ami_mean": 0.06981145726987616,
+        "n_labelled": 12281,
+        "fit_seconds": [
+          4.949466405902058,
+          5.252141650766134,
+          4.310217055026442,
+          4.513846046756953,
+          4.456975954584777
+        ]
+      },
+      "style": {
+        "k": 27,
+        "seeds": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "ami_per_seed": [
+          0.22643768213871632,
+          0.22535328360111262,
+          0.22724080389813386,
+          0.22281448920137806,
+          0.22395431664355536
+        ],
+        "ami_mean": 0.22516011509657924,
+        "n_labelled": 12281,
+        "fit_seconds": [
+          10.893462290987372,
+          10.994016367010772,
+          11.112627930007875,
+          9.01369026163593,
+          9.178024725988507
+        ]
+      },
+      "genre": {
+        "k": 10,
+        "seeds": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "ami_per_seed": [
+          0.5189402430470201,
+          0.5239254960413705,
+          0.5266415788780958,
+          0.5196492134226064,
+          0.5101537173345516
+        ],
+        "ami_mean": 0.5198620497447288,
+        "n_labelled": 9949,
+        "fit_seconds": [
+          3.1503470479510725,
+          3.2496902639977634,
+          3.1024200059473515,
+          3.734712454956025,
+          3.7664979649707675
+        ]
+      }
+    },
+    "k11=40-no_content_correction": {
+      "emotion": {
+        "k": 9,
+        "seeds": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "ami_per_seed": [
+          0.08731360151946173,
+          0.08286988177260173,
+          0.08983877682165987,
+          0.08229471603536087,
+          0.08900698662301602
+        ],
+        "ami_mean": 0.08626479255442004,
+        "n_labelled": 12281,
+        "fit_seconds": [
+          3.249004245735705,
+          3.626386322081089,
+          4.018740648869425,
+          3.959946485236287,
+          3.3934891521930695
+        ]
+      },
+      "style": {
+        "k": 27,
+        "seeds": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "ami_per_seed": [
+          0.3461142374530153,
+          0.34184900495273673,
+          0.34666121704304914,
+          0.34125481544438213,
+          0.3379744979389668
+        ],
+        "ami_mean": 0.34277075456643,
+        "n_labelled": 12281,
+        "fit_seconds": [
+          8.845825729891658,
+          9.099479340948164,
+          9.499650467187166,
+          10.073441806714982,
+          10.211881085298955
+        ]
+      },
+      "genre": {
+        "k": 10,
+        "seeds": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "ami_per_seed": [
+          0.5110889772571633,
+          0.503085103774325,
+          0.521492031349052,
+          0.5212295107920628,
+          0.49416707351718464
+        ],
+        "ami_mean": 0.5102125393379576,
+        "n_labelled": 9949,
+        "fit_seconds": [
+          4.813388626091182,
+          5.066213029902428,
+          4.491592932026833,
+          4.673333149868995,
+          4.152574884239584
+        ]
+      }
+    },
+    "k11=40-no_buddy": {
+      "emotion": {
+        "k": 9,
+        "seeds": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "ami_per_seed": [
+          0.07832329570034789,
+          0.07121666765358879,
+          0.06748586759380965,
+          0.07507299150198231,
+          0.07661978522336553
+        ],
+        "ami_mean": 0.07374372153461883,
+        "n_labelled": 12281,
+        "fit_seconds": [
+          5.08868119167164,
+          4.586810190696269,
+          4.256450875196606,
+          4.986577142961323,
+          4.251289288979024
+        ]
+      },
+      "style": {
+        "k": 27,
+        "seeds": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "ami_per_seed": [
+          0.27812633088506794,
+          0.267673671674748,
+          0.2687064498211929,
+          0.2737660597052797,
+          0.26424473008381527
+        ],
+        "ami_mean": 0.27050344843402074,
+        "n_labelled": 12281,
+        "fit_seconds": [
+          10.666921136900783,
+          10.128611572086811,
+          10.327394334599376,
+          13.942037528846413,
+          10.989117958582938
+        ]
+      },
+      "genre": {
+        "k": 10,
+        "seeds": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "ami_per_seed": [
+          0.5179806279730871,
+          0.5112434773111472,
+          0.5029089891112886,
+          0.5268192906808012,
+          0.5291388787820882
+        ],
+        "ami_mean": 0.5176182527716825,
+        "n_labelled": 9949,
+        "fit_seconds": [
+          5.063168891239911,
+          5.1736983098089695,
+          5.349484161008149,
+          3.755980445072055,
+          3.7259885976091027
+        ]
+      }
+    },
+    "k11=40-no_relational": {
+      "emotion": {
+        "k": 9,
+        "seeds": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "ami_per_seed": [
+          0.10004871062070136,
+          0.10674247292039023,
+          0.10213704594212712,
+          0.09743009048995892,
+          0.10827297363397685
+        ],
+        "ami_mean": 0.10292625872143091,
+        "n_labelled": 12281,
+        "fit_seconds": [
+          3.49403448170051,
+          3.2192845731042325,
+          3.718436328228563,
+          3.5911027533002198,
+          3.7056157109327614
+        ]
+      },
+      "style": {
+        "k": 27,
+        "seeds": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "ami_per_seed": [
+          0.40987278770450125,
+          0.40794355664364973,
+          0.40633449835821805,
+          0.4094449178721737,
+          0.40957261409629425
+        ],
+        "ami_mean": 0.4086336749349674,
+        "n_labelled": 12281,
+        "fit_seconds": [
+          9.0339863342233,
+          8.996869035065174,
+          8.680845692753792,
+          8.968071206938475,
+          8.779777942225337
+        ]
+      },
+      "genre": {
+        "k": 10,
+        "seeds": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "ami_per_seed": [
+          0.41531791949328495,
+          0.456339605717732,
+          0.44343776224510006,
+          0.4354562538147821,
+          0.4462218557806073
+        ],
+        "ami_mean": 0.4393546794103013,
+        "n_labelled": 9949,
+        "fit_seconds": [
+          3.826452733948827,
+          3.9843172458931804,
+          4.234652510844171,
+          4.047038410324603,
+          4.063938064966351
+        ]
+      }
+    }
+  },
+  "gate": {
+    "emotion": {
+      "k": 9,
+      "expected": [
+        0.10170414948655143,
+        0.1014205620544615,
+        0.10422471043584887,
+        0.10367677595260098,
+        0.10103767457482578,
+        0.1024127745008577
+      ],
+      "got": [
+        0.10170414948655143,
+        0.1014205620544615,
+        0.10422471043584887,
+        0.10367677595260098,
+        0.10103767457482578,
+        0.1024127745008577
+      ],
+      "max_abs_diff": 0.0,
+      "pass": true
+    },
+    "style": {
+      "k": 27,
+      "expected": [
+        0.40988274925321583,
+        0.41263567138830676,
+        0.41086361540419264,
+        0.41063120787595025,
+        0.41061443705588774,
+        0.4109255361955107
+      ],
+      "got": [
+        0.40988274925321583,
+        0.41263567138830676,
+        0.41086361540419264,
+        0.41063120787595025,
+        0.41061443705588774,
+        0.4109255361955107
+      ],
+      "max_abs_diff": 0.0,
+      "pass": true
+    },
+    "genre": {
+      "k": 10,
+      "expected": [
+        0.5003355445541049,
+        0.5055500101860763,
+        0.5118191815182568,
+        0.5174186802326505,
+        0.515228881137713,
+        0.5100704595257602
+      ],
+      "got": [
+        0.5003355445541049,
+        0.5055500101860763,
+        0.5118191815182568,
+        0.5174186802326505,
+        0.515228881137713,
+        0.5100704595257602
+      ],
+      "max_abs_diff": 0.0,
+      "pass": true
+    }
+  },
+  "seconds": 472.93633387284353,
+  "gate_pass": true
+}
