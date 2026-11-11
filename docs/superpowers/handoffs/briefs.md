@@ -2175,3 +2175,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-11-r21-build-3-handoff.md
 - New chat: tab 'r21 build 3', session 9ad8ae03-6854-4c8f-8421-1435e89de566
 
+[brief] CoSiR: r25 paper baselines -> r25 report (2026-11-11 08:07 Amsterdam)
+- Done: VLM2Vec-V2 and BERTopic scored beside c* on the ArtELingo test split, AMI at 20 and at each class count.
+- State: c* is above both in all 12 cells (WIN); d from +0.036 (VLM2Vec, emotion, 20) to +0.313 (BERTopic, style, 20).
+- Next: short auto report with results brief, half-page user-read report, run log, direction log entry, wrap-up.
+- Blocked: nothing; the paper tables chat already has the numbers.
+- Handoff: docs/superpowers/handoffs/2026-11-11-r25-report-handoff.md
+- New chat: tab 'r25 report', session 56e85397-814b-4e8a-a550-2a43133560f1
+
