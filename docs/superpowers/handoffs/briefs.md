@@ -2119,3 +2119,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-11-r26-percept-original-handoff.md
 - New chat: tab 'r26 PercepT original', session d5ce4f03-35ab-49a3-9a3d-3a965ffca4ad
 
+[brief] CoSiR: paper experiments -> paper experiments 2 (2026-11-11 05:35 Amsterdam)
+- Done: Table 2 (main clustering table) in the paper at each aspect's class count; r26 opened for PercepT on its own encoders.
+- State: ours best in all three columns, 0.102 / 0.411 / 0.510 against the teacher's 0.089 / 0.406 / 0.501.
+- Next: fill BERTopic and VLM2Vec (r25) and PercepT on CLIP L/14 (r26) at the class count when their reports land.
+- Blocked: the user's 11:00 meeting; ask nothing about it until the user says it is over (memo).
+- Handoff: docs/superpowers/handoffs/2026-11-11-paper-experiments-2-handoff.md
+- New chat: tab 'paper experiments 2', session 06debbf6-4b8b-4388-a1f4-2ae397c86e8b
+
