@@ -108,3 +108,25 @@ Spec: `docs/superpowers/specs/2026-11-11-r21-dec-heads-design.md`. Decision line
   exports 6,152 × 2,048 float16. DEC start 18 to 49 s per head (k-means), DEC epoch end 1.4 to 3.3 s per head. The
   rerun skip and r10's unchanged tree were checked on CPU (tickets 03, 04; `train` asserts the tree on every run).
 - 09:23: run handoff `docs/superpowers/handoffs/2026-11-11-r21-run-handoff.md`; GPU check passes (driver 595.99.02).
+
+## Run chat (2026-11-11, from 09:24)
+
+- 09:25: GPU check passes (driver 595.99.02 in the kernel module and the library; container up since 2026-11-10
+  16:08). Run mode: night. The GPU holds r26's `extract_patch` (project CoSiR-r26) until about 09:43; stage 0c waits
+  behind it in `res-queue`. Queue logs: `/data/SSD2/cosir_r21/20261111_dec_heads/logs/`.
+- Timing plan (D17, `run-planning.md`): stage 0c is one short job and runs now. Stage 0c's power draw decides stage 1:
+  under 200 W, stages 1 and 2 run in the day; else they start at 19:00. Today is a Wednesday.
+- 09:35: stage 0c training done (r26's job ended early, so 0c ran 09:28 to 09:35, 6.5 min in the queue, 319 s of
+  training): `dec-off` seed 0 best epochs 4 / 1 / 18 (emotion, style, genre), equal to the saved c*'s. GPU power over the
+  run (77 samples at 5 s, `logs/power_0c.txt`): mean 260 W, median 307 W, max 347 W. Heavy (over 200 W), so per D17 the
+  long stages 1 and 2 start at 19:00, not in the day.
+- 09:36: **gate 0c PASS** (`r21_score.py sheet`): best epochs 4 / 1 / 18 against 4 / 1 / 18; validation AMI differences
+  0.0 / 0.0 / 0.0 (tolerance 0.004). The CUDA rerun is bit-exact: the `dec-off` validation export has the same file hash
+  as the saved c* export (`c2fe3d15…` for emotion; the scorer checks the sidecar hash against the file and the sidecar's
+  `rg.arm` against the folder). Picks file written with both levels empty (`stage1a`, `stage1b` null); the levels are
+  write-once only once filled, so stage 1a can still write its pick.
+- Consequence for the report: with a bit-exact rerun, the `dec-off` row is expected to be zero on every seed, so it
+  measures no rerun noise. A DEC arm also draws a shifted dropout stream (decision line 07:42), which the `dec-off` row
+  does not cover; the seed bootstrap of the intervals is the only noise term for that. Flag in the report.
+- 09:40: the teacher-cluster cache (stage 1b's first step, needs no pick) runs now on one CPU slot, so the spec's
+  open assumption (the teacher's training features exist) is checked before the night.
