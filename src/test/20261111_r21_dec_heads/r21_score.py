@@ -350,7 +350,8 @@ def sheet_markdown(doc):
     lines = [f"# r21 stage 1 number sheet (validation, seed {doc['seed']})", '',
              'Validation split (6,152 paintings), AMI at the class count (9, 27, 10), image-to-image label mAP. '
              'd = change from saved c* seed 0. Largest share = largest k-means cluster (class count) as a share of all rows. '
-             'DEC shares max/min = training argmax cluster shares at the last DEC epoch; diagnostic only, unused in picks.',
+             'DEC shares max/min = training argmax cluster shares at the last DEC epoch; for S2 the scored state is the best epoch, '
+             'which can be up to 15 epochs earlier; diagnostic only, unused in picks.',
              '', '| run | ' + ' | '.join(f'{a} AMI (d) / mAP' for a in ASPECTS) +
              ' | mean d AMI | mean mAP | largest share | DEC shares max/min | best epoch | DEC epochs | stop |',
              '|---|' + '---|' * (len(ASPECTS) + 7)]
