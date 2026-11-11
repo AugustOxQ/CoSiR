@@ -2103,3 +2103,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-11-r25-paper-baselines-handoff.md
 - New chat: tab 'r25 paper baselines', session a8d4e0fd-c558-4101-b584-e2c7ba0d2480
 
+[brief] CoSiR: paper method -> paper experiments (2026-11-11 05:10 Amsterdam)
+- Done: 3.5 test time and 4.1 settings written; Sec. 4 has the user's six headings; CRL, BERTopic, VLM2Vec in 4.1.
+- State: paper builds (7 pages, text to page 5); r25 tab scores BERTopic and VLM2Vec (cutoff 2026-11-14).
+- Next: gather each row's ArtELingo test AMI, build the table in the LaTeX repo; check PercepT-original runs.
+- Blocked: the user's meeting at 11:00; ask nothing about it until the user says it is over (memo).
+- Handoff: docs/superpowers/handoffs/2026-11-11-paper-experiments-table-handoff.md
+- New chat: tab 'paper experiments', session 38a837d2-3a93-4cce-bf87-8e4d6845517e
+
