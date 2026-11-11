@@ -2215,3 +2215,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-11-r21-run-handoff.md
 - New chat: tab 'r21 run', session 83b1f7cd-acda-4f06-8028-49afdc1eb85d
 
+[brief] CoSiR: r26 PercepT original -> r26 run (2026-11-11 09:29 Amsterdam)
+- Done: the r26 build is merged on branch r26-percept-original; both feature stores are extracted and checked.
+- State: no PercepT result on CLIP L/14 yet; the Table 2 comparators are PercepT (Qwen3) 0.080 / 0.188 / 0.423.
+- Next: run the smoke now; queue the full run for 19:00 if the smoke draws over 200 W (weekday rule).
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-11-r26-run-handoff.md
+- New chat: tab 'r26 run', session 6c108d39-2c20-468e-b282-7948c598596a
+
