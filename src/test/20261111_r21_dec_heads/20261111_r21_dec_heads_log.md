@@ -26,3 +26,8 @@ Spec: `docs/superpowers/specs/2026-11-11-r21-dec-heads-design.md`. Decision line
   `ns_paths.add_rounds()`) pins the main checkout's round folders and asserts imports come from there, while
   `r21_train.py` adds the worktree's own folders. In a worktree the two copies clash; on main they are the same files.
   Rule for this build: run test files one per process in worktrees; the final check runs them together on main.
+- 07:25: ticket 06 built (fb9ecc6c, Sonnet `high`; 37 tests). **Regression exact**: `table` on r10's removal arm
+  `k11=40-no_buddy` gives AMI at 20 clusters (change, interval, both absolute values) equal to r10's `held.json` and mAP
+  equal to `ablation_ret.json`, all 30 cells diff 0.0; c* against itself gives zero changes, zero intervals and "no
+  clear change". 1,402 s on one CPU slot under load about 20 (two arms). Records in this chat's scratchpad
+  (`t06/reg/reg_table.json`, `regress.log`). Review (Opus `high`) started.
