@@ -20,7 +20,7 @@ Spec: `docs/superpowers/specs/2026-11-11-r21-dec-heads-design.md`. Decision line
 - 07:15: ticket 02 reviewed (Opus `high`: no code defect on the DEC-off path, which matches `ct2_d2.run` line by
   line; 7 of 16 hand mutations survived the tests) and fixed (ce46aa8e, Sonnet `high` fixer): new tests kill all 7;
   the teacher form now asserts its feature rows are in the head's fit order (C6); the parity test covers a distilled
-  row and a patience stop. Merged; the three test files pass on the integration branch.
+  row and a patience stop. Merged; the three test files pass on the integration branch, each in its own process (07:19).
 - 07:19: the three test files in one pytest process in the worktree give 1 failure and 11 errors in
   `test_r21_score.py` (each passes alone: 72, 29, 27). Cause: frozen `20261021_d2_ablation/ab_paths.py` (via r17's
   `ns_paths.add_rounds()`) pins the main checkout's round folders and asserts imports come from there, while
