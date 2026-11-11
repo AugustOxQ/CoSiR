@@ -191,6 +191,14 @@ def photos_table():
         a, b = (c17[f'SC4/affection/{enc}/emotion/ami/9/{arm}']['cand'] for arm in ('plain', 'teacher'))
         assert abs(a - b) < 1e-12
         rows.append((f'Plain embedding & {name}', plain))
+        if enc == 'qwen':  # the paintings-only model, before the photo fine-tuning (worker run, gate exact)
+            fz = json.load(open(HERE / 'records' / 'frozen_cstar.json'))
+            assert fz['gate_max_abs_diff'] <= 1e-9
+            rows.append((r'\method, paintings only & Qwen3', [
+                put('photo/affection/qwen/frozen/ami', fz['affection_k9']['mean'], 'FZ affection_k9.mean'),
+                put('photo/affection/qwen/frozen/map', fz['map_picked']['affection']['value'], fz['map_picked']['affection']['source']),
+                put('photo/emoset/qwen/frozen/ami', fz['emoset_k8']['mean'], 'FZ emoset_k8.mean'),
+                put('photo/emoset/qwen/frozen/map', fz['map_picked']['emoset']['value'], fz['map_picked']['emoset']['source'])]))
         rows.append((rf'\method (ours) & {name}', ours))
     body = bold_columns(rows, 4)
     return r"""\begin{table}[t]
@@ -206,8 +214,44 @@ def photos_table():
 """ + '\n'.join('    ' + line for line in body) + r"""
     \bottomrule
   \end{tabular}
-  \caption{Emotion on photos: the Affection~\cite{achlioptas2023affection} test set (8,501 photos) and the EmoSet~\cite{yang2023emoset} test set (17,348 photos, without near copies of Affection's training photos). \method is trained on ArtELingo paintings, then fine-tuned on Affection's training photos and their explanations without emotion labels, and is not trained on EmoSet. Clustering is the AMI at the class count (9 for Affection, 8 for EmoSet), and retrieval is the label mAP with the read-out that each method picked on the validation split of each dataset. EmoSet is scored on Qwen3 only. \method is a mean over five random seeds. The best result per column is in bold, and the best per column on each backbone is underlined, with the teacher counted as Qwen3.}
+  \caption{Emotion on photos: the Affection~\cite{achlioptas2023affection} test set (8,501 photos) and the EmoSet~\cite{yang2023emoset} test set (17,348 photos, without near copies of Affection's training photos). \method is trained on ArtELingo paintings, then fine-tuned on Affection's training photos and their explanations without emotion labels, and is not trained on EmoSet. \method, paintings only, is the same model before the photo fine-tuning, on Qwen3. Clustering is the AMI at the class count (9 for Affection, 8 for EmoSet), and retrieval is the label mAP with the read-out that each method picked on the validation split of each dataset. EmoSet is scored on Qwen3 only. \method is a mean over five random seeds. The best result per column is in bold, and the best per column on each backbone is underlined, with the teacher counted as Qwen3.}
   \label{tab:photos}
+\end{table}
+"""
+
+
+COST = Path('/data/SSD2/cosir_r19/20261103_past_picks/outputs/stage3/cost_table.json')
+COST_ENCODERS = (('qwen', 'Qwen3'), ('siglip2', 'SigLIP 2'), ('siglip1', 'SigLIP 1'), ('clip_l14', 'CLIP L/14'),
+                 ('dinov2_large', 'DINOv2 L'), ('clip_b32', 'CLIP B/32'), ('clip_b16', 'CLIP B/16'))
+
+
+def cost_table():
+    """r19 stage 3: model time per image on one RTX 3090, batch 32, 2,000 MMArt paintings. Ours = one encoder pass
+    plus the three heads; the teacher = the three instructed Qwen3 passes."""
+    p = json.load(open(COST))['passes']
+    teacher = sum(p[f'qwen_{v}']['ms_per_image_mean'] for v in ('emotion_focus', 'style_word', 'genre_word'))
+    put('cost/teacher/ms', teacher, 'COST passes.qwen_{emotion_focus,style_word,genre_word}.ms_per_image_mean, sum')
+    lines = [rf'Teacher (instructed) & Qwen3 & {p["qwen"]["params_image_path"] / 1e9:.2f}B & 3 & {teacher:.1f} & 1.0 \\',
+             r'\midrule']
+    for enc, name in COST_ENCODERS:
+        ms = put(f'cost/{enc}/ms', p[enc]['ms_per_image_mean'] + p[f'heads_{enc}']['ms_per_image_mean'],
+                 f'COST passes.{enc}.ms_per_image_mean + passes.heads_{enc}.ms_per_image_mean')
+        n = p[enc]['params_image_path']
+        size = f'{n / 1e9:.2f}B' if n >= 1e9 else f'{n / 1e6:.0f}M'
+        lines.append(rf'\method (ours) & {name} & {size} & 1 & {ms:.1f} & {teacher / ms:.1f} \\')
+    return r"""\begin{table}[t]
+  \centering
+  \small
+  \setlength{\tabcolsep}{2pt}
+  \begin{tabular}{@{}llcccc@{}}
+    \toprule
+    Method & Backbone & Params & Passes & ms & Speed-up \\
+    \midrule
+""" + '\n'.join('    ' + l for l in lines) + r"""
+    \bottomrule
+  \end{tabular}
+  \caption{Inference time per image on one RTX 3090 GPU, at batch size 32 over 2,000 MMArt paintings, model time only, in milliseconds (ms). \method is one pass of its encoder plus the three aspect heads, which take 0.03 to 0.04\,ms. The teacher is three passes of Qwen3, one per aspect instruction. Params counts the parameters on the image path. Speed-up is the teacher's time divided by that of \method.}
+  \label{tab:cost}
 \end{table}
 """
 
@@ -216,6 +260,7 @@ if __name__ == '__main__':
     out = Path(sys.argv[1])
     (out / 'encoders.tex').write_text(encoders_table())
     (out / 'photos.tex').write_text(photos_table())
+    (out / 'cost.tex').write_text(cost_table())
     (HERE / 'records').mkdir(exist_ok=True)
     (HERE / 'records' / 'cells.json').write_text(json.dumps(record, indent=1, sort_keys=True))
     print(f'wrote {out}/encoders.tex, {out}/photos.tex, {len(record)} cells')

@@ -1,0 +1,76 @@
+{
+ "affection_k20": {
+  "diff": 0.0,
+  "mean": 0.13838015668340972,
+  "per_seed": [
+   0.13797269150704913,
+   0.14106924135057178,
+   0.1361886875456654,
+   0.1383034451699855,
+   0.13836671784377683
+  ],
+  "r13_recorded_ami": 0.13838015668340972
+ },
+ "affection_k9": {
+  "checkpoint_sha256": [
+   "d2310aeb7e61ea4a847da8c48d8e8c3e7d96b2bd7cca448728668edde36f0924",
+   "4cb0e07da9f1872acb6e43ff7e5fb3e8450f17a61c3c6814b12e29787f2231e5",
+   "df716b08e3145275c82a01646ca4bc0e65107c1c0bc46936eeb6b295c9fae46a",
+   "32b056960e18c0df0092100effb155e9a1b0307941bd77dd68cd5bfdbee9eb50",
+   "0f6020b8b18df96ee14764799e2f5a14d9a72a18430b60fdc5f2e0a10d92e24f"
+  ],
+  "k": 9,
+  "mean": 0.12267113163827843,
+  "n_labelled": 8501,
+  "n_rows": 8501,
+  "per_seed": [
+   0.12080949716667916,
+   0.12222520052818527,
+   0.12487611903105049,
+   0.1228174743327974,
+   0.1226273671326799
+  ],
+  "source": "r14 exports/affection/cstar_qwen/test__s<seed>.npz"
+ },
+ "emoset_k8": {
+  "checkpoint_sha256": [
+   "d2310aeb7e61ea4a847da8c48d8e8c3e7d96b2bd7cca448728668edde36f0924",
+   "4cb0e07da9f1872acb6e43ff7e5fb3e8450f17a61c3c6814b12e29787f2231e5",
+   "df716b08e3145275c82a01646ca4bc0e65107c1c0bc46936eeb6b295c9fae46a",
+   "32b056960e18c0df0092100effb155e9a1b0307941bd77dd68cd5bfdbee9eb50",
+   "0f6020b8b18df96ee14764799e2f5a14d9a72a18430b60fdc5f2e0a10d92e24f"
+  ],
+  "k": 8,
+  "mean": 0.3848303968695238,
+  "n_labelled": 17348,
+  "n_rows": 17348,
+  "per_seed": [
+   0.39112009791662716,
+   0.3758958773534151,
+   0.39033955860344177,
+   0.3843343065995491,
+   0.3824621438745861
+  ],
+  "source": "r14 exports/emoset/cstar_qwen/test__s<seed>.npz"
+ },
+ "gate_max_abs_diff": 0.0,
+ "map_picked": {
+  "affection": {
+   "per_seed": [
+    0.2753272636519524,
+    0.27539483898619715,
+    0.2758277726712239,
+    0.2759670636753451,
+    0.27512102560657775
+   ],
+   "readout": "center+k10",
+   "source": "/data/SSD2/cosir_r13/20261031_photo_finetune/outputs/stage3/verdict.json: rows.cstar.map_picked.map",
+   "value": 0.27552759291825923
+  },
+  "emoset": {
+   "readout": "center+k10",
+   "source": "/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/diag/photo_minus_cstar.json: sections.emoset.map_at_pick.cstar",
+   "value": 0.4413089595996976
+  }
+ }
+}

@@ -29,3 +29,23 @@ photo model is the same in SC4's plain and teacher cells; the EmoSet photo mAP a
   class-count AMI would need a k-means run on saved outputs.
 - CRL on Affection: mAP 0.2739 exists (r13), no class-count AMI.
 - The r19 encoders (DINOv2, CLIP B/32, CLIP B/16): the user's 2026-11-05 reading put them in the ablation or appendix.
+
+## Frozen c* on photos (class-count AMI), 2026-11-11 09:08
+Request: the paper row "frozen c*" (ArtELingo-trained emotion head, no photo fine-tuning) on Affection (k = 9) and
+EmoSet (k = 8), Qwen3, with r17's SC4 protocol. Script `ept_frozen.py` (`gate`, then `run`); records
+`records/frozen_cstar_gate.json`, `records/frozen_cstar.json`; logs `logs/gate.log`, `logs/run.log`.
+- Gate: r17's own path (`ns_clu_cells._cand_parts` / `_comp_parts`, `ns_clu.paired_cell` point values, 1 draw; and
+  `ns_clu.metric_table`) reproduced the four recorded SC4 cells (photo vs plain / teacher, both datasets) with max abs
+  difference 0.0 (tolerance 1e-9).
+- Rows: r14 `exports/<set>/cstar_qwen/test__s<seed>.npz` (checkpoint = r10 frozen c* emotion head, sha d2310aeb...),
+  joined by key as `ns_photo.photo_stored` does (EmoSet uncut 17,716 -> cut 17,348 by key). Same k-means call
+  (`ns_metrics.partitions`), same `metric_table`.
+- AMI at the class count, mean of seeds 0 to 4: Affection 0.122671 (k 9), EmoSet 0.384830 (k 8).
+- Protocol checks: Affection k = 20 gives 0.13838015668340972, equal to r13 `rows.cstar.ami` (diff 0.0); EmoSet k = 20
+  gives 0.4472745151510936, equal to r14 `photo_minus_cstar` cstar AMI (0.4473).
+- mAP at the validation-picked read-out (center+k10), from records only: Affection 0.275528 (r13 verdict
+  `rows.cstar.map_picked.map`); EmoSet 0.441309 (r14 `diag/photo_minus_cstar.json` `sections.emoset.map_at_pick.cstar`).
+- Other encoders on Affection: no frozen c* test rows and no mAP record exist (only Qwen's `cstar_qwen` exports). The
+  SigLIP 2, SigLIP 1 and CLIP L/14 c* emotion checkpoints exist (r14 `outputs/cstar/<enc>/weights/k11=40/emotion__s<seed>.pt`).
+  Needed: inference of those checkpoints on the Affection val and test features (bs_photo.py has a `cstar_<enc>` export
+  arm), then k-means (this script), and a read-out pick on val plus test mAP. Not done.

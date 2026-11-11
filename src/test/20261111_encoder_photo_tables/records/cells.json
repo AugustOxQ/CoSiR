@@ -1,4 +1,36 @@
 {
+ "cost/clip_b16/ms": {
+  "source": "COST passes.clip_b16.ms_per_image_mean + passes.heads_clip_b16.ms_per_image_mean",
+  "value": 5.763844072663535
+ },
+ "cost/clip_b32/ms": {
+  "source": "COST passes.clip_b32.ms_per_image_mean + passes.heads_clip_b32.ms_per_image_mean",
+  "value": 5.193030819219226
+ },
+ "cost/clip_l14/ms": {
+  "source": "COST passes.clip_l14.ms_per_image_mean + passes.heads_clip_l14.ms_per_image_mean",
+  "value": 7.901492819345246
+ },
+ "cost/dinov2_large/ms": {
+  "source": "COST passes.dinov2_large.ms_per_image_mean + passes.heads_dinov2_large.ms_per_image_mean",
+  "value": 8.53111206064932
+ },
+ "cost/qwen/ms": {
+  "source": "COST passes.qwen.ms_per_image_mean + passes.heads_qwen.ms_per_image_mean",
+  "value": 88.62784774034904
+ },
+ "cost/siglip1/ms": {
+  "source": "COST passes.siglip1.ms_per_image_mean + passes.heads_siglip1.ms_per_image_mean",
+  "value": 19.475809769239277
+ },
+ "cost/siglip2/ms": {
+  "source": "COST passes.siglip2.ms_per_image_mean + passes.heads_siglip2.ms_per_image_mean",
+  "value": 19.372279334502917
+ },
+ "cost/teacher/ms": {
+  "source": "COST passes.qwen_{emotion_focus,style_word,genre_word}.ms_per_image_mean, sum",
+  "value": 266.83119196266244
+ },
  "enc/clip_l14/cstar/emotion/ami": {
   "source": "R17 SC1/artelingo/clip_l14/emotion/ami/9/plain cand",
   "value": 0.09811910474896496
@@ -327,6 +359,14 @@
   "source": "B02 SC5 clip_l14 comparator_value",
   "value": 0.2581243751972309
  },
+ "photo/affection/qwen/frozen/ami": {
+  "source": "FZ affection_k9.mean",
+  "value": 0.12267113163827843
+ },
+ "photo/affection/qwen/frozen/map": {
+  "source": "/data/SSD2/cosir_r13/20261031_photo_finetune/outputs/stage3/verdict.json: rows.cstar.map_picked.map",
+  "value": 0.27552759291825923
+ },
  "photo/affection/qwen/photo/ami": {
   "source": "R17 SC4/affection/qwen/emotion/ami/9/plain cand",
   "value": 0.17371201665615257
@@ -382,6 +422,14 @@
  "photo/affection/teacher/map": {
   "source": "R13 rows.teacher_artwork.map_picked.map",
   "value": 0.2945474692032888
+ },
+ "photo/emoset/qwen/frozen/ami": {
+  "source": "FZ emoset_k8.mean",
+  "value": 0.3848303968695238
+ },
+ "photo/emoset/qwen/frozen/map": {
+  "source": "/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/diag/photo_minus_cstar.json: sections.emoset.map_at_pick.cstar",
+  "value": 0.4413089595996976
  },
  "photo/emoset/qwen/photo/ami": {
   "source": "R17 SC4/emoset/qwen/emotion/ami/8/plain cand",

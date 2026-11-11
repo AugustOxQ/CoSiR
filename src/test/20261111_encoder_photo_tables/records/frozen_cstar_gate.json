@@ -1,0 +1,51 @@
+{
+ "cells": {
+  "SC4/affection/qwen/emotion/ami/9/plain": {
+   "cand_paired": 0.17371201665615257,
+   "cand_recorded": 0.17371201665615257,
+   "cand_table": 0.17371201665615257,
+   "comp_paired": 0.08790581707900323,
+   "comp_recorded": 0.08790581707900323,
+   "comp_table": 0.08790581707900323,
+   "max_abs_diff_paired": 0.0,
+   "max_abs_diff_table": 0.0,
+   "pass": true
+  },
+  "SC4/affection/qwen/emotion/ami/9/teacher": {
+   "cand_paired": 0.17371201665615257,
+   "cand_recorded": 0.17371201665615257,
+   "cand_table": 0.17371201665615257,
+   "comp_paired": 0.15541834623867254,
+   "comp_recorded": 0.15541834623867254,
+   "comp_table": 0.15541834623867254,
+   "max_abs_diff_paired": 0.0,
+   "max_abs_diff_table": 0.0,
+   "pass": true
+  },
+  "SC4/emoset/qwen/emotion/ami/8/plain": {
+   "cand_paired": 0.4402703854925612,
+   "cand_recorded": 0.4402703854925612,
+   "cand_table": 0.4402703854925612,
+   "comp_paired": 0.34915490602733046,
+   "comp_recorded": 0.34915490602733046,
+   "comp_table": 0.34915490602733046,
+   "max_abs_diff_paired": 0.0,
+   "max_abs_diff_table": 0.0,
+   "pass": true
+  },
+  "SC4/emoset/qwen/emotion/ami/8/teacher": {
+   "cand_paired": 0.4402703854925612,
+   "cand_recorded": 0.4402703854925612,
+   "cand_table": 0.4402703854925612,
+   "comp_paired": 0.39421017702005745,
+   "comp_recorded": 0.39421017702005745,
+   "comp_table": 0.39421017702005745,
+   "max_abs_diff_paired": 0.0,
+   "max_abs_diff_table": 0.0,
+   "pass": true
+  }
+ },
+ "max_abs_diff": 0.0,
+ "passed": true,
+ "tol": 1e-09
+}
