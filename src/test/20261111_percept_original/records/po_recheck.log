@@ -1,0 +1,7 @@
+labelled: {'emotion': 12281, 'style': 12281, 'genre': 9949}
+seed 0: {'rclass': {'emotion': 0.06, 'style': 0.2533, 'genre': 0.5118}, 'r20': {'emotion': 0.0664, 'style': 0.2467, 'genre': 0.4805}}
+seed 1: {'rclass': {'emotion': 0.0642, 'style': 0.276, 'genre': 0.4706}, 'r20': {'emotion': 0.069, 'style': 0.2668, 'genre': 0.4526}}
+seed 2: {'rclass': {'emotion': 0.0622, 'style': 0.2502, 'genre': 0.4726}, 'r20': {'emotion': 0.0684, 'style': 0.2457, 'genre': 0.466}}
+seed 3: {'rclass': {'emotion': 0.0646, 'style': 0.2693, 'genre': 0.4605}, 'r20': {'emotion': 0.0676, 'style': 0.2619, 'genre': 0.4523}}
+seed 4: {'rclass': {'emotion': 0.0669, 'style': 0.2621, 'genre': 0.4566}, 'r20': {'emotion': 0.0676, 'style': 0.2608, 'genre': 0.4489}}
+MEAN {"rclass": {"emotion": 0.06358430182818484, "style": 0.26217891118293324, "genre": 0.4744370236399559}, "r20": {"emotion": 0.06778573034359733, "style": 0.256385112816235, "genre": 0.460050871367174}}
