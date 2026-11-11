@@ -1,6 +1,6 @@
-"""r26 export: Stage 2 validation probabilities with painting names, in r17's validation key order (CPU only).
+"""r26 export: Stage 2 validation probabilities and the test probabilities, each with painting names (CPU only).
 
-    python po_export_val.py [--cuts k40 strict] [--seeds 0 1 2 3 4] [--check-keys]
+    python po_export_val.py [--cuts k40 strict] [--seeds 0 1 2 3 4] [--check-keys] [--test]
 
 For the paper's Table 3 (retrieval read-outs picked and fitted on validation; the "paper sec4 tables" chat scores
 them). Stage 2 saves `eval_prob` [6152, K] with rows in the full split's dev order (sorted validation painting names)
@@ -8,6 +8,10 @@ and that order's sha256 in its sidecar (`eval_names_sha256`). This script checks
 name to r17's `ns_data.keys('artelingo', 'val')` and writes OUT/val/<cut>/L1__s<seed>.npz {prob float32 [6152, K],
 names <U [6152]} with a JSON sidecar. The test (held) outputs are not touched. `--check-keys` only checks that r17's
 validation keys are the 6,152 dev paintings.
+
+`--test` also writes the test probabilities with names: OUT/held/L1__<cut>__s<seed>.npz holds only `prob`, rows in
+r17's `ns_data.keys('artelingo', 'held')` order (checked by its sidecar's `held_sha256`); the copy goes to
+OUT/test/<cut>/L1__s<seed>.npz {prob float32 [12281, K], names <U [12281]} with a JSON sidecar. Rows are not reordered.
 """
 import argparse
 import hashlib
@@ -58,11 +62,36 @@ def export(s, cut, seed):
     return out
 
 
+def export_test(cut, seed):
+    src = po.held_path(P.OUT, cut, seed)
+    if not src.exists():
+        print(f'{cut} s{seed}: no test output; nothing written', flush=True)
+        return None
+    meta = json.loads(src.with_suffix('.json').read_text())
+    names = po.held_names()
+    assert meta['held_sha256'] == ct_held.names_sha256(names) and meta['rows'] == len(names) == P.N_TEST, \
+        'test rows are not in r17 held order'
+    with np.load(src, allow_pickle=False) as z:
+        prob = z['prob']
+    assert prob.shape == (P.N_TEST, meta['K']) and prob.dtype == np.float32
+    out = P.OUT / 'test' / cut / f'{P.ARM}__s{seed}.npz'
+    out.parent.mkdir(parents=True, exist_ok=True)
+    np.savez(out, prob=prob, names=np.asarray(names))
+    side = dict(source=str(src), source_sha256=hashlib.sha256(src.read_bytes()).hexdigest(),
+                rows="r17's ns_data.keys('artelingo', 'held'), as in the source", names_sha256=meta['held_sha256'],
+                shape=list(prob.shape), K=meta['K'], cut=cut, seed=seed, nonfinite=bool(meta.get('nonfinite', False)),
+                collapse='judged per seed in OUT/score/po_scores.json (collapse rule on the Stage 1 arrays)')
+    out.with_suffix('.json').write_text(json.dumps(side, indent=2) + '\n')
+    print(f'{cut} s{seed}: wrote {out} {tuple(prob.shape)}', flush=True)
+    return out
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument('--cuts', nargs='+', choices=P.CUTS, default=list(P.CUTS))
     p.add_argument('--seeds', nargs='+', type=int, choices=P.SEEDS, default=list(P.SEEDS))
     p.add_argument('--check-keys', action='store_true')
+    p.add_argument('--test', action='store_true', help='also write the test probabilities with names')
     args = p.parse_args(argv)
     s = po.split()
     if args.check_keys:
@@ -72,6 +101,8 @@ def main(argv=None):
     for cut in args.cuts:
         for seed in args.seeds:
             export(s, cut, seed)
+            if args.test:
+                export_test(cut, seed)
     return 0
 
 
