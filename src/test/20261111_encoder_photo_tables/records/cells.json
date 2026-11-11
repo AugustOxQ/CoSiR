@@ -1,0 +1,410 @@
+{
+ "enc/clip_l14/cstar/emotion/ami": {
+  "source": "R17 SC1/artelingo/clip_l14/emotion/ami/9/plain cand",
+  "value": 0.09811910474896496
+ },
+ "enc/clip_l14/cstar/emotion/map": {
+  "source": "R17 SC8/artelingo/clip_l14/emotion/map/-/matched cand",
+  "value": 0.2670906500532171
+ },
+ "enc/clip_l14/cstar/genre/ami": {
+  "source": "R17 SC1/artelingo/clip_l14/genre/ami/10/plain cand",
+  "value": 0.5155098058137793
+ },
+ "enc/clip_l14/cstar/genre/map": {
+  "source": "R17 SC8/artelingo/clip_l14/genre/map/-/matched cand",
+  "value": 0.6177380783984918
+ },
+ "enc/clip_l14/cstar/style/ami": {
+  "source": "R17 SC1/artelingo/clip_l14/style/ami/27/plain cand",
+  "value": 0.42220905757438976
+ },
+ "enc/clip_l14/cstar/style/map": {
+  "source": "R17 SC8/artelingo/clip_l14/style/map/-/matched cand",
+  "value": 0.3349711143913246
+ },
+ "enc/clip_l14/percept/emotion/ami": {
+  "source": "R17 SC2/artelingo/clip_l14/emotion/ami/9/matched comp",
+  "value": 0.06907094808439097
+ },
+ "enc/clip_l14/percept/emotion/map": {
+  "source": "R17 SC8/artelingo/clip_l14/emotion/map/-/matched comp",
+  "value": 0.24393653542762048
+ },
+ "enc/clip_l14/percept/genre/ami": {
+  "source": "R17 SC2/artelingo/clip_l14/genre/ami/10/matched comp",
+  "value": 0.45733962646677223
+ },
+ "enc/clip_l14/percept/genre/map": {
+  "source": "R17 SC8/artelingo/clip_l14/genre/map/-/matched comp",
+  "value": 0.5315762786646603
+ },
+ "enc/clip_l14/percept/style/ami": {
+  "source": "R17 SC2/artelingo/clip_l14/style/ami/27/matched comp",
+  "value": 0.22856394129451663
+ },
+ "enc/clip_l14/percept/style/map": {
+  "source": "R17 SC8/artelingo/clip_l14/style/map/-/matched comp",
+  "value": 0.165826801940294
+ },
+ "enc/clip_l14/plain/emotion/ami": {
+  "source": "R17 SC1/artelingo/clip_l14/emotion/ami/9/plain comp",
+  "value": 0.06251691071278269
+ },
+ "enc/clip_l14/plain/emotion/map": {
+  "source": "R17 SC7/artelingo/clip_l14/emotion/map/-/plain comp",
+  "value": 0.2478970809618243
+ },
+ "enc/clip_l14/plain/genre/ami": {
+  "source": "R17 SC1/artelingo/clip_l14/genre/ami/10/plain comp",
+  "value": 0.3967618124688774
+ },
+ "enc/clip_l14/plain/genre/map": {
+  "source": "R17 SC7/artelingo/clip_l14/genre/map/-/plain comp",
+  "value": 0.4980805537137537
+ },
+ "enc/clip_l14/plain/style/ami": {
+  "source": "R17 SC1/artelingo/clip_l14/style/ami/27/plain comp",
+  "value": 0.36266107102886536
+ },
+ "enc/clip_l14/plain/style/map": {
+  "source": "R17 SC7/artelingo/clip_l14/style/map/-/plain comp",
+  "value": 0.2732315215072776
+ },
+ "enc/qwen/cstar/emotion/ami": {
+  "source": "R17 SC1/artelingo/qwen/emotion/ami/9/plain cand",
+  "value": 0.1024127745008577
+ },
+ "enc/qwen/cstar/emotion/map": {
+  "source": "R17 SC8/artelingo/qwen/emotion/map/-/matched cand",
+  "value": 0.26911213549032514
+ },
+ "enc/qwen/cstar/genre/ami": {
+  "source": "R17 SC1/artelingo/qwen/genre/ami/10/plain cand",
+  "value": 0.5100704595257602
+ },
+ "enc/qwen/cstar/genre/map": {
+  "source": "R17 SC8/artelingo/qwen/genre/map/-/matched cand",
+  "value": 0.6151490547952212
+ },
+ "enc/qwen/cstar/style/ami": {
+  "source": "R17 SC1/artelingo/qwen/style/ami/27/plain cand",
+  "value": 0.4109255361955107
+ },
+ "enc/qwen/cstar/style/map": {
+  "source": "R17 SC8/artelingo/qwen/style/map/-/matched cand",
+  "value": 0.32346150726030576
+ },
+ "enc/qwen/percept/emotion/ami": {
+  "source": "R17 SC2/artelingo/qwen/emotion/ami/9/matched comp",
+  "value": 0.06794574430634347
+ },
+ "enc/qwen/percept/emotion/map": {
+  "source": "R17 SC8/artelingo/qwen/emotion/map/-/matched comp",
+  "value": 0.24832850450498836
+ },
+ "enc/qwen/percept/genre/ami": {
+  "source": "R17 SC2/artelingo/qwen/genre/ami/10/matched comp",
+  "value": 0.4243474957604154
+ },
+ "enc/qwen/percept/genre/map": {
+  "source": "R17 SC8/artelingo/qwen/genre/map/-/matched comp",
+  "value": 0.504921102262426
+ },
+ "enc/qwen/percept/style/ami": {
+  "source": "R17 SC2/artelingo/qwen/style/ami/27/matched comp",
+  "value": 0.19236135516573005
+ },
+ "enc/qwen/percept/style/map": {
+  "source": "R17 SC8/artelingo/qwen/style/map/-/matched comp",
+  "value": 0.15229407378245421
+ },
+ "enc/qwen/plain/emotion/ami": {
+  "source": "R17 SC1/artelingo/qwen/emotion/ami/9/plain comp",
+  "value": 0.06955545350026339
+ },
+ "enc/qwen/plain/emotion/map": {
+  "source": "R17 SC7/artelingo/qwen/emotion/map/-/plain comp",
+  "value": 0.24833704767882378
+ },
+ "enc/qwen/plain/genre/ami": {
+  "source": "R17 SC1/artelingo/qwen/genre/ami/10/plain comp",
+  "value": 0.4249481876192607
+ },
+ "enc/qwen/plain/genre/map": {
+  "source": "R17 SC7/artelingo/qwen/genre/map/-/plain comp",
+  "value": 0.5361309840020565
+ },
+ "enc/qwen/plain/style/ami": {
+  "source": "R17 SC1/artelingo/qwen/style/ami/27/plain comp",
+  "value": 0.23461712736047158
+ },
+ "enc/qwen/plain/style/map": {
+  "source": "R17 SC7/artelingo/qwen/style/map/-/plain comp",
+  "value": 0.19235892255993833
+ },
+ "enc/siglip1/cstar/emotion/ami": {
+  "source": "R17 SC1/artelingo/siglip1/emotion/ami/9/plain cand",
+  "value": 0.09854237890029688
+ },
+ "enc/siglip1/cstar/emotion/map": {
+  "source": "R17 SC8/artelingo/siglip1/emotion/map/-/matched cand",
+  "value": 0.2687972416119228
+ },
+ "enc/siglip1/cstar/genre/ami": {
+  "source": "R17 SC1/artelingo/siglip1/genre/ami/10/plain cand",
+  "value": 0.5279032590268119
+ },
+ "enc/siglip1/cstar/genre/map": {
+  "source": "R17 SC8/artelingo/siglip1/genre/map/-/matched cand",
+  "value": 0.6227076459417299
+ },
+ "enc/siglip1/cstar/style/ami": {
+  "source": "R17 SC1/artelingo/siglip1/style/ami/27/plain cand",
+  "value": 0.4407907284086662
+ },
+ "enc/siglip1/cstar/style/map": {
+  "source": "R17 SC8/artelingo/siglip1/style/map/-/matched cand",
+  "value": 0.3554565694139421
+ },
+ "enc/siglip1/percept/emotion/ami": {
+  "source": "R17 SC2/artelingo/siglip1/emotion/ami/9/matched comp",
+  "value": 0.07032100619031442
+ },
+ "enc/siglip1/percept/emotion/map": {
+  "source": "R17 SC8/artelingo/siglip1/emotion/map/-/matched comp",
+  "value": 0.2442292153098671
+ },
+ "enc/siglip1/percept/genre/ami": {
+  "source": "R17 SC2/artelingo/siglip1/genre/ami/10/matched comp",
+  "value": 0.46603440197204815
+ },
+ "enc/siglip1/percept/genre/map": {
+  "source": "R17 SC8/artelingo/siglip1/genre/map/-/matched comp",
+  "value": 0.548345453898317
+ },
+ "enc/siglip1/percept/style/ami": {
+  "source": "R17 SC2/artelingo/siglip1/style/ami/27/matched comp",
+  "value": 0.22534701973590607
+ },
+ "enc/siglip1/percept/style/map": {
+  "source": "R17 SC8/artelingo/siglip1/style/map/-/matched comp",
+  "value": 0.1660810869621047
+ },
+ "enc/siglip1/plain/emotion/ami": {
+  "source": "R17 SC1/artelingo/siglip1/emotion/ami/9/plain comp",
+  "value": 0.061246600574685284
+ },
+ "enc/siglip1/plain/emotion/map": {
+  "source": "R17 SC7/artelingo/siglip1/emotion/map/-/plain comp",
+  "value": 0.24523517940817563
+ },
+ "enc/siglip1/plain/genre/ami": {
+  "source": "R17 SC1/artelingo/siglip1/genre/ami/10/plain comp",
+  "value": 0.4016296241640907
+ },
+ "enc/siglip1/plain/genre/map": {
+  "source": "R17 SC7/artelingo/siglip1/genre/map/-/plain comp",
+  "value": 0.5035387015848326
+ },
+ "enc/siglip1/plain/style/ami": {
+  "source": "R17 SC1/artelingo/siglip1/style/ami/27/plain comp",
+  "value": 0.3820364524775098
+ },
+ "enc/siglip1/plain/style/map": {
+  "source": "R17 SC7/artelingo/siglip1/style/map/-/plain comp",
+  "value": 0.2962197093195602
+ },
+ "enc/siglip2/cstar/emotion/ami": {
+  "source": "R17 SC1/artelingo/siglip2/emotion/ami/9/plain cand",
+  "value": 0.09832674376734343
+ },
+ "enc/siglip2/cstar/emotion/map": {
+  "source": "R17 SC8/artelingo/siglip2/emotion/map/-/matched cand",
+  "value": 0.26921279058500325
+ },
+ "enc/siglip2/cstar/genre/ami": {
+  "source": "R17 SC1/artelingo/siglip2/genre/ami/10/plain cand",
+  "value": 0.527030181560734
+ },
+ "enc/siglip2/cstar/genre/map": {
+  "source": "R17 SC8/artelingo/siglip2/genre/map/-/matched cand",
+  "value": 0.6225822838616337
+ },
+ "enc/siglip2/cstar/style/ami": {
+  "source": "R17 SC1/artelingo/siglip2/style/ami/27/plain cand",
+  "value": 0.43934797358393685
+ },
+ "enc/siglip2/cstar/style/map": {
+  "source": "R17 SC8/artelingo/siglip2/style/map/-/matched cand",
+  "value": 0.34838748236628914
+ },
+ "enc/siglip2/percept/emotion/ami": {
+  "source": "R17 SC2/artelingo/siglip2/emotion/ami/9/matched comp",
+  "value": 0.0685067620641513
+ },
+ "enc/siglip2/percept/emotion/map": {
+  "source": "R17 SC8/artelingo/siglip2/emotion/map/-/matched comp",
+  "value": 0.24282241725851003
+ },
+ "enc/siglip2/percept/genre/ami": {
+  "source": "R17 SC2/artelingo/siglip2/genre/ami/10/matched comp",
+  "value": 0.47437787004002513
+ },
+ "enc/siglip2/percept/genre/map": {
+  "source": "R17 SC8/artelingo/siglip2/genre/map/-/matched comp",
+  "value": 0.5453370475393672
+ },
+ "enc/siglip2/percept/style/ami": {
+  "source": "R17 SC2/artelingo/siglip2/style/ami/27/matched comp",
+  "value": 0.22235362776389697
+ },
+ "enc/siglip2/percept/style/map": {
+  "source": "R17 SC8/artelingo/siglip2/style/map/-/matched comp",
+  "value": 0.16436487540490297
+ },
+ "enc/siglip2/plain/emotion/ami": {
+  "source": "R17 SC1/artelingo/siglip2/emotion/ami/9/plain comp",
+  "value": 0.05381561885091041
+ },
+ "enc/siglip2/plain/emotion/map": {
+  "source": "R17 SC7/artelingo/siglip2/emotion/map/-/plain comp",
+  "value": 0.2442894595520592
+ },
+ "enc/siglip2/plain/genre/ami": {
+  "source": "R17 SC1/artelingo/siglip2/genre/ami/10/plain comp",
+  "value": 0.35489702736518125
+ },
+ "enc/siglip2/plain/genre/map": {
+  "source": "R17 SC7/artelingo/siglip2/genre/map/-/plain comp",
+  "value": 0.4967895502942517
+ },
+ "enc/siglip2/plain/style/ami": {
+  "source": "R17 SC1/artelingo/siglip2/style/ami/27/plain comp",
+  "value": 0.3234994207871174
+ },
+ "enc/siglip2/plain/style/map": {
+  "source": "R17 SC7/artelingo/siglip2/style/map/-/plain comp",
+  "value": 0.25762520825958124
+ },
+ "enc/teacher/emotion/ami": {
+  "source": "R17 SC3/artelingo/qwen/emotion/ami/9/teacher comp",
+  "value": 0.08887516573447074
+ },
+ "enc/teacher/emotion/map": {
+  "source": "S5 map.instructed.emotion.mean",
+  "value": 0.2684206728949585
+ },
+ "enc/teacher/genre/ami": {
+  "source": "R17 SC3/artelingo/qwen/genre/ami/10/teacher comp",
+  "value": 0.5014662806033519
+ },
+ "enc/teacher/genre/map": {
+  "source": "S5 map.instructed.genre.mean",
+  "value": 0.6124437089715543
+ },
+ "enc/teacher/style/ami": {
+  "source": "R17 SC3/artelingo/qwen/style/ami/27/teacher comp",
+  "value": 0.40631483434115134
+ },
+ "enc/teacher/style/map": {
+  "source": "S5 map.instructed.style.mean",
+  "value": 0.32171685368804037
+ },
+ "photo/affection/clip_l14/photo/ami": {
+  "source": "R17 SC4/affection/clip_l14/emotion/ami/9/plain cand",
+  "value": 0.18196124915107487
+ },
+ "photo/affection/clip_l14/photo/map": {
+  "source": "B02 SC5 clip_l14 candidate_value",
+  "value": 0.3220761529445576
+ },
+ "photo/affection/clip_l14/plain/ami": {
+  "source": "R17 SC4/affection/clip_l14/emotion/ami/9/plain comp",
+  "value": 0.10902898952295509
+ },
+ "photo/affection/clip_l14/plain/map": {
+  "source": "B02 SC5 clip_l14 comparator_value",
+  "value": 0.2581243751972309
+ },
+ "photo/affection/qwen/photo/ami": {
+  "source": "R17 SC4/affection/qwen/emotion/ami/9/plain cand",
+  "value": 0.17371201665615257
+ },
+ "photo/affection/qwen/photo/map": {
+  "source": "R13 rows.photo.map_picked.map",
+  "value": 0.3172130769243658
+ },
+ "photo/affection/qwen/plain/ami": {
+  "source": "R17 SC4/affection/qwen/emotion/ami/9/plain comp",
+  "value": 0.08790581707900323
+ },
+ "photo/affection/qwen/plain/map": {
+  "source": "R13 rows.plain.map_picked.map",
+  "value": 0.24517543931950542
+ },
+ "photo/affection/qwen/teacher/ami": {
+  "source": "R17 SC4/affection/qwen/emotion/ami/9/teacher comp",
+  "value": 0.15541834623867254
+ },
+ "photo/affection/siglip1/photo/ami": {
+  "source": "R17 SC4/affection/siglip1/emotion/ami/9/plain cand",
+  "value": 0.18157465183698934
+ },
+ "photo/affection/siglip1/photo/map": {
+  "source": "B02 SC5 siglip1 candidate_value",
+  "value": 0.3233544665178746
+ },
+ "photo/affection/siglip1/plain/ami": {
+  "source": "R17 SC4/affection/siglip1/emotion/ami/9/plain comp",
+  "value": 0.0987800596578365
+ },
+ "photo/affection/siglip1/plain/map": {
+  "source": "B02 SC5 siglip1 comparator_value",
+  "value": 0.2545391741618377
+ },
+ "photo/affection/siglip2/photo/ami": {
+  "source": "R17 SC4/affection/siglip2/emotion/ami/9/plain cand",
+  "value": 0.18124472608961956
+ },
+ "photo/affection/siglip2/photo/map": {
+  "source": "B02 SC5 siglip2 candidate_value",
+  "value": 0.3226639420041426
+ },
+ "photo/affection/siglip2/plain/ami": {
+  "source": "R17 SC4/affection/siglip2/emotion/ami/9/plain comp",
+  "value": 0.09107739184270786
+ },
+ "photo/affection/siglip2/plain/map": {
+  "source": "B02 SC5 siglip2 comparator_value",
+  "value": 0.25152379013891124
+ },
+ "photo/affection/teacher/map": {
+  "source": "R13 rows.teacher_artwork.map_picked.map",
+  "value": 0.2945474692032888
+ },
+ "photo/emoset/qwen/photo/ami": {
+  "source": "R17 SC4/emoset/qwen/emotion/ami/8/plain cand",
+  "value": 0.4402703854925612
+ },
+ "photo/emoset/qwen/photo/map": {
+  "source": "B02 SC8 qwen ret candidate_value",
+  "value": 0.4838462767627913
+ },
+ "photo/emoset/qwen/plain/ami": {
+  "source": "R17 SC4/emoset/qwen/emotion/ami/8/plain comp",
+  "value": 0.34915490602733046
+ },
+ "photo/emoset/qwen/plain/map": {
+  "source": "B02 SC8 qwen ret comparator_value",
+  "value": 0.3863925618081731
+ },
+ "photo/emoset/qwen/teacher/ami": {
+  "source": "R17 SC4/emoset/qwen/emotion/ami/8/teacher comp",
+  "value": 0.39421017702005745
+ },
+ "photo/emoset/teacher/map": {
+  "source": "B02 SC10 qwen ret comparator_value",
+  "value": 0.4518753520653523
+ }
+}
