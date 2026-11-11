@@ -1,0 +1,95 @@
+{
+  "max_gap": 0.0,
+  "rows": [
+    {
+      "gap": 0.0,
+      "id": "vlm2vec/emotion/ami/9",
+      "recomputed": 0.06377259570732573,
+      "scorer": 0.06377259570732573
+    },
+    {
+      "gap": 0.0,
+      "id": "bertopic/emotion/ami/9",
+      "recomputed": 0.037521540764450294,
+      "scorer": 0.037521540764450294
+    },
+    {
+      "gap": 0.0,
+      "id": "vlm2vec/emotion/ami/20",
+      "recomputed": 0.07100613895961792,
+      "scorer": 0.07100613895961792
+    },
+    {
+      "gap": 0.0,
+      "id": "bertopic/emotion/ami/20",
+      "recomputed": 0.06620297846034479,
+      "scorer": 0.06620297846034479
+    },
+    {
+      "gap": null,
+      "id": "bertopic_stale/emotion/ami/20",
+      "recomputed": 0.07198223786928748,
+      "scorer": null
+    },
+    {
+      "gap": 0.0,
+      "id": "vlm2vec/style/ami/27",
+      "recomputed": 0.3729743958098484,
+      "scorer": 0.3729743958098484
+    },
+    {
+      "gap": 0.0,
+      "id": "bertopic/style/ami/27",
+      "recomputed": 0.10500601951531363,
+      "scorer": 0.10500601951531363
+    },
+    {
+      "gap": 0.0,
+      "id": "vlm2vec/style/ami/20",
+      "recomputed": 0.3699943225623416,
+      "scorer": 0.3699943225623416
+    },
+    {
+      "gap": 0.0,
+      "id": "bertopic/style/ami/20",
+      "recomputed": 0.09359249418927225,
+      "scorer": 0.09359249418927225
+    },
+    {
+      "gap": null,
+      "id": "bertopic_stale/style/ami/20",
+      "recomputed": 0.09265835065705015,
+      "scorer": null
+    },
+    {
+      "gap": 0.0,
+      "id": "vlm2vec/genre/ami/10",
+      "recomputed": 0.4593010201144143,
+      "scorer": 0.4593010201144143
+    },
+    {
+      "gap": 0.0,
+      "id": "bertopic/genre/ami/10",
+      "recomputed": 0.26047158886368543,
+      "scorer": 0.26047158886368543
+    },
+    {
+      "gap": 0.0,
+      "id": "vlm2vec/genre/ami/20",
+      "recomputed": 0.4594993944514876,
+      "scorer": 0.4594993944514876
+    },
+    {
+      "gap": 0.0,
+      "id": "bertopic/genre/ami/20",
+      "recomputed": 0.3092043551789912,
+      "scorer": 0.3092043551789912
+    },
+    {
+      "gap": null,
+      "id": "bertopic_stale/genre/ami/20",
+      "recomputed": 0.3136991799621314,
+      "scorer": null
+    }
+  ]
+}
