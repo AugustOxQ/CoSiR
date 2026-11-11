@@ -2207,3 +2207,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-11-paper-sec4-tables-5-handoff.md
 - New chat: tab 'paper sec4 tables 5', session 70bc005c-6a82-4ec9-882b-e7994cd6172a
 
+[brief] CoSiR: r21 build 3 -> r21 run (2026-11-11 09:24 Amsterdam)
+- Done: r21 build: six tickets built, reviewed and merged into main; gates 0a and 0b pass with all diffs 0; the final review found no must-fix.
+- State: DEC's gradient is 0.02 to 0.08 of c*'s at λ = 1 and 0.17 to 0.75 at λ = 10; the balance term is 6 to 45 times c*'s at λ = 1.
+- Next: the GPU check, then stage 0c (`dec-off` seed 0) with `r21_queue_stage0c.sh`.
+- Blocked: nothing. Long GPU stages run from 19:00 unless the GPU stays under 200 W (D17).
+- Handoff: docs/superpowers/handoffs/2026-11-11-r21-run-handoff.md
+- New chat: tab 'r21 run', session 83b1f7cd-acda-4f06-8028-49afdc1eb85d
+
