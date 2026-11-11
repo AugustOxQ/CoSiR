@@ -146,3 +146,13 @@ Spec: `docs/superpowers/specs/2026-11-11-r21-dec-heads-design.md`. Decision line
   draws, 228 s): `D16 REGRESS PASS cells=3 max_abs=3.8e-17` against r10's `ablation/held.json` (AMI at 20) and r20's
   `ablation_ret.json` (mAP); `d16_smoke/regress.json`. Codex's one rule choice: r17 keeps no per-seed test record, so
   c*'s class-count values per seed are checked by r17's recorded mean and a replay of its frozen scorer.
+- 10:51: the user asked whether the runs can go to DAS6. Facts given: node402 reserved (3 free RTX A6000, 104 h left);
+  the node repeats itself bit for bit, but r10 measured node minus local on seed 0 as +0.0003 / +0.0020 / −0.0077
+  validation AMI (`20261027_recipe_sweep_log.md:40`), and the saved c* is local, so node arms would carry a device
+  shift up to about 0.008 AMI. **User: "keep local for now"** (user, after seeing the recommendation). This keeps D17's
+  device; the global rule's "DAS6 first" is set aside for this round because of the device shift.
+- Stage 1a's first run (plain, λ 1, W 1, S1): S1 never stops early (3 to 9% of paintings change cluster per DEC epoch,
+  threshold 0.1%), so each head runs 50 DEC epochs; a DEC epoch takes 10 to 39 s (c*'s epoch 7 s). DEC's own
+  assignments show collapse signs: largest cluster 40% (emotion) and 39% (genre), smallest 0. Measured at 10:49 (4 of 8 runs):
+  S1 runs 23 min, S2 runs 12 min. End estimate: stage 1a about 12:00; the table about 22:00 if S1 is picked, about
+  18:00 if S2 is.
