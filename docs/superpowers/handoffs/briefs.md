@@ -2151,3 +2151,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-11-r21-build-handoff.md
 - New chat: tab 'r21 build', session c6e18fab-59ed-4012-8270-0b34e3297dd2
 
+[brief] CoSiR: paper sec4 tables -> paper sec4 tables 2 (2026-11-11 06:33 Amsterdam)
+- Done: Table 3 (retrieval, picked read-outs) and Table 4 (ablation, four removals) are in the paper. 4.1 has the read-out sentence.
+- State: ours is best in all three image-retrieval columns of Table 3 (0.269 / 0.323 / 0.615 against the teacher's 0.268 / 0.322 / 0.612). The teacher leads on emotion in the three text directions.
+- Next: build the MMArt table, then score VLM2Vec and PercepT (CLIP L/14) for Table 3 when their validation files exist.
+- Blocked: the user's 11:00 meeting; ask nothing about it until the user says it is over.
+- Handoff: docs/superpowers/handoffs/2026-11-11-paper-sec4-tables-2-handoff.md
+- New chat: tab 'paper sec4 tables 2', session 12b49f57-5d07-45da-ba69-dccef204601a
+
