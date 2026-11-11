@@ -2223,3 +2223,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-11-r26-run-handoff.md
 - New chat: tab 'r26 run', session 6c108d39-2c20-468e-b282-7948c598596a
 
+[brief] CoSiR: paper sec4 tables 5 -> paper sec4 tables 6 (2026-11-11 09:43 Amsterdam)
+- Done: Table 3's VLM2Vec row (0.248 / 0.280 / 0.559, below CoSiR), Figures 3 and 4 in 4.6 (the user's picks), the user's own LaTeX edits committed.
+- State: Table 3 has one empty row, PercepT on CLIP L/14. r26 sends its files at about 21:15.
+- Next: tell the "CoSiR r26 run" tab this tab's name, then work on what the user asks. Score the PercepT row when r26's message arrives.
+- Blocked: the user's 11:00 meeting. Ask nothing about it until the user says it is over.
+- Handoff: docs/superpowers/handoffs/2026-11-11-paper-sec4-tables-6-handoff.md
+- New chat: tab 'paper sec4 tables 6', session 50d12002-c131-4588-a06f-73ac6fdc28f2
+
