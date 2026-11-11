@@ -80,3 +80,20 @@ Spec: `docs/superpowers/specs/2026-11-11-r21-dec-heads-design.md`. Decision line
   should-fix points (exact history equality may give a false FAIL; a mutation counts as detected on any FAIL) are answered
   by these records and left as they are.
 - 08:22: final whole-branch review started (Opus `xhigh`).
+- 08:30: **final whole-branch review** (Opus `xhigh`; handed back at its 200k context limit, its two last checks read by
+  the controller). Verdict: the claim holds with fixes; no must-fix; no defect that gives a wrong pick or a wrong word.
+  Re-derived: gate 0a by its own route (scikit-learn MiniBatchKMeans and AMI, `ct_held` labels, `ct_diag` teacher rows),
+  all diffs 0; gate 0c's saved values (best epochs 4, 1, 18; validation AMI 0.100984, 0.420558, 0.529839); flat q (equal
+  to the decision line); 18 stage 2 regression values by hand and an independent per-seed recompute of AMI at 20 and mAP
+  for `k11=40-no_buddy` and c* (equal; mAP to 1e-9); the selection rule on four constructed sheets. Hard rule 6: no
+  missing or contradicting item; partial: §3.6's collapse check on the stage 1 sheet.
+  Records: `/tmp/claude-0/-project-CoSiR/9ad8ae03-6854-4c8f-8421-1435e89de566/scratchpad/final_review/`.
+  - **Gradient size** (`grad/grad_ratio.json`, saved c* seed 0, first DEC batch, image view parameters): the DEC term's
+    gradient norm over c*'s loss's is 0.017 / 0.075 / 0.023 at λ = 1 and 0.17 / 0.75 / 0.23 at λ = 10 (emotion, style,
+    genre; cosine with c*'s gradient 0.05 / 0.31 / 0.16). The balance term (×1000) is 6.3 / 45 / 27 times c*'s gradient at
+    λ = 1. So λ = 10 is not weak, although q is flat; the balance-on arms are dominated by the balance term.
+  - Flags for the run handoff (no code change): S1's stop rule keeps the last state after up to 50 DEC epochs with c*'s
+    losses still on, so an S1 arm can train much longer than c* (19, 16, 33 epochs), and `dec-off` does not control for
+    that length; the teacher pull's target is as flat as q.
+  - Fix wave (Codex `gpt-6.1-sol` high, worktree `/project/CoSiR-r21-fixwave`): F1 the stage 1 sheet shows DEC's own
+    cluster shares (last DEC epoch) beside the k-means shares; F2 `collect_rows` refuses an arm without an `ok` run record.
