@@ -170,6 +170,6 @@ Spec: `docs/superpowers/specs/2026-11-11-r21-dec-heads-design.md`. Decision line
   each DEC change mixes the DEC term with a later kept epoch (and a shifted dropout stream). `dec-off` uses c*'s rule
   and does not control for it. The matched control is the same arm at λ = 0 (W 5, S2): the trainer accepts λ = 0
   (gate 0b ran it), but `r21_arms.arm_name` refuses it (λ > 0). A new run (constitution row 6): asked the user.
-- 16:53: **D16 PASS**: `r21_d16.py derive` (32 min, one CPU slot; `d16/d16_table.json`) against `scores/stage2_table.json`,
+- 16:50: **D16 PASS**: `r21_d16.py derive` (32 min, one CPU slot; `d16/d16_table.json`) against `scores/stage2_table.json`,
   compared by the controller (`d16/compare.json`): 36 cells, 540 numbers (change, interval, means, per-seed values) and
   36 words; max |diff| 1.6e-16, 0 failed, 0 missing; tolerance 1e-6. The derive read the same picks file (SHA-256 equal).
