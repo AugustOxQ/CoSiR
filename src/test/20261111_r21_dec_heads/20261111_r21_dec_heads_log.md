@@ -130,3 +130,19 @@ Spec: `docs/superpowers/specs/2026-11-11-r21-dec-heads-design.md`. Decision line
   does not cover; the seed bootstrap of the intervals is the only noise term for that. Flag in the report.
 - 09:40: the teacher-cluster cache (stage 1b's first step, needs no pick) runs now on one CPU slot, so the spec's
   open assumption (the teacher's training features exist) is checked before the night.
+- 09:39: teacher-cluster cache written (`teacher_clusters/{emotion,style,genre}.npz`, k 9 / 27 / 10 on 42,969 training
+  paintings each; 2.5 min on one CPU slot). The spec's open assumption holds: the teacher's training features exist.
+- 09:40: **the user said "run now"**: stages 1 and 2 start in the day, not from 19:00 (user, overrides D17's evening
+  start for this run). The 19:00 wait was stopped. Stages 1a, 1b and 2 run in order in one background chain; each starts
+  only when the previous script exits 0 (`logs/stage{1a,1b,2}.log`).
+- 09:42: D16 code job to Codex (`gpt-6.1-sol` high, config default; `codex-usage --room rederivation`: room, five-hour
+  window 41% left, reset in 28 min). Brief `.scratch/r21-dec-heads/d16/task.txt`: separate `r21_d16.py` and tests; no
+  r21_* imports or function bodies; own k-means, AMI and mAP per seed; the frozen bootstraps of reports 2026-12-28 and
+  2027-01-13 allowed; a smoke on r10's removal arm `k11=40-no_buddy` against r10's and r20's frozen records. The full
+  derive and the compare run after stage 2.
+- 09:52: D16 code back from Codex (10 min): `r21_d16.py` (373 lines) and `test_r21_d16.py` (21 tests pass). Imports
+  only numpy, sklearn, threadpoolctl and frozen older-round modules (`ns_paths`, `ns_data`, `ns_metrics`,
+  `rs_ablation`, `r20_ret`); no r21_* import. Smoke `regress` (r10's `k11=40-no_buddy` against saved c*, emotion, full
+  draws, 228 s): `D16 REGRESS PASS cells=3 max_abs=3.8e-17` against r10's `ablation/held.json` (AMI at 20) and r20's
+  `ablation_ret.json` (mAP); `d16_smoke/regress.json`. Codex's one rule choice: r17 keeps no per-seed test record, so
+  c*'s class-count values per seed are checked by r17's recorded mean and a replay of its frozen scorer.
