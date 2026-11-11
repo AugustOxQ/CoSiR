@@ -2111,3 +2111,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-11-paper-experiments-table-handoff.md
 - New chat: tab 'paper experiments', session 38a837d2-3a93-4cce-bf87-8e4d6845517e
 
+[brief] CoSiR: paper experiments -> r26 PercepT original (2026-11-11 05:25 Amsterdam)
+- Done: the paper chat built the main clustering table; the PercepT row on CLIP L/14 is empty.
+- State: no PercepT run on its own encoders exists; earlier non-Qwen runs used CLIP B/32 with RoBERTa-GoEmotions.
+- Next: run PercepT at paper settings, 40 topics, on CLIP L/14 and ModernBERT-GoEmotions; score test AMI at k = 20.
+- Blocked: nothing; the GPU is held by r25's extraction until about 06:36, so the jobs wait in the queue.
+- Handoff: docs/superpowers/handoffs/2026-11-11-r26-percept-original-handoff.md
+- New chat: tab 'r26 PercepT original', session d5ce4f03-35ab-49a3-9a3d-3a965ffca4ad
+
