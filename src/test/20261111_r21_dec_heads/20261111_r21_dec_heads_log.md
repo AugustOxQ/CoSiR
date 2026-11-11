@@ -31,3 +31,10 @@ Spec: `docs/superpowers/specs/2026-11-11-r21-dec-heads-design.md`. Decision line
   equal to `ablation_ret.json`, all 30 cells diff 0.0; c* against itself gives zero changes, zero intervals and "no
   clear change". 1,402 s on one CPU slot under load about 20 (two arms). Records in this chat's scratchpad
   (`t06/reg/reg_table.json`, `regress.log`). Review (Opus `high`) started.
+- 07:42: ticket 03 built (05a5017c, f02b4257; Sonnet `high`). **Gate 0b PASS on CPU** (424 s; record
+  `r21_gate0b_20261111_072007.json` in this chat's scratchpad `r21_smoke/`, written from an uncommitted state, so rerun on
+  merged code for the permanent record): `dec-off` against the frozen chain, 11 fixed batches and a 2-epoch smoke (20
+  steps, histories, best epochs, exports), all diffs 0. Mutations: loss × (1 + 1e-5) and λ = 1e-3 in the λ = 0 run both
+  give FAIL and a non-zero exit. CPU smoke of all four forms (`dec-off`, plain S1, start S2, teacher S1 and S2): every head
+  reaches DEC epoch 2, histories finite, sidecars carry c*'s config fields, rerun skips, r10's tree unchanged. **GPU smoke
+  not run** (GPU held by r25:extract). Merged (0ded9542).
