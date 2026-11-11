@@ -102,4 +102,4 @@ run (c*'s per-seed test values are not in r17's records; not checked).
 | 2026-11-11 09:46 | CoSiR paper sec4 tables 5 | New time: files at about 21:15. |
 | during the wait | sec4 tables 5, 6, 7 | Each tab asked to move the hand-over to its successor; sent to the highest at the end. |
 | 2026-11-11 20:15 | CoSiR paper sec4 tables 7 | Table 3: `OUT/test/k40/L1__s{seed}.npz`; k40 seeds 0 to 4, 5 of 5 not collapsed; Table 2 row for information. |
-| 2026-11-11 20:15 | CoSiR paper experiments 2 | Table 2 row (class count) and k = 20 for the supplementary. The tab was closed; sec4 tables 7 filled the Table 2 row instead and confirmed it. |
+| 2026-11-11 20:15 | CoSiR paper experiments 2 | Table 2 row (class count) and k = 20 for the supplementary. The tab filled the Table 2 row (paper repo 609a3cf) and scored the supplementary cluster-count grid from `OUT/held/L1__k40__s*.npz`; its six gate cells equal `po_scores.json` exactly (main 902e0539). sec4 tables 7 also confirmed the row. |

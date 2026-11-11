@@ -34,7 +34,7 @@ ArtELingo emotion that gap comes from one class, contentment (report 2027-01-07)
 both models, and ARI close to c* and below the teacher. After the weekly meeting, text-to-text and cross-modal retrieval are top priority (user, 2026-11-05). r22, an exploration on validation with seed 0,
 is read (user, 2026-11-05): c*'s caption side beats plain Qwen and the teacher's text in 6 of 9 label cells (bar 5; 5 of 9 with one fixed read-out),
 with emotion below the teacher, and pair hits below plain Qwen, which the user expected. The two short checks are read (user, 2026-11-06): on older saved models the own-caption term raises pair hits and lowers label hits; joined c* and plain Qwen scores pass the rule at one weight, a = 0.7, which the user reads as important, with no clear reason yet why that weight helps. r23, the claim loop for the caption side, is read (user, 2026-11-06): c* and late fusion (joined scores, a = 0.7) hold on held ArtELingo and fail on MMArt; the user reads the ArtELingo holds as good and the MMArt failures as no surprise. r24, a short check of the miss, is read (user, 2026-11-08): the failed MMArt counts follow its narrative text, not its paintings or labels; c*'s miss sits in portrait and landscape; the user reads it as not fully explaining why, with interesting findings and directions. Next: the what-is-missing table (the 11-04 coverage tables, updated with r17 to r24), then the plan update (user, 2026-11-08). The pair-hit limit waits for
-the user's talk with the other authors. The what-is-missing table is read (user, 2026-11-08): writing starts in a paper chat (related work, method, experiments, then abstract, introduction and conclusion as draft v1.1; an ARS review and a revision; compact versions last; a temporary title and abstract registered by 11-10). r20 is read and closed (user, 2026-11-10): both paper figures are kept, and in held image retrieval the eight ablation removals follow the clustering ablation (report 2027-01-13); the retrieval column goes into the paper's ablation table, and a teacher version of the figures into the supplementary. r21 (a DEC loss on every head of c*, as rows of the paper's ablation table) was moved forward by the user (2026-11-11) and is specced; build and run follow today. The second instructed embedder and the other checks wait until after 11-16. r25 (VLM2Vec-V2 and text-only BERTopic as the paper's clustering baselines, ArtELingo test) is reported (report 2027-01-14): c* wins all 12 AMI cells; the user's reading waits. The stage note's form still waits for the user. Deadlines:
+the user's talk with the other authors. The what-is-missing table is read (user, 2026-11-08): writing starts in a paper chat (related work, method, experiments, then abstract, introduction and conclusion as draft v1.1; an ARS review and a revision; compact versions last; a temporary title and abstract registered by 11-10). r20 is read and closed (user, 2026-11-10): both paper figures are kept, and in held image retrieval the eight ablation removals follow the clustering ablation (report 2027-01-13); the retrieval column goes into the paper's ablation table, and a teacher version of the figures into the supplementary. r21 (a DEC loss on every head of c*, as rows of the paper's ablation table) was moved forward by the user (2026-11-11) and is specced; build and run follow today. The second instructed embedder and the other checks wait until after 11-16. r25 (VLM2Vec-V2 and text-only BERTopic as the paper's clustering baselines, ArtELingo test) is reported (report 2027-01-14): c* wins all 12 AMI cells; the user's reading waits. r26 (PercepT at paper settings, 40 topics, on its own encoders CLIP L/14 and ModernBERT-GoEmotions) is reported (report 2027-01-15): class-count AMI 0.064 / 0.262 / 0.474, in Table 2; c* is above it in all three, on genre inside its seed range; the strict topic rule collapsed again; the user's reading waits. The stage note's form still waits for the user. Deadlines:
 abstract 2026-11-10, paper 2026-11-16, supplementary 2026-11-23.
 Reporting (user, 2026-11-04): r17's results enter the weekly report of 2026-11-04 only after the user's reading in the r20
 chat, and they stay out of the stage report of 2026-11-04 (29 October to 3 November); the next stage report starts from
@@ -100,6 +100,21 @@ r17.
 - DEC as a fine-tune of the saved c* models (DEC's own order: train, then DEC), in place of DEC inside c*'s training
   (never tried; not chosen by the user, 2026-11-11, who chose PercepT's order; proposed in the r21 decide chat,
   [handoff](handoffs/2026-11-11-r21-build-handoff.md))
+
+## 2026-11-11 · r26 reported: PercepT on its own encoders gives 0.064 / 0.262 / 0.474, now in Table 2; the user's reading is open
+
+- **Read:** ArtELingo test, 12,281 paintings (genre 9,949), class-count AMI, mean of 5 seeds: PercepT on CLIP L/14 and
+  ModernBERT-GoEmotions 0.064 / 0.262 / 0.474, against PercepT on Qwen3 0.068 / 0.192 / 0.424 and c* 0.102 / 0.411 /
+  0.510. All 5 seeds of the 40-topic cut count. Genre seed range 0.457 to 0.512 (c*'s mean lies inside it). The strict
+  topic rule collapsed on 5 of 5 seeds. Independent recompute exact.
+- **Meaning (C):** open, awaiting the user.
+- **Decided (A):** open, awaiting the user. Options in the report: (1) nothing more, the row is in Table 2; (2) the
+  genre comparison under r18's WIN / LEVEL / BELOW rule (CPU minutes); (3) Stage 2 on the global vector as a check of
+  the patch-token choice (about 15 GPU minutes).
+- **Why:** the paper needed a PercepT row on PercepT's own encoders (user, 2026-11-11, paper chat); small loop r26.
+- **Links:** [report](../reports/auto/percept/2027-01-15_percept_original.md) ·
+  [user-read](../user_read/2026-11-11_percept_original.md) ·
+  [build handoff](handoffs/2026-11-11-r26-percept-original-handoff.md) · [run handoff](handoffs/2026-11-11-r26-run-handoff.md)
 
 ## 2026-11-11 · r25 reported: c* above VLM2Vec-V2 and text-only BERTopic in all 12 clustering cells; the user's reading and the next step are open
 
