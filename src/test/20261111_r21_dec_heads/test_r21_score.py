@@ -223,3 +223,68 @@ def test_load_val_refuses_rows_that_are_not_unit(fake_export):
     finally:
         path.write_bytes(saved[0])
         path.with_suffix('.json').write_text(saved[1])
+
+
+# ------------------------------------------------------------------------------------------------ cluster shares
+def test_largest_share_per_state_and_mean():
+    parts = np.array([[0, 0, 0, 1], [0, 1, 1, 1], [0, 1, 2, 3]])       # largest clusters: 3/4, 3/4, 1/4
+    got = r21_score.largest_share(parts)
+    assert got == dict(mean=pytest.approx(0.5833333333), max=0.75)
+
+
+# ------------------------------------------------------------------------------------------------ sheet rows, 0c line
+def fake_val(arm, d=0.0, mAP=0.3, share=0.2):
+    return dict(arm=arm, seed=0, aspects={a: dict(ami=REF[a] + d, map=mAP, largest_share=dict(mean=share, max=share),
+                                                  k=9, n_queries=6152, input_sha256='x') for a in ASP})
+
+
+def fake_sides(best=(4, 1, 18), run=(10, 16, 33), dec=(0, 0, 0)):
+    return {a: dict(best_epoch=b, epochs_run=r, history=[dict(epoch=i + 1, **({'dec': {'changed': 0.1}} if i >= r - n else {}))
+                                                         for i in range(r)])
+            for a, b, r, n in zip(ASP, best, run, dec)}
+
+
+def test_make_row_changes_dec_epochs_and_reason():
+    rec = dict(heads={'emotion': dict(stop_reason='changed<0.001'), 'style': dict(stop_reason='patience'),
+                      'genre': dict(stop_reason='cap')})
+    r = r21_score.make_row('dec-plain_l1_w1_S1', fake_val('x', 0.01, 0.31), fake_sides(dec=(3, 5, 0)), rec, fake_val('c'))
+    assert r['arm'] == 'dec-plain_l1_w1_S1' and r['settings']['form'] == 'plain'
+    assert r['d_ami']['style'] == pytest.approx(0.01) and r['mean_d_ami'] == pytest.approx(0.01)
+    assert r['d_map']['genre'] == pytest.approx(0.01)
+    assert r['dec_epochs'] == dict(emotion=3, style=5, genre=0) and r['epochs_run']['style'] == 16
+    assert r['stop_reason']['style'] == 'patience' and r['best_epoch']['genre'] == 18
+
+
+def test_make_row_without_a_run_record_reason_is_not_available():
+    r = r21_score.make_row('dec-off', fake_val('x'), fake_sides(), None, fake_val('c'))
+    assert r['stop_reason'] == dict(emotion=None, style=None, genre=None) and r['dec_epochs'] == dict(emotion=0, style=0, genre=0)
+
+
+def row_off(d=0.0, best=(4, 1, 18)):
+    return r21_score.make_row('dec-off', fake_val('x', d), fake_sides(best=best), None, fake_val('c'))
+
+
+def test_zero_c_line_pass_and_boundaries():
+    cstar = r21_score.make_row('cstar', fake_val('c'), fake_sides(), None, fake_val('c'))
+    assert r21_score.zero_c_line(row_off(0.004 - 1e-9, (6, 1, 16)), cstar)['status'] == 'PASS'       # 2 epochs, < 0.004
+    assert r21_score.zero_c_line(row_off(0.0, (7, 1, 18)), cstar)['status'] == 'FAIL'                  # 3 epochs on emotion
+    assert r21_score.zero_c_line(row_off(0.0041), cstar)['status'] == 'FAIL'                           # AMI outside 0.004
+    assert r21_score.zero_c_line(row_off(-0.0041), cstar)['status'] == 'FAIL'
+
+
+def test_zero_c_line_pending_without_the_rerun():
+    cstar = r21_score.make_row('cstar', fake_val('c'), fake_sides(), None, fake_val('c'))
+    assert r21_score.zero_c_line(None, cstar)['status'] == 'pending'
+
+
+def test_sheet_markdown_has_every_run_the_0c_line_and_the_picks():
+    cstar = r21_score.make_row('cstar', fake_val('c'), fake_sides(), None, fake_val('c'))
+    off = row_off(0.001)
+    run = r21_score.make_row('dec-plain_l1_w1_S1', fake_val('x', 0.02, 0.31, 0.9), fake_sides(dec=(2, 2, 2)), None, fake_val('c'))
+    doc = dict(seed=0, cstar=cstar, rows=[off, run], zero_c=r21_score.zero_c_line(off, cstar), missing=['dec-start_l1_w1_S1'],
+               picks=dict(stage1a=dict(pick='dec-plain_l1_w1_S1', band=['dec-plain_l1_w1_S1'], beyond_spec=False, candidates=[]),
+                          stage1b=None))
+    md = r21_score.sheet_markdown(doc)
+    assert 'dec-off' in md and 'dec-plain_l1_w1_S1' in md and 'Gate 0c: PASS' in md and 'dec-start_l1_w1_S1' in md
+    assert '0.90' in md or '0.900' in md          # the largest cluster share is shown
+    assert 'stage 1a pick: dec-plain_l1_w1_S1' in md

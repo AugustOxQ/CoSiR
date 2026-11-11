@@ -185,3 +185,309 @@ def load_val(arm, aspect, seed, train_root=None):
     dev = np.abs(np.linalg.norm(x.astype(np.float32), axis=1) - 1).max()
     assert dev < 1e-3, f'{path}: rows not unit norm (max deviation {dev})'
     return x, side
+
+
+# ================================================================================================ validation scores
+def largest_share(parts):
+    """Largest cluster's share of all rows, per k-means state: its mean over the states and its maximum."""
+    parts = np.asarray(parts)
+    assert parts.ndim == 2
+    shares = [np.bincount(p).max() / len(p) for p in parts]
+    return dict(mean=float(np.mean(shares)), max=float(np.max(shares)))
+
+
+def val_aspect(arm, aspect, seed, train_root=None, workers=8):
+    """One head of one arm and seed on the validation split: AMI at the class count (r17's clustering: the stored float16
+    rows cast to float32, `ns_metrics.partitions`, all 6,152 rows clustered, unlabelled rows masked in scoring, mean over
+    the 3 states) and image-to-image label mAP (r20's read-out: unit float32 rows, plain cosine, query excluded, labelled
+    rows only, `rt_metrics.retrieval(qe_k=0)` through `r20_ret.score_rows`)."""
+    _deps()
+    x16, side = load_val(arm, aspect, seed, train_root)
+    k = ns_paths.CLASS_COUNT[(SET, aspect)]
+    y = ns_data.labels(SET, 'val', aspect)
+    assert len(y) == N_VAL and ns_metrics.class_count(y) == k, (aspect, ns_metrics.class_count(y), k)
+    parts = ns_metrics.partitions(x16.astype(np.float32), k, SET)
+    states = [ns_metrics.score_partitions('ami', y, parts[i:i + 1]) for i in range(len(parts))]
+    ami = ns_metrics.score_partitions('ami', y, parts)
+    assert abs(ami - float(np.mean(states))) < 1e-12
+    ap = r20_ret.score_rows(r20_ret.unit(x16), y, np.asarray(val_names()), workers)
+    return dict(k=int(k), ami=float(ami), ami_states=[float(s) for s in states], map=float(ap['ap'].mean()),
+                n_queries=int(len(ap['ap'])), dropped=int(ap['dropped']), n_labelled=int((y >= 0).sum()),
+                largest_share=largest_share(parts), input_sha256=side['output_sha256'])
+
+
+def val_scores(arm, seed, aspects=ASPECTS, train_root=None, workers=8):
+    return dict(arm=arm, seed=int(seed), split='val', rows=N_VAL,
+                aspects={a: val_aspect(arm, a, seed, train_root, workers) for a in aspects})
+
+
+def check_cstar_ranges(res):
+    """The `val` check of saved c*: AMI per aspect against r17's `records/stage1_ranges.json` (the file `ns_clu_cells.
+    stage1_ranges` wrote), to 6 decimals. Returns {aspect: {computed, recorded, diff, ok}}."""
+    rec = json.loads(STAGE1_RANGES.read_text())
+    out = {}
+    for a, r in res['aspects'].items():
+        want = rec[f'cstar/artelingo/qwen/{a}/ami']['per_seed'][str(res['seed'])]
+        out[a] = dict(computed=r['ami'], recorded=want, diff=r['ami'] - want, ok=abs(r['ami'] - want) < TOL_AMI)
+    return out
+
+
+def val_cached(arm, seed, scores_dir=None, train_root=None, workers=8):
+    """`val_scores`, read from `scores/val/<arm>__s<seed>.json` when its recorded input hashes equal the current exports'
+    (every export is loaded and checked either way); else computed and written there."""
+    scores_dir = Path(scores_dir or SCORES)
+    path = scores_dir / 'val' / f'{arm}__s{seed}.json'
+    if path.exists():
+        old = json.loads(path.read_text())
+        if all(old['aspects'][a]['input_sha256'] == load_val(arm, a, seed, train_root)[1]['output_sha256']
+               for a in ASPECTS):
+            return old
+    res = val_scores(arm, seed, ASPECTS, train_root, workers)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(res, indent=1, allow_nan=False) + '\n')
+    return res
+
+
+# ================================================================================================ stage 1 sheet
+def make_row(arm, val, sides, record, ref_val):
+    """One sheet row. val: `val_scores` of the arm; sides: {aspect: training sidecar}; record: the arm's `run__s<seed>.json`
+    (or None); ref_val: `val_scores` of saved c* with the same seed. DEC epochs = history entries that carry a `dec` entry
+    (the trainer's per-epoch DEC stats, index "Shared interfaces"); the stop reason is read from `record['heads'][aspect]
+    ['stop_reason']` and is None when the record does not carry it."""
+    assert val['aspects'].keys() == ref_val['aspects'].keys() == set(ASPECTS) == set(sides)
+    v, r = val['aspects'], ref_val['aspects']
+    row = dict(arm=arm, settings=None if arm == CSTAR else r21_arms.parse_arm(arm), seed=val['seed'],
+               ami={a: v[a]['ami'] for a in ASPECTS}, map={a: v[a]['map'] for a in ASPECTS},
+               d_ami={a: v[a]['ami'] - r[a]['ami'] for a in ASPECTS}, d_map={a: v[a]['map'] - r[a]['map'] for a in ASPECTS},
+               largest_share={a: v[a]['largest_share']['max'] for a in ASPECTS},
+               best_epoch={a: int(sides[a]['best_epoch']) for a in ASPECTS},
+               epochs_run={a: len(sides[a]['history']) for a in ASPECTS},
+               dec_epochs={a: sum(isinstance(h.get('dec'), dict) for h in sides[a]['history']) for a in ASPECTS},
+               stop_reason={a: ((record or {}).get('heads', {}).get(a, {})).get('stop_reason') for a in ASPECTS})
+    for a in ASPECTS:
+        assert sides[a]['epochs_run'] == row['epochs_run'][a], (arm, a)
+    row['mean_d_ami'] = _mean(row['d_ami'])
+    row['mean_map'] = _mean(row['map'])
+    return row
+
+
+def zero_c_line(off_row, cstar_row):
+    """Gate 0c (§3.5): the dec-off rerun's best epochs within `TOL_0C_EPOCHS` of the saved run's, and its validation AMI
+    within `TOL_0C_AMI` of the saved run's, per aspect (seed 0). 'pending' while the rerun has not run."""
+    if off_row is None:
+        return dict(status='pending')
+    assert off_row['seed'] == cstar_row['seed'] == 0
+    epochs = {a: off_row['best_epoch'][a] - cstar_row['best_epoch'][a] for a in ASPECTS}
+    ami = {a: off_row['ami'][a] - cstar_row['ami'][a] for a in ASPECTS}
+    ok = all(abs(e) <= TOL_0C_EPOCHS for e in epochs.values()) and all(abs(d) <= TOL_0C_AMI for d in ami.values())
+    return dict(status='PASS' if ok else 'FAIL', best_epoch_diff=epochs, ami_diff=ami, rerun_best_epoch=off_row['best_epoch'],
+                saved_best_epoch=cstar_row['best_epoch'], tol_epochs=TOL_0C_EPOCHS, tol_ami=TOL_0C_AMI)
+
+
+def sheet_markdown(doc):
+    f = lambda x: f'{x:.4f}'
+    lines = [f"# r21 stage 1 number sheet (validation, seed {doc['seed']})", '',
+             'Validation split (6,152 paintings), AMI at the class count (9, 27, 10), image-to-image label mAP. '
+             'd = change from saved c* seed 0. Largest share = largest k-means cluster (class count) as a share of all rows.',
+             '', '| run | ' + ' | '.join(f'{a} AMI (d) / mAP' for a in ASPECTS) +
+             ' | mean d AMI | mean mAP | largest share | best epoch | DEC epochs | stop |',
+             '|---|' + '---|' * (len(ASPECTS) + 6)]
+    for r in [doc['cstar']] + doc['rows']:
+        cells = ' | '.join(f"{f(r['ami'][a])} ({r['d_ami'][a]:+.4f}) / {f(r['map'][a])}" for a in ASPECTS)
+        share = '/'.join('%.2f' % r['largest_share'][a] for a in ASPECTS)
+        best = '/'.join(str(r['best_epoch'][a]) for a in ASPECTS)
+        dec = '/'.join(str(r['dec_epochs'][a]) for a in ASPECTS)
+        why = '/'.join(str(r['stop_reason'][a] or 'n/a') for a in ASPECTS)
+        lines.append(f"| {r['arm']} | {cells} | {r['mean_d_ami']:+.4f} | {f(r['mean_map'])} | {share} | {best} | {dec} | {why} |")
+    lines += ['', 'Columns of the last four: per aspect in the order ' + ', '.join(ASPECTS) + '.', '']
+    z = doc['zero_c']
+    if z['status'] == 'pending':
+        lines.append('Gate 0c: pending (no dec-off run yet).')
+    else:
+        lines.append(f"Gate 0c: {z['status']}. Best epochs of the rerun {z['rerun_best_epoch']} against saved "
+                     f"{z['saved_best_epoch']} (within {z['tol_epochs']}); validation AMI differences "
+                     f"{ {a: round(d, 6) for a, d in z['ami_diff'].items()} } (within {z['tol_ami']}).")
+    if doc['missing']:
+        lines += ['', 'Arms with no complete export set at this seed: ' + ', '.join(doc['missing']) + '.']
+    lines.append('')
+    p = doc['picks']
+    for key in ('stage1a',):
+        if p.get(key):
+            lines.append(f"Selection rule: highest mean over the aspects of (AMI - c* seed 0 AMI); ties within {TIE_BAND} go to "
+                         'the higher mean mAP, then to the smaller lambda.')
+            lines.append(f"stage 1a pick: {p[key]['pick']} (tied band: {', '.join(p[key]['band'])}; "
+                         f"beyond the rule: {p[key]['beyond_spec']})")
+    if p.get('stage1b'):
+        for form, sel in p['stage1b'].items():
+            lines.append(f"stage 1b pick, {form}: {sel['pick']} (tied band: {', '.join(sel['band'])}; "
+                         f"beyond the rule: {sel['beyond_spec']})")
+    elif p.get('stage1a'):
+        lines.append('stage 1b: not all six runs present yet.')
+    return '\n'.join(lines) + '\n'
+
+
+def collect_rows(seed=0, train_root=None, scores_dir=None, workers=8):
+    """Every arm folder under R21/full/train with its seed-`seed` validation exports: (cstar row, {arm: row}, missing).
+    An arm with some but not all three exports is refused (a stage 1 run must finish)."""
+    train_root = Path(train_root or R21 / 'full' / 'train')
+    ref = val_cached(CSTAR, seed, scores_dir, workers=workers)
+    cstar = make_row(CSTAR, ref, {a: load_val(CSTAR, a, seed)[1] for a in ASPECTS}, None, ref)
+    rows, missing = {}, []
+    for d in sorted(p for p in train_root.iterdir() if p.is_dir()):
+        arm = d.name
+        r21_arms.parse_arm(arm)
+        have = [val_export_path(arm, a, seed, train_root).exists() for a in ASPECTS]
+        if not any(have):
+            missing.append(arm)
+            continue
+        assert all(have), f'{arm}: validation exports of only some aspects at seed {seed}'
+        val = val_cached(arm, seed, scores_dir, train_root, workers)
+        sides = {a: load_val(arm, a, seed, train_root)[1] for a in ASPECTS}
+        rec_path = d / f'run__s{seed}.json'
+        assert 'train' in rec_path.parts and not ({'held', 'test'} & set(rec_path.parts)), rec_path
+        record = json.loads(rec_path.read_text()) if rec_path.exists() else None
+        rows[arm] = make_row(arm, val, sides, record, ref)
+    return cstar, rows, missing
+
+
+def build_sheet(cstar, rows, missing, seed=0):
+    ref_ami = cstar['ami']
+    picks = dict(stage1a=None, stage1b=None)
+    if set(grid_1a()) <= set(rows):
+        picks['stage1a'] = pick_stage1a(rows, ref_ami)
+        if set(grid_1b(r21_arms.parse_arm(picks['stage1a']['pick']))) <= set(rows):
+            picks['stage1b'] = pick_stage1b(rows, ref_ami, picks['stage1a']['pick'])
+    order = sorted(rows, key=lambda n: (n != 'dec-off', n))
+    return dict(seed=seed, cstar=cstar, rows=[rows[n] for n in order], missing=missing, picks=picks,
+                zero_c=zero_c_line(rows.get('dec-off'), cstar) if seed == 0 else dict(status='pending'),
+                n_settings=len([n for n in rows if n != 'dec-off']), tie_band=TIE_BAND)
+
+
+def cmd_sheet(args):
+    cstar, rows, missing = collect_rows(0, workers=args.workers)
+    doc = build_sheet(cstar, rows, missing)
+    SCORES.mkdir(parents=True, exist_ok=True)
+    (SCORES / 'stage1_sheet.json').write_text(json.dumps(doc, indent=1, allow_nan=False) + '\n')
+    (SCORES / 'stage1_sheet.md').write_text(sheet_markdown(doc))
+    (SCORES / 'stage1_picks.json').write_text(json.dumps(doc['picks'], indent=1, allow_nan=False) + '\n')
+    print(sheet_markdown(doc))
+    print(f'-> {SCORES}/stage1_sheet.json, stage1_sheet.md, stage1_picks.json')
+
+
+# ================================================================================================ gate 0a
+def gate0a_ami(aspect, seeds):
+    """Test-set AMI at the class count of saved c* (`seeds`, held exports) and the teacher: r17's procedure (rows and labels
+    from `ns_data`, `ns_metrics.partitions`, `ns_clu.metric_table`). Compared with r17's cells file: the 5-seed c* mean
+    (only when all five seeds ran) and the teacher."""
+    _deps()
+    k = ns_paths.CLASS_COUNT[(SET, aspect)]
+    y = ns_data.labels(SET, 'held', aspect)
+    assert len(y) == 12281 and ns_metrics.class_count(y) == k and int((y >= 0).sum()) == dict(
+        emotion=12281, style=12281, genre=9949)[aspect]
+    cells = {c['id']: c for c in json.loads(R17_CLU.read_text())}
+    ref = cells[f'SC3/{SET}/qwen/{aspect}/ami/{k}/teacher']
+    assert ref['aspect'] == aspect and ref['k'] == k
+    parts = np.stack([ns_metrics.partitions(ns_data.cstar(SET, 'held', 'qwen', aspect, s, unit=False), k, SET)
+                      for s in seeds])
+    row = ns_clu.metric_table('cstar', aspect, parts, y, k, ('ami',))[0]
+    tparts = ns_metrics.partitions(ns_data.teacher(SET, 'held', aspect), k, SET)
+    trow = ns_clu.metric_table('teacher', aspect, tparts, y, k, ('ami',))[0]
+    out = dict(k=int(k), seeds=list(seeds), cstar_per_seed=row['per_seed'], cstar_mean=row['mean'],
+               teacher=trow['mean'], r17_cstar_mean=ref['cand'], r17_teacher=ref['comp'], r17_cell=ref['id'],
+               teacher_diff=trow['mean'] - ref['comp'], teacher_ok=abs(trow['mean'] - ref['comp']) < TOL_AMI)
+    if tuple(seeds) == SEEDS:
+        out.update(cstar_diff=row['mean'] - ref['cand'], cstar_ok=abs(row['mean'] - ref['cand']) < TOL_AMI)
+    return out
+
+
+def gate0a_map(aspect, seeds, workers=8):
+    """Test-set c* mAP per seed by r20's code (`r20_ret.load_export`, `score_rows`, labels and names from
+    `rb_part2_report.held_labels`) against `ablation_ret.json`'s per-seed values."""
+    _deps()
+    names, sha, labels = r20_ret.rb_part2_report.held_labels()
+    names = np.asarray(names)
+    assert len(names) == 12281 and r20_ret.hashlib.sha256('\n'.join(names).encode()).hexdigest() == sha
+    ref = json.loads(ABLATION_RET.read_text())['aspects'][aspect]['arms']['k11=40']
+    assert len(ref['per_seed']) == 5
+    got, hashes = [], {}
+    for s in seeds:
+        side = json.loads(r20_ret.export_path('k11=40', aspect, s).with_suffix('.json').read_text())
+        assert side['rows'] == 12281 and side['list_sha256'] == sha and (side['aspect'], side['seed']) == (aspect, s)
+        x = r20_ret.load_export('k11=40', aspect, s, 12281, hashes)
+        res = r20_ret.score_rows(x, np.asarray(labels[aspect], dtype=np.int64), names, workers)
+        got.append(float(res['ap'].mean()))
+    want = [ref['per_seed'][s] for s in seeds]
+    diff = [g - w for g, w in zip(got, want)]
+    return dict(seeds=list(seeds), per_seed=got, r20_per_seed=want, diff=diff, ok=bool(max(abs(d) for d in diff) < TOL_MAP))
+
+
+def cmd_gate0a(args):
+    t = time.monotonic()
+    full = tuple(args.seeds) == SEEDS and tuple(args.aspects) == ASPECTS and set(args.parts) == {'ami', 'map'}
+    doc = dict(complete=full, aspects={}, tolerances=dict(ami=TOL_AMI, map=TOL_MAP), r17_file=str(R17_CLU),
+               r20_file=str(ABLATION_RET))
+    oks = []
+    for a in args.aspects:
+        d = doc['aspects'][a] = {}
+        if 'ami' in args.parts:
+            d['ami'] = gate0a_ami(a, args.seeds)
+            m = d['ami']
+            print(f"{a} AMI k={m['k']}: c* per seed {[round(v, 6) for v in m['cstar_per_seed']]} mean {m['cstar_mean']:.6f} "
+                  f"(r17 {m['r17_cstar_mean']:.6f}); teacher {m['teacher']:.6f} (r17 {m['r17_teacher']:.6f}) "
+                  f"diffs {m.get('cstar_diff', float('nan')):+.1e} {m['teacher_diff']:+.1e}", flush=True)
+            oks += [m['teacher_ok']] + ([m['cstar_ok']] if 'cstar_ok' in m else [])
+        if 'map' in args.parts:
+            d['map'] = gate0a_map(a, args.seeds, args.workers)
+            m = d['map']
+            print(f"{a} mAP per seed {[round(v, 6) for v in m['per_seed']]} r20 {[round(v, 6) for v in m['r20_per_seed']]} "
+                  f"max |diff| {max(abs(x) for x in m['diff']):.1e}", flush=True)
+            oks.append(m['ok'])
+    doc['checks_ok'] = bool(all(oks))
+    doc['pass'] = bool(full and all(oks))
+    doc['seconds'] = time.monotonic() - t
+    SCORES.mkdir(parents=True, exist_ok=True)
+    out = SCORES / ('gate0a.json' if full else 'gate0a_partial.json')
+    out.write_text(json.dumps(doc, indent=1, allow_nan=False) + '\n')
+    print(f"gate 0a {'PASS' if doc['pass'] else ('FAIL' if not all(oks) else 'partial (checks ok, not the full gate)')}; "
+          f"{doc['seconds']:.0f}s -> {out}")
+    assert all(oks), 'gate 0a failed: stop, trace, tell the user'
+
+
+# ================================================================================================ CLI
+def cmd_val(args):
+    t = time.monotonic()
+    arm = args.arm
+    assert arm == CSTAR or r21_arms.parse_arm(arm), arm
+    res = val_cached(arm, args.seed, workers=args.workers)
+    for a, r in res['aspects'].items():
+        print(f"{arm} s{args.seed} {a}: AMI={r['ami']:.6f} mAP={r['map']:.6f} (k={r['k']}, queries={r['n_queries']}, "
+              f"largest share {r['largest_share']['mean']:.3f})", flush=True)
+    if arm == CSTAR:
+        chk = check_cstar_ranges(res)
+        for a, c in chk.items():
+            print(f"check vs stage1_ranges.json {a}: computed {c['computed']:.9f} recorded {c['recorded']:.9f} "
+                  f"diff {c['diff']:+.2e} {'ok' if c['ok'] else 'FAIL'}")
+        assert all(c['ok'] for c in chk.values()), 'saved c* validation AMI differs from stage1_ranges.json'
+    print(f'{time.monotonic() - t:.1f}s -> {SCORES / "val" / f"{arm}__s{args.seed}.json"}')
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    sub = ap.add_subparsers(dest='cmd', required=True)
+    p = sub.add_parser('val')
+    p.add_argument('--arm', required=True)
+    p.add_argument('--seed', type=int, required=True, choices=SEEDS)
+    p.add_argument('--workers', type=int, default=8, choices=range(1, 9))
+    sh = sub.add_parser('sheet')
+    sh.add_argument('--workers', type=int, default=8, choices=range(1, 9))
+    g = sub.add_parser('gate0a')
+    g.add_argument('--aspects', nargs='+', default=list(ASPECTS), choices=ASPECTS)
+    g.add_argument('--seeds', nargs='+', type=int, default=list(SEEDS), choices=SEEDS)
+    g.add_argument('--parts', nargs='+', default=['ami', 'map'], choices=['ami', 'map'])
+    g.add_argument('--workers', type=int, default=8, choices=range(1, 9))
+    args = ap.parse_args(argv)
+    {'val': cmd_val, 'gate0a': cmd_gate0a, 'sheet': cmd_sheet}[args.cmd](args)
+
+
+if __name__ == '__main__':
+    main()
