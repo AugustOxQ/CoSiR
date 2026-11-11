@@ -245,7 +245,7 @@ Every k-means state at every K used exactly K clusters (`n_clusters_used`).
   an optional extra file. Figure and `figures/values.md` redrawn with all 11 rows; values checked against the grid log.
 - Result: ours is still the highest line at every grid count except genre at 20 clusters (teacher 0.5062, ours
   0.5001). PercepT (CLIP L/14) is above PercepT (Qwen3) on style and genre at every count, and on emotion it is below
-  it from 9 clusters on.
+  it from 8 clusters on (above only at 5).
 
 | Aspect | K | Mean AMI |
 |---|---:|---:|
