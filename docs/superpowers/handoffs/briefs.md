@@ -2191,3 +2191,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-11-paper-sec4-tables-3-handoff.md
 - New chat: tab 'paper sec4 tables 3', session fbe2bfe2-feba-40d2-884a-0c2749fcf138
 
+[brief] CoSiR: paper sec4 tables 3 -> paper sec4 tables 4 (2026-11-11 08:43 Amsterdam)
+- Done: Table 5's four removals at the class count (as signed changes), the 4.3 paragraph, "five random seeds" wording, pair hits out of the paper (user).
+- State: Table 3's VLM2Vec and PercepT (CLIP L/14) rows are still empty. r25's validation store was 1 of 3 aspects at 08:42.
+- Next: tell the r26 tab this tab's name, run the VLM2Vec wait script, then score PercepT (CLIP L/14) when r26 sends its files.
+- Blocked: the user's 11:00 meeting. Ask nothing about it until the user says it is over.
+- Handoff: docs/superpowers/handoffs/2026-11-11-paper-sec4-tables-4-handoff.md
+- New chat: tab 'paper sec4 tables 4', session 868213b3-bd84-4b46-a35e-75cbabd16adb
+
