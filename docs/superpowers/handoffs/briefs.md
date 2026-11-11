@@ -2199,3 +2199,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-11-paper-sec4-tables-4-handoff.md
 - New chat: tab 'paper sec4 tables 4', session 868213b3-bd84-4b46-a35e-75cbabd16adb
 
+[brief] CoSiR: paper sec4 tables 4 -> paper sec4 tables 5 (2026-11-11 09:14 Amsterdam)
+- Done: Tables 6 (other encoders), 7 (photos, with a paintings-only row) and 8 (speed) are in the LaTeX, with underlines. The plan for the qualitative figure is decided.
+- State: Table 3's VLM2Vec and PercepT (CLIP L/14) rows are still empty. r25's validation store had 2 of 3 aspects at 09:13.
+- Next: relaunch the VLM2Vec wait script, tell r26 this tab's name, then design the candidate rules for the figure.
+- Blocked: the user's 11:00 meeting. Ask nothing about it until the user says it is over.
+- Handoff: docs/superpowers/handoffs/2026-11-11-paper-sec4-tables-5-handoff.md
+- New chat: tab 'paper sec4 tables 5', session 70bc005c-6a82-4ec9-882b-e7994cd6172a
+
