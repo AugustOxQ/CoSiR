@@ -2087,3 +2087,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-11-paper-method-student-handoff.md
 - New chat: tab 'paper method', session b0cf6938-26e0-4b6e-ab21-a47ea983ae37
 
+[brief] CoSiR: paper method -> paper method (2026-11-11 04:28 Amsterdam)
+- Done: Figure 1 loosened (3.32 in high) and now in the LaTeX repo with its caption; 3.4 written; Section 3 polished (no semicolons between clauses).
+- State: the paper builds (6 pages); 3.5 test time is a heading only; Figure 2 is a placeholder with a TODO.
+- Next: wait for the user's Figure 1 comments from the 2026-11-11 meeting, then fix the figure.
+- Blocked: Figure 1's final style waits for the meeting; 3.5 and Sec. 4.1 wait for the user's points.
+- Handoff: docs/superpowers/handoffs/2026-11-11-paper-method-figure1-final-handoff.md
+- New chat: tab 'paper method', session 261a4b9f-87e5-4a09-a6e9-e1efe34de305
+
