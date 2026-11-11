@@ -1,0 +1,14 @@
+# r21 decision lines
+
+One line per result-shaping choice made by the build or run chat (`~/.claude/references/loop-chats.md`, "Decision
+lines"): when · the choice · the main alternative · where · who · could it change a verdict or claim.
+
+| When | Choice | Main alternative | Where | Who | Could change a claim |
+|------|--------|------------------|-------|-----|----------------------|
+| 2026-11-11 06:37 | DEC, pull and balance terms on the batch's unique fit image paintings (from the pair endpoints), with a separate train-mode forward pass of the head's image view | all 1,024 endpoint rows (duplicates weighted twice); reuse of head_loss's own forward | ticket 02, `r21_train.py` | build chat | maybe |
+| 2026-11-11 06:37 | P (and the argmax for S1) from an eval-mode full pass over the fit paintings at each epoch end, column frequency over all fit paintings | train-mode pass; a per-batch P | tickets 01, 02 | build chat | maybe |
+| 2026-11-11 06:37 | Balance term inside the DEC block: λ·1000·KL(uniform‖batch mean q), PercepT's ratio to the DEC term | a flat weight 1000 | ticket 01, `r21_dec.dec_block` | build chat | maybe |
+| 2026-11-11 06:37 | Centres: one learnable parameter per head in its own AdamW group, c*'s lr (1e-3), weight decay 0 | PercepT's Adam at lr 1e-4; c*'s weight decay 0.05 | ticket 02 | build chat | maybe |
+| 2026-11-11 06:37 | Centre start for plain and start pull: PercepT's KMeans(n_init=10, random_state=run seed) on the unit head outputs | MiniBatchKMeans as the scoring uses | ticket 01 | build chat | no |
+| 2026-11-11 06:37 | Teacher-pull centres start at the plain mean of the head outputs per teacher cluster, not renormalized (as k-means centres) | unit-normalized means | ticket 01 | build chat | no |
+| 2026-11-11 06:37 | S1's changed fraction compares each DEC epoch's argmax with the previous epoch's; the first DEC epoch compares with the DEC-start pass | compare with the DEC-start clusters throughout | ticket 02 | build chat | maybe |
