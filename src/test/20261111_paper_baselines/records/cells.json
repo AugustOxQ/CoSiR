@@ -1,0 +1,812 @@
+[
+  {
+    "aspect": "emotion",
+    "bootstrap_seed": 0,
+    "cand": 0.1024127745008577,
+    "cand_per_seed_ami": [
+      0.10170414948655143,
+      0.1014205620544615,
+      0.10422471043584887,
+      0.10367677595260098,
+      0.10103767457482578
+    ],
+    "candidate": "cstar",
+    "comp": 0.06377259570732573,
+    "comp_per_state_ami": [
+      0.061442908734598796,
+      0.06461672203526066,
+      0.0652581563521177
+    ],
+    "comparator": "vlm2vec",
+    "comparator_states": [
+      0,
+      1,
+      2
+    ],
+    "d": 0.038640178793531973,
+    "encoder": "qwen",
+    "gate": {
+      "abs_difference": 0.0,
+      "cand": 0.1024127745008577,
+      "per_seed": [
+        0.10170414948655143,
+        0.1014205620544615,
+        0.10422471043584887,
+        0.10367677595260098,
+        0.10103767457482578
+      ],
+      "r18_cand": 0.1024127745008577,
+      "tolerance": 1e-09
+    },
+    "hi": 0.042277641069198464,
+    "id": "vlm2vec/emotion/ami/9",
+    "input_sha256s": {
+      "/data/SSD2/pre_extract/artelingo/vlm2vec_v2/emotion/emb.npy": "a792c09f0dd0bdf701385e348bcf07027d15d8543bb6354351b61d3d95a8951d",
+      "/data/SSD2/pre_extract/artelingo/vlm2vec_v2/emotion/keys.json": "9bceecbc307336be45c785d0f0a27593c219dad33c061d1d5c130ff23f447eb6",
+      "/data/SSD2/pre_extract/artelingo/vlm2vec_v2/emotion/meta.json": "1825bce5c2382947aeb22cc2e3d24b085f3d39091cb4f799a76247dca4368fb5",
+      "/project/CoSiR/src/test/20261103_outside_methods/records/labels.json": "3dfb39452f7a3ca62f46204cce149f8aed3361c6055bca96ed7c0ad2793d33c8",
+      "/project/CoSiR/src/test/20261103_outside_methods/records/stage1_om_ranges.json": "2f30eb7c47299af32c53b093a05fe012c3ea5531594f2af4aa98478b54d859b0",
+      "candidate_partitions_array": "91207942aadfc931b3d2fe536e7fce343eeb0bd14ea75b20326e60c97808b34c",
+      "comparator_partitions_array": "03be6a96a3e686d37d92fb80395d996dcacf3f7986b56f5e237c6520c95fd2d3",
+      "labels_array": "64f919a5f2b049e5ac60d81c511820793ce7d48cdf25090f6d577a673e1d790e",
+      "names_newline_utf8": "a0b1139c6056fd858ddbd2ee1dd4bafd1453e590818c6aa59883364c0288a876"
+    },
+    "k": 9,
+    "label": "WIN",
+    "lo": 0.03492457668692696,
+    "metric": "ami",
+    "n_draws": 2000,
+    "n_labelled": 12281,
+    "n_rows": 12281,
+    "outcome": "WIN",
+    "r": 0.003627631477242557,
+    "r_source": "/project/CoSiR/src/test/20261103_outside_methods/records/stage1_om_ranges.json:artelingo/qwen/emotion/ami/9:r",
+    "set": "artelingo",
+    "smoke": false,
+    "split": "held"
+  },
+  {
+    "aspect": "emotion",
+    "bootstrap_seed": 0,
+    "cand": 0.10658729378204021,
+    "cand_per_seed_ami": [
+      0.10751887239964945,
+      0.1097603100100391,
+      0.10523190688437208,
+      0.10561631957244356,
+      0.1048090600436969
+    ],
+    "candidate": "cstar",
+    "comp": 0.07100613895961792,
+    "comp_per_state_ami": [
+      0.0699916185581456,
+      0.07047770420523088,
+      0.07254909411547729
+    ],
+    "comparator": "vlm2vec",
+    "comparator_states": [
+      0,
+      1,
+      2
+    ],
+    "d": 0.03558115482242229,
+    "encoder": "qwen",
+    "gate": {
+      "abs_difference": 0.0,
+      "cand": 0.10658729378204021,
+      "per_seed": [
+        0.10751887239964945,
+        0.1097603100100391,
+        0.10523190688437208,
+        0.10561631957244356,
+        0.1048090600436969
+      ],
+      "r18_cand": 0.10658729378204021,
+      "tolerance": 1e-09
+    },
+    "hi": 0.039107098554757566,
+    "id": "vlm2vec/emotion/ami/20",
+    "input_sha256s": {
+      "/data/SSD2/pre_extract/artelingo/vlm2vec_v2/emotion/emb.npy": "a792c09f0dd0bdf701385e348bcf07027d15d8543bb6354351b61d3d95a8951d",
+      "/data/SSD2/pre_extract/artelingo/vlm2vec_v2/emotion/keys.json": "9bceecbc307336be45c785d0f0a27593c219dad33c061d1d5c130ff23f447eb6",
+      "/data/SSD2/pre_extract/artelingo/vlm2vec_v2/emotion/meta.json": "1825bce5c2382947aeb22cc2e3d24b085f3d39091cb4f799a76247dca4368fb5",
+      "/project/CoSiR/src/test/20261103_outside_methods/records/labels.json": "3dfb39452f7a3ca62f46204cce149f8aed3361c6055bca96ed7c0ad2793d33c8",
+      "/project/CoSiR/src/test/20261103_outside_methods/records/stage1_om_ranges.json": "2f30eb7c47299af32c53b093a05fe012c3ea5531594f2af4aa98478b54d859b0",
+      "candidate_partitions_array": "b079ef8272060a35a68388dfe1ffb9205767de56703d1d757c9013b1af5b9bb0",
+      "comparator_partitions_array": "609588193b97bf212b3870fd613f3b4fb44766c84fba30fba3584754bf9e044a",
+      "labels_array": "64f919a5f2b049e5ac60d81c511820793ce7d48cdf25090f6d577a673e1d790e",
+      "names_newline_utf8": "a0b1139c6056fd858ddbd2ee1dd4bafd1453e590818c6aa59883364c0288a876"
+    },
+    "k": 20,
+    "label": "WIN",
+    "lo": 0.03203558504392113,
+    "metric": "ami",
+    "n_draws": 2000,
+    "n_labelled": 12281,
+    "n_rows": 12281,
+    "outcome": "WIN",
+    "r": 0.005878435780109215,
+    "r_source": "/project/CoSiR/src/test/20261103_outside_methods/records/stage1_om_ranges.json:artelingo/qwen/emotion/ami/20:r",
+    "set": "artelingo",
+    "smoke": false,
+    "split": "held"
+  },
+  {
+    "aspect": "style",
+    "bootstrap_seed": 0,
+    "cand": 0.4109255361955107,
+    "cand_per_seed_ami": [
+      0.40988274925321583,
+      0.41263567138830676,
+      0.41086361540419264,
+      0.41063120787595025,
+      0.41061443705588774
+    ],
+    "candidate": "cstar",
+    "comp": 0.3729743958098484,
+    "comp_per_state_ami": [
+      0.36864147121951,
+      0.37626554596577416,
+      0.37401617024426115
+    ],
+    "comparator": "vlm2vec",
+    "comparator_states": [
+      0,
+      1,
+      2
+    ],
+    "d": 0.037951140385662274,
+    "encoder": "qwen",
+    "gate": {
+      "abs_difference": 0.0,
+      "cand": 0.4109255361955107,
+      "per_seed": [
+        0.40988274925321583,
+        0.41263567138830676,
+        0.41086361540419264,
+        0.41063120787595025,
+        0.41061443705588774
+      ],
+      "r18_cand": 0.4109255361955107,
+      "tolerance": 1e-09
+    },
+    "hi": 0.04212829346740229,
+    "id": "vlm2vec/style/ami/27",
+    "input_sha256s": {
+      "/data/SSD2/pre_extract/artelingo/vlm2vec_v2/style/emb.npy": "db93c22280d2f2dd42909f92ecb1ca0f2420c591c86f248bbd0cffaa06895d5d",
+      "/data/SSD2/pre_extract/artelingo/vlm2vec_v2/style/keys.json": "9bceecbc307336be45c785d0f0a27593c219dad33c061d1d5c130ff23f447eb6",
+      "/data/SSD2/pre_extract/artelingo/vlm2vec_v2/style/meta.json": "120b8024e7d9660f572681df930055480978674fa9ed07035765f49ae0f9a95e",
+      "/project/CoSiR/src/test/20261103_outside_methods/records/labels.json": "3dfb39452f7a3ca62f46204cce149f8aed3361c6055bca96ed7c0ad2793d33c8",
+      "/project/CoSiR/src/test/20261103_outside_methods/records/stage1_om_ranges.json": "2f30eb7c47299af32c53b093a05fe012c3ea5531594f2af4aa98478b54d859b0",
+      "candidate_partitions_array": "d61c923339c4fa3bc821974545e0c28f9fc36f66e3c46b04ceea99497bab6539",
+      "comparator_partitions_array": "8dff9bbf23cef2d0a8649375cd662e51ce4ff90147c7df8e4fa6aaec9c45c27e",
+      "labels_array": "16fdb57d0cf64cc98e01527ddeac5ec3867cbb88a2efce256407a77409fec391",
+      "names_newline_utf8": "a0b1139c6056fd858ddbd2ee1dd4bafd1453e590818c6aa59883364c0288a876"
+    },
+    "k": 27,
+    "label": "WIN",
+    "lo": 0.033470491649409725,
+    "metric": "ami",
+    "n_draws": 2000,
+    "n_labelled": 12281,
+    "n_rows": 12281,
+    "outcome": "WIN",
+    "r": 0.008678457342291501,
+    "r_source": "/project/CoSiR/src/test/20261103_outside_methods/records/stage1_om_ranges.json:artelingo/qwen/style/ami/27:r",
+    "set": "artelingo",
+    "smoke": false,
+    "split": "held"
+  },
+  {
+    "aspect": "style",
+    "bootstrap_seed": 0,
+    "cand": 0.40664322288431654,
+    "cand_per_seed_ami": [
+      0.40665958740455416,
+      0.4034617010213204,
+      0.4072156901371417,
+      0.40646505343462075,
+      0.4094140824239456
+    ],
+    "candidate": "cstar",
+    "comp": 0.3699943225623416,
+    "comp_per_state_ami": [
+      0.36852987724692154,
+      0.3692524739806496,
+      0.3722006164594535
+    ],
+    "comparator": "vlm2vec",
+    "comparator_states": [
+      0,
+      1,
+      2
+    ],
+    "d": 0.03664890032197493,
+    "encoder": "qwen",
+    "gate": {
+      "abs_difference": 0.0,
+      "cand": 0.40664322288431654,
+      "per_seed": [
+        0.40665958740455416,
+        0.4034617010213204,
+        0.4072156901371417,
+        0.40646505343462075,
+        0.4094140824239456
+      ],
+      "r18_cand": 0.40664322288431654,
+      "tolerance": 1e-09
+    },
+    "hi": 0.04112692205975849,
+    "id": "vlm2vec/style/ami/20",
+    "input_sha256s": {
+      "/data/SSD2/pre_extract/artelingo/vlm2vec_v2/style/emb.npy": "db93c22280d2f2dd42909f92ecb1ca0f2420c591c86f248bbd0cffaa06895d5d",
+      "/data/SSD2/pre_extract/artelingo/vlm2vec_v2/style/keys.json": "9bceecbc307336be45c785d0f0a27593c219dad33c061d1d5c130ff23f447eb6",
+      "/data/SSD2/pre_extract/artelingo/vlm2vec_v2/style/meta.json": "120b8024e7d9660f572681df930055480978674fa9ed07035765f49ae0f9a95e",
+      "/project/CoSiR/src/test/20261103_outside_methods/records/labels.json": "3dfb39452f7a3ca62f46204cce149f8aed3361c6055bca96ed7c0ad2793d33c8",
+      "/project/CoSiR/src/test/20261103_outside_methods/records/stage1_om_ranges.json": "2f30eb7c47299af32c53b093a05fe012c3ea5531594f2af4aa98478b54d859b0",
+      "candidate_partitions_array": "984b22008865ec005df795066952dc3bdc29a0a87a0d7bffeb1b2335918ac558",
+      "comparator_partitions_array": "3dbed6e783becbd202961f5f9eee3f49b1000141362a4a508dd8d28d35926882",
+      "labels_array": "16fdb57d0cf64cc98e01527ddeac5ec3867cbb88a2efce256407a77409fec391",
+      "names_newline_utf8": "a0b1139c6056fd858ddbd2ee1dd4bafd1453e590818c6aa59883364c0288a876"
+    },
+    "k": 20,
+    "label": "WIN",
+    "lo": 0.03198828210578721,
+    "metric": "ami",
+    "n_draws": 2000,
+    "n_labelled": 12281,
+    "n_rows": 12281,
+    "outcome": "WIN",
+    "r": 0.010726282285881183,
+    "r_source": "/project/CoSiR/src/test/20261103_outside_methods/records/stage1_om_ranges.json:artelingo/qwen/style/ami/20:r",
+    "set": "artelingo",
+    "smoke": false,
+    "split": "held"
+  },
+  {
+    "aspect": "genre",
+    "bootstrap_seed": 0,
+    "cand": 0.5100704595257602,
+    "cand_per_seed_ami": [
+      0.5003355445541049,
+      0.5055500101860763,
+      0.5118191815182568,
+      0.5174186802326505,
+      0.515228881137713
+    ],
+    "candidate": "cstar",
+    "comp": 0.4593010201144143,
+    "comp_per_state_ami": [
+      0.47027126526333674,
+      0.45289829766715933,
+      0.4547334974127468
+    ],
+    "comparator": "vlm2vec",
+    "comparator_states": [
+      0,
+      1,
+      2
+    ],
+    "d": 0.05076943941134593,
+    "encoder": "qwen",
+    "gate": {
+      "abs_difference": 0.0,
+      "cand": 0.5100704595257602,
+      "per_seed": [
+        0.5003355445541049,
+        0.5055500101860763,
+        0.5118191815182568,
+        0.5174186802326505,
+        0.515228881137713
+      ],
+      "r18_cand": 0.5100704595257602,
+      "tolerance": 1e-09
+    },
+    "hi": 0.059002165105037564,
+    "id": "vlm2vec/genre/ami/10",
+    "input_sha256s": {
+      "/data/SSD2/pre_extract/artelingo/vlm2vec_v2/genre/emb.npy": "92cad275970a37fc8168bbcaeb6dcb12ec026d77cdc0394abe30b1677c1164d5",
+      "/data/SSD2/pre_extract/artelingo/vlm2vec_v2/genre/keys.json": "9bceecbc307336be45c785d0f0a27593c219dad33c061d1d5c130ff23f447eb6",
+      "/data/SSD2/pre_extract/artelingo/vlm2vec_v2/genre/meta.json": "36fef7de62bfc9ee9023f6d875360f3362f0de26283525bf8be3b5d73ccea6a7",
+      "/project/CoSiR/src/test/20261103_outside_methods/records/labels.json": "3dfb39452f7a3ca62f46204cce149f8aed3361c6055bca96ed7c0ad2793d33c8",
+      "/project/CoSiR/src/test/20261103_outside_methods/records/stage1_om_ranges.json": "2f30eb7c47299af32c53b093a05fe012c3ea5531594f2af4aa98478b54d859b0",
+      "candidate_partitions_array": "152d1a70a160971aa081d37c225fafed795ce6bd8a98bee58f6f62b9032df33e",
+      "comparator_partitions_array": "08d7326098a575086c5d99d38dc66783992718d46d707f97e152dbef7dea6f3b",
+      "labels_array": "e7d63fe8c07768ea5b956a2dfd11baf1e832185d001e3aece9f3b6ece6f686dd",
+      "names_newline_utf8": "a0b1139c6056fd858ddbd2ee1dd4bafd1453e590818c6aa59883364c0288a876"
+    },
+    "k": 10,
+    "label": "WIN",
+    "lo": 0.042400738018637384,
+    "metric": "ami",
+    "n_draws": 2000,
+    "n_labelled": 9949,
+    "n_rows": 12281,
+    "outcome": "WIN",
+    "r": 0.01356068956441503,
+    "r_source": "/project/CoSiR/src/test/20261103_outside_methods/records/stage1_om_ranges.json:artelingo/qwen/genre/ami/10:r",
+    "set": "artelingo",
+    "smoke": false,
+    "split": "held"
+  },
+  {
+    "aspect": "genre",
+    "bootstrap_seed": 0,
+    "cand": 0.5001038781216712,
+    "cand_per_seed_ami": [
+      0.4950504728005592,
+      0.5057144380417714,
+      0.4998291425338697,
+      0.49872544414675674,
+      0.5011998930853987
+    ],
+    "candidate": "cstar",
+    "comp": 0.4594993944514876,
+    "comp_per_state_ami": [
+      0.47385211452174697,
+      0.4434016505015452,
+      0.46124441833117064
+    ],
+    "comparator": "vlm2vec",
+    "comparator_states": [
+      0,
+      1,
+      2
+    ],
+    "d": 0.040604483670183655,
+    "encoder": "qwen",
+    "gate": {
+      "abs_difference": 0.0,
+      "cand": 0.5001038781216712,
+      "per_seed": [
+        0.4950504728005592,
+        0.5057144380417714,
+        0.4998291425338697,
+        0.49872544414675674,
+        0.5011998930853987
+      ],
+      "r18_cand": 0.5001038781216712,
+      "tolerance": 1e-09
+    },
+    "hi": 0.04694173737898888,
+    "id": "vlm2vec/genre/ami/20",
+    "input_sha256s": {
+      "/data/SSD2/pre_extract/artelingo/vlm2vec_v2/genre/emb.npy": "92cad275970a37fc8168bbcaeb6dcb12ec026d77cdc0394abe30b1677c1164d5",
+      "/data/SSD2/pre_extract/artelingo/vlm2vec_v2/genre/keys.json": "9bceecbc307336be45c785d0f0a27593c219dad33c061d1d5c130ff23f447eb6",
+      "/data/SSD2/pre_extract/artelingo/vlm2vec_v2/genre/meta.json": "36fef7de62bfc9ee9023f6d875360f3362f0de26283525bf8be3b5d73ccea6a7",
+      "/project/CoSiR/src/test/20261103_outside_methods/records/labels.json": "3dfb39452f7a3ca62f46204cce149f8aed3361c6055bca96ed7c0ad2793d33c8",
+      "/project/CoSiR/src/test/20261103_outside_methods/records/stage1_om_ranges.json": "2f30eb7c47299af32c53b093a05fe012c3ea5531594f2af4aa98478b54d859b0",
+      "candidate_partitions_array": "456a1932b690ef10f3a87269a4fa17c5fd11c237752850555333851f2fb49dbe",
+      "comparator_partitions_array": "90d1738e04da89c4ec5b063c12b64c46a1523ec357f7809ddee75d9440699a5f",
+      "labels_array": "e7d63fe8c07768ea5b956a2dfd11baf1e832185d001e3aece9f3b6ece6f686dd",
+      "names_newline_utf8": "a0b1139c6056fd858ddbd2ee1dd4bafd1453e590818c6aa59883364c0288a876"
+    },
+    "k": 20,
+    "label": "WIN",
+    "lo": 0.03461735928566683,
+    "metric": "ami",
+    "n_draws": 2000,
+    "n_labelled": 9949,
+    "n_rows": 12281,
+    "outcome": "WIN",
+    "r": 0.01390536109142726,
+    "r_source": "/project/CoSiR/src/test/20261103_outside_methods/records/stage1_om_ranges.json:artelingo/qwen/genre/ami/20:r",
+    "set": "artelingo",
+    "smoke": false,
+    "split": "held"
+  },
+  {
+    "aspect": "emotion",
+    "bootstrap_seed": 0,
+    "cand": 0.1024127745008577,
+    "cand_per_seed_ami": [
+      0.10170414948655143,
+      0.1014205620544615,
+      0.10422471043584887,
+      0.10367677595260098,
+      0.10103767457482578
+    ],
+    "candidate": "cstar",
+    "comp": 0.037521540764450294,
+    "comp_per_state_ami": [
+      0.04614398261063758,
+      0.03407926461502229,
+      0.032341375067691004
+    ],
+    "comparator": "bertopic",
+    "comparator_states": [
+      0,
+      1,
+      2
+    ],
+    "d": 0.0648912337364074,
+    "encoder": "qwen",
+    "gate": {
+      "abs_difference": 0.0,
+      "cand": 0.1024127745008577,
+      "per_seed": [
+        0.10170414948655143,
+        0.1014205620544615,
+        0.10422471043584887,
+        0.10367677595260098,
+        0.10103767457482578
+      ],
+      "r18_cand": 0.1024127745008577,
+      "tolerance": 1e-09
+    },
+    "hi": 0.06905623643103488,
+    "id": "bertopic/emotion/ami/9",
+    "input_sha256s": {
+      "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/topics_k9_seed0.json": "cb6f11f21d1eef433e2307df2816340b0e52969671d1ccecf03318c50927e8ef",
+      "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/topics_k9_seed0.npz": "411013b1985b8f4387ab3a57cf94eccc5f76c0267741a58f2f75c7caca517b24",
+      "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/topics_k9_seed1.json": "19705c47dbc395529b601888ad4be56ef24b8932b8443d7320df62c88d9664a0",
+      "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/topics_k9_seed1.npz": "a49ec619eb418369abe4bf416807edf594697cd9f0e8afb633887148159d4090",
+      "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/topics_k9_seed2.json": "042eb8d12b29830c582a0b2dbd82887e5871240db2f76e3f4acaf47d9f31ec52",
+      "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/topics_k9_seed2.npz": "7aa921cb48f55c5c48ec7293111c2374d713d4fc7354e5a99442f446d6a03af1",
+      "/project/CoSiR/src/test/20261103_outside_methods/records/labels.json": "3dfb39452f7a3ca62f46204cce149f8aed3361c6055bca96ed7c0ad2793d33c8",
+      "/project/CoSiR/src/test/20261103_outside_methods/records/stage1_om_ranges.json": "2f30eb7c47299af32c53b093a05fe012c3ea5531594f2af4aa98478b54d859b0",
+      "candidate_partitions_array": "91207942aadfc931b3d2fe536e7fce343eeb0bd14ea75b20326e60c97808b34c",
+      "comparator_partitions_array": "dbc01aed24ae0a55cacadbb655e690d606d3a2220759ba44b2fd43928314b27c",
+      "labels_array": "64f919a5f2b049e5ac60d81c511820793ce7d48cdf25090f6d577a673e1d790e",
+      "names_newline_utf8": "a0b1139c6056fd858ddbd2ee1dd4bafd1453e590818c6aa59883364c0288a876"
+    },
+    "k": 9,
+    "label": "WIN",
+    "lo": 0.06027705643606034,
+    "metric": "ami",
+    "n_draws": 2000,
+    "n_labelled": 12281,
+    "n_rows": 12281,
+    "outcome": "WIN",
+    "r": 0.003627631477242557,
+    "r_source": "/project/CoSiR/src/test/20261103_outside_methods/records/stage1_om_ranges.json:artelingo/qwen/emotion/ami/9:r",
+    "set": "artelingo",
+    "smoke": false,
+    "split": "held"
+  },
+  {
+    "aspect": "emotion",
+    "bootstrap_seed": 0,
+    "cand": 0.10658729378204021,
+    "cand_per_seed_ami": [
+      0.10751887239964945,
+      0.1097603100100391,
+      0.10523190688437208,
+      0.10561631957244356,
+      0.1048090600436969
+    ],
+    "candidate": "cstar",
+    "comp": 0.06620297846034479,
+    "comp_per_state_ami": [
+      0.06975928445775437,
+      0.07261828399086959,
+      0.05623136693241039
+    ],
+    "comparator": "bertopic",
+    "comparator_states": [
+      0,
+      1,
+      2
+    ],
+    "d": 0.040384315321695424,
+    "encoder": "qwen",
+    "gate": {
+      "abs_difference": 0.0,
+      "cand": 0.10658729378204021,
+      "per_seed": [
+        0.10751887239964945,
+        0.1097603100100391,
+        0.10523190688437208,
+        0.10561631957244356,
+        0.1048090600436969
+      ],
+      "r18_cand": 0.10658729378204021,
+      "tolerance": 1e-09
+    },
+    "hi": 0.04426904264314066,
+    "id": "bertopic/emotion/ami/20",
+    "input_sha256s": {
+      "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/topics_seed0.json": "978504239da1bab903eb3565b329116ec1f17f5843a0347f5db8387fd4c7576a",
+      "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/topics_seed0.npz": "81303af1425dfab6acbe85c1699f552752663ebbcd2f587523d9ede6ddb3075a",
+      "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/topics_seed1.json": "e082f5c2a76e8022205c7864e44a99f0379ac7133c75c6d09178f2f6c578c0d0",
+      "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/topics_seed1.npz": "10e303d96fcfc80caf28c656144009efa8daf8e218bd4f6303ab0478f2e49cb7",
+      "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/topics_seed2.json": "98fef00ef53bab47c7bff5032c3651f2485448bc77642d58286ea5ef4b6e9777",
+      "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/topics_seed2.npz": "f0fe79363c371075a263c1c5460024540876bdb94de7a43d9541c96938c7a77e",
+      "/project/CoSiR/src/test/20261103_outside_methods/records/labels.json": "3dfb39452f7a3ca62f46204cce149f8aed3361c6055bca96ed7c0ad2793d33c8",
+      "/project/CoSiR/src/test/20261103_outside_methods/records/stage1_om_ranges.json": "2f30eb7c47299af32c53b093a05fe012c3ea5531594f2af4aa98478b54d859b0",
+      "candidate_partitions_array": "b079ef8272060a35a68388dfe1ffb9205767de56703d1d757c9013b1af5b9bb0",
+      "comparator_partitions_array": "96ea2ff2019c789414748f9c9169d0e99cb33de56b760ed841bc790fa06b716a",
+      "labels_array": "64f919a5f2b049e5ac60d81c511820793ce7d48cdf25090f6d577a673e1d790e",
+      "names_newline_utf8": "a0b1139c6056fd858ddbd2ee1dd4bafd1453e590818c6aa59883364c0288a876"
+    },
+    "k": 20,
+    "label": "WIN",
+    "lo": 0.03601016539414701,
+    "metric": "ami",
+    "n_draws": 2000,
+    "n_labelled": 12281,
+    "n_rows": 12281,
+    "outcome": "WIN",
+    "r": 0.005878435780109215,
+    "r_source": "/project/CoSiR/src/test/20261103_outside_methods/records/stage1_om_ranges.json:artelingo/qwen/emotion/ami/20:r",
+    "set": "artelingo",
+    "smoke": false,
+    "split": "held"
+  },
+  {
+    "aspect": "style",
+    "bootstrap_seed": 0,
+    "cand": 0.4109255361955107,
+    "cand_per_seed_ami": [
+      0.40988274925321583,
+      0.41263567138830676,
+      0.41086361540419264,
+      0.41063120787595025,
+      0.41061443705588774
+    ],
+    "candidate": "cstar",
+    "comp": 0.10500601951531363,
+    "comp_per_state_ami": [
+      0.08911879970442722,
+      0.11479020155143604,
+      0.11110905729007767
+    ],
+    "comparator": "bertopic",
+    "comparator_states": [
+      0,
+      1,
+      2
+    ],
+    "d": 0.30591951668019707,
+    "encoder": "qwen",
+    "gate": {
+      "abs_difference": 0.0,
+      "cand": 0.4109255361955107,
+      "per_seed": [
+        0.40988274925321583,
+        0.41263567138830676,
+        0.41086361540419264,
+        0.41063120787595025,
+        0.41061443705588774
+      ],
+      "r18_cand": 0.4109255361955107,
+      "tolerance": 1e-09
+    },
+    "hi": 0.30959590126743675,
+    "id": "bertopic/style/ami/27",
+    "input_sha256s": {
+      "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/topics_k27_seed0.json": "148f3efdcaa2322d3ac8ce7b5c222779214d6a92b79dfdb868be6c5def1d18a8",
+      "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/topics_k27_seed0.npz": "a239755e490b2d274f610568cb64973bd9c043e57b9788ba7020cd93b024b137",
+      "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/topics_k27_seed1.json": "0dc450545c182d2db3a348039786d0b5ed19ded22cb8ac3383c85761fe3b7756",
+      "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/topics_k27_seed1.npz": "8dba277e52aab2e7734ca1f22f38220860d02c1419cd23878cd2bcc58e3a0015",
+      "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/topics_k27_seed2.json": "7d8f9e5d2c7f87b91c72925e16669b9208a46a145571ec20b2080813461df18c",
+      "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/topics_k27_seed2.npz": "b18fc9b4509e66121d4ec1c207834b9cda8b7f177937a02c97f9604b31ec60b1",
+      "/project/CoSiR/src/test/20261103_outside_methods/records/labels.json": "3dfb39452f7a3ca62f46204cce149f8aed3361c6055bca96ed7c0ad2793d33c8",
+      "/project/CoSiR/src/test/20261103_outside_methods/records/stage1_om_ranges.json": "2f30eb7c47299af32c53b093a05fe012c3ea5531594f2af4aa98478b54d859b0",
+      "candidate_partitions_array": "d61c923339c4fa3bc821974545e0c28f9fc36f66e3c46b04ceea99497bab6539",
+      "comparator_partitions_array": "9bf27f4a6a7171c769c3ee2c414a12d3973e7aa9e3281ce4a9793a9afdbc5f98",
+      "labels_array": "16fdb57d0cf64cc98e01527ddeac5ec3867cbb88a2efce256407a77409fec391",
+      "names_newline_utf8": "a0b1139c6056fd858ddbd2ee1dd4bafd1453e590818c6aa59883364c0288a876"
+    },
+    "k": 27,
+    "label": "WIN",
+    "lo": 0.29783158733089704,
+    "metric": "ami",
+    "n_draws": 2000,
+    "n_labelled": 12281,
+    "n_rows": 12281,
+    "outcome": "WIN",
+    "r": 0.008678457342291501,
+    "r_source": "/project/CoSiR/src/test/20261103_outside_methods/records/stage1_om_ranges.json:artelingo/qwen/style/ami/27:r",
+    "set": "artelingo",
+    "smoke": false,
+    "split": "held"
+  },
+  {
+    "aspect": "style",
+    "bootstrap_seed": 0,
+    "cand": 0.40664322288431654,
+    "cand_per_seed_ami": [
+      0.40665958740455416,
+      0.4034617010213204,
+      0.4072156901371417,
+      0.40646505343462075,
+      0.4094140824239456
+    ],
+    "candidate": "cstar",
+    "comp": 0.09359249418927225,
+    "comp_per_state_ami": [
+      0.0878904844120766,
+      0.09579861325399135,
+      0.09708838490174883
+    ],
+    "comparator": "bertopic",
+    "comparator_states": [
+      0,
+      1,
+      2
+    ],
+    "d": 0.3130507286950443,
+    "encoder": "qwen",
+    "gate": {
+      "abs_difference": 0.0,
+      "cand": 0.40664322288431654,
+      "per_seed": [
+        0.40665958740455416,
+        0.4034617010213204,
+        0.4072156901371417,
+        0.40646505343462075,
+        0.4094140824239456
+      ],
+      "r18_cand": 0.40664322288431654,
+      "tolerance": 1e-09
+    },
+    "hi": 0.3175976944361155,
+    "id": "bertopic/style/ami/20",
+    "input_sha256s": {
+      "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/topics_seed0.json": "978504239da1bab903eb3565b329116ec1f17f5843a0347f5db8387fd4c7576a",
+      "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/topics_seed0.npz": "81303af1425dfab6acbe85c1699f552752663ebbcd2f587523d9ede6ddb3075a",
+      "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/topics_seed1.json": "e082f5c2a76e8022205c7864e44a99f0379ac7133c75c6d09178f2f6c578c0d0",
+      "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/topics_seed1.npz": "10e303d96fcfc80caf28c656144009efa8daf8e218bd4f6303ab0478f2e49cb7",
+      "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/topics_seed2.json": "98fef00ef53bab47c7bff5032c3651f2485448bc77642d58286ea5ef4b6e9777",
+      "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/topics_seed2.npz": "f0fe79363c371075a263c1c5460024540876bdb94de7a43d9541c96938c7a77e",
+      "/project/CoSiR/src/test/20261103_outside_methods/records/labels.json": "3dfb39452f7a3ca62f46204cce149f8aed3361c6055bca96ed7c0ad2793d33c8",
+      "/project/CoSiR/src/test/20261103_outside_methods/records/stage1_om_ranges.json": "2f30eb7c47299af32c53b093a05fe012c3ea5531594f2af4aa98478b54d859b0",
+      "candidate_partitions_array": "984b22008865ec005df795066952dc3bdc29a0a87a0d7bffeb1b2335918ac558",
+      "comparator_partitions_array": "96ea2ff2019c789414748f9c9169d0e99cb33de56b760ed841bc790fa06b716a",
+      "labels_array": "16fdb57d0cf64cc98e01527ddeac5ec3867cbb88a2efce256407a77409fec391",
+      "names_newline_utf8": "a0b1139c6056fd858ddbd2ee1dd4bafd1453e590818c6aa59883364c0288a876"
+    },
+    "k": 20,
+    "label": "WIN",
+    "lo": 0.3052985312229022,
+    "metric": "ami",
+    "n_draws": 2000,
+    "n_labelled": 12281,
+    "n_rows": 12281,
+    "outcome": "WIN",
+    "r": 0.010726282285881183,
+    "r_source": "/project/CoSiR/src/test/20261103_outside_methods/records/stage1_om_ranges.json:artelingo/qwen/style/ami/20:r",
+    "set": "artelingo",
+    "smoke": false,
+    "split": "held"
+  },
+  {
+    "aspect": "genre",
+    "bootstrap_seed": 0,
+    "cand": 0.5100704595257602,
+    "cand_per_seed_ami": [
+      0.5003355445541049,
+      0.5055500101860763,
+      0.5118191815182568,
+      0.5174186802326505,
+      0.515228881137713
+    ],
+    "candidate": "cstar",
+    "comp": 0.26047158886368543,
+    "comp_per_state_ami": [
+      0.267611577413806,
+      0.2644303254054983,
+      0.24937286377175194
+    ],
+    "comparator": "bertopic",
+    "comparator_states": [
+      0,
+      1,
+      2
+    ],
+    "d": 0.2495988706620748,
+    "encoder": "qwen",
+    "gate": {
+      "abs_difference": 0.0,
+      "cand": 0.5100704595257602,
+      "per_seed": [
+        0.5003355445541049,
+        0.5055500101860763,
+        0.5118191815182568,
+        0.5174186802326505,
+        0.515228881137713
+      ],
+      "r18_cand": 0.5100704595257602,
+      "tolerance": 1e-09
+    },
+    "hi": 0.26042301105474447,
+    "id": "bertopic/genre/ami/10",
+    "input_sha256s": {
+      "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/topics_k10_seed0.json": "1aa7001aeb008264f27d5f7f9cb749042df085eee8369a8a9363c9438119acb6",
+      "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/topics_k10_seed0.npz": "2a575d4d8f4837eb6b044c4e8cfdef0bdaa41051af21037550770dc76b14c624",
+      "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/topics_k10_seed1.json": "ba5e31ab158b39f68edc005dea0ad263c8c08a429a47645dd0e1096da109fa9f",
+      "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/topics_k10_seed1.npz": "78eba5c2e2dd3a78d9465e8f74d23a1879a3c96c8d136a135c060b0778ca6f77",
+      "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/topics_k10_seed2.json": "0ee0bc28c923185798e40e8ba3dbdd8255e4d3671d76e41fb74c7f0edd49def0",
+      "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/topics_k10_seed2.npz": "54edb84d3afcc0c7352c8435ca03946aca4b64cad9c8eb06dbc8115ee26751fb",
+      "/project/CoSiR/src/test/20261103_outside_methods/records/labels.json": "3dfb39452f7a3ca62f46204cce149f8aed3361c6055bca96ed7c0ad2793d33c8",
+      "/project/CoSiR/src/test/20261103_outside_methods/records/stage1_om_ranges.json": "2f30eb7c47299af32c53b093a05fe012c3ea5531594f2af4aa98478b54d859b0",
+      "candidate_partitions_array": "152d1a70a160971aa081d37c225fafed795ce6bd8a98bee58f6f62b9032df33e",
+      "comparator_partitions_array": "e3fd0c7ed5c4d4c1f27efecb9cb20ade5e53990ca966d9d2ab861e777798da32",
+      "labels_array": "e7d63fe8c07768ea5b956a2dfd11baf1e832185d001e3aece9f3b6ece6f686dd",
+      "names_newline_utf8": "a0b1139c6056fd858ddbd2ee1dd4bafd1453e590818c6aa59883364c0288a876"
+    },
+    "k": 10,
+    "label": "WIN",
+    "lo": 0.23869896454576608,
+    "metric": "ami",
+    "n_draws": 2000,
+    "n_labelled": 9949,
+    "n_rows": 12281,
+    "outcome": "WIN",
+    "r": 0.01356068956441503,
+    "r_source": "/project/CoSiR/src/test/20261103_outside_methods/records/stage1_om_ranges.json:artelingo/qwen/genre/ami/10:r",
+    "set": "artelingo",
+    "smoke": false,
+    "split": "held"
+  },
+  {
+    "aspect": "genre",
+    "bootstrap_seed": 0,
+    "cand": 0.5001038781216712,
+    "cand_per_seed_ami": [
+      0.4950504728005592,
+      0.5057144380417714,
+      0.4998291425338697,
+      0.49872544414675674,
+      0.5011998930853987
+    ],
+    "candidate": "cstar",
+    "comp": 0.3092043551789912,
+    "comp_per_state_ami": [
+      0.30009600467260156,
+      0.32400608774771505,
+      0.3035109731166569
+    ],
+    "comparator": "bertopic",
+    "comparator_states": [
+      0,
+      1,
+      2
+    ],
+    "d": 0.19089952294268003,
+    "encoder": "qwen",
+    "gate": {
+      "abs_difference": 0.0,
+      "cand": 0.5001038781216712,
+      "per_seed": [
+        0.4950504728005592,
+        0.5057144380417714,
+        0.4998291425338697,
+        0.49872544414675674,
+        0.5011998930853987
+      ],
+      "r18_cand": 0.5001038781216712,
+      "tolerance": 1e-09
+    },
+    "hi": 0.19944410780253116,
+    "id": "bertopic/genre/ami/20",
+    "input_sha256s": {
+      "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/topics_seed0.json": "978504239da1bab903eb3565b329116ec1f17f5843a0347f5db8387fd4c7576a",
+      "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/topics_seed0.npz": "81303af1425dfab6acbe85c1699f552752663ebbcd2f587523d9ede6ddb3075a",
+      "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/topics_seed1.json": "e082f5c2a76e8022205c7864e44a99f0379ac7133c75c6d09178f2f6c578c0d0",
+      "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/topics_seed1.npz": "10e303d96fcfc80caf28c656144009efa8daf8e218bd4f6303ab0478f2e49cb7",
+      "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/topics_seed2.json": "98fef00ef53bab47c7bff5032c3651f2485448bc77642d58286ea5ef4b6e9777",
+      "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/topics_seed2.npz": "f0fe79363c371075a263c1c5460024540876bdb94de7a43d9541c96938c7a77e",
+      "/project/CoSiR/src/test/20261103_outside_methods/records/labels.json": "3dfb39452f7a3ca62f46204cce149f8aed3361c6055bca96ed7c0ad2793d33c8",
+      "/project/CoSiR/src/test/20261103_outside_methods/records/stage1_om_ranges.json": "2f30eb7c47299af32c53b093a05fe012c3ea5531594f2af4aa98478b54d859b0",
+      "candidate_partitions_array": "456a1932b690ef10f3a87269a4fa17c5fd11c237752850555333851f2fb49dbe",
+      "comparator_partitions_array": "96ea2ff2019c789414748f9c9169d0e99cb33de56b760ed841bc790fa06b716a",
+      "labels_array": "e7d63fe8c07768ea5b956a2dfd11baf1e832185d001e3aece9f3b6ece6f686dd",
+      "names_newline_utf8": "a0b1139c6056fd858ddbd2ee1dd4bafd1453e590818c6aa59883364c0288a876"
+    },
+    "k": 20,
+    "label": "WIN",
+    "lo": 0.18162461133742147,
+    "metric": "ami",
+    "n_draws": 2000,
+    "n_labelled": 9949,
+    "n_rows": 12281,
+    "outcome": "WIN",
+    "r": 0.01390536109142726,
+    "r_source": "/project/CoSiR/src/test/20261103_outside_methods/records/stage1_om_ranges.json:artelingo/qwen/genre/ami/20:r",
+    "set": "artelingo",
+    "smoke": false,
+    "split": "held"
+  }
+]
