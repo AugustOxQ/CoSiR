@@ -26,6 +26,17 @@ stop_epoch, dec_start_epoch (None with DEC off), best_epoch, best_dev_loss, epoc
 history. DEC off has no DEC stop rule: its stop_reason is c*'s ('patience', or 'max_epochs' at the cap).
 
 CLI: r21_run.py train --arm NAME [NAME ...] --seeds 0 1 2 3 4 --device cuda [--smoke] [--max-epochs N] [--outputs DIR]
+
+Held part (ticket 04): `held` writes the test exports of an arm's saved views, `<root>/held/<arm>/{aspect}__s{seed}.npz|json`,
+by c*'s own inference (`rg_full.infer_held`'s steps: the CT's held images, `rb_student.infer` on the saved view, VC3, one
+rerun on a failure, c*'s sidecar fields), without r10's sweep gates (stage 3 verdict, V4a, five seeds at once). The inference
+device is the training device in the weights' record (as c*); `--device` may name another only with `--allow-device-change`
+(a CPU check of CUDA-trained weights), which adds `infer_device` to the sidecar. `cstar` as the arm reads r10's saved c*
+weights (`full/weights/k11=40`, read-only) and writes the exports as arm `k11=40`; only into a smoke folder.
+`teacher` writes the teacher-cluster cache once (D12) through `teacher_data`; a later call verifies it. CPU.
+
+CLI: r21_run.py held --arm NAME|cstar [...] --seeds 0 .. [--device D --allow-device-change] [--outputs DIR]
+     r21_run.py teacher [--outputs DIR]
 """
 import os
 
@@ -329,6 +340,117 @@ def train(arms, seeds, device, outputs=OUT_ROOT, *, smoke=False, max_epochs=None
     return result
 
 
+# ---------------------------------------------------------------------------------------------------------- held
+CSTAR_ARM = 'k11=40'    # c*'s folder name in r10's tree; also the `arm` of its sidecars
+
+
+def _outputs_for(outputs):
+    """(outputs, root, smoke): the r21 tree (a full run) or a folder under /tmp/claude-0 (a smoke), as `check_outputs`."""
+    smoke = Path(outputs).resolve() != OUT_ROOT.resolve()
+    return (*check_outputs(outputs, smoke), smoke)
+
+
+def held_arm_weights(wroot, arm, aspect, seed, smoke):
+    """(path, config, weights sha) of the saved view, checked as `rg_full._arm_weights` (inside `arm_alias(arm)`)."""
+    return rg_full._arm_weights(wroot, arm, aspect, seed, smoke)
+
+
+@threadpool_limits.wrap(limits=8)
+def held(arms, seeds, device=None, outputs=OUT_ROOT, *, allow_device_change=False):
+    """Held exports of each arm of `arms` (r21 arm names, or 'cstar' for r10's saved c*, smoke folders only) for each seed.
+    Returns {(arm, seed): {aspect: float16 array}}. An existing export is kept if its sidecar matches this run (weights
+    SHA-256 included) and passes VC3; a changed one stops the run."""
+    arms, seeds = list(arms), list(seeds)
+    assert arms and len(set(arms)) == len(arms) and seeds and len(set(seeds)) == len(seeds) and all(x in SEEDS for x in seeds)
+    outputs, root, smoke = _outputs_for(outputs)
+    folder = {a: (CSTAR_ARM if a == 'cstar' else a) for a in arms}
+    for a in arms:
+        assert a == 'cstar' or parse_arm(a)
+    assert 'cstar' not in arms or smoke, 'cstar (r10\'s weights) only into a smoke folder; the r21 tree holds r21 arms'
+    wroot = {a: (R10_OUTPUTS / 'full' if a == 'cstar' else root) for a in arms}
+    rs_paths.check_imports()
+    rs_full.require_frozen_code()
+    before = tree_listing()
+    for a in arms:
+        for seed in seeds:
+            rg_full._refuse_failed(root, folder[a], [seed])
+            if a != 'cstar':   # the arm's training run must have finished well
+                rec = json.loads(record_path(root, a, seed).read_text())
+                assert rec['status'] == 'ok' and rec['smoke'] == smoke, f'{a} s{seed}: run record {rec["status"]}, smoke {rec["smoke"]}'
+    torch.set_num_threads(8)
+    names, names_sha = rb_student.held_names()
+    x = rb_encoders.full_images(rg_full.ENCODER, names)
+    assert x.shape == (len(names), rb_encoders.WIDTH[rg_full.ENCODER]) == (rg_full.rg_paths.N_HELD, 2048) and x.dtype == np.float32
+    assert np.isfinite(x).all() and names_sha == rs_paths.HELD_SHA256
+    image_sha = rb_student.sha_array(x)
+    result = {}
+    for a in arms:
+        name = folder[a]
+        with rs_full.arm_alias(name):
+            switches = rg_full.V.switches(name)
+            weights = {(seed, aspect): held_arm_weights(wroot[a], name, aspect, seed, smoke and a != 'cstar') for seed in seeds for aspect in ASPECTS}
+        for seed in seeds:
+            result[a, seed] = {}
+            for aspect in ASPECTS:
+                w_path, config, w_sha = weights[seed, aspect]
+                recorded = torch.device(config['device'])
+                dev = recorded if device is None else torch.device(device)
+                assert dev == recorded or allow_device_change, \
+                    f'{w_path}: trained on {recorded}, inference on {dev}: pass --allow-device-change for a check'
+                path = root / 'held' / name / f'{aspect}__s{seed}.npz'
+                meta = dict(kind='held', arm=name, scale=rg_full.SCALE, aspect=aspect, seed=seed, encoder=rg_full.ENCODER,
+                            rows=len(names), width=2048, dtype='float16', list_sha256=names_sha, weights_sha256=w_sha,
+                            image_sha256=image_sha, device=str(recorded), recipe=rg_full.RECIPE,
+                            switches=switches)
+                if path.exists():
+                    arrays, info = rb_student.read_outputs(path)
+                    assert all(info[k] == v for k, v in meta.items()), f'{path}: existing output differs from this run'
+                    out = arrays['img']
+                    problem = rg_full.vc3_problem(out)
+                    assert problem is None, f'{path}: VC3: {problem}'
+                    print(f'{name} {aspect} s{seed}: verified export; skip', flush=True)
+                else:
+                    problems = []
+                    for attempt in (1, 2):
+                        try:
+                            out = rb_student.infer(w_path, aspect, 2048, x, dev)
+                            problem = rg_full.vc3_problem(out)
+                        except AssertionError as error:
+                            problem = f'infer: {error}'
+                        if problem is None:
+                            break
+                        problems.append(problem)
+                        print(f'{path}: VC3 failure ({problem}); {"rerun once" if attempt == 1 else "stop"}', flush=True)
+                    else:
+                        ms_train.head.atomic_json(path.parent / f'failed__{aspect}__s{seed}.json',
+                                                  dict(arm=name, aspect=aspect, seed=seed, failure_kind='vc3', problems=problems))
+                        raise AssertionError(f'{path}: VC3 failed twice: {problems}')
+                    extra = dict(infer_device=str(dev)) if dev != recorded else {}
+                    rb_student.write_outputs(path, dict(img=out), dict(meta, sha256=rb_student.sha_array(out),
+                                             vc3_attempts=len(problems) + 1, vc3_problems=problems, **extra))
+                    arrays, info = rb_student.read_outputs(path)
+                    print(f'{name} {aspect} s{seed}: written', flush=True)
+                assert info['sha256'] == info['arrays']['img']['sha256'] == rb_student.sha_array(out)
+                result[a, seed][aspect] = out
+    assert tree_listing() == before, 'r10\'s tree changed during the run (it is only read)'
+    return result
+
+
+# ------------------------------------------------------------------------------------------------------- teacher
+def teacher(outputs=OUT_ROOT):
+    """Write (first call) or verify (later calls) the teacher-cluster cache of the three aspects. CPU."""
+    outputs, _, _ = _outputs_for(outputs)
+    rs_paths.check_imports()
+    rs_full.require_frozen_code()
+    before = tree_listing()
+    with ExitStack() as stack:
+        ctx = load_chain(stack)
+        data = teacher_data(ctx['s'], ctx['graphs'], ASPECTS, outputs / TEACHER_CACHE)
+    assert tree_listing() == before, 'r10\'s tree changed (it is only read)'
+    return {a: dict(k=d['k'], rows=len(d['feats']), path=str(cache_path(outputs / TEACHER_CACHE, a)),
+                    sha256=sha_file(cache_path(outputs / TEACHER_CACHE, a))) for a, d in data.items()}
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest='command', required=True)
@@ -339,7 +461,22 @@ def main(argv=None):
     t.add_argument('--smoke', action='store_true')
     t.add_argument('--max-epochs', type=int, default=None, help='smoke only (at most 2)')
     t.add_argument('--outputs', type=Path, default=OUT_ROOT)
+    h = sub.add_parser('held', help='held (test) exports of an arm\'s saved views, c*\'s inference')
+    h.add_argument('--arm', nargs='+', required=True, help="r21 arm names, or 'cstar' (smoke folders only)")
+    h.add_argument('--seeds', nargs='+', type=int, required=True)
+    h.add_argument('--device', default=None, help='default: the training device in the weights\' record')
+    h.add_argument('--allow-device-change', action='store_true')
+    h.add_argument('--outputs', type=Path, default=OUT_ROOT)
+    c = sub.add_parser('teacher', help='write or verify the teacher-cluster cache (CPU)')
+    c.add_argument('--outputs', type=Path, default=OUT_ROOT)
     args = p.parse_args(argv)
+    if args.command == 'held':
+        res = held(args.arm, args.seeds, args.device, args.outputs, allow_device_change=args.allow_device_change)
+        print(json.dumps({f'{a} s{sd}': 'ok' for a, sd in res}))
+        return
+    if args.command == 'teacher':
+        print(json.dumps(teacher(args.outputs), indent=1))
+        return
     result = train(args.arm, args.seeds, args.device, args.outputs, smoke=args.smoke, max_epochs=args.max_epochs)
     print(json.dumps({a: {str(sd): r['status'] for sd, r in v.items()} for a, v in result.items()}))
 

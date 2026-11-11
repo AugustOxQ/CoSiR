@@ -56,3 +56,18 @@ Spec: `docs/superpowers/specs/2026-11-11-r21-dec-heads-design.md`. Decision line
   Started in parallel: review of `r21_gate0b.py` (Opus `high`) and ticket 04 (Sonnet `medium`, worktree
   `/project/CoSiR-r21-t04`, branch `r21/t04`). GPU smoke of ticket 03 queued (`res-queue gpu`, label `r21:smoke`,
   behind r25 and r26; estimated start 08:48).
+
+## Ticket 04 (build, `r21/t04`)
+
+- 2026-11-11: `r21_run.py` gained `held` and `teacher` (module docstring has the CLI); new `r21_queue_lib.sh` and
+  `r21_queue_stage{0c,1a,1b,2}.sh` (each with `--dry-run`; 1b and 2 also `--picks FILE`). Plumbing check: held on r10's saved
+  c* seed 0 weights, CPU inference, differs from r10's GPU export by at most 6.1e-5 (one float16 step) on 0.13 to 0.15 % of
+  entries. Smoke: `train --arm dec-off --smoke` then `held`, sidecar fields equal r10's. Smoke output: scratchpad `t04/`.
+- 08:05: gate 0b script reviewed (Opus `high`): sound for the spec's sentence, no must-fix. Its own mutation (best state
+  only at epoch 1) gives FAIL. Should-fix: S1 the λ = 0 runs stop before step 11's backward, so a gradient-only DEC leak
+  passes (its mutation m3 passed); S2 a one-part run prints PASS; S3 the saved-weights load is not counted. Minor: M1
+  histories compared on three keys only, M2 the export glob takes any match, M5 `--mutate` exit codes, M6 the record
+  only under `/tmp/claude-0`. All seven sent to one Codex fix job (`gpt-6.1-sol` high, worktree
+  `/project/CoSiR-r21-fix0b`, branch `r21/fix0b`).
+- 08:06: ticket 04 built (86f8e100, Sonnet `medium`); controller diff read and dry runs (1a: the 8 arms of §3.5; a
+  failing pick read stops the script under `set -e`). Merged.
