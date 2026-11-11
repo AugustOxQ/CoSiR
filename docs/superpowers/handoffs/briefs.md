@@ -2127,3 +2127,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-11-paper-experiments-2-handoff.md
 - New chat: tab 'paper experiments 2', session 06debbf6-4b8b-4388-a1f4-2ae397c86e8b
 
+[brief] CoSiR: 4 -> r21 decide (2026-11-11 05:44 Amsterdam)
+- Done: the user moved r21 forward to now, with DEC only (item 4); deeper heads (item 18) stay waiting.
+- State: r21 never started: no spec, branch, round folder or outputs. Old estimate: GPU about 1 h, CPU 1 to 2 h.
+- Next: read the sources below, then a short grill (key questions in section 4) and a short spec.
+- Blocked: nothing. The local GPU is held by r25, then r26, until about 10:00.
+- Handoff: docs/superpowers/handoffs/2026-11-11-r21-decide-handoff.md
+- New chat: tab 'r21 decide', session ca058c8e-f0f6-4090-8fcd-bdfc8fb5b15f
+
