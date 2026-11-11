@@ -130,6 +130,11 @@ def test_stage_picks_1a_then_per_form_after_1b():
     assert p1b['plain']['pick'] == best + '_bal'
     assert p1b['start']['pick'] == 'dec-start_l10_w5_S2'
     assert set(p1b) == {'plain', 'start', 'teacher'}
+    for i, r in enumerate(rows.values()):
+        r['dec_share_max'] = dict.fromkeys(ASP, 1.0 if i % 2 else 0.2)
+        r['dec_share_min'] = dict.fromkeys(ASP, 0.0 if i % 2 else 0.01)
+    assert r21_score.pick_stage1a(rows, REF) == p1a
+    assert r21_score.pick_stage1b(rows, REF, p1a['pick']) == p1b
 
 
 def test_stage1a_needs_all_eight_runs():
@@ -256,7 +261,8 @@ def fake_history(run, n_dec, reason='changed'):
         if i < w:
             dec = dict(phase='warmup', **(dict(start_epoch=w + 1, share_max=0.2) if i == w - 1 else {}))
         else:
-            dec = dict(phase='dec', start_epoch=w + 1, kl=0.1, changed=0.1, **(dict(stop_reason=reason) if i == run - 1 else {}))
+            dec = dict(phase='dec', start_epoch=w + 1, kl=0.1, changed=0.1, share_max=0.3, share_min=0.01,
+                       **(dict(stop_reason=reason) if i == run - 1 else {}))
         hist.append(dict(epoch=i + 1, dec=dec))
     return hist
 
@@ -288,10 +294,22 @@ def test_make_row_reads_the_reason_and_start_from_the_sidecar_without_a_run_reco
     assert r['dec_start_epoch'] == dict(emotion=8, style=12, genre=30)
 
 
+def test_make_row_reads_each_heads_last_dec_epoch_shares():
+    sides = fake_sides(best=(8, 12, 30), dec=(3, 5, 4))
+    maxima = dict(zip(ASP, (1.0, 0.75, 0.8)))
+    minima = dict(zip(ASP, (0.0, 0.01, 0.02)))
+    for a in ASP:
+        sides[a]['history'][-1]['dec'].update(share_max=maxima[a], share_min=minima[a])
+    r = r21_score.make_row(PLAIN, fake_val('x'), sides, None, fake_val('c'))
+    assert r['dec_share_max'] == maxima and r['dec_share_min'] == minima
+    assert r['largest_share'] == dict.fromkeys(ASP, 0.2)
+
+
 def test_make_row_dec_off_and_cstar_have_no_dec_epochs_and_no_reason_without_a_record():
     for arm in ('dec-off', 'cstar'):
         r = r21_score.make_row(arm, fake_val('x'), fake_sides(), None, fake_val('c'))
         assert r['stop_reason'] == dict(emotion=None, style=None, genre=None) and r['dec_epochs'] == dict(emotion=0, style=0, genre=0)
+        assert r['dec_share_max'] == r['dec_share_min'] == dict.fromkeys(ASP, None)
     rec = dict(heads={a: dict(stop_reason='patience', dec_start_epoch=None) for a in ASP})       # DEC off: c*'s reason, from the record
     assert r21_score.make_row('dec-off', fake_val('x'), fake_sides(), rec, fake_val('c'))['stop_reason']['genre'] == 'patience'
 
@@ -377,6 +395,12 @@ def test_sheet_markdown_has_every_run_the_0c_line_and_the_picks():
     md = r21_score.sheet_markdown(doc)
     assert 'dec-off' in md and 'dec-plain_l1_w1_S1' in md and 'Gate 0c: PASS' in md and 'dec-start_l1_w1_S1' in md
     assert '0.90' in md or '0.900' in md          # the largest cluster share is shown
+    assert 'DEC shares max/min' in md
+    for arm in ('cstar', 'dec-off', run['arm']):
+        line = next(line for line in md.splitlines() if line.startswith(f'| {arm} |'))
+        cells = [cell.strip() for cell in line.split('|')]
+        assert cells[8] == ('0.30/0.01, 0.30/0.01, 0.30/0.01' if arm == run['arm'] else '-, -, -')
+        assert len(cells) == 13
     assert 'stage 1a pick: dec-plain_l1_w1_S1' in md
 
 
@@ -415,7 +439,7 @@ def test_code_hashes_cover_every_scoring_file():
 
 
 # ------------------------------------------------------------------------------------------------ collect_rows
-def stage_tree(tmp_path, monkeypatch, record_edit=None, ranges_ok=True):
+def stage_tree(tmp_path, monkeypatch, record_edit=None, ranges_ok=True, missing_record=None):
     """A tmp train tree with dec-off and one DEC arm at seed 0, and r21_score's readers replaced by fakes."""
     root = tmp_path / 'train'
     arms = {'dec-off': (fake_sides(), None), PLAIN: (fake_sides(dec=(3, 5, 4)), None)}
@@ -430,7 +454,8 @@ def stage_tree(tmp_path, monkeypatch, record_edit=None, ranges_ok=True):
         rec = dict(arm=arm, settings=settings, seed=0, status='ok', heads=heads)
         if record_edit and arm == PLAIN:
             record_edit(rec)
-        (root / arm / 'run__s0.json').write_text(json.dumps(rec))
+        if arm != missing_record:
+            (root / arm / 'run__s0.json').write_text(json.dumps(rec))
     cs = fake_sides()
 
     def fake_load(arm, a, seed, train_root=None):
@@ -446,6 +471,27 @@ def test_collect_rows_reads_every_arm(tmp_path, monkeypatch):
     root = stage_tree(tmp_path, monkeypatch)
     cstar, rows, missing = r21_score.collect_rows(0, train_root=root)
     assert set(rows) == {'dec-off', PLAIN} and not missing and rows[PLAIN]['dec_epochs']['style'] == 5
+
+
+@pytest.mark.parametrize('arm', ['dec-off', PLAIN])
+def test_collect_rows_refuses_exports_without_a_run_record(tmp_path, monkeypatch, arm):
+    root = stage_tree(tmp_path, monkeypatch, missing_record=arm)
+    path = root / arm / 'run__s0.json'
+    with pytest.raises(AssertionError) as exc:
+        r21_score.collect_rows(0, train_root=root)
+    assert str(path) in str(exc.value) and 'missing run record' in str(exc.value)
+
+
+@pytest.mark.parametrize('arm', ['dec-off', PLAIN])
+def test_collect_rows_refuses_a_failed_run_record(tmp_path, monkeypatch, arm):
+    root = stage_tree(tmp_path, monkeypatch)
+    path = root / arm / 'run__s0.json'
+    record = json.loads(path.read_text())
+    record['status'] = 'failed'
+    path.write_text(json.dumps(record))
+    with pytest.raises(AssertionError) as exc:
+        r21_score.collect_rows(0, train_root=root)
+    assert str(path) in str(exc.value) and "run status 'failed'" in str(exc.value)
 
 
 def test_collect_rows_checks_the_cstar_reference_against_the_ranges(tmp_path, monkeypatch):
