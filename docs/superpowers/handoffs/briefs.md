@@ -2231,3 +2231,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-11-paper-sec4-tables-6-handoff.md
 - New chat: tab 'paper sec4 tables 6', session 50d12002-c131-4588-a06f-73ac6fdc28f2
 
+[brief] CoSiR: paper sec4 tables 6 -> paper sec4 tables 7 (2026-11-11 10:05 Amsterdam)
+- Done: intro skeleton (reference only, user's three choices); polish of Sections 2 and 4 with the user's a to d.
+- State: Table 3 still has one empty row, PercepT on CLIP L/14. r26 sends its files at about 21:15.
+- Next: tell the "CoSiR r26 run" tab this tab's name, then work on what the user asks. Score the PercepT row when r26's message arrives.
+- Blocked: the user's 11:00 meeting. Ask nothing about it until the user says it is over.
+- Handoff: docs/superpowers/handoffs/2026-11-11-paper-sec4-tables-7-handoff.md
+- New chat: tab 'paper sec4 tables 7', session 55d48b24-f5ea-49ee-8159-aa306c945026
+
