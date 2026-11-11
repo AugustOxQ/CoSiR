@@ -2079,3 +2079,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-11-paper-method-figure-handoff.md
 - New chat: tab 'paper method', session 6f69495a-681c-4383-9201-a7d01d8319b6
 
+[brief] CoSiR: paper method -> paper method (2026-11-11 04:04 Amsterdam)
+- Done: 3.3 written; the 3.2 precedent sentence added; Figure 1 redrawn in the plainer style the user likes, with four rounds of the user's fixes.
+- State: the paper builds (5 pages); 3.4 and 3.5 are headings only; the new Figure 1 is only in the private paper repo.
+- Next: loosen Figure 1's layout (more space, as the method's main figure), then 3.4 from the user's confirmed points.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-11-paper-method-student-handoff.md
+- New chat: tab 'paper method', session b0cf6938-26e0-4b6e-ab21-a47ea983ae37
+
