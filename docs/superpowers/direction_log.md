@@ -34,7 +34,7 @@ ArtELingo emotion that gap comes from one class, contentment (report 2027-01-07)
 both models, and ARI close to c* and below the teacher. After the weekly meeting, text-to-text and cross-modal retrieval are top priority (user, 2026-11-05). r22, an exploration on validation with seed 0,
 is read (user, 2026-11-05): c*'s caption side beats plain Qwen and the teacher's text in 6 of 9 label cells (bar 5; 5 of 9 with one fixed read-out),
 with emotion below the teacher, and pair hits below plain Qwen, which the user expected. The two short checks are read (user, 2026-11-06): on older saved models the own-caption term raises pair hits and lowers label hits; joined c* and plain Qwen scores pass the rule at one weight, a = 0.7, which the user reads as important, with no clear reason yet why that weight helps. r23, the claim loop for the caption side, is read (user, 2026-11-06): c* and late fusion (joined scores, a = 0.7) hold on held ArtELingo and fail on MMArt; the user reads the ArtELingo holds as good and the MMArt failures as no surprise. r24, a short check of the miss, is read (user, 2026-11-08): the failed MMArt counts follow its narrative text, not its paintings or labels; c*'s miss sits in portrait and landscape; the user reads it as not fully explaining why, with interesting findings and directions. Next: the what-is-missing table (the 11-04 coverage tables, updated with r17 to r24), then the plan update (user, 2026-11-08). The pair-hit limit waits for
-the user's talk with the other authors. The what-is-missing table is read (user, 2026-11-08): writing starts in a paper chat (related work, method, experiments, then abstract, introduction and conclusion as draft v1.1; an ARS review and a revision; compact versions last; a temporary title and abstract registered by 11-10). r20 is read and closed (user, 2026-11-10): both paper figures are kept, and in held image retrieval the eight ablation removals follow the clustering ablation (report 2027-01-13); the retrieval column goes into the paper's ablation table, and a teacher version of the figures into the supplementary. r21 (a DEC loss on every head of c*, as rows of the paper's ablation table) was moved forward by the user (2026-11-11) and is specced; build and run follow today. The second instructed embedder and the other checks wait until after 11-16. The stage note's form still waits for the user. Deadlines:
+the user's talk with the other authors. The what-is-missing table is read (user, 2026-11-08): writing starts in a paper chat (related work, method, experiments, then abstract, introduction and conclusion as draft v1.1; an ARS review and a revision; compact versions last; a temporary title and abstract registered by 11-10). r20 is read and closed (user, 2026-11-10): both paper figures are kept, and in held image retrieval the eight ablation removals follow the clustering ablation (report 2027-01-13); the retrieval column goes into the paper's ablation table, and a teacher version of the figures into the supplementary. r21 (a DEC loss on every head of c*, as rows of the paper's ablation table) was moved forward by the user (2026-11-11) and is specced; build and run follow today. The second instructed embedder and the other checks wait until after 11-16. r25 (VLM2Vec-V2 and text-only BERTopic as the paper's clustering baselines, ArtELingo test) is reported (report 2027-01-14): c* wins all 12 AMI cells; the user's reading waits. The stage note's form still waits for the user. Deadlines:
 abstract 2026-11-10, paper 2026-11-16, supplementary 2026-11-23.
 Reporting (user, 2026-11-04): r17's results enter the weekly report of 2026-11-04 only after the user's reading in the r20
 chat, and they stay out of the stage report of 2026-11-04 (29 October to 3 November); the next stage report starts from
@@ -100,6 +100,30 @@ r17.
 - DEC as a fine-tune of the saved c* models (DEC's own order: train, then DEC), in place of DEC inside c*'s training
   (never tried; not chosen by the user, 2026-11-11, who chose PercepT's order; proposed in the r21 decide chat,
   [handoff](handoffs/2026-11-11-r21-build-handoff.md))
+
+## 2026-11-11 · r25 reported: c* above VLM2Vec-V2 and text-only BERTopic in all 12 clustering cells; the user's reading and the next step are open
+
+- **Read:** ArtELingo test, 12,281 paintings (genre 9,949 labelled), mean AMI, d = c* minus the comparator with r17's
+  paired bootstrap. All 12 cells WIN. At the class counts (emotion 9, style 27, genre 10): c* 0.1024 / 0.4109 / 0.5101,
+  VLM2Vec-V2 0.0638 / 0.3730 / 0.4593, BERTopic 0.0375 / 0.1050 / 0.2605. Closest: VLM2Vec-V2 emotion at 20, +0.0356
+  [+0.0320, +0.0391]. Gate exact against r18; independent recompute gap 0.0. Extra check: k-means on BERTopic's MiniLM
+  text embeddings also stays WIN in all six cells (closest emotion at 20, +0.0151 [+0.0111, +0.0191]).
+- **Meaning (C):** open, awaiting the user.
+- **Decided (A):** open, awaiting the user. Options in the report: (a) the rows go into Table 2 as they are (writing
+  only; the paper chat has the numbers); (b) multimodal BERTopic as PercepT ran it (CLIP ViT-B/32 and MiniLM);
+  (c) VLM2Vec-V2 on MMArt. Paper-row cutoff 2026-11-14.
+- **Idea (B):** none; a small loop opened from a paper chat with the user's design (BERTopic and VLM2Vec-V2 as
+  comparators, VLM2Vec-V2 under each aspect instruction, BERTopic on the test captions, ArtELingo test only; class
+  counts for Table 2, K = 20 for the supplementary) (user; the class counts: user, after seeing the recommendation).
+  Agent defaults, flagged in the report: one joined document per painting, BERTopic reduced to K with outliers
+  reassigned, VLM2Vec-V2's repo prompt and image size, bf16 at batch 16.
+- **Why:** a reviewer will ask how c* compares with PercepT's own clustering baselines.
+- **Storage:** nothing of 1 GB or more; r25's small items wait for the user in the storage summary.
+- **Links:** [report 2027-01-14](../reports/auto/percept/2027-01-14_paper_baselines.md) ·
+  [user-read](../user_read/2026-11-11_paper_baselines.md) ·
+  [round log](../../src/test/20261111_paper_baselines/20261111_paper_baselines_log.md) ·
+  [design handoff](handoffs/2026-11-11-r25-paper-baselines-handoff.md) ·
+  [report handoff](handoffs/2026-11-11-r25-report-handoff.md)
 
 ## 2026-11-11 · r21 decide: a DEC loss on every head of c*, three forms, as ablation rows; spec approved, build next
 
