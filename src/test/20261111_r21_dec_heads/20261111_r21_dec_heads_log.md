@@ -101,3 +101,10 @@ Spec: `docs/superpowers/specs/2026-11-11-r21-dec-heads-design.md`. Decision line
   should-fix (for S2 the sheet's DEC shares are the last epoch's, not the scored best epoch's) fixed in the sheet note
   (b05aaa00). Merged (c3c6a3bb); `r21-dec-heads` merged into main (7704f331) and pushed.
 - 08:28: all r21 tests on main in one process: 186 passed (124 s, one CPU slot).
+- 09:16: GPU held check: `r21_run.py held` on saved c* seed 0 (CUDA) equals r10's saved held export exactly (diff 0,
+  three aspects).
+- 09:22: **GPU smoke** (ticket 03's command, CUDA, seed 0, 2 epochs; `dec-off`, plain S1, start S2, teacher S1): all `ok`;
+  every DEC head starts and stops at epoch 2; histories finite; `config.rg.arm` equals the folder; stop reasons agree;
+  exports 6,152 × 2,048 float16. DEC start 18 to 49 s per head (k-means), DEC epoch end 1.4 to 3.3 s per head. The
+  rerun skip and r10's unchanged tree were checked on CPU (tickets 03, 04; `train` asserts the tree on every run).
+- 09:23: run handoff `docs/superpowers/handoffs/2026-11-11-r21-run-handoff.md`; GPU check passes (driver 595.99.02).
