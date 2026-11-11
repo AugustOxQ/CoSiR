@@ -52,13 +52,24 @@ def fmt(v):
 
 
 def bold_columns(rows, ncols):
-    """rows: list of (label_cells, values or None). Bold the max per column at printed precision (ties all bold)."""
-    best = []
-    for j in range(ncols):
-        vals = [float(fmt(v[j])) for _, v in rows if v is not None and v[j] is not None]
-        best.append(max(vals) if vals else None)
+    """rows: list of (label, values or None); a None row is a separator that starts a new block (one backbone).
+    Bold: the max per column over the whole table; underline: the max per column within the block. Both compare at
+    printed precision, and ties are all marked."""
+    blocks, b = [], 0
+    for _, v in rows:
+        if v is None:
+            b += 1
+        blocks.append(b)
+    def best(sel):
+        out = []
+        for j in range(ncols):
+            vals = [float(fmt(v[j])) for (_, v), bb in zip(rows, blocks) if v is not None and v[j] is not None and sel(bb)]
+            out.append(max(vals) if vals else None)
+        return out
+    glob = best(lambda bb: True)
+    local = {bb: best(lambda x, bb=bb: x == bb) for bb in set(blocks)}
     lines = []
-    for label, v in rows:
+    for (label, v), bb in zip(rows, blocks):
         if v is None:
             lines.append(label)
             continue
@@ -66,10 +77,13 @@ def bold_columns(rows, ncols):
         for j, x in enumerate(v):
             if x is None:
                 cells.append('--')
-            elif float(fmt(x)) == best[j]:
-                cells.append(r'\textbf{' + fmt(x) + '}')
-            else:
-                cells.append(fmt(x))
+                continue
+            c = fmt(x)
+            if float(c) == glob[j]:
+                c = r'\textbf{' + c + '}'
+            if float(fmt(x)) == local[bb][j]:
+                c = r'\underline{' + c + '}'
+            cells.append(c)
         lines.append(label + ' & ' + ' & '.join(cells) + r' \\')
     return lines
 
@@ -120,7 +134,7 @@ def encoders_table():
 """ + '\n'.join('    ' + line for line in body) + r"""
     \bottomrule
   \end{tabular}
-  \caption{Other image encoders on the ArtELingo test set. On each encoder, \method and PercepT read that encoder's plain image embedding, while the aspect graphs, the teacher and PercepT's topics stay those of Qwen3, so the teacher row applies to every encoder. Clustering is the AMI at each aspect's class count, as in \cref{tab:clustering}, and retrieval is the label mAP with the read-out that each method picked on the validation split, as in \cref{tab:retrieval}. \method and PercepT are means over five random seeds. The best result per column is in bold.}
+  \caption{Other image encoders on the ArtELingo test set. On each encoder, \method and PercepT read that encoder's plain image embedding, while the aspect graphs, the teacher and PercepT's topics stay those of Qwen3, so the teacher row applies to every encoder. Clustering is the AMI at each aspect's class count, as in \cref{tab:clustering}, and retrieval is the label mAP with the read-out that each method picked on the validation split, as in \cref{tab:retrieval}. \method and PercepT are means over five random seeds. The best result per column is in bold, and the best per column on each encoder is underlined.}
   \label{tab:encoders}
 \end{table}
 """
@@ -146,7 +160,8 @@ def photos_table():
              ['comparator_value'], 'B02 SC10 qwen ret comparator_value')]
     rows.append((r'Teacher (instructed) & Qwen3', t))
     for enc, name in ENCODERS:
-        rows.append((r'\midrule', None))
+        if enc != 'qwen':  # the teacher row belongs to the Qwen3 block
+            rows.append((r'\midrule', None))
         if enc == 'qwen':
             plain = [r17v('affection', enc, 'plain', 'comp'),
                      put('photo/affection/qwen/plain/map', r13['plain']['map_picked']['map'],
@@ -191,7 +206,7 @@ def photos_table():
 """ + '\n'.join('    ' + line for line in body) + r"""
     \bottomrule
   \end{tabular}
-  \caption{Emotion on photos: the Affection~\cite{achlioptas2023affection} test set (8,501 photos) and the EmoSet~\cite{yang2023emoset} test set (17,348 photos, without near copies of Affection's training photos). \method is trained on ArtELingo paintings, then fine-tuned on Affection's training photos and their explanations without emotion labels, and is not trained on EmoSet. Clustering is the AMI at the class count (9 for Affection, 8 for EmoSet), and retrieval is the label mAP with the read-out that each method picked on the validation split of each dataset. EmoSet is scored on Qwen3 only. \method is a mean over five random seeds. The best result per column is in bold.}
+  \caption{Emotion on photos: the Affection~\cite{achlioptas2023affection} test set (8,501 photos) and the EmoSet~\cite{yang2023emoset} test set (17,348 photos, without near copies of Affection's training photos). \method is trained on ArtELingo paintings, then fine-tuned on Affection's training photos and their explanations without emotion labels, and is not trained on EmoSet. Clustering is the AMI at the class count (9 for Affection, 8 for EmoSet), and retrieval is the label mAP with the read-out that each method picked on the validation split of each dataset. EmoSet is scored on Qwen3 only. \method is a mean over five random seeds. The best result per column is in bold, and the best per column on each backbone is underlined, with the teacher counted as Qwen3.}
   \label{tab:photos}
 \end{table}
 """
