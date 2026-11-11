@@ -156,3 +156,20 @@ Spec: `docs/superpowers/specs/2026-11-11-r21-dec-heads-design.md`. Decision line
   assignments show collapse signs: largest cluster 40% (emotion) and 39% (genre), smallest 0. Measured at 10:49 (4 of 8 runs):
   S1 runs 23 min, S2 runs 12 min. End estimate: stage 1a about 12:00; the table about 22:00 if S1 is picked, about
   18:00 if S2 is.
+- 11:59: stage 1a done (8 runs, all `ok`); 13:02 stage 1b done (5 new runs; teacher cache verified, not rebuilt).
+  Picks (`scores/stage1_picks.json`, none beyond the rule): 1a `dec-plain_l10_w5_S2`; 1b plain `dec-plain_l10_w5_S2`
+  (tie band with `_bal`, +0.0020 against +0.0035 mean AMI change; mAP 0.3930 against 0.3929 decides), start
+  `dec-start_l10_w5_S2`, teacher `dec-teacher_l10_w5_S2`. Every S1 run ran all 50 DEC epochs (`dec_epochs`); every
+  balance-off arm without a pull has empty DEC clusters (smallest share 0.00); the pulls and the balance term keep every
+  cluster non-empty.
+- 16:17: stage 2 done (16 new runs, 4 held exports, `table` 16:11, `diag` 16:17; all 26 steps OK). `dec-off` is byte for
+  byte equal to c* on all 15 exports, so its row is zero everywhere. Not yet re-derived (D16 runs from 16:20).
+- **Confound found at the read (controller):** S2 keeps the best state among DEC epochs only (decision line 06:49), so
+  with W = 5 the kept state is from epoch 6 or later, while c*'s own best epochs are earlier on style (1, 3, 3, 2, 1
+  over seeds 0 to 4) and emotion (4, 4, 3, 3, 6). The picked DEC arms keep epoch 6 to 8 on style and 6 on emotion. So
+  each DEC change mixes the DEC term with a later kept epoch (and a shifted dropout stream). `dec-off` uses c*'s rule
+  and does not control for it. The matched control is the same arm at λ = 0 (W 5, S2): the trainer accepts λ = 0
+  (gate 0b ran it), but `r21_arms.arm_name` refuses it (λ > 0). A new run (constitution row 6): asked the user.
+- 16:53: **D16 PASS**: `r21_d16.py derive` (32 min, one CPU slot; `d16/d16_table.json`) against `scores/stage2_table.json`,
+  compared by the controller (`d16/compare.json`): 36 cells, 540 numbers (change, interval, means, per-seed values) and
+  36 words; max |diff| 1.6e-16, 0 failed, 0 missing; tolerance 1e-6. The derive read the same picks file (SHA-256 equal).
