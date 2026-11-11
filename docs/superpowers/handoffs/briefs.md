@@ -2143,3 +2143,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-11-paper-sec4-tables-handoff.md
 - New chat: tab 'paper sec4 tables', session a33a2ed0-c392-40e0-bee6-821149f7a86a
 
+[brief] CoSiR: r21 decide -> r21 build (2026-11-11 06:32 Amsterdam)
+- Done: r21 decided and specced: a DEC loss on every head of c*, three forms, as ablation rows; spec approved 06:31.
+- State: no code yet. One c* training takes 3.5 to 5.3 min per seed; its heads stop early (seed 0: epochs 4, 1, 18).
+- Next: to-tickets from the spec, build, final review; merge to main, push, then open the r21 run chat.
+- Blocked: nothing. The local GPU is held by r25 and r26 until about 10:00; smoke runs queue with --short.
+- Handoff: docs/superpowers/handoffs/2026-11-11-r21-build-handoff.md
+- New chat: tab 'r21 build', session c6e18fab-59ed-4012-8270-0b34e3297dd2
+

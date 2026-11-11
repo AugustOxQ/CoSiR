@@ -305,3 +305,5 @@ opened	loop	label	session	opened from	first read
 2026-11-11 05:35	paper	paper experiments 2	06debbf6-4b8b-4388-a1f4-2ae397c86e8b	38a837d2-3a93-4cce-bf87-8e4d6845517e	docs/superpowers/handoffs/2026-11-11-paper-experiments-2-handoff.md
 2026-11-11 05:44	r21	r21 decide	ca058c8e-f0f6-4090-8fcd-bdfc8fb5b15f	cb68e6e6-2fcc-4e30-819a-abc2d12ddbfc	docs/superpowers/handoffs/2026-11-11-r21-decide-handoff.md
 2026-11-11 06:01	paper	paper sec4 tables	a33a2ed0-c392-40e0-bee6-821149f7a86a	06debbf6-4b8b-4388-a1f4-2ae397c86e8b	docs/superpowers/handoffs/2026-11-11-paper-sec4-tables-handoff.md
+2026-11-11 06:31	main	r21 main	d2bae38a-1edc-45e9-821f-4b7bab638af9	ca058c8e-f0f6-4090-8fcd-bdfc8fb5b15f	../../root/.claude/templates/main_chat_start.md
+2026-11-11 06:32	r21	r21 build	c6e18fab-59ed-4012-8270-0b34e3297dd2	ca058c8e-f0f6-4090-8fcd-bdfc8fb5b15f	docs/superpowers/handoffs/2026-11-11-r21-build-handoff.md
