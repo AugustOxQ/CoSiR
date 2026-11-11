@@ -14,3 +14,8 @@
 - Real gate PASS in 110.211s; candidate mean equals r18 exactly for all aspects: emotion 0.10658729378204021, style 0.40664322288431654, genre 0.5001038781216712. Genre label count 9,949 passed.
 - Fix round: pb_vlm2vec writes aspect, instruction, emb_sha256 (file bytes), n, and limit (None for full extraction). The scorer must require and validate these fields.
 - Fix round: embedding cache validation must precede seed skip checks; otherwise old partitions can prevent the repaired model from being loaded at all.
+- Class-count extension: lightweight pb_partitions shares emotion=9, style=27, genre=10 and legacy K=20 filenames between both environments and the checker. Scorer/checker assert these counts match r17 and labelled classes.
+- Use a fresh BERTopic fit per (seed, K), without chained reductions. K=20 files and their existing sidecars remain valid without a new k field.
+- The controller's pb_check expected a {cells: [...]} wrapper, while pb_score writes a list. The checker now accepts either layout and independently refits sklearn at both K values.
+- Class-count real runs: all nine fits succeeded in 1.78 queue minutes; HDBSCAN 92/87/91 topics and 5384/5102/5134 outliers by seed, identical across all K; distributions reassigned every outlier. All K=20 and MiniLM hashes unchanged.
+- All-six real gate PASS in 224.237s: exact r18 equality for emotion 9/20, style 27/20 and genre 10/20. No full comparator scoring/checker run.

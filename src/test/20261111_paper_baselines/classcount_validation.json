@@ -1,0 +1,278 @@
+{
+  "bertopic_exit_code": 0,
+  "bertopic_queue_minutes": 1.78,
+  "fit_policy": "fresh model fit per (UMAP seed, target K); no reduction chains",
+  "full_scoring_run": false,
+  "gate": {
+    "aspects": {
+      "emotion/20": {
+        "abs_difference": 0.0,
+        "cand": 0.10658729378204021,
+        "per_seed": [
+          0.10751887239964945,
+          0.1097603100100391,
+          0.10523190688437208,
+          0.10561631957244356,
+          0.1048090600436969
+        ],
+        "r18_cand": 0.10658729378204021,
+        "tolerance": 1e-09
+      },
+      "emotion/9": {
+        "abs_difference": 0.0,
+        "cand": 0.1024127745008577,
+        "per_seed": [
+          0.10170414948655143,
+          0.1014205620544615,
+          0.10422471043584887,
+          0.10367677595260098,
+          0.10103767457482578
+        ],
+        "r18_cand": 0.1024127745008577,
+        "tolerance": 1e-09
+      },
+      "genre/10": {
+        "abs_difference": 0.0,
+        "cand": 0.5100704595257602,
+        "per_seed": [
+          0.5003355445541049,
+          0.5055500101860763,
+          0.5118191815182568,
+          0.5174186802326505,
+          0.515228881137713
+        ],
+        "r18_cand": 0.5100704595257602,
+        "tolerance": 1e-09
+      },
+      "genre/20": {
+        "abs_difference": 0.0,
+        "cand": 0.5001038781216712,
+        "per_seed": [
+          0.4950504728005592,
+          0.5057144380417714,
+          0.4998291425338697,
+          0.49872544414675674,
+          0.5011998930853987
+        ],
+        "r18_cand": 0.5001038781216712,
+        "tolerance": 1e-09
+      },
+      "style/20": {
+        "abs_difference": 0.0,
+        "cand": 0.40664322288431654,
+        "per_seed": [
+          0.40665958740455416,
+          0.4034617010213204,
+          0.4072156901371417,
+          0.40646505343462075,
+          0.4094140824239456
+        ],
+        "r18_cand": 0.40664322288431654,
+        "tolerance": 1e-09
+      },
+      "style/27": {
+        "abs_difference": 0.0,
+        "cand": 0.4109255361955107,
+        "per_seed": [
+          0.40988274925321583,
+          0.41263567138830676,
+          0.41086361540419264,
+          0.41063120787595025,
+          0.41061443705588774
+        ],
+        "r18_cand": 0.4109255361955107,
+        "tolerance": 1e-09
+      }
+    },
+    "gate": "PASS",
+    "seconds": 224.2370165088214
+  },
+  "gate_exit_code": 0,
+  "gate_queue_minutes": 3.77,
+  "legacy_k20_and_minilm_unchanged": true,
+  "preserved_after": {
+    "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/minilm.json": "6dd16b2d0f45228458cf29bd39b7e3a131e106f78a83bd6533b710960d391485",
+    "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/minilm.npy": "9608209e10535aa0a39a54a3b11535c42ee6a540dc3faef5de9c104bdbccda1f",
+    "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/topics_seed0.json": "978504239da1bab903eb3565b329116ec1f17f5843a0347f5db8387fd4c7576a",
+    "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/topics_seed0.npz": "81303af1425dfab6acbe85c1699f552752663ebbcd2f587523d9ede6ddb3075a",
+    "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/topics_seed1.json": "e082f5c2a76e8022205c7864e44a99f0379ac7133c75c6d09178f2f6c578c0d0",
+    "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/topics_seed1.npz": "10e303d96fcfc80caf28c656144009efa8daf8e218bd4f6303ab0478f2e49cb7",
+    "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/topics_seed2.json": "98fef00ef53bab47c7bff5032c3651f2485448bc77642d58286ea5ef4b6e9777",
+    "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/topics_seed2.npz": "f0fe79363c371075a263c1c5460024540876bdb94de7a43d9541c96938c7a77e"
+  },
+  "preserved_before": {
+    "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/minilm.json": "6dd16b2d0f45228458cf29bd39b7e3a131e106f78a83bd6533b710960d391485",
+    "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/minilm.npy": "9608209e10535aa0a39a54a3b11535c42ee6a540dc3faef5de9c104bdbccda1f",
+    "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/topics_seed0.json": "978504239da1bab903eb3565b329116ec1f17f5843a0347f5db8387fd4c7576a",
+    "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/topics_seed0.npz": "81303af1425dfab6acbe85c1699f552752663ebbcd2f587523d9ede6ddb3075a",
+    "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/topics_seed1.json": "e082f5c2a76e8022205c7864e44a99f0379ac7133c75c6d09178f2f6c578c0d0",
+    "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/topics_seed1.npz": "10e303d96fcfc80caf28c656144009efa8daf8e218bd4f6303ab0478f2e49cb7",
+    "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/topics_seed2.json": "98fef00ef53bab47c7bff5032c3651f2485448bc77642d58286ea5ef4b6e9777",
+    "/data/SSD2/cosir_r25/20261111_paper_baselines/outputs/bertopic/topics_seed2.npz": "f0fe79363c371075a263c1c5460024540876bdb94de7a43d9541c96938c7a77e"
+  },
+  "runs": [
+    {
+      "embeddings_sha256": "9608209e10535aa0a39a54a3b11535c42ee6a540dc3faef5de9c104bdbccda1f",
+      "k": 9,
+      "n_docs": 12281,
+      "n_topics": 9,
+      "npz_sha256": "411013b1985b8f4387ab3a57cf94eccc5f76c0267741a58f2f75c7caca517b24",
+      "nr_topics_passed": 10,
+      "outlier_counts": {
+        "after_default_outliers": 0,
+        "after_embedding_outliers": 0,
+        "after_hdbscan": 5384,
+        "after_reduce_topics": 5384
+      },
+      "seconds": 41.44728424306959,
+      "seed": 0,
+      "topics_found_hdbscan": 92
+    },
+    {
+      "embeddings_sha256": "9608209e10535aa0a39a54a3b11535c42ee6a540dc3faef5de9c104bdbccda1f",
+      "k": 9,
+      "n_docs": 12281,
+      "n_topics": 9,
+      "npz_sha256": "a49ec619eb418369abe4bf416807edf594697cd9f0e8afb633887148159d4090",
+      "nr_topics_passed": 10,
+      "outlier_counts": {
+        "after_default_outliers": 0,
+        "after_embedding_outliers": 0,
+        "after_hdbscan": 5102,
+        "after_reduce_topics": 5102
+      },
+      "seconds": 7.764915848150849,
+      "seed": 1,
+      "topics_found_hdbscan": 87
+    },
+    {
+      "embeddings_sha256": "9608209e10535aa0a39a54a3b11535c42ee6a540dc3faef5de9c104bdbccda1f",
+      "k": 9,
+      "n_docs": 12281,
+      "n_topics": 9,
+      "npz_sha256": "7aa921cb48f55c5c48ec7293111c2374d713d4fc7354e5a99442f446d6a03af1",
+      "nr_topics_passed": 10,
+      "outlier_counts": {
+        "after_default_outliers": 0,
+        "after_embedding_outliers": 0,
+        "after_hdbscan": 5134,
+        "after_reduce_topics": 5134
+      },
+      "seconds": 8.138185928110033,
+      "seed": 2,
+      "topics_found_hdbscan": 91
+    },
+    {
+      "embeddings_sha256": "9608209e10535aa0a39a54a3b11535c42ee6a540dc3faef5de9c104bdbccda1f",
+      "k": 10,
+      "n_docs": 12281,
+      "n_topics": 10,
+      "npz_sha256": "2a575d4d8f4837eb6b044c4e8cfdef0bdaa41051af21037550770dc76b14c624",
+      "nr_topics_passed": 11,
+      "outlier_counts": {
+        "after_default_outliers": 0,
+        "after_embedding_outliers": 0,
+        "after_hdbscan": 5384,
+        "after_reduce_topics": 5384
+      },
+      "seconds": 7.746272047050297,
+      "seed": 0,
+      "topics_found_hdbscan": 92
+    },
+    {
+      "embeddings_sha256": "9608209e10535aa0a39a54a3b11535c42ee6a540dc3faef5de9c104bdbccda1f",
+      "k": 10,
+      "n_docs": 12281,
+      "n_topics": 10,
+      "npz_sha256": "78eba5c2e2dd3a78d9465e8f74d23a1879a3c96c8d136a135c060b0778ca6f77",
+      "nr_topics_passed": 11,
+      "outlier_counts": {
+        "after_default_outliers": 0,
+        "after_embedding_outliers": 0,
+        "after_hdbscan": 5102,
+        "after_reduce_topics": 5102
+      },
+      "seconds": 7.800284203141928,
+      "seed": 1,
+      "topics_found_hdbscan": 87
+    },
+    {
+      "embeddings_sha256": "9608209e10535aa0a39a54a3b11535c42ee6a540dc3faef5de9c104bdbccda1f",
+      "k": 10,
+      "n_docs": 12281,
+      "n_topics": 10,
+      "npz_sha256": "54edb84d3afcc0c7352c8435ca03946aca4b64cad9c8eb06dbc8115ee26751fb",
+      "nr_topics_passed": 11,
+      "outlier_counts": {
+        "after_default_outliers": 0,
+        "after_embedding_outliers": 0,
+        "after_hdbscan": 5134,
+        "after_reduce_topics": 5134
+      },
+      "seconds": 8.124091716017574,
+      "seed": 2,
+      "topics_found_hdbscan": 91
+    },
+    {
+      "embeddings_sha256": "9608209e10535aa0a39a54a3b11535c42ee6a540dc3faef5de9c104bdbccda1f",
+      "k": 27,
+      "n_docs": 12281,
+      "n_topics": 27,
+      "npz_sha256": "a239755e490b2d274f610568cb64973bd9c043e57b9788ba7020cd93b024b137",
+      "nr_topics_passed": 28,
+      "outlier_counts": {
+        "after_default_outliers": 0,
+        "after_embedding_outliers": 0,
+        "after_hdbscan": 5384,
+        "after_reduce_topics": 5384
+      },
+      "seconds": 7.904424427077174,
+      "seed": 0,
+      "topics_found_hdbscan": 92
+    },
+    {
+      "embeddings_sha256": "9608209e10535aa0a39a54a3b11535c42ee6a540dc3faef5de9c104bdbccda1f",
+      "k": 27,
+      "n_docs": 12281,
+      "n_topics": 27,
+      "npz_sha256": "8dba277e52aab2e7734ca1f22f38220860d02c1419cd23878cd2bcc58e3a0015",
+      "nr_topics_passed": 28,
+      "outlier_counts": {
+        "after_default_outliers": 0,
+        "after_embedding_outliers": 0,
+        "after_hdbscan": 5102,
+        "after_reduce_topics": 5102
+      },
+      "seconds": 7.922301002778113,
+      "seed": 1,
+      "topics_found_hdbscan": 87
+    },
+    {
+      "embeddings_sha256": "9608209e10535aa0a39a54a3b11535c42ee6a540dc3faef5de9c104bdbccda1f",
+      "k": 27,
+      "n_docs": 12281,
+      "n_topics": 27,
+      "npz_sha256": "b18fc9b4509e66121d4ec1c207834b9cda8b7f177937a02c97f9604b31ec60b1",
+      "nr_topics_passed": 28,
+      "outlier_counts": {
+        "after_default_outliers": 0,
+        "after_embedding_outliers": 0,
+        "after_hdbscan": 5134,
+        "after_reduce_topics": 5134
+      },
+      "seconds": 8.132772869896144,
+      "seed": 2,
+      "topics_found_hdbscan": 91
+    }
+  ],
+  "tests": {
+    "bertopic": {
+      "passed": 75,
+      "seconds": 12.18
+    },
+    "cosir": {
+      "passed": 75,
+      "seconds": 12.12
+    }
+  }
+}

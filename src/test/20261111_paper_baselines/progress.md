@@ -24,3 +24,16 @@
 - Folder tests after fixes: 58 passed in 4.46s with the requested CoSiR environment and thread settings. No real-data execution, deletions or push.
 - Disposable test artifact retained: src/test/20261111_paper_baselines/fix_regression_red.log.
 - Corrected historical notes and marked the old fallback smoke invalid in ticket_b_validation.json; retained its metadata for inspection.
+
+## Class-count extension
+- Read the current runner, scorer, controller checker and tests in main. User changes outside the task folder are preserved.
+- Add new K=9/10/27 artifacts with a fresh fit per target; keep K=20 names and skip validated existing files.
+- Full scoring remains controller-owned. Authorized jobs: BERTopic class-count fits first, then all-six candidate gate through the CPU queue.
+- Both full folder test runs passed: CoSiR 75 tests in 12.12s, BERTopic venv 75 tests in 12.18s (run concurrently).
+- Stored pre-run SHA-256s of minilm.npy/json and the six legacy K=20 files in classcount_validation.json.
+- Initial detached shell ended before starting res-queue (empty log, no process); restarted with nohup in a persistent tool session. logs/bertopic_classcount.log and .exit retain output and status.
+- BERTopic queue exit 0 in 1.78 minutes: all nine new fits complete, final K=9/10/27. Per-seed HDBSCAN topics 92/87/91; outliers 5384/5102/5134, all reassigned by distributions. No embeddings pass required.
+- Verified pre/post SHA-256 equality for minilm.npy/json and every legacy K=20 NPZ/JSON; no changes to these files.
+- Started the all-six gate afterwards through the specified no-wait CPU queue command; logs/classcount_gate.log and .exit retain output/status.
+- All-six gate exit 0 in 224.237s (3.77 queue minutes); each candidate mean equals r18 exactly, including the preserved K=20 values.
+- Recorded all nine run counts, hashes, timing and gate values in classcount_validation.json and classcount_notes.md. Reviewed source changes and scoped staged paths; no full scoring, deletions or push.

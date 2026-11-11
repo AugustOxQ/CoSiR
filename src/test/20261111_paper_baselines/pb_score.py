@@ -1,10 +1,10 @@
-"""r25 AMI-at-20 cells using r17's scorer unchanged (CoSiR environment).
+"""r25 AMI at each aspect's class count and at 20, using r17's scorer unchanged (CoSiR environment).
 
     python pb_score.py [--only {vlm2vec,bertopic}] [--record]
     python pb_score.py --gate-only
 
 PB_SMOKE=1 PB_OUTPUTS=<scratch> uses r17's 40 smoke draws and refuses --record.
-All three candidate gates pass before scoring; cells are written together only after every requested cell succeeds.
+All six candidate gates pass before scoring; cells are written together only after every requested cell succeeds.
 """
 import argparse
 import hashlib
@@ -19,6 +19,7 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import pb_paths as P
 from pb_io import array_sha, file_sha, names_sha, write_json
+from pb_partitions import CLASS_COUNTS, TARGET_KS, aspect_ks, topic_path
 
 NS = P.add_scorer_paths()
 import ns_clu
@@ -73,10 +74,10 @@ def load_vlm2vec(store, aspect, names):
     return rows.astype(np.float32), hashes
 
 
-def load_bertopic(root, names):
+def load_bertopic(root, names, k=P.K):
     parts, hashes = [], {}
     for seed in P.UMAP_SEEDS:
-        path = Path(root) / f'topics_seed{seed}.npz'
+        path = topic_path(root, seed, k)
         side = path.with_suffix('.json')
         for p in (path, side):
             if not p.is_file():
@@ -91,9 +92,11 @@ def load_bertopic(root, names):
             raise ValueError(f'{side}: smoke must be false for held scoring')
         if meta.get('seed') != seed:
             raise ValueError(f'{side}: seed must be {seed}, got {meta.get("seed")!r}')
+        if meta.get('k', P.K) != k:
+            raise ValueError(f'{side}: k must be {k}, got {meta.get("k")!r}')
         with np.load(io.BytesIO(topic_bytes), allow_pickle=False) as z:
             check_names(z['names'].tolist(), names, path)
-            parts.append(check_topics(z['topics'], len(names), path))
+            parts.append(check_topics(z['topics'], len(names), path, k))
     return np.stack(parts).astype(np.int32), hashes
 
 
@@ -110,17 +113,19 @@ def candidate_inputs():
             raise ValueError(f'candidate/{aspect}: invalid labels')
         if aspect == 'genre' and int((y >= 0).sum()) != 9949:
             raise ValueError('candidate/genre: expected 9,949 labelled rows')
-        cand = ns_clu_cells._cand_parts(P.SET, P.SPLIT, P.CSTAR_ENC, aspect, P.K)
-        if cand.dtype != np.int32 or cand.shape != (len(NS.SEEDS), len(NS.KMEANS_STATES), len(names)):
-            raise ValueError(f'candidate/{aspect}: expected int32 [5, 3, n], got {cand.shape} {cand.dtype}')
-        if (cand < 0).any() or (cand >= P.K).any():
-            raise ValueError(f'candidate/{aspect}: invalid cluster ids')
-        data[aspect] = (cand, y)
+        assert ns_metrics.class_count(y) == NS.CLASS_COUNT[(P.SET, aspect)] == CLASS_COUNTS[aspect], aspect
+        for k in aspect_ks(aspect):
+            cand = ns_clu_cells._cand_parts(P.SET, P.SPLIT, P.CSTAR_ENC, aspect, k)
+            if cand.dtype != np.int32 or cand.shape != (len(NS.SEEDS), len(NS.KMEANS_STATES), len(names)):
+                raise ValueError(f'candidate/{aspect}/{k}: expected int32 [5, 3, n], got {cand.shape} {cand.dtype}')
+            if (cand < 0).any() or (cand >= k).any():
+                raise ValueError(f'candidate/{aspect}/{k}: invalid cluster ids')
+            data[aspect, k] = (cand, y)
     return names, data
 
 
 def candidate_gate(data, reference, tol=P.R18_CAND_TOL):
-    """All aspects checked as one gate, with exactly r17's metric reduction."""
+    """All six (aspect, K) pairs checked as one gate, with exactly r17's metric reduction."""
     by_id = {}
     for c in reference['cells']:
         if c['id'] in by_id:
@@ -128,34 +133,35 @@ def candidate_gate(data, reference, tol=P.R18_CAND_TOL):
         by_id[c['id']] = c
     gate = {}
     for aspect in P.ASPECTS:
-        cand, y = data[aspect]
-        row = ns_clu.metric_table('cstar', aspect, cand, y, P.K, metrics=('ami',))[0]
-        key = f'SC1/{P.SET}/{P.CSTAR_ENC}/{aspect}/ami/{P.K}/tpips'
-        expected = float(by_id[key]['cand'])
-        difference = abs(row['mean'] - expected)
-        if not np.isfinite(expected) or not difference <= tol:
-            raise ValueError(f'candidate gate FAILED for {aspect}: {row["mean"]:.17g} vs r18 {expected:.17g}; '
-                             f'abs difference {difference:.3g} > {tol}')
-        gate[aspect] = dict(cand=row['mean'], r18_cand=expected, abs_difference=difference,
-                            tolerance=tol, per_seed=row['per_seed'])
+        for k in aspect_ks(aspect):
+            cand, y = data[aspect, k]
+            row = ns_clu.metric_table('cstar', aspect, cand, y, k, metrics=('ami',))[0]
+            key = f'SC1/{P.SET}/{P.CSTAR_ENC}/{aspect}/ami/{k}/tpips'
+            expected = float(by_id[key]['cand'])
+            difference = abs(row['mean'] - expected)
+            if not np.isfinite(expected) or not difference <= tol:
+                raise ValueError(f'candidate gate FAILED for {aspect}/{k}: {row["mean"]:.17g} vs r18 {expected:.17g}; '
+                                 f'abs difference {difference:.3g} > {tol}')
+            gate[f'{aspect}/{k}'] = dict(cand=row['mean'], r18_cand=expected, abs_difference=difference,
+                                        tolerance=tol, per_seed=row['per_seed'])
     return gate
 
 
-def score_cell(comparator, aspect, cand, comp, y, r, gate, input_sha256s):
+def score_cell(comparator, aspect, cand, comp, y, r, gate, input_sha256s, k=P.K):
     draws = (NS.SMOKE_DRAWS if P.SMOKE else NS.N_DRAWS)['clu']
-    res = ns_clu.paired_cell(cand, comp, y, P.K, r={'ami': r}, metrics=('ami',),
+    res = ns_clu.paired_cell(cand, comp, y, k, r={'ami': r}, metrics=('ami',),
                               draws=draws, rng_seed=NS.BOOT_SEED)['ami']
     if abs(res['cand'] - gate['cand']) > P.R18_CAND_TOL:
         raise ValueError(f'{aspect}: paired_cell candidate disagrees with passed gate')
     keep = y >= 0
     per_state = [ns_metrics.ami(y[keep], p[keep]) for p in comp]
-    return dict(res, id=f'{comparator}/{aspect}/ami/{P.K}', label=res['outcome'], candidate='cstar',
+    return dict(res, id=f'{comparator}/{aspect}/ami/{k}', label=res['outcome'], candidate='cstar',
                 comparator=comparator, set=P.SET, split=P.SPLIT, encoder=P.CSTAR_ENC, aspect=aspect,
-                metric='ami', k=P.K, n_rows=len(y), n_labelled=int(keep.sum()),
+                metric='ami', k=k, n_rows=len(y), n_labelled=int(keep.sum()),
                 cand_per_seed_ami=gate['per_seed'], comp_per_state_ami=per_state,
                 comparator_states=list(P.UMAP_SEEDS if comparator == 'bertopic' else NS.KMEANS_STATES),
                 gate=gate, smoke=bool(P.SMOKE), bootstrap_seed=NS.BOOT_SEED,
-                r_source=f'{P.RANGES}:{P.SET}/{P.CSTAR_ENC}/{aspect}/ami/{P.K}:r',
+                r_source=f'{P.RANGES}:{P.SET}/{P.CSTAR_ENC}/{aspect}/ami/{k}:r',
                 input_sha256s=dict(input_sha256s, candidate_partitions_array=array_sha(cand),
                                    comparator_partitions_array=array_sha(comp), labels_array=array_sha(y)))
 
@@ -184,21 +190,24 @@ def main(argv=None):
     common_hashes = {str(p): file_sha(p) for p in (P.RANGES, P.R18_LABELS)}
     common_hashes['names_newline_utf8'] = names_sha(names)
     comparators = (a.only,) if a.only else COMPARATORS
-    bertopic = load_bertopic(P.BERTOPIC_OUT, names) if 'bertopic' in comparators else None
+    bertopic = {k: load_bertopic(P.BERTOPIC_OUT, names, k) for k in TARGET_KS} if 'bertopic' in comparators else {}
     cells = []
     for comparator in comparators:
         for aspect in P.ASPECTS:
-            cand, y = data[aspect]
-            if comparator == 'bertopic':
-                comp, hashes = bertopic
-            else:
+            if comparator == 'vlm2vec':
                 rows, hashes = load_vlm2vec(P.VLM2VEC_STORE, aspect, names)
-                comp = ns_metrics.partitions(rows, P.K, P.SET)
-            key = f'{P.SET}/{P.CSTAR_ENC}/{aspect}/ami/{P.K}'
-            r = float(ranges[key]['r'])
-            if not np.isfinite(r) or r < 0:
-                raise ValueError(f'{P.RANGES}:{key}: r must be finite and nonnegative')
-            cells.append(score_cell(comparator, aspect, cand, comp, y, r, gate[aspect], dict(common_hashes, **hashes)))
+            for k in aspect_ks(aspect):
+                cand, y = data[aspect, k]
+                if comparator == 'bertopic':
+                    comp, hashes = bertopic[k]
+                else:
+                    comp = ns_metrics.partitions(rows, k, P.SET)
+                key = f'{P.SET}/{P.CSTAR_ENC}/{aspect}/ami/{k}'
+                r = float(ranges[key]['r'])
+                if not np.isfinite(r) or r < 0:
+                    raise ValueError(f'{P.RANGES}:{key}: r must be finite and nonnegative')
+                cells.append(score_cell(comparator, aspect, cand, comp, y, r, gate[f'{aspect}/{k}'],
+                                        dict(common_hashes, **hashes), k))
     path = P.OUT / 'score' / 'cells.json'
     write_json(path, cells)
     if a.record:

@@ -113,7 +113,8 @@ def test_runner_uses_default_then_embedding_outliers(tmp_path, monkeypatch):
     assert b.seed_done(tmp_path / 'topics_seed0.npz', names, 'input', False)
 
 
-def test_runner_stops_if_hdbscan_has_fewer_than_20(tmp_path, monkeypatch):
+@pytest.mark.parametrize('k', [9, 10, 20, 27])
+def test_runner_stops_if_hdbscan_has_fewer_than_target(tmp_path, monkeypatch, k):
     class Model:
         def fit_transform(self, docs, embeddings):
             return [0, 1, -1], None
@@ -122,8 +123,8 @@ def test_runner_stops_if_hdbscan_has_fewer_than_20(tmp_path, monkeypatch):
             pytest.fail('must stop before reduction')
 
     monkeypatch.setattr(b, 'make_model', lambda seed: (Model(), {}))
-    with pytest.raises(ValueError, match='fewer than 20'):
-        b.run_seed(['doc'] * 3, ['a', 'b', 'c'], None, {}, tmp_path, 0, 'input', False)
+    with pytest.raises(ValueError, match=f'fewer than {k}'):
+        b.run_seed(['doc'] * 3, ['a', 'b', 'c'], None, {}, tmp_path, 0, 'input', False, k)
     assert list(tmp_path.iterdir()) == []
 
 
@@ -246,3 +247,59 @@ def test_main_validates_embedding_cache_before_skipping_seeds(tmp_path, monkeypa
     monkeypatch.setattr(b, 'document_embeddings', embeddings)
     monkeypatch.setattr(b, 'seed_done', done)
     assert b.main(['--seed', '0', '--out', str(tmp_path)]) == 0
+
+
+def test_main_fits_each_seed_and_k_once_and_preserves_k20(tmp_path, monkeypatch):
+    names = [f'p{i}' for i in range(61)]
+    docs = ['doc'] * len(names)
+    emb = np.eye(len(names), dtype=np.float32)
+    np.save(tmp_path / 'minilm.npy', emb)
+    embedding_meta = dict(sha256=file_sha(tmp_path / 'minilm.npy'))
+    input_dir = tmp_path / 'inputs'
+    input_dir.mkdir()
+    (input_dir / 'held_docs.json').write_text('stand-in')
+    input_sha = file_sha(input_dir / 'held_docs.json')
+    old = {}
+    for seed in b.P.UMAP_SEEDS:
+        path = b.topic_path(tmp_path, seed)
+        np.savez(path, names=names, topics=np.arange(len(names), dtype=np.int32) % 20)
+        write_json(path.with_suffix('.json'), dict(npz_sha256=file_sha(path), input_sha256=input_sha,
+                   smoke=False, n_topics=20, embeddings_sha256=embedding_meta['sha256']))
+        for p in (path, path.with_suffix('.json')):
+            old[p] = p.read_bytes()
+    models = []
+
+    class Model:
+        def fit_transform(self, documents, embeddings):
+            assert embeddings is emb
+            self.topics_ = (np.arange(len(names)) % 30).tolist()
+            self.topics_[-1] = -1
+            return self.topics_, None
+
+        def reduce_topics(self, documents, nr_topics):
+            assert not hasattr(self, 'reduced'), 'reduction must start from a fresh fitted model'
+            self.reduced = nr_topics - 1
+            self.topics_ = [t % self.reduced if t >= 0 else -1 for t in self.topics_]
+
+        def reduce_outliers(self, documents, topics):
+            return [t if t >= 0 else 0 for t in topics]
+
+    def make_model(seed):
+        model = Model()
+        models.append((seed, model))
+        return model, {}
+
+    monkeypatch.setattr(b.P, 'INPUTS', input_dir)
+    monkeypatch.setattr(b, 'load_docs', lambda *args: (names, docs, [1] * len(names)))
+    monkeypatch.setattr(b, 'document_embeddings', lambda *args: (emb, embedding_meta))
+    monkeypatch.setattr(b, 'versions', lambda: {})
+    monkeypatch.setattr(b, 'make_model', make_model)
+    assert b.main(['--out', str(tmp_path)]) == 0
+    assert [(seed, model.reduced) for seed, model in models] == [(s, k) for k in (9, 10, 27) for s in (0, 1, 2)]
+    assert all(p.read_bytes() == data for p, data in old.items())
+    for seed, model in models:
+        path = b.topic_path(tmp_path, seed, model.reduced)
+        assert b.seed_done(path, names, input_sha, False, model.reduced)
+        meta = json.loads(path.with_suffix('.json').read_text())
+        assert meta['k'] == meta['n_topics'] == model.reduced
+        assert meta['topics_found_hdbscan'] == 30

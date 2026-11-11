@@ -3,6 +3,7 @@ import json
 import hashlib
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -54,11 +55,14 @@ def test_vlm_refuses_wrong_shape(tmp_path, rows):
         s.load_vlm2vec(tmp_path, 'emotion', ['a', 'b', 'c'])
 
 
-def make_topics(root, names, topics):
+def make_topics(root, names, topics, k=20):
     for seed in s.P.UMAP_SEEDS:
-        path = root / f'topics_seed{seed}.npz'
+        path = s.topic_path(root, seed, k)
         np.savez(path, names=names, topics=topics)
-        write_json(path.with_suffix('.json'), dict(npz_sha256=file_sha(path), smoke=False, seed=seed))
+        meta = dict(npz_sha256=file_sha(path), smoke=False, seed=seed)
+        if k != 20:
+            meta['k'] = k
+        write_json(path.with_suffix('.json'), meta)
 
 
 def test_bertopic_names_values_and_distinct_count(tmp_path):
@@ -179,9 +183,10 @@ def standins():
     strong = np.tile(np.arange(4), 20).astype(np.int32)
     weak = rng.integers(0, 20, size=(3, len(y)), dtype=np.int32)
     cand = np.tile(strong, (5, 3, 1))
-    data = {a: (cand, y) for a in s.P.ASPECTS}
+    data = {(a, k): (cand, y) for a in s.P.ASPECTS for k in s.aspect_ks(a)}
     mean = s.ns_clu.metric_table('cstar', 'emotion', cand, y, 20, metrics=('ami',))[0]['mean']
-    reference = dict(cells=[dict(id=f'SC1/artelingo/qwen/{a}/ami/20/tpips', cand=mean) for a in s.P.ASPECTS])
+    reference = dict(cells=[dict(id=f'SC1/artelingo/qwen/{a}/ami/{k}/tpips', cand=mean)
+                            for a in s.P.ASPECTS for k in s.aspect_ks(a)])
     return cand, weak, y, data, reference
 
 
@@ -209,10 +214,12 @@ def test_r10_boundaries(lo, r, label):
     assert outcome(lo, r) == label
 
 
-def test_gate_checks_all_aspects_before_any_output(tmp_path, monkeypatch):
+@pytest.mark.parametrize('bad_k', [10, 20])
+def test_gate_checks_all_aspects_before_any_output(tmp_path, monkeypatch, bad_k):
     _, _, _, data, reference = standins()
-    assert set(s.candidate_gate(data, reference)) == set(s.P.ASPECTS)
-    reference['cells'][-1]['cand'] += 1e-5
+    assert set(s.candidate_gate(data, reference)) == {f'{a}/{k}' for a in s.P.ASPECTS for k in s.aspect_ks(a)}
+    bad = next(c for c in reference['cells'] if c['id'] == f'SC1/artelingo/qwen/genre/ami/{bad_k}/tpips')
+    bad['cand'] += 1e-5
     ref = tmp_path / 'r18.json'
     write_json(ref, reference)
     monkeypatch.setattr(s.P, 'R18_LABELS', ref)
@@ -229,11 +236,13 @@ def test_smoke_refuses_committed_record(monkeypatch):
         s.main(['--record'])
 
 
-def test_smoke_end_to_end_uses_scratch_and_real_scorer(tmp_path, monkeypatch):
+@pytest.mark.parametrize('only', [None, 'bertopic', 'vlm2vec'])
+def test_smoke_end_to_end_uses_scratch_and_real_scorer(tmp_path, monkeypatch, only):
     cand, comp, y, data, reference = standins()
     ref, ranges_path = tmp_path / 'r18.json', tmp_path / 'ranges.json'
     write_json(ref, reference)
-    write_json(ranges_path, {f'artelingo/qwen/{a}/ami/20': dict(r=.1) for a in s.P.ASPECTS})
+    write_json(ranges_path, {f'artelingo/qwen/{a}/ami/{k}': dict(r=.1 + k / 1000)
+                            for a in s.P.ASPECTS for k in s.aspect_ks(a)})
     records = tmp_path / 'committed'
     monkeypatch.setattr(s.P, 'R18_LABELS', ref)
     monkeypatch.setattr(s.P, 'RANGES', ranges_path)
@@ -242,9 +251,95 @@ def test_smoke_end_to_end_uses_scratch_and_real_scorer(tmp_path, monkeypatch):
     monkeypatch.setattr(s.P, 'SMOKE', 1)
     monkeypatch.setattr(s.ns_clu, 'WORKERS', 1)
     monkeypatch.setattr(s, 'candidate_inputs', lambda: ([f'p{i}' for i in range(len(y))], data))
-    monkeypatch.setattr(s, 'load_bertopic', lambda *args: (comp, {'stand-in': 'hash'}))
-    assert s.main(['--only', 'bertopic']) == 0
+    monkeypatch.setattr(s, 'load_bertopic', lambda root, names, k: (comp % k, {'stand-in': f'hash{k}'}))
+    monkeypatch.setattr(s, 'load_vlm2vec', lambda *args: (np.eye(len(y), dtype=np.float32), {'stand-in': 'hash'}))
+    fits = []
+
+    def partitions(rows, k, set_name):
+        fits.append((k, set_name))
+        return comp % k
+
+    monkeypatch.setattr(s.ns_metrics, 'partitions', partitions)
+    assert s.main([] if only is None else ['--only', only]) == 0
     cells = json.loads((s.P.OUT / 'score' / 'cells.json').read_text())
-    assert [c['id'] for c in cells] == [f'bertopic/{a}/ami/20' for a in s.P.ASPECTS]
+    comparators = s.COMPARATORS if only is None else (only,)
+    assert [c['id'] for c in cells] == [f'{c}/{a}/ami/{k}' for c in comparators for a in s.P.ASPECTS for k in s.aspect_ks(a)]
     assert all(c['n_draws'] == 40 and c['label'] == 'WIN' for c in cells)
+    assert all(c['r'] == .1 + c['k'] / 1000 for c in cells)
+    assert fits == ([] if only == 'bertopic' else [(k, s.P.SET) for a in s.P.ASPECTS for k in s.aspect_ks(a)])
     assert not records.exists()
+
+
+@pytest.mark.parametrize('k', [9, 10, 27])
+def test_bertopic_loads_class_count_files(tmp_path, k):
+    names = [f'p{i}' for i in range(2 * k)]
+    make_topics(tmp_path, names, np.tile(np.arange(k, dtype=np.int32), 2), k)
+    parts, _ = s.load_bertopic(tmp_path, names, k)
+    assert parts.shape == (3, len(names)) and np.array_equal(np.unique(parts), np.arange(k))
+    with pytest.raises(ValueError, match='names.*order'):
+        s.load_bertopic(tmp_path, names[::-1], k)
+    bad = np.arange(len(names), dtype=np.int32) % k
+    bad[0] = k
+    make_topics(tmp_path, names, bad, k)
+    with pytest.raises(ValueError, match='outside'):
+        s.load_bertopic(tmp_path, names, k)
+
+
+def test_bertopic_does_not_substitute_k20_for_class_count(tmp_path):
+    names = [f'p{i}' for i in range(40)]
+    make_topics(tmp_path, names, np.arange(40, dtype=np.int32) % 20)
+    with pytest.raises(FileNotFoundError, match='topics_k9_seed0.npz'):
+        s.load_bertopic(tmp_path, names, 9)
+    make_topics(tmp_path, names, np.arange(40, dtype=np.int32) % 9, 9)
+    side = tmp_path / 'topics_k9_seed0.json'
+    meta = json.loads(side.read_text())
+    meta['k'] = 20
+    write_json(side, meta)
+    with pytest.raises(ValueError, match='k must be 9'):
+        s.load_bertopic(tmp_path, names, 9)
+
+
+@pytest.mark.parametrize('wrong_count', [False, True])
+def test_candidate_loads_both_counts_and_checks_label_classes(monkeypatch, wrong_count):
+    n = s.P.N_HELD
+    names = [f'p{i}' for i in range(n)]
+
+    def labels(set_name, split, aspect):
+        k = 8 if wrong_count and aspect == 'emotion' else s.CLASS_COUNTS[aspect]
+        y = np.arange(n, dtype=np.int64) % k
+        if aspect == 'genre':
+            y[9949:] = -1
+        return y
+
+    fits = []
+
+    def parts(set_name, split, enc, aspect, k):
+        fits.append((set_name, split, enc, aspect, k))
+        return np.tile(np.arange(n, dtype=np.int32) % k, (5, 3, 1))
+
+    monkeypatch.setitem(sys.modules, 'ns_data', SimpleNamespace(keys=lambda *args: names, labels=labels))
+    monkeypatch.setitem(sys.modules, 'ns_clu_cells', SimpleNamespace(_cand_parts=parts))
+    if wrong_count:
+        with pytest.raises(AssertionError, match='emotion'):
+            s.candidate_inputs()
+        assert not fits
+    else:
+        loaded, data = s.candidate_inputs()
+        assert loaded == names
+        assert list(data) == [(a, k) for a in s.P.ASPECTS for k in s.aspect_ks(a)]
+        assert fits == [(s.P.SET, s.P.SPLIT, s.P.CSTAR_ENC, a, k) for a, k in data]
+
+
+def test_gate_only_checks_six_cells_without_comparator_inputs(tmp_path, monkeypatch, capsys):
+    _, _, _, data, reference = standins()
+    ref = tmp_path / 'r18.json'
+    write_json(ref, reference)
+    monkeypatch.setattr(s.P, 'R18_LABELS', ref)
+    monkeypatch.setattr(s.P, 'OUT', tmp_path)
+    monkeypatch.setattr(s, 'candidate_inputs', lambda: (['stand-in'], data))
+    monkeypatch.setattr(s, 'load_bertopic', lambda *args: pytest.fail('gate must not load comparators'))
+    monkeypatch.setattr(s, 'load_vlm2vec', lambda *args: pytest.fail('gate must not load comparators'))
+    assert s.main(['--gate-only']) == 0
+    report = json.loads(capsys.readouterr().out)
+    assert report['gate'] == 'PASS' and len(report['aspects']) == 6
+    assert not (tmp_path / 'score' / 'cells.json').exists()

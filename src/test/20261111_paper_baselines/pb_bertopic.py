@@ -1,6 +1,6 @@
 """r25 BERTopic partitions; run with /root/venvs/bertopic/bin/python.
 
-Production: all held documents, seeds 0/1/2, exactly 20 non-outlier topics.
+Production: all held documents, seeds 0/1/2, K=20 and class counts 9/10/27.
 Smoke: --limit 2000 --seed 0 --out <scratch> (may retain fewer real topics).
 The installed source audit is pinned to BERTopic 0.17.4; see ticket_b_notes.md.
 """
@@ -17,6 +17,7 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import pb_paths as P
 from pb_io import atomic_write, file_sha, names_sha, write_json
+from pb_partitions import TARGET_KS, topic_path
 
 AUDITED_VERSION = '0.17.4'
 # _bertopic.py __init__: low_memory defaults to False, min_topic_size to 10.
@@ -163,13 +164,15 @@ def document_embeddings(docs, names, out, input_sha, force=False):
     return emb, meta
 
 
-def seed_done(path, names, input_sha, smoke):
+def seed_done(path, names, input_sha, smoke, k=P.K):
     side = path.with_suffix('.json')
     if not path.exists() or not side.exists():
         return False
     meta = json.loads(side.read_text())
     if meta['npz_sha256'] != file_sha(path) or meta['input_sha256'] != input_sha or meta['smoke'] != smoke:
         raise ValueError(f'{path}: stale/corrupt completed seed; use --force')
+    if meta.get('k', P.K) != k:
+        raise ValueError(f'{path}: sidecar k differs from requested K={k}')
     embeddings = path.parent / 'minilm.npy'
     if not embeddings.is_file() or meta.get('embeddings_sha256') != file_sha(embeddings):
         return False
@@ -177,20 +180,21 @@ def seed_done(path, names, input_sha, smoke):
         if z['names'].tolist() != names:
             raise ValueError(f'{path}: names differ from input order')
         t = z['topics']
-        k = meta['n_topics'] if smoke else P.N_TOPICS
-        if t.dtype != np.int32 or t.shape != (len(names),) or not np.array_equal(np.unique(t), np.arange(k)):
+        n_topics = meta['n_topics'] if smoke else k
+        if t.dtype != np.int32 or t.shape != (len(names),) or not np.array_equal(np.unique(t), np.arange(n_topics)):
             raise ValueError(f'{path}: invalid completed partition')
     return True
 
 
-def run_seed(docs, names, emb, emb_meta, out, seed, input_sha, smoke):
+def run_seed(docs, names, emb, emb_meta, out, seed, input_sha, smoke, k=P.K):
+    """Fit a fresh model per (seed, K): reductions never consume another target's reduced model."""
     start = time.monotonic()
     model, audit = make_model(seed)
     topics, _ = model.fit_transform(docs, emb)
     fit_seconds = time.monotonic() - start
     found = len(set(topics) - {-1})
     counts = dict(after_hdbscan=topics.count(-1))
-    nr_topics, target = reduction_count(topics, smoke=smoke)
+    nr_topics, target = reduction_count(topics, target=k, smoke=smoke)
     model.reduce_topics(docs, nr_topics=nr_topics)
     topics = list(model.topics_)
     if len(set(topics) - {-1}) != target:
@@ -203,16 +207,16 @@ def run_seed(docs, names, emb, emb_meta, out, seed, input_sha, smoke):
         topics = model.reduce_outliers(docs, topics, strategy='embeddings', embeddings=emb)
     counts['after_embedding_outliers'] = topics.count(-1)
     final, mapping = relabel(topics, target)
-    path = out / f'topics_seed{seed}.npz'
+    path = topic_path(out, seed, k)
     atomic_write(path, lambda f: np.savez_compressed(f, names=np.asarray(names), topics=final), binary=True)
-    meta = dict(audit, seed=seed, smoke=smoke, n_docs=len(names), names_sha256=names_sha(names),
+    meta = dict(audit, seed=seed, k=k, smoke=smoke, n_docs=len(names), names_sha256=names_sha(names),
                 input_sha256=input_sha, embeddings_sha256=emb_meta['sha256'], versions=versions(),
                 topics_found_hdbscan=found, nr_topics_passed=nr_topics, n_topics=target,
                 outlier_counts=counts, original_to_final_topic=mapping,
                 topic_sizes=np.bincount(final, minlength=target).tolist(),
                 fit_seconds=fit_seconds, seconds=time.monotonic() - start, npz_sha256=file_sha(path))
     write_json(path.with_suffix('.json'), meta)
-    print(f'seed {seed}: HDBSCAN={found}, final={target}, outliers={counts}, {meta["seconds"]:.1f}s', flush=True)
+    print(f'seed {seed}, K={k}: HDBSCAN={found}, final={target}, outliers={counts}, {meta["seconds"]:.1f}s', flush=True)
     return meta
 
 
@@ -222,6 +226,8 @@ def main(argv=None):
     ap.add_argument('--limit', type=int)
     ap.add_argument('--out', type=Path, default=P.BERTOPIC_OUT, help='BERTopic output directory itself')
     ap.add_argument('--seed', type=int, choices=P.UMAP_SEEDS, help='default: all three UMAP seeds')
+    ap.add_argument('--k', type=int, nargs='+', choices=TARGET_KS, default=TARGET_KS,
+                    help='default: K=20 and all three class counts')
     a = ap.parse_args(argv)
     if a.limit is not None and a.out.resolve() == P.BERTOPIC_OUT.resolve():
         ap.error('--limit requires a separate --out to protect production partitions')
@@ -233,15 +239,16 @@ def main(argv=None):
     # Repair legacy embedding caches before deciding whether their partitions can be reused.
     emb, meta = document_embeddings(docs, names, a.out, input_sha, a.force)
     todo = []
-    for seed in seeds:
-        if not a.force and seed_done(a.out / f'topics_seed{seed}.npz', names, input_sha, smoke):
-            print(f'skip seed {seed} (validated complete)', flush=True)
-        else:
-            todo.append(seed)
+    for k in dict.fromkeys(a.k):
+        for seed in seeds:
+            if not a.force and seed_done(topic_path(a.out, seed, k), names, input_sha, smoke, k):
+                print(f'skip seed {seed}, K={k} (validated complete)', flush=True)
+            else:
+                todo.append((seed, k))
     if not todo:
         return 0
-    for seed in todo:
-        run_seed(docs, names, emb, meta, a.out, seed, input_sha, smoke)
+    for seed, k in todo:
+        run_seed(docs, names, emb, meta, a.out, seed, input_sha, smoke, k)
     return 0
 
 
