@@ -62,3 +62,12 @@ The unit for VLM2Vec is stated as Qwen c*'s validation mAP ranges, as TPIPS (fie
   0, 6 values); 3.9 min. Log `logs/gate_tpips.log`, record `out/gate_tpips.json`.
 - `gate-percept`: pass. Pick `center+k10` as recorded; max abs difference 2.8e-17 (6 values); 5.0 min. Log
   `logs/gate_percept.log`, record `out/gate_percept.json`.
+
+## VLM2Vec row, scored (2026-11-11 09:16 to 09:18, "paper sec4 tables 5" tab)
+
+- `t3_wait_vlm2vec.sh` saw the six store meta files at 09:16 (r25's `r25:extract_val` ended at 09:16, exit 0) and ran
+  `t3_run.py vlm2vec` through `res-queue cpu --short` (1.9 min, exit 0). Log `logs/vlm2vec.log`.
+- Pick on validation: `center+k10` (validation mAP 0.2523 / 0.2840 / 0.5752). Test mAP: emotion 0.24795, style
+  0.28019, genre 0.55895 (queries 12,281 / 12,281 / 9,949; none dropped). Record `records/vlm2vec.json` (a copy of
+  `out/vlm2vec.json`, added with `git add -f`).
+- Table 3 (REPO `33a9764`): 0.248 / 0.280 / 0.559. Below CoSiR in all three aspects, so the bold is unchanged.
