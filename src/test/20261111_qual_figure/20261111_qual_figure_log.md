@@ -39,3 +39,13 @@ caption can state the rule and that the example was picked among its candidates.
 - Worker's interpretations: a rank tie in (b) does not count as nearer; the gain uses r20's stored shares (4
   decimals). Page marks: in (a) emotion and genre labels green when they match the query; in (b) the A label green
   when it matches the partner, the B label orange when it differs.
+
+## Picks (2026-11-11, after the review page)
+
+| Point | Decision | Who |
+|---|---|---|
+| Panel (a) | a5 (Metsu, "The Sick Girl", sadness): plain neighbours are sickbed scenes with mixed emotions, ours are sad works on other subjects (a Pietà, a farewell scene). Considered: a8 (ours stay stormy landscapes, 2 of 5 shared with plain) | user, after seeing the recommendation |
+| Panel (b) | three pairs from three ordered aspect pairs: b5 (near in emotion, far in genre: Renoir study and Moser illustration, amusement), b7 (near in style, far in emotion: Borisov-Musatov boy and Renoir Cagnes, Impressionism), b15 (near in genre, far in emotion: Rembrandt laughing young man and Manet Victorine Meurent, portraits). b5 over b6: Titian's Charles V labelled amusement would look wrong | b5: user; b5 over b6, b7 and b15: user, after seeing the recommendation |
+| Cluster figure | keep the rule's picks at the class count: contentment, Ukiyo-e, still life | user |
+
+The agent looked at a4, a5, a6, a8 and at b1 to b3, b5 to b9 and b13 to b15 at full size before recommending.
