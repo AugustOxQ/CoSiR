@@ -2167,3 +2167,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-11-r21-build-2-handoff.md
 - New chat: tab 'r21 build 2', session 888cc12a-f7e7-4899-8318-8e3cfaaf1c99
 
+[brief] CoSiR: r21 build 2 -> r21 build 3 (2026-11-11 07:48 Amsterdam)
+- Done: tickets 01, 02, 05, 06 reviewed, fixed, merged; 03 merged (its gate script not yet reviewed); gates 0a, 0b pass, all diffs 0.
+- State: 06's table reproduces r10's ablation cells exactly (39 cells, diff 0); DEC λ ∈ {1, 10} may be weak (flat q).
+- Next: review of gate 0b's script, ticket 04 (held exports, queue scripts), GPU smoke, final whole-branch review.
+- Blocked: nothing; the GPU smoke waits for the local GPU (held by r25 and r26 until about 08:50 at the earliest).
+- Handoff: docs/superpowers/handoffs/2026-11-11-r21-build-3-handoff.md
+- New chat: tab 'r21 build 3', session 9ad8ae03-6854-4c8f-8421-1435e89de566
+
