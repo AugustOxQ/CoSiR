@@ -71,3 +71,12 @@ Spec: `docs/superpowers/specs/2026-11-11-r21-dec-heads-design.md`. Decision line
   `/project/CoSiR-r21-fix0b`, branch `r21/fix0b`).
 - 08:06: ticket 04 built (86f8e100, Sonnet `medium`); controller diff read and dry runs (1a: the 8 arms of §3.5; a
   failing pick read stops the script under `set -e`). Merged.
+- 08:20: gate 0b fix (72414bc9, Codex `gpt-6.1-sol` high; S1 to S3, M1, M2, M5, M6) merged (84ce3c64); scoped re-review
+  (Sonnet `high`): no must-fix. **Gate 0b PASS on the merged code** (525 s, one CPU slot): i-a, i-b1, i-b2, i-c over steps
+  1 to 12 and ii-a to ii-d, all diffs 0; i-info (λ = 0 as the trainer is, step 11): style 0.0083, genre 0.0101 (dropout
+  stream shift, kept). Record: `/data/SSD2/cosir_r21/20261111_dec_heads/scores/r21_gate0b_20261111_080857.json`.
+  Mutations, each FAIL at its own check and "mutation detected": `grad_leak` (a gradient-only DEC term) at i-c only, 0.0421;
+  `lam_leak` (λ = 1e-3) at i-b2, i-c and the λ = 0 provenance; `loss_scale` at i-a to i-c. The re-review's two
+  should-fix points (exact history equality may give a false FAIL; a mutation counts as detected on any FAIL) are answered
+  by these records and left as they are.
+- 08:22: final whole-branch review started (Opus `xhigh`).
