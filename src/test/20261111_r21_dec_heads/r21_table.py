@@ -13,6 +13,10 @@ runs pass their own):
         its nearest rule, `ns_ret._word`, is strict in the same way: WIN needs lo > 0.)
         The absolute values of the arm and of c* beside, per seed too. No correction across cells.
       -> <out>/stage2_table.json and .md (`--name` changes the stem). Held (test) exports are read by design (stage 2).
+      The record's `complete` is True only for the real trees (`--root` r21's, `--cstar-root` r10's), all three aspects, the
+      full draw counts and exactly `dec-off` plus the three picks of `--picks` (path and SHA-256 stored); `scores/stage2_table`
+      is never written for anything else (use `--out` or `--name`). `identical_to_cstar` per arm: all 15 arrays equal c*'s
+      (expected for `dec-off`, refused for a DEC arm).
   python .../r21_table.py diag [--arms A ...] [--root R]
       Spec §3.6, decides nothing: cosine silhouette of each arm's test embeddings against its own k-means partition at
       the class count (state 0), per aspect and seed, also for c*, the plain Qwen image and the teacher; largest and
@@ -102,7 +106,8 @@ def _sidecar_meta(path):
     assert path.is_file() and path.with_suffix('.json').is_file(), f'{path}: export or sidecar missing'
     side = json.loads(path.with_suffix('.json').read_text())
     return dict(arm=side['arm'], aspect=side['aspect'], seed=side['seed'], rows=side['rows'],
-                list_sha256=side['list_sha256'], array_sha256=side['arrays']['img']['sha256'], path=str(path))
+                list_sha256=side['list_sha256'], image_sha256=side.get('image_sha256'),
+                array_sha256=side['arrays']['img']['sha256'], path=str(path))
 
 
 def read_metas(root, arm):
@@ -112,8 +117,11 @@ def read_metas(root, arm):
 
 def check_pairing(arm_metas, cstar_metas, expected_sha):
     """The arm and c* must hold the same grid (every aspect, seeds 0 to 4, nothing else), each entry labelled as its key,
-    12,281 rows in the held list's order (the sidecar binds the list's SHA-256, `expected_sha`), and not be the same
-    files under two names. A missing seed, a mismatched held order or a mislabelled sidecar is refused."""
+    12,281 rows in the held list's order (the sidecar binds the list's SHA-256, `expected_sha`), and the same input rows
+    fed to inference (`image_sha256`, equal to c*'s for each aspect and seed: the npz has no IDs, so this and the list hash
+    are the only row-order guards). A DEC arm must not be c*'s files under another name; `dec-off` (the c* rerun) may be
+    byte for byte equal. Returns True when every array of the arm equals c*'s. A missing seed, a mismatched held order, a
+    different input or a mislabelled sidecar is refused."""
     grid = {(a, s) for a in ASPECTS for s in SEEDS}
     names = {}
     for what, metas in (('arm', arm_metas), ('c*', cstar_metas)):
@@ -122,12 +130,17 @@ def check_pairing(arm_metas, cstar_metas, expected_sha):
             assert (m['aspect'], m['seed']) == (a, s), f'{what} {a} s{s}: the sidecar says {m["aspect"]} s{m["seed"]}'
             assert m['rows'] == N_HELD, f'{what} {a} s{s}: {m["rows"]} rows'
             assert m['list_sha256'] == expected_sha, f'{what} {a} s{s}: held order differs from the held list'
+            assert isinstance(m.get('image_sha256'), str) and len(m['image_sha256']) == 64, f'{what} {a} s{s}: no image_sha256 in the sidecar'
         arms = {m['arm'] for m in metas.values()}
         assert len(arms) == 1, f'{what}: more than one arm name in the sidecars: {arms}'
         names[what] = arms.pop()
-    if names['arm'] != names['c*']:
-        same = [k for k in grid if arm_metas[k]['array_sha256'] == cstar_metas[k]['array_sha256']]
-        assert not same, f'{names["arm"]} and {names["c*"]} hold the same array at {sorted(same)[:3]}'
+    for k in sorted(grid):
+        assert arm_metas[k]['image_sha256'] == cstar_metas[k]['image_sha256'], \
+            f'{k[0]} s{k[1]}: the arm and c* were run on different input rows (image_sha256)'
+    same = [k for k in sorted(grid) if arm_metas[k]['array_sha256'] == cstar_metas[k]['array_sha256']]
+    if names['arm'] not in (names['c*'], 'dec-off'):
+        assert not same, f'{names["arm"]} and {names["c*"]} hold the same array at {same[:3]}'
+    return len(same) == len(grid)
 
 
 def load_held(root, arm, aspect, seed):
@@ -212,11 +225,33 @@ def check_arm_names(arms, root):
 
 
 def picked_arms(picks_path):
-    """`dec-off` and the stage 1b pick of each form (plain, start, teacher), from 05's picks file."""
+    """`dec-off` and the stage 1b pick of each form (plain, start, teacher), from 05's picks file. Checked: each pick is an
+    arm of its own form, and the three share the λ, W and stop rule of the stage 1a pick (spec 3.5: 1b runs at 1a's)."""
     picks = json.loads(Path(picks_path).read_text())
     assert picks.get('stage1b'), f'{picks_path}: no stage 1b picks yet'
+    assert picks.get('stage1a'), f'{picks_path}: stage 1b picks without a stage 1a pick'
     assert set(picks['stage1b']) == set(FORMS), sorted(picks['stage1b'])
+    base = r21_arms.parse_arm(picks['stage1a']['pick'])
+    for f in FORMS:
+        s = r21_arms.parse_arm(picks['stage1b'][f]['pick'])
+        assert s['form'] == f, f"{picks_path}: the stage 1b pick for {f} is {picks['stage1b'][f]['pick']!r} (form {s['form']})"
+        assert all(s[k] == base[k] for k in ('lam', 'warmup', 'stop')), \
+            f"{picks_path}: the {f} pick {picks['stage1b'][f]['pick']!r} differs from the 1a pick {picks['stage1a']['pick']!r} in λ, W or stop rule"
     return ['dec-off'] + [picks['stage1b'][f]['pick'] for f in FORMS]
+
+
+def is_complete(root, cstar_root, aspects, arms, n_ami_draws, n_map_draws, picks_path):
+    """True only for the table the report may use: the real r21 tree against r10's real c*, all three aspects, the full draw
+    counts, and the arms exactly `dec-off` and the three stage 1b picks of the picks file (which must read as valid)."""
+    if not (Path(root) == R21_FULL and Path(cstar_root) == R10_FULL and tuple(aspects) == ASPECTS
+            and n_ami_draws == N_AMI_DRAWS and n_map_draws == N_MAP_DRAWS):
+        return False
+    if picks_path is None or not Path(picks_path).is_file():
+        return False
+    try:
+        return list(arms) == picked_arms(picks_path)
+    except AssertionError:                         # a picks file that does not read as valid: not the paper's table
+        return False
 
 
 # ================================================================================================ the table
@@ -271,12 +306,16 @@ def code_state():
 
 
 def table(arms, root, cstar_root, out, n_ami_draws=N_AMI_DRAWS, n_map_draws=N_MAP_DRAWS, workers=8, aspects=ASPECTS,
-          name='stage2_table'):
-    """The stage 2 change table; returns the record (written to `<out>/<name>.json` and `.md`)."""
+          name='stage2_table', picks_path=None):
+    """The stage 2 change table; returns the record (written to `<out>/<name>.json` and `.md`). `complete` (the record's flag)
+    is True only for `is_complete`'s table; the paper-facing file `scores/stage2_table.*` is never written for anything else."""
     _deps()
     t0 = time.monotonic()
     out = Path(out)
     root, cstar_root = Path(root), Path(cstar_root)
+    complete = is_complete(root, cstar_root, aspects, arms, n_ami_draws, n_map_draws, picks_path)
+    assert complete or not (name == 'stage2_table' and out.resolve() == Path(SCORES).resolve()), \
+        f'refusing to write {SCORES}/stage2_table for a table that is not complete (real trees, all aspects, full draws, the picked arms)'
     check_arm_names(arms, root)
     names, sha, labels = rb_part2_report.held_labels()
     names = np.asarray(names)
@@ -284,11 +323,12 @@ def table(arms, root, cstar_root, out, n_ami_draws=N_AMI_DRAWS, n_map_draws=N_MA
     cache = out / 'cache'
     c_metas = read_metas(cstar_root, CSTAR_ARM)
     metas = {a: read_metas(root, a) for a in arms}
-    for a in arms:
-        check_pairing(metas[a], c_metas, sha)
+    identical = {a: check_pairing(metas[a], c_metas, sha) for a in arms}
     doc = dict(stage='r21_stage2_table', written=time.strftime('%Y-%m-%d %H:%M'), root=str(root), cstar_root=str(cstar_root),
                arms=list(arms), seeds=list(SEEDS), n_ami_draws=int(n_ami_draws), n_map_draws=int(n_map_draws),
-               complete=bool(tuple(aspects) == ASPECTS and n_ami_draws == N_AMI_DRAWS and n_map_draws == N_MAP_DRAWS),
+               complete=complete, identical_to_cstar=identical,
+               picks=None if picks_path is None or not Path(picks_path).is_file()
+               else dict(path=str(picks_path), sha256=_file_sha(picks_path)),
                k_fixed=FIXED_K, held_sha256=sha, comparator=CSTAR_ARM, pairing='arm seed s against c* seed s',
                draws=dict(ami='per aspect: default_rng(0); I_b over the 12,281 rows, then one S_b over seeds 0 to 4 shared '
                               'by arm and c* (rs_ablation.held_draws)',
@@ -316,6 +356,9 @@ def table(arms, root, cstar_root, out, n_ami_draws=N_AMI_DRAWS, n_map_draws=N_MA
             res = dict(ami_class_count=ami_cell(parts[k], c_parts[k], y_ami, n_ami_draws, workers),
                        ami_20=ami_cell(parts[FIXED_K], c_parts[FIXED_K], y_ami, n_ami_draws, workers),
                        map=map_cell(ap, c_ap, n_map_draws))
+            for key, c in res.items():                      # the c* behind each cell is the c* checked against the saved figures
+                want = doc['cstar_check'][aspect][key]['ours']
+                assert abs(c['cstar'] - want) < 1e-12, f'{aspect} {arm} {key}: the cell\'s c* {c["cstar"]} is not the checked c* {want}'
             doc['aspects'][aspect]['arms'][arm] = res
             print(f'{aspect} {arm}: ' + '; '.join(f"{key} {c['change']:+.6f} [{c['lo']:+.6f}, {c['hi']:+.6f}] {c['word']}"
                                                    for key, c in res.items()), flush=True)
@@ -337,7 +380,11 @@ def table_markdown(doc):
              'Word: "raises" when the interval is above zero, "lowers" when below, "no clear change" when it includes zero or '
              'touches it. No correction across cells.', '']
     if not doc['complete']:
-        lines += ['**Not the full table** (a subset of aspects or a reduced draw count): not for the report.', '']
+        lines += ['**Not the full table** (a subset of aspects, a reduced draw count, another tree or other arms than dec-off and the '
+                  'stage 1b picks): not for the report.', '']
+    same = [a for a, v in doc.get('identical_to_cstar', {}).items() if v]
+    if same:
+        lines += [f'Identical to c* byte for byte (all 15 exports): {", ".join(same)}.', '']
     for arm in doc['arms']:
         lines += [f'## {arm}', '', '| aspect | AMI at class count: change [95%] word | arm / c* | AMI at 20: change [95%] word | arm / c* '
                   '| mAP: change [95%] word | arm / c* |', '|---|---|---|---|---|---|---|']
@@ -429,45 +476,37 @@ def cluster_shares(labels, k):
                 n_used=int((share > 0).sum()))
 
 
-def dec_stats(side):
-    """DEC statistics of one head from its training sidecar (`R6-5/<aspect>__<graph>__s<seed>.json`). `history` entries carry
-    a `dec` dict when DEC is on: warm-up entries `phase='warmup'` (the last also `start_epoch`), DEC epochs `phase='dec'` with
-    `changed`, `away` (fraction away from the DEC-start clusters), `share_max`, `share_min`; the last entry `stop_reason`.
-    `dec_epochs` counts `phase == 'dec'` entries only. Stop epoch = the last epoch run (`epochs_run`); the best epoch beside."""
+def dec_stats(arm, aspect, side):
+    """DEC statistics of one head from its training sidecar (`R6-5/<aspect>__<graph>__s<seed>.json`). DEC epochs, start epoch and
+    stop reason come from `r21_score.head_dec(arm, aspect, side)` (the same strict reading as the stage 1 sheet: a DEC-on arm
+    needs warm-up then at least one DEC epoch and a known stop reason; DEC off has no `dec` entries). The fraction away from
+    the DEC-start clusters (`away`), `changed` and the cluster shares are those of the last DEC epoch. Stop epoch = the last
+    epoch run (`epochs_run`); the best epoch beside (the kept state for S2 arms)."""
     hist = side['history']
     assert len(hist) == side['epochs_run'] > 0, (len(hist), side['epochs_run'])
     base = dict(best_epoch=int(side['best_epoch']), stop_epoch=int(side['epochs_run']))
-    if not any('dec' in h for h in hist):
+    n_dec, start, reason = SC.head_dec(arm, aspect, side)
+    if n_dec == 0:
         return dict(base, dec_on=False, dec_epochs=0, warmup_epochs=0, dec_start_epoch=None, stop_reason=None, away=None,
                     changed=None, share_max=None, share_min=None)
-    assert all(isinstance(h.get('dec'), dict) and h['dec'].get('phase') in ('warmup', 'dec') for h in hist), 'a history entry lacks its dec phase'
-    phases = [h['dec']['phase'] for h in hist]
-    n_warm = phases.count('warmup')
-    assert phases == ['warmup'] * n_warm + ['dec'] * (len(hist) - n_warm), 'warm-up and DEC epochs are not in order'
-    assert n_warm >= 1, 'no warm-up entry'
-    n_dec = len(hist) - n_warm
-    start = hist[n_warm - 1]['dec'].get('start_epoch')
-    out = dict(base, dec_on=True, dec_epochs=n_dec, warmup_epochs=n_warm, dec_start_epoch=start)
-    if n_dec:
-        last = hist[-1]['dec']
-        assert last.get('stop_reason'), 'the last DEC epoch has no stop reason'
-        assert all(h['dec']['start_epoch'] == start for h in hist[n_warm:]), 'DEC start epoch changes'
-        assert start == n_warm + 1, (start, n_warm)
-        out.update(stop_reason=last['stop_reason'], away=float(last['away']), changed=float(last['changed']),
-                   share_max=float(last['share_max']), share_min=float(last['share_min']))
-    else:
-        out.update(stop_reason=None, away=None, changed=None, share_max=None, share_min=None)
-    return out
+    last = hist[-1]['dec']
+    assert last['phase'] == 'dec', (arm, aspect)
+    return dict(base, dec_on=True, dec_epochs=n_dec, warmup_epochs=len(hist) - n_dec, dec_start_epoch=start, stop_reason=reason,
+                away=float(last['away']), changed=float(last['changed']), share_max=float(last['share_max']),
+                share_min=float(last['share_min']))
 
 
 def record_agrees(stats, head):
     """The run record's per-head fields (`heads.<aspect>`: `stop_reason`, `stop_epoch`, `dec_start_epoch`) against the sidecar's
     statistics: {field: bool}, or None when the record has no such head entry. Shown, not enforced (the record is written by the
-    runner, the sidecar by the trainer)."""
+    runner, the sidecar by the trainer). With DEC off the record gives c*'s reason (`patience` or `max_epochs`, which the
+    history does not hold), so only the stop epoch and the DEC start epoch are compared."""
     if not head:
         return None
-    return dict(stop_reason=head.get('stop_reason') == stats['stop_reason'], stop_epoch=head.get('stop_epoch') == stats['stop_epoch'],
-                dec_start_epoch=head.get('dec_start_epoch') == stats['dec_start_epoch'])
+    out = dict(stop_epoch=head.get('stop_epoch') == stats['stop_epoch'], dec_start_epoch=head.get('dec_start_epoch') == stats['dec_start_epoch'])
+    if stats['dec_on']:
+        out['stop_reason'] = head.get('stop_reason') == stats['stop_reason']
+    return out
 
 
 def _silhouette_row(x, parts, k):
@@ -515,7 +554,7 @@ def diag(arms, root, cstar_root, out, workers=8, val_root=None):
         for a in ASPECTS:
             for s in SEEDS:
                 side = SC.load_val(arm, a, s, train_root)[1]
-                stats = dec_stats(side)
+                stats = dec_stats(arm, a, side)
                 rec_path = train_root / arm / f'run__s{s}.json'
                 assert 'train' in rec_path.parts and not ({'held', 'test'} & set(rec_path.parts)), rec_path
                 head = (json.loads(rec_path.read_text()).get('heads', {}) or {}).get(a) if rec_path.exists() else None
@@ -548,14 +587,15 @@ def diag_markdown(doc):
         L.append(f'| {label} | ' + ' | '.join(f"{per[a]['mean']['silhouette']:+.4f} | {per[a]['mean']['largest']:.3f} / {per[a]['mean']['smallest']:.3f}"
                                               for a in ASPECTS) + ' |')
     L += ['', '## DEC epochs, stop and distance from the start clusters (training sidecars, per seed 0 to 4)', '',
-          'DEC epochs / stop epoch (the last epoch run) / stop reason / fraction of training paintings away from their DEC-start cluster at the end.', '',
+          'DEC epochs / stop epoch (the last epoch run) / best epoch (the kept state for S2 arms) / stop reason / fraction of training '
+          'paintings away from their DEC-start cluster at the end.', '',
           '| arm | aspect | seeds 0 to 4 |', '|---|---|---|']
     for arm, per in doc['dec'].items():
         for a, seeds in per.items():
             cells = []
             for s, d in seeds.items():
                 bad = d['run_record_agrees'] is not None and not all(d['run_record_agrees'].values())
-                cells.append((f"{d['dec_epochs']} / {d['stop_epoch']} / {d['stop_reason'] or 'n/a'} / "
+                cells.append((f"{d['dec_epochs']} / {d['stop_epoch']} / {d['best_epoch']} / {d['stop_reason'] or 'n/a'} / "
                               + ('n/a' if d['away'] is None else f"{d['away']:.3f}")) + (' (run record differs)' if bad else ''))
             L.append(f'| {arm} | {a} | ' + '; '.join(cells) + ' |')
     L += ['', '## Validation AMI (class count) and mAP, seeds 0 to 4 (mean; per seed in the JSON)', '',
@@ -589,7 +629,8 @@ def main(argv=None):
         sys.exit(0 if regress(args.table) else 1)
     arms = args.arms or picked_arms(args.picks)
     if args.cmd == 'table':
-        table(arms, args.root, args.cstar_root, args.out, args.ami_draws, args.map_draws, args.workers, tuple(args.aspects), args.name)
+        table(arms, args.root, args.cstar_root, args.out, args.ami_draws, args.map_draws, args.workers, tuple(args.aspects), args.name,
+              args.picks)
     else:
         diag(arms, args.root, args.cstar_root, args.out, args.workers)
 
