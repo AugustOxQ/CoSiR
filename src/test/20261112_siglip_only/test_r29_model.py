@@ -15,6 +15,7 @@ import rb_rows  # noqa: E402
 ASPECTS = ['emotion', 'style', 'genre']
 ROW = rb_rows.recipe(rb_rows.REFERENCE)['base']
 CPU = torch.device('cpu')
+SHA = 'ab' * 32
 
 
 def r14(width, seed=0):
@@ -46,6 +47,8 @@ def test_cap_width_2048_is_r14s_model_same_seed(width):
 
 
 def test_cap_width_1152_changes_only_the_caption_trunks_first_layer():
+    """Gate (i)(b), width part: at width 1152 only the caption first layer's *shape* differs from r14's. Its values also
+    differ under one seed (the RNG stream is consumed by a smaller tensor), and so do the layers created after it."""
     base, new = r14(1152)[0].state_dict(), r29(1152, 1152)[0].state_dict()
     assert list(base) == list(new)
     differ = [k for k in base if base[k].shape != new[k].shape]
@@ -80,14 +83,14 @@ def save(tmp_path, width, cap_width, claimed_cap=None, source='siglip1', name='e
     state = views['emotion'].state_dict()
     torch.save(state, w)
     rb = dict(width=width, cap_width=cap_width if claimed_cap is None else claimed_cap, cap_source=source,
-              cap_store_sha256='ab' * 32)
+              cap_store_sha256=SHA)
     w.with_suffix('.json').write_text(json.dumps(dict(config=dict(aspect='emotion', seed=0, rb=rb))))
     return w, state
 
 
 def test_load_view_roundtrip(tmp_path):
     w, state = save(tmp_path, 1152, 1152)
-    view = M.load_view(w)
+    view = M.load_view(w, expect_store_sha256=SHA)
     assert not view.training
     for k, v in view.state_dict().items():
         assert torch.equal(v, state[k])
@@ -97,10 +100,10 @@ def test_load_view_roundtrip(tmp_path):
 def test_load_view_refuses_sidecar_cap_width_that_disagrees_with_weights(tmp_path):
     w, _ = save(tmp_path, 1152, 1152, claimed_cap=2048, source='qwen')   # consistent with its source, not with the weights
     with pytest.raises(AssertionError, match='weights take'):
-        M.load_view(w)
+        M.load_view(w, expect_store_sha256=SHA)
     w, _ = save(tmp_path, 1152, 2048, claimed_cap=1152, name='emotion__s1')
     with pytest.raises(AssertionError, match='weights take'):
-        M.load_view(w)
+        M.load_view(w, expect_store_sha256=SHA)
 
 
 def test_load_view_refuses_image_width_that_disagrees(tmp_path):
@@ -109,7 +112,7 @@ def test_load_view_refuses_image_width_that_disagrees(tmp_path):
     rb['config']['rb']['width'] = 2048
     w.with_suffix('.json').write_text(json.dumps(rb))
     with pytest.raises(AssertionError, match='width'):
-        M.load_view(w)
+        M.load_view(w, expect_store_sha256=SHA)
 
 
 def test_load_view_refuses_sidecar_without_cap_fields(tmp_path):
@@ -118,10 +121,22 @@ def test_load_view_refuses_sidecar_without_cap_fields(tmp_path):
     del d['config']['rb']['cap_width']
     w.with_suffix('.json').write_text(json.dumps(d))
     with pytest.raises(AssertionError):
-        M.load_view(w)
+        M.load_view(w, expect_store_sha256=SHA)
 
 
 def test_load_view_refuses_cap_width_that_is_not_its_sources(tmp_path):
     w, _ = save(tmp_path, 1152, 1152, claimed_cap=2048)      # siglip1 takes 1152
     with pytest.raises(AssertionError, match="input width"):
+        M.load_view(w, expect_store_sha256=SHA)
+
+
+def test_load_view_refuses_a_different_caption_store(tmp_path):
+    w, _ = save(tmp_path, 1152, 1152)
+    with pytest.raises(AssertionError, match='cap_store_sha256'):
+        M.load_view(w, expect_store_sha256='cd' * 32)
+
+
+def test_load_view_requires_the_expected_store_hash(tmp_path):
+    w, _ = save(tmp_path, 1152, 1152)
+    with pytest.raises(TypeError):
         M.load_view(w)
