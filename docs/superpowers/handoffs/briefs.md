@@ -2247,3 +2247,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-12-paper-plan-1-handoff.md
 - New chat: tab 'paper plan 1', session 97e741f9-c04d-4e56-a367-a386d3b51ee8
 
+[brief] CoSiR: paper plan 1 -> r28 run (2026-11-12 19:30 Amsterdam)
+- Done: the user moved the paper's main result to the SigLIP 1 student and set three run tiers (paper chat, 2026-11-12).
+- State: most SigLIP 1 cells exist (Table 6: AMI 0.099 / 0.441 / 0.528 against the instructed Qwen3's 0.089 / 0.406 / 0.501); the ablation and some scores are missing.
+- Next: tier 0, first the encoder pick on the validation split, then scoring from saved models.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-12-r28-run-handoff.md
+- New chat: tab 'r28 run', session dae700bf-e7a2-4618-ae57-fa086b1e35b9
+
