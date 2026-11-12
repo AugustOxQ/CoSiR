@@ -74,6 +74,7 @@ GRAPH = T.GRAPH                          # r14's validation export names
 CANDIDATE_ARMS = ('qwen', 'siglip1', 'siglip1_prefix')
 GATE_I_A_NEW = 'gate_i_a_new'          # gate (i)(a)'s `new` run (r29_trainer.gate_i_a_root('new')), seed 0, source qwen
 P1_FORMS = ('siglip1', 'siglip1_prefix')
+CANDIDATE_TEST_ARMS = ('siglip1', 'siglip1_prefix')   # the new models: their held numbers are test numbers (K0 qwen is a replay)
 F16_SHARE = 0.995                        # r28's replay rule: at least this share equal in float16, the rest one float16 step
 TOL = 1e-6                               # gate (ii): per-seed mAP against r28's text.json
 
@@ -259,6 +260,16 @@ def require_pick_record(arm):
     return doc
 
 
+def require_pass_rule(arm):
+    """The order rule for a candidate's test numbers (spec §3.4 "Order and C13", §3.5 row 1b: SC2 re-derived and committed
+    before any test number): `pass_rule.json` is present and committed unchanged in git HEAD (not under smoke). Presence and
+    commit only, not its status: the test cells run on a pass and on a fail (D9). Other arms (K0 `qwen`, the gate (i)(a) arm,
+    P1) are replays or comparators and need none."""
+    if arm in CANDIDATE_TEST_ARMS and not is_smoke():
+        P29.require_committed(Path(RECORDS_DIR) / 'pass_rule.json',
+                              f'commit records/pass_rule.json before any test number of {arm} (spec §3.4, §3.5 row 1b)')
+
+
 def score(arm, set_name, aspects=ASPECTS, seeds=None, device='cpu', block=1024):
     """Rank an arm on a set, per aspect and seed (P1: once): every direction and read-out, one score file each under
     TEXT_OUT/<arm> in r23's layout. A validation set writes its means first (refit on the new rows); a held set reads them."""
@@ -266,6 +277,7 @@ def score(arm, set_name, aspects=ASPECTS, seeds=None, device='cpu', block=1024):
     import tcl_score
     assert set_name in ('art_val', 'art_held')
     if set_name == 'art_held':
+        require_pass_rule(arm)
         require_pick_record(arm)
     info, root = arm_info(arm), score_root(arm)
     fr = tcl_data.frame(set_name, KIND)
@@ -368,6 +380,7 @@ def picks(arm):
 def held_record(arm):
     """records/text_<arm>_held.json: held cells at the recorded picks, from the held score files."""
     info = arm_info(arm)
+    require_pass_rule(arm)
     doc = require_pick_record(arm)
     for head, seed in units(arm):
         check_provenance(arm, 'art_held', head, seed)
