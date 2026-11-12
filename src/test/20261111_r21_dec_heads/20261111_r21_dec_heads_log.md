@@ -173,3 +173,13 @@ Spec: `docs/superpowers/specs/2026-11-11-r21-dec-heads-design.md`. Decision line
 - 16:50: **D16 PASS**: `r21_d16.py derive` (32 min, one CPU slot; `d16/d16_table.json`) against `scores/stage2_table.json`,
   compared by the controller (`d16/compare.json`): 36 cells, 540 numbers (change, interval, means, per-seed values) and
   36 words; max |diff| 1.6e-16, 0 failed, 0 missing; tolerance 1e-6. The derive read the same picks file (SHA-256 equal).
+
+## Run chat, 2026-11-12
+
+- 19:33: the user asked "Wait, so DEC loss actually help?" Answer given: small gains on style and genre (style AMI
+  +0.006 to +0.008 over c*'s 0.42), none on emotion; the epoch confound stays. The run sidecars keep no AMI per epoch
+  (only c*'s dev loss sets the kept epoch), so the saved files cannot separate the DEC term from the later kept epoch.
+- About 19:40: **user**: before AMI, look at DEC-type internal cluster scores: silhouette, the Calinski-Harabasz index
+  and "CBI" (read as the Davies-Bouldin index; not confirmed with the user), as in the PercepT paper (not checked). The
+  user is not sure they apply here, since PercepT has no train/test split. To be discussed in a new chat ("r21 run 2",
+  handoff `docs/superpowers/handoffs/2026-11-12-r21-run-2-handoff.md`). The λ = 0 control stays open.
