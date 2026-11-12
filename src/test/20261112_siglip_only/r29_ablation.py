@@ -22,10 +22,12 @@ P.use_older_rounds()
 import r29_trainer as T
 import r28_trainer as R
 import r28_ablation as F
+import r29_ladder as L
 P.check_older_imports()
 
 B = T.B
 REMOVALS = R.REMOVALS
+AMI_DRAWS, MAP_DRAWS = 2000, 10000      # spec §3.4: AMI 2,000 draws, mAP 10,000
 BASE_HASHES = T.code_hashes
 
 
@@ -34,7 +36,11 @@ def code_hashes():
                 **{'r29_ablation.py': T.file_sha(__file__)})
 
 
-def require_pass():
+def require_pass(smoke=False, source=None):
+    """D3. Exempt: a smoke with the Qwen stand-in source. It writes only under SMOKE_OUT, reads no candidate record
+    (no K*, only K0's frozen weights) and reports no number, so it may run before stage 1 (ruling of build 4)."""
+    if smoke and source == 'qwen':
+        return
     path = P.RECORDS / 'pass_rule.json'
     assert path.is_file() and json.loads(path.read_text()).get('status') == 'pass', \
         f'ablation needs {path} with status "pass" (D3)'
@@ -44,7 +50,7 @@ def kstar():
     path = P.RECORDS / 'prefix_pick.json'
     assert path.is_file(), f'missing {path}'
     pick = json.loads(path.read_text())
-    assert {'kstar', 'kstar_form'} <= pick.keys(), f'{path}: missing shared interface keys'
+    assert {'kstar', 'kstar_form', 'p1_form', 'flag'} <= pick.keys(), f'{path}: missing shared interface keys'
     assert pick['kstar'] in ('siglip1', 'siglip1_prefix'), pick
     assert pick['kstar_form'] == {'siglip1': 'plain', 'siglip1_prefix': 'prefixed'}[pick['kstar']], pick
     return pick['kstar']
@@ -66,7 +72,7 @@ def training_patches(row, source):
 
 
 def train(row, seeds, device, root, *, smoke=False, source=None, max_epochs=None):
-    require_pass()
+    require_pass(smoke, source)
     # qwen is solely the K0 stand-in for a smoke / fixed-batch regression.
     assert source is None or (smoke and source == 'qwen'), 'full ablations must use K*'
     source = source or kstar()
@@ -136,7 +142,7 @@ def write_json(path, document):
 
 
 def export(row, seeds, root, *, kinds=('held',), device=None, smoke=False, source=None):
-    require_pass()
+    require_pass(smoke, source)
     assert row in REMOVALS
     assert source is None or (smoke and source == 'qwen'), 'full ablations must use K*'
     source = source or kstar()
@@ -163,7 +169,7 @@ def shared_ami_draws(n_rows, n_cand_seeds, comp_seeded, n_draws, rng_seed=0):
 BASE_AMI_DRAWS = F.ns_clu.draws_iter
 
 
-def paired_change(removal, reference, labels, k, *, ami_draws=2000, map_draws=10000):
+def paired_change(removal, reference, labels, k, *, ami_draws=AMI_DRAWS, map_draws=MAP_DRAWS):
     """Removal minus K*: paired rows/queries and training seeds, percentile 95%.
     No WIN/LEVEL label: SC7 is attribution, with no validation LEVEL unit.
     """
@@ -172,7 +178,7 @@ def paired_change(removal, reference, labels, k, *, ami_draws=2000, map_draws=10
         ami = F.ns_clu.paired_cell(removal['parts'], reference['parts'], labels, k,
                                    metrics=('ami',), draws=ami_draws, rng_seed=0)['ami']
     mp = F.r20_ret.paired(removal['ret'], reference['ret'], draws=map_draws)
-    return dict(ami={key: ami[key] for key in ('d', 'lo', 'hi')}, map=mp)
+    return dict(ami={key: ami[key] for key in ('d', 'lo', 'hi', 'n_draws')}, map=dict(mp, n_draws=int(map_draws)))
 
 
 def load_rows(root, arm, aspect, seed, list_sha, hashes, *, source, n=F.N_HELD, width=P.OUTPUT_WIDTH):
@@ -235,19 +241,21 @@ def compare_replay(cells, list_sha, frozen):
 
 
 def require_committed(name):
-    path = P.RECORDS / name
-    relative = path.relative_to(P.REPO).as_posix()
-    stored = subprocess.run(['git', '-C', str(P.REPO), 'show', f'HEAD:{relative}'], capture_output=True, check=True)
-    assert stored.stdout == path.read_bytes(), f'{path}: must be committed unchanged before SC7 reads held rows (C13)'
+    P.require_committed(P.RECORDS / name, 'SC7 reads held rows only after its inputs are committed (C13)')
 
 
 def require_gate():
+    """The one gate SC7 needs is vii_ablation (ticket 08 parks SC6 on the photo parts). Ladder rule (ticket 08): absent
+    raises "not run"; fail before try 3 raises "still open"; fail at try 3 or parked returns 'parked' (SC7 inconclusive);
+    pass returns 'pass' once the code and trainer-test hashes match."""
+    status = L.gate_status(P.GATES.parent, 'vii_ablation')
+    if status != 'pass':
+        return 'parked'
     path = P.GATES / 'vii_ablation.json'
-    assert path.is_file(), f'run gate-vii first: missing {path}'
     gate = json.loads(path.read_text())
-    assert gate['gate'] == 'vii_ablation' and gate['status'] == 'pass', f'{path}: ablation gate must pass'
     assert gate['details']['code_sha256'] == code_hashes(), f'{path}: ablation code changed; rerun gate-vii'
     assert gate['details']['trainer_test_sha256'] == T.file_sha(HERE / 'test_r29_ablation.py'), 'trainer test changed'
+    return 'pass'
 
 
 def default_root(source, smoke=False):
@@ -263,7 +271,12 @@ def score(root=None):
     source = kstar()
     for name in ('prefix_pick.json', 'pass_rule.json'):
         require_committed(name)
-    require_gate()
+    if require_gate() != 'pass':
+        document = dict(kind='r29_ablation', claim='SC7', complete=False, status='inconclusive', set='artelingo',
+                        split='held', encoder='siglip1', kstar=source, cause='gate vii_ablation is parked (a fail at try 3 parks)',
+                        code_sha256=code_hashes())
+        write_json(P.RECORDS / 'ablation.json', document)
+        return document
     root = T.check_root(root or default_root(source))
     # Check crash status before reading ANY held rows, including K*'s.
     for row in REMOVALS:
@@ -289,18 +302,22 @@ def score(root=None):
                 per_seed = (np.array(removal['cell'][f'{measure}_per_seed']) -
                             np.array(reference['cell'][f'{measure}_per_seed'])).tolist()
                 deltas[row][aspect][measure] = dict(interval, delta=interval['d'], per_seed=per_seed)
-                cells.append(dict(id=f'artelingo/siglip1/{row}/{aspect}/{measure}/{source}',
+                k = F.CLASS_COUNT[aspect] if measure == 'ami' else None
+                # id and field names as ticket 06's cells: `<set>/<encoder>/<arm>/<aspect>/<measure><k>/<comparator>`
+                cells.append(dict(id=f'artelingo/siglip1/{row}/{aspect}/{measure}{"" if k is None else k}/{source}',
                                   set='artelingo', encoder='siglip1', arm=row, aspect=aspect, measure=measure, metric=measure,
-                                  k=F.CLASS_COUNT[aspect] if measure == 'ami' else None,
+                                  n_rows=int(len(labels[aspect])), k=k,
                                   comparator=source, cand=cand, comp=comp, value=cand, comparator_value=comp,
                                   **interval, r=None, outcome=None,
                                   seeds=list(P.SEEDS), per_seed=per_seed))
-    document = dict(kind='r29_ablation', claim='SC7', complete=True, set='artelingo', split='held', encoder='siglip1',
+    drawn = {m: {c['n_draws'] for c in cells if c['measure'] == m} for m in ('ami', 'map')}
+    assert all(len(v) == 1 for v in drawn.values()), drawn
+    document = dict(kind='r29_ablation', claim='SC7', complete=True, status='ok', set='artelingo', split='held', encoder='siglip1',
                     kstar=source, kstar_form={'siglip1': 'plain', 'siglip1_prefix': 'prefixed'}[source],
                     cap_source=source, cap_width=P.CAPTION_SOURCES[source][1], seeds=list(P.SEEDS),
                     roots=dict(kstar=str(P.OUT / 'cstar/siglip1'), removals=str(root)),
                     list_sha256=list_sha, arms=arms, deltas_vs_kstar=deltas, cells=cells,
-                    protocol=dict(readout='aspect head, plain cosine, qe_k=0', ami_draws=2000, map_draws=10000,
+                    protocol=dict(readout='aspect head, plain cosine, qe_k=0', ami_draws=drawn['ami'].pop(), map_draws=drawn['map'].pop(),
                                   interval='paired percentile 95%', seed_coupling='shared', rng_seed=0),
                     code_sha256=code_hashes(), input_sha256=hashes)
     write_json(P.RECORDS / 'ablation.json', document)
@@ -393,8 +410,8 @@ def main(argv=None):
         print(f'SC7: {len(doc["cells"])} cells -> {P.RECORDS / "ablation.json"}', flush=True)
         return 0
     assert not args.k0_standin or args.smoke, '--k0-standin is smoke only'
-    require_pass()
     source = 'qwen' if args.k0_standin else None
+    require_pass(args.smoke, source)
     root = args.root or default_root(source or kstar(), args.smoke)
     if args.command == 'export':
         export(args.row, args.seeds, root, kinds=tuple(args.kind), device=args.device,

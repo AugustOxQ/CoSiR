@@ -12,6 +12,10 @@ sys.path.insert(0, str(HERE))
 import r29_ablation as A
 
 
+def pick(arm, form='plain', **extra):
+    return json.dumps(dict(kstar=arm, kstar_form=form, p1_form='plain', flag=None, **extra))
+
+
 def test_train_refuses_without_a_pass_before_reading_any_training_input(tmp_path, monkeypatch):
     monkeypatch.setattr(A.P, 'RECORDS', tmp_path)
     for record in (None, {'status': 'fail'}, {'status': 'inconclusive'}, {'pass': True}):
@@ -25,10 +29,12 @@ def test_train_refuses_without_a_pass_before_reading_any_training_input(tmp_path
 def test_kstar_asserts_the_fixed_interface_and_matching_form(tmp_path, monkeypatch, arm, form):
     monkeypatch.setattr(A.P, 'RECORDS', tmp_path)
     path = tmp_path / 'prefix_pick.json'
-    path.write_text(json.dumps(dict(kstar=arm, kstar_form=form)))
+    good = dict(kstar=arm, kstar_form=form, p1_form='plain', flag=None)
+    path.write_text(json.dumps(good))
     assert A.kstar() == arm
-    for bad in ({'kstar': arm}, {'kstar_form': form}, {'kstar': 'qwen', 'kstar_form': 'plain'},
-                {'kstar': arm, 'kstar_form': 'prefixed' if form == 'plain' else 'plain'}):
+    bads = [{k: v for k, v in good.items() if k != key} for key in good]      # each of the four keys is required
+    bads += [dict(good, kstar='qwen', kstar_form='plain'), dict(good, kstar_form='prefixed' if form == 'plain' else 'plain')]
+    for bad in bads:
         path.write_text(json.dumps(bad))
         with pytest.raises(AssertionError):
             A.kstar()
@@ -198,7 +204,7 @@ def test_held_export_uses_the_removal_context_and_ticket03_caption_loader(tmp_pa
     monkeypatch.setattr(A.P, 'RECORDS', tmp_path)
     monkeypatch.setattr(A.P, 'OUT', tmp_path / 'out')
     (tmp_path / 'pass_rule.json').write_text('{"status":"pass"}')
-    (tmp_path / 'prefix_pick.json').write_text('{"kstar":"siglip1_prefix","kstar_form":"prefixed"}')
+    (tmp_path / 'prefix_pick.json').write_text(pick('siglip1_prefix', 'prefixed'))
     seen = []
     original = A.B.training_context
     def export(enc, source, seeds, root, **kwargs):
@@ -216,9 +222,9 @@ def test_full_scoring_has_sheet_rows_with_paired_intervals_and_no_outcome(tmp_pa
     monkeypatch.setattr(A.P, 'RECORDS', tmp_path)
     monkeypatch.setattr(A.P, 'OUT', tmp_path / 'out')
     (tmp_path / 'pass_rule.json').write_text('{"status":"pass"}')
-    (tmp_path / 'prefix_pick.json').write_text('{"kstar":"siglip1_prefix","kstar_form":"prefixed"}')
+    (tmp_path / 'prefix_pick.json').write_text(pick('siglip1_prefix', 'prefixed'))
     monkeypatch.setattr(A, 'require_committed', lambda _: None)
-    monkeypatch.setattr(A, 'require_gate', lambda: None)
+    monkeypatch.setattr(A, 'require_gate', lambda: 'pass')
     labels = {a: np.tile(np.arange(A.F.CLASS_COUNT[a]), 2).astype(np.int64) for a in A.P.ASPECTS}
     monkeypatch.setattr(A.F.t5, 'bind_labels', lambda: (np.array(['p']), 'names', labels))
     calls = []
@@ -229,7 +235,7 @@ def test_full_scoring_has_sheet_rows_with_paired_intervals_and_no_outcome(tmp_pa
                     ami_mean=point, map_per_seed=[point] * 5, map_mean=point, n_queries=1, dropped=0, n_labelled=1)
         return dict(cell=cell)
     monkeypatch.setattr(A, 'score_aspect', score)
-    monkeypatch.setattr(A, 'paired_change', lambda *args: {m: dict(d=-0.2, lo=-0.3, hi=-0.1) for m in ('ami', 'map')})
+    monkeypatch.setattr(A, 'paired_change', lambda *args: {m: dict(d=-0.2, lo=-0.3, hi=-0.1, n_draws=n) for m, n in (('ami', 2000), ('map', 10000))})
     document = A.score()
     saved = json.loads((tmp_path / 'ablation.json').read_text())
     assert document == saved and saved['complete'] and saved['claim'] == 'SC7'
@@ -241,7 +247,12 @@ def test_full_scoring_has_sheet_rows_with_paired_intervals_and_no_outcome(tmp_pa
         assert cell['cand'] == 0.5 and cell['comp'] == 0.7
         assert cell['value'] == cell['cand'] and cell['comparator_value'] == cell['comp']
         assert cell['outcome'] is None and cell['r'] is None
-        assert cell['id'] == f'artelingo/siglip1/{cell["arm"]}/{cell["aspect"]}/{cell["measure"]}/siglip1_prefix'
+        # ticket 06's cell shape: AMI measure carries its class count in the id, as `ami<k>`
+        k = A.F.CLASS_COUNT[cell['aspect']] if cell['measure'] == 'ami' else None
+        assert cell['id'] == (f'artelingo/siglip1/{cell["arm"]}/{cell["aspect"]}/'
+                              f'{"map" if k is None else f"ami{k}"}/siglip1_prefix')
+        assert cell['n_draws'] == (2000 if k else 10000) and cell['n_rows'] == len(labels[cell['aspect']])
+    assert saved['protocol']['ami_draws'] == 2000 and saved['protocol']['map_draws'] == 10000
     assert calls[0][0] == str(tmp_path / 'out/cstar/siglip1')
     assert all(source == 'siglip1_prefix' for _, _, source in calls)
 
@@ -310,7 +321,7 @@ def test_selected_kstar_input_reaches_real_removal_loss_at_1152(tmp_path, monkey
     monkeypatch.setattr(A.P, 'RECORDS', tmp_path)
     monkeypatch.setattr(A.P, 'SMOKE_OUT', tmp_path / 'smoke')
     (tmp_path / 'pass_rule.json').write_text('{"status":"pass"}')
-    (tmp_path / 'prefix_pick.json').write_text(json.dumps(dict(kstar=source, kstar_form=form)))
+    (tmp_path / 'prefix_pick.json').write_text(pick(source, form))
     monkeypatch.setattr(A.B, 'code_state', lambda: ('test', False))
     monkeypatch.setattr(A.B.eg, 'atomic_record', lambda *args: None)
     monkeypatch.setattr(A.R, 'BASE_RECORD', lambda *a, **kw: dict(status='ok'))
@@ -331,3 +342,169 @@ def test_selected_kstar_input_reaches_real_removal_loss_at_1152(tmp_path, monkey
         assert inputs[aspect]['cap'].shape[1] == 2048  # Qwen graph data was not mutated
         assert torch.isfinite(log['loss'][aspect])
         assert log['grads'][aspect]['cap.trunk.0.weight'] is not None
+
+
+# ---------------------------------------------------------------- build 4 fixes: smoke rule, gate, order, draws
+def stub_train(monkeypatch, calls):
+    def train(enc, row, seeds, device, root, **kwargs):
+        calls.append((row, list(seeds)))
+        return {0: A.B.Run(dict(status='ok'), None, None)}
+    monkeypatch.setattr(A.B, 'train', train)
+
+
+def test_qwen_smoke_runs_without_a_pass_record_and_writes_only_under_smoke(tmp_path, monkeypatch):
+    # No pass_rule.json anywhere: the stand-in smoke reads no candidate record, so the pass check does not apply.
+    monkeypatch.setattr(A.P, 'RECORDS', tmp_path)
+    monkeypatch.setattr(A.P, 'SMOKE_OUT', tmp_path / 'smoke')
+    assert not (tmp_path / 'pass_rule.json').exists()
+    calls, exported = [], []
+    stub_train(monkeypatch, calls)
+    monkeypatch.setattr(A.T, 'export', lambda *a, **kw: exported.append((a, kw)))
+    root = A.P.SMOKE_OUT / 'no-pass'
+    assert A.train('buddy', [0], 'cpu', root, smoke=True, source='qwen')[0].record['status'] == 'ok'
+    A.export('buddy', [0], root, smoke=True, source='qwen')
+    assert calls == [('buddy', [0])] and len(exported) == 1
+    # The CLI path with --k0-standin, no pass record either.
+    seen = []
+    monkeypatch.setattr(A, 'train', lambda row, seeds, device, root, **kw: seen.append(('train', root)) or
+                        {0: A.B.Run(dict(status='ok'), None, None)})
+    monkeypatch.setattr(A, 'export', lambda row, seeds, root, **kw: seen.append(('export', root)))
+    monkeypatch.setattr(A, 'smoke_checkpoint', lambda root, device: seen.append(('checkpoint', root)))
+    assert A.main(['train', '--row', 'buddy', '--seeds', '0', '--smoke', '--k0-standin', '--device', 'cpu']) == 0
+    assert [name for name, _ in seen] == ['train', 'export', 'checkpoint']
+    assert all(str(r).startswith(str(A.P.SMOKE_OUT)) for _, r in seen)
+
+
+def test_non_smoke_and_non_standin_calls_still_refuse_without_a_pass_record(tmp_path, monkeypatch):
+    monkeypatch.setattr(A.P, 'RECORDS', tmp_path)
+    monkeypatch.setattr(A.P, 'SMOKE_OUT', tmp_path / 'smoke')
+    monkeypatch.setattr(A.P, 'OUT', tmp_path / 'out')
+    calls = []
+    stub_train(monkeypatch, calls)
+    monkeypatch.setattr(A.T, 'export', lambda *a, **kw: calls.append('export'))
+    root = tmp_path / 'out' / 'x'
+    smoke_root = A.P.SMOKE_OUT / 'x'
+    with pytest.raises(AssertionError, match='pass_rule'):
+        A.train('buddy', [0], 'cpu', root, source='qwen')                     # real run with the stand-in source
+    with pytest.raises(AssertionError, match='pass_rule'):
+        A.export('buddy', [0], root, source='qwen')
+    with pytest.raises(AssertionError, match='pass_rule'):
+        A.train('buddy', [0], 'cpu', smoke_root, smoke=True)                  # smoke that would read K*
+    with pytest.raises(AssertionError, match='pass_rule'):
+        A.export('buddy', [0], smoke_root, smoke=True)
+    for argv in (['train', '--row', 'buddy'], ['export', '--row', 'buddy'], ['train', '--row', 'buddy', '--smoke']):
+        with pytest.raises(AssertionError, match='pass_rule'):
+            A.main(argv)
+    assert calls == []
+
+
+def score_setup(tmp_path, monkeypatch, *, gate=None, tries=1, committed=True, stub_paired=True):
+    """Everything `score` reads is a stub that records a call, so a test can see whether held rows were reached."""
+    monkeypatch.setattr(A.P, 'RECORDS', tmp_path)
+    monkeypatch.setattr(A.P, 'GATES', tmp_path / 'gates')
+    monkeypatch.setattr(A.P, 'OUT', tmp_path / 'out')
+    (tmp_path / 'pass_rule.json').write_text('{"status":"pass"}')
+    (tmp_path / 'prefix_pick.json').write_text(pick('siglip1'))
+    if gate is not None:
+        details = dict(code_sha256=A.code_hashes(), trainer_test_sha256=A.T.file_sha(A.HERE / 'test_r29_ablation.py'))
+        (tmp_path / 'gates').mkdir(exist_ok=True)
+        (tmp_path / 'gates' / 'vii_ablation.json').write_text(
+            json.dumps(dict(gate='vii_ablation', status=gate, tries=tries, details=details)))
+    labels = {a: np.tile(np.arange(A.F.CLASS_COUNT[a]), 2).astype(np.int64) for a in A.P.ASPECTS}
+    monkeypatch.setattr(A.F.t5, 'bind_labels', lambda: (np.array(['p']), 'names', labels))
+    if committed:
+        monkeypatch.setattr(A, 'require_committed', lambda _: None)
+    held = []
+    def score_aspect(root, arm, aspect, labels_, *args, **kwargs):
+        held.append((str(root), arm, aspect))
+        n = len(labels_)
+        point = 0.7 if arm == 'siglip1' else 0.5
+        cell = dict(k=A.F.CLASS_COUNT[aspect], seeds=list(A.P.SEEDS), ami_per_seed=[point] * 5, ami_mean=point,
+                    map_per_seed=[point] * 5, map_mean=point, n_queries=n, dropped=0, n_labelled=n)
+        ret = dict(ap=np.full((5, n), point), query_ids=np.arange(n), dropped=0)
+        return dict(cell=cell, parts=np.zeros((5, 3, n), dtype=np.int64), ret=ret)
+    monkeypatch.setattr(A, 'score_aspect', score_aspect)
+    if stub_paired:     # candidate 0.5 against K* 0.7
+        monkeypatch.setattr(A, 'paired_change', lambda *a: {m: dict(d=-0.2, lo=-0.3, hi=-0.1, n_draws=1) for m in ('ami', 'map')})
+    return held
+
+
+def test_score_reads_no_held_rows_while_a_selection_record_is_uncommitted(tmp_path, monkeypatch):
+    import subprocess
+    repo = tmp_path / 'repo'
+    (repo / 'records').mkdir(parents=True)
+    git = ['git', '-C', str(repo), '-c', 'user.email=t@t', '-c', 'user.name=t']
+    subprocess.run(git + ['init', '-q'], check=True)
+    held = score_setup(repo / 'records', monkeypatch, gate='pass', committed=False)
+    monkeypatch.setattr(A.P, 'REPO', repo)
+    # pass_rule.json committed, prefix_pick.json not even tracked
+    subprocess.run(git + ['add', 'records/pass_rule.json'], check=True)
+    subprocess.run(git + ['commit', '-qm', 'pass'], check=True)
+    with pytest.raises(RuntimeError, match='prefix_pick.json'):
+        A.score()
+    subprocess.run(git + ['add', '-f', 'records/prefix_pick.json'], check=True)
+    subprocess.run(git + ['commit', '-qm', 'pick'], check=True)
+    (repo / 'records' / 'pass_rule.json').write_text('{"status":"pass","x":1}')     # edited after the commit
+    with pytest.raises(RuntimeError, match='pass_rule.json'):
+        A.score()
+    assert held == []
+    (repo / 'records' / 'pass_rule.json').write_text('{"status":"pass"}')
+    assert A.score()['complete']
+    assert held
+
+
+@pytest.mark.parametrize('status', ['inconclusive', 'running', 'failed'])
+def test_score_refuses_a_failed_crash_journal_before_any_held_read(tmp_path, monkeypatch, status):
+    held = score_setup(tmp_path, monkeypatch, gate='pass')
+    journal = tmp_path / 'out' / 'ablation' / 'siglip1' / 'siglip1' / 'train' / 'relational' / 'attempts__s3.json'
+    journal.parent.mkdir(parents=True)
+    journal.write_text(json.dumps(dict(status=status)))
+    with pytest.raises(AssertionError, match='inconclusive'):
+        A.score()
+    assert held == [] and not (tmp_path / 'ablation.json').exists()
+    journal.write_text(json.dumps(dict(status='ok')))
+    assert A.score()['complete'] and held
+
+
+def test_gate_states_decide_whether_sc7_scores_waits_or_is_inconclusive(tmp_path, monkeypatch):
+    # absent: not run
+    held = score_setup(tmp_path, monkeypatch)
+    with pytest.raises(RuntimeError, match='gate vii_ablation not run'):
+        A.score()
+    assert held == []
+    # fail before try 3: still open, nothing written
+    for tries in (1, 2):
+        held = score_setup(tmp_path, monkeypatch, gate='fail', tries=tries)
+        with pytest.raises(RuntimeError, match='gate vii_ablation still open'):
+            A.score()
+        assert held == [] and not (tmp_path / 'ablation.json').exists()
+    # fail at try 3 and parked: SC7 inconclusive, no held read, a record that says so
+    for status, tries in (('fail', 3), ('parked', 3), ('parked', 2)):
+        held = score_setup(tmp_path, monkeypatch, gate=status, tries=tries)
+        doc = A.score()
+        assert doc['status'] == 'inconclusive' and doc['complete'] is False and 'cells' not in doc
+        assert json.loads((tmp_path / 'ablation.json').read_text()) == doc
+        assert held == []
+    # only the ablation part counts: a failed photo-side gate does not touch SC7
+    (tmp_path / 'gates' / 'vii_photo.json').write_text(json.dumps(dict(gate='vii_photo', status='parked', tries=3, details={})))
+    held = score_setup(tmp_path, monkeypatch, gate='pass')
+    assert A.score()['status'] == 'ok' and held
+
+
+def test_score_draw_counts_reach_both_bootstraps_and_the_cells(tmp_path, monkeypatch):
+    score_setup(tmp_path, monkeypatch, gate='pass', stub_paired=False)       # the real paired_change, spied bootstraps
+    spied = dict(ami=[], map=[])
+    def spy_cell(cand, comp, y, k, metrics, draws=None, rng_seed=None, **kw):
+        assert rng_seed == 0
+        spied['ami'].append(draws)
+        return dict(ami=dict(d=-0.2, lo=-0.3, hi=-0.1, n_draws=draws))
+    def spy_map(a, b, draws=None, **kw):
+        spied['map'].append(draws)
+        return dict(d=-0.2, lo=-0.3, hi=-0.1)
+    monkeypatch.setattr(A.F.ns_clu, 'paired_cell', spy_cell)
+    monkeypatch.setattr(A.F.r20_ret, 'paired', spy_map)
+    doc = A.score()
+    assert spied['ami'] == [2000] * 12 and spied['map'] == [10000] * 12
+    assert {c['n_draws'] for c in doc['cells'] if c['measure'] == 'ami'} == {2000}
+    assert {c['n_draws'] for c in doc['cells'] if c['measure'] == 'map'} == {10000}
+    assert doc['protocol']['ami_draws'] == 2000 and doc['protocol']['map_draws'] == 10000
