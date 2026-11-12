@@ -1,6 +1,7 @@
 {
   "gate": "i_c_valpick",
   "status": "pass",
+  "tries": 3,
   "details": {
     "seed": 0,
     "tolerance": 1e-06,
@@ -41,7 +42,7 @@
       "map/style": 0.34909876906169934,
       "map/genre": 0.6019655432369467
     },
-    "root": "/data/SSD2/cosir_r29/20261112_siglip_only/scratch_gate_ic_gpu",
+    "root": "/data/SSD2/cosir_r29/20261112_siglip_only/gate_i_c/try1",
     "k0": {
       "image": {
         "m": 0.38629170813482466,
@@ -206,12 +207,11 @@
       "mean": 0.38489083139966523,
       "names_sha256": "1430d4b56e4a76dbe3e1c4d699e1db5c92967c5f2048b74b6cbcdf1589809e2e",
       "files": {
-        "emotion/s0": "/data/SSD2/cosir_r29/20261112_siglip_only/scratch_gate_ic_gpu/val/k11=40/emotion__s0.npz",
-        "style/s0": "/data/SSD2/cosir_r29/20261112_siglip_only/scratch_gate_ic_gpu/val/k11=40/style__s0.npz",
-        "genre/s0": "/data/SSD2/cosir_r29/20261112_siglip_only/scratch_gate_ic_gpu/val/k11=40/genre__s0.npz"
+        "emotion/s0": "/data/SSD2/cosir_r29/20261112_siglip_only/gate_i_c/try1/val/k11=40/emotion__s0.npz",
+        "style/s0": "/data/SSD2/cosir_r29/20261112_siglip_only/gate_i_c/try1/val/k11=40/style__s0.npz",
+        "genre/s0": "/data/SSD2/cosir_r29/20261112_siglip_only/gate_i_c/try1/val/k11=40/genre__s0.npz"
       }
     }
   },
-  "tries": 2,
-  "written": "2026-11-12T23:51:31+01:00"
+  "written": "2026-11-13 00:36"
 }
