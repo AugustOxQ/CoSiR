@@ -2,6 +2,13 @@
 
 CLI: extract [--limit N] [--gate-iv], check --store DIR, gate-iv --store DIR.
 --limit counts captions (not images), marks smoke=true, and requires --out.
+
+After merge, run from the integration worktree so records land there:
+    cd /project/CoSiR-r29
+    export OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 PYTHONDONTWRITEBYTECODE=1
+    export HF_HOME=/data/SSD2/HF_home HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
+    res-queue gpu --short --no-wait --label r29:t02-extract -- /root/miniconda3/envs/CoSiR/bin/python src/test/20261112_siglip_only/r29_extract.py extract --gate-iv
+This writes records/gates/iv_store.json; ticket 04 writes iv_hash.json separately.
 """
 
 import argparse
@@ -71,15 +78,18 @@ def _read(folder, *, allow_smoke=False):
     return index, progress, rows
 
 
-def check_store(folder, reference_index, *, allow_smoke=False):
+def check_store(folder, reference_index, *, expected_prefix=None, allow_smoke=False):
     """Gate viii. Exact key coverage; reference order may differ (C6).
 
     reference_index is an index dict or an index.json path. For a smoke check,
-    pass an explicitly sliced reference and allow_smoke=True.
+    pass an explicitly sliced reference and allow_smoke=True. expected_prefix is
+    the raw prefix, or None for a plain store (legacy plain manifests omit it).
     """
     reference = reference_index if isinstance(reference_index, dict) else _json(reference_index)
     expected = _keys(reference)
     index, progress, rows = _read(folder, allow_smoke=allow_smoke)
+    prefix = stored_prefix(index['backbone'], '' if expected_prefix is None else expected_prefix)
+    assert index.get('prefix', '') == prefix, 'stored prefix'
     actual = _keys(index)
     assert actual.keys() == expected.keys(), 'sample_id coverage'
     for sid, painting in actual.items():
@@ -163,7 +173,7 @@ def extract_store(reference, texts, enc, out, *, prefix=paths.PREFIX, smoke=Fals
     _write(out / 'index.json', index)
     progress['index_sha256'] = _sha(out / 'index.json')
     _write(out / 'progress.json', progress)
-    return check_store(out, reference, allow_smoke=smoke)
+    return check_store(out, reference, expected_prefix=prefix, allow_smoke=smoke)
 
 
 def _first(index, n):
@@ -171,18 +181,29 @@ def _first(index, n):
     return dict(index, texts=index['texts'][:n], n_texts=n)
 
 
-def gate_iv(folder, plain, texts, enc, *, record=None, allow_smoke=False):
-    """Validate prefix store and replay 100 raw captions with an empty prefix.
+def _replay(enc, texts, prefix, rows, label):
+    replay, count, _ = _encode_chunk(enc, texts, prefix, extractor.BATCH[enc.name]['txt'])
+    assert count == 0
+    assert replay.shape == rows.shape == (100, enc.dim)
+    assert extractor.check_arrays(replay, None, tol=NORM_TOL)['ok']
+    x, y = replay.astype(np.float32), np.asarray(rows, dtype=np.float32)
+    cosine = np.sum(x * y, axis=1) / (np.linalg.norm(x, axis=1) * np.linalg.norm(y, axis=1))
+    result = dict(n_texts=100, min_cosine=float(cosine.min()), threshold=REPLAY_COSINE)
+    assert np.isfinite(cosine).all() and (cosine >= REPLAY_COSINE).all(), f'{label} replay'
+    return result
 
-    details.hash is reserved for tickets 03/04's trainer/scorer hash comparison.
-    A pass here covers this ticket's store/replay portion only.
+
+def gate_iv(folder, plain, texts, enc, *, record=None, allow_smoke=False):
+    """Gate iv_store: store checks and both 100-caption replays.
+
+    Ticket 04 writes iv_hash; ticket 05 merges the two parts into gate iv.
     """
     folder, plain = Path(folder), Path(plain)
-    record = Path(record) if record is not None else paths.GATES / 'iv.json'
+    record = Path(record) if record is not None else paths.GATES / 'iv_store.json'
     assert not allow_smoke or record.resolve().is_relative_to(folder.resolve()), 'smoke records stay with smoke'
     tries = _json(record)['tries'] + 1 if record.exists() else 1
     assert 1 <= tries <= 3, 'gate iv exhausted its three tries'
-    details = {'hash': None, 'scope': 'store and empty-prefix replay; hash comparison pending tickets 03/04'}
+    details = {}
     status = 'fail'
     try:
         reference, _, plain_rows = _read(plain)
@@ -191,18 +212,13 @@ def gate_iv(folder, plain, texts, enc, *, record=None, allow_smoke=False):
         assert index['prefix'] == stored_prefix(enc.name, paths.PREFIX), 'stored prefix'
         selected = _first(reference, index['n_texts']) if allow_smoke else reference
         assert index['texts'] == selected['texts'], 'extraction order'
-        details['store'] = check_store(folder, selected, allow_smoke=allow_smoke)
+        details['store'] = check_store(folder, selected, expected_prefix=paths.PREFIX, allow_smoke=allow_smoke)
         assert details['store']['n_truncated'] == 0, 'gate iv requires zero truncated captions'
         assert len(texts) >= 100 and len(plain_rows) >= 100, 'gate iv needs 100 captions'
-        # Same text path, count rule and float16 storage rounding, with the empty prefix.
-        replay, count, _ = _encode_chunk(enc, texts[:100], '', extractor.BATCH[enc.name]['txt'])
-        assert count == 0
-        assert replay.shape == (100, index['dim'])
-        assert extractor.check_arrays(replay, None, tol=NORM_TOL)['ok']
-        x, y = replay.astype(np.float32), np.asarray(plain_rows[:100], dtype=np.float32)
-        cosine = np.sum(x * y, axis=1) / (np.linalg.norm(x, axis=1) * np.linalg.norm(y, axis=1))
-        details['replay'] = dict(n_texts=100, min_cosine=float(cosine.min()), threshold=REPLAY_COSINE)
-        assert np.isfinite(cosine).all() and (cosine >= REPLAY_COSINE).all(), 'empty-prefix replay'
+        # Same text path, count rule and float16 storage rounding for both replays.
+        details['replay'] = _replay(enc, texts[:100], '', plain_rows[:100], 'empty-prefix')
+        prefixed_rows = np.load(folder / 'txt.npy', mmap_mode='r', allow_pickle=False)
+        details['prefixed_replay'] = _replay(enc, texts[:100], paths.PREFIX, prefixed_rows[:100], 'prefixed')
         status = 'pass'
     except Exception as error:
         details['error'] = f'{type(error).__name__}: {error}'
@@ -211,17 +227,18 @@ def gate_iv(folder, plain, texts, enc, *, record=None, allow_smoke=False):
         record.parent.mkdir(parents=True, exist_ok=True)
         written = subprocess.check_output(['date', '+%F %H:%M'], env=dict(os.environ, TZ='Europe/Amsterdam'),
                                           text=True).strip()
-        _write(record, dict(gate='iv', status=status, tries=tries, details=details, written=written))
+        _write(record, dict(gate='iv_store', status=status, tries=tries, details=details, written=written))
     return _json(record)
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('command', choices=('extract', 'check', 'gate-iv'))
     parser.add_argument('--encoder', choices=ENCODERS, default=extractor.SIGLIP1)
     parser.add_argument('--reference', type=Path, default=paths.CAPTION_SOURCES['siglip1'][0])
     parser.add_argument('--annotations', type=Path, default=extractor.ARTELINGO_ANN)
     parser.add_argument('--prefix', default=paths.PREFIX)
+    parser.add_argument('--expected-prefix', help='check: raw prefix expected in manifest; omit for plain stores')
     parser.add_argument('--out', type=Path)
     parser.add_argument('--store', type=Path)
     parser.add_argument('--limit', type=int, help='first N captions; smoke only, explicit --out required')
@@ -231,7 +248,7 @@ def main(argv=None):
     reference, _, _ = _read(args.reference)
     if args.command == 'check':
         assert args.store is not None and args.limit is None
-        print(json.dumps(check_store(args.store, reference)))
+        print(json.dumps(check_store(args.store, reference, expected_prefix=args.expected_prefix)))
         return
     if args.limit is not None:
         assert args.command == 'extract' and args.out is not None, 'smoke requires extract --out'
@@ -251,7 +268,7 @@ def main(argv=None):
         result = extract_store(reference, spec.texts, enc, out, prefix=args.prefix, smoke=args.limit is not None)
         print(json.dumps(result))
     if args.command == 'gate-iv' or args.gate_iv:
-        record = out / 'records/gates/iv.json' if args.limit is not None else None
+        record = out / 'records/gates/iv_store.json' if args.limit is not None else None
         print(json.dumps(gate_iv(out, args.reference, spec.texts, enc, record=record,
                                  allow_smoke=args.limit is not None)))
 

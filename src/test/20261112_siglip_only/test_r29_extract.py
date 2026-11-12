@@ -46,7 +46,10 @@ class Tokenizer:
 class Model:
     def get_text_features(self, input_ids):
         ids = input_ids.float()
-        return torch.stack([ids.sum(1), (ids ** 2).sum(1), torch.ones(len(ids))], dim=1)
+        markers = [sum(word.encode()) % 100 + 1 for word in ('represent', 'Represent')]
+        prefixed = (ids[:, 0] == markers[0]) | (ids[:, 0] == markers[1])
+        # A prefix rotates the direction substantially, making a wrong replay fail.
+        return torch.stack([torch.ones(len(ids)), 2 * prefixed.float(), ids.sum(1) % 17 / 100], dim=1)
 
 
 def encoder(cls=SiglipSo400m):
@@ -117,24 +120,24 @@ def test_count_special_tokens_strictly_over_limit_and_keep_every_row(work, cls, 
 
 def test_join_by_id_accepts_permuted_reference(work):
     folder, ref, _, _ = write_store(work)
-    assert extract.check_store(folder, dict(ref, texts=ref['texts'][::-1]))['ok']
+    assert extract.check_store(folder, dict(ref, texts=ref['texts'][::-1]), expected_prefix=extract.paths.PREFIX)['ok']
 
 
 def test_wrong_painting_is_rejected_after_resealing(work):
     folder, ref, _, _ = write_store(work)
     reseal(folder, lambda index: index['texts'][0].update(painting='wrong'))
     with pytest.raises(AssertionError, match='painting mismatch'):
-        extract.check_store(folder, ref)
+        extract.check_store(folder, ref, expected_prefix=extract.paths.PREFIX)
 
 
-@pytest.mark.parametrize('bad', [0.0, 2.0, float('nan'), float('inf')])
+@pytest.mark.parametrize('bad', [0.0, 1.002, 2.0, float('nan'), float('inf')])
 def test_bad_norm_or_nonfinite_row_is_rejected(work, bad):
     folder, ref, _, _ = write_store(work)
     rows = np.load(folder / 'txt.npy', mmap_mode='r+')
     rows[0] = [bad, 0, 0]
     rows.flush()
     with pytest.raises(AssertionError, match='finite/norm'):
-        extract.check_store(folder, ref)
+        extract.check_store(folder, ref, expected_prefix=extract.paths.PREFIX)
 
 
 @pytest.mark.parametrize('fault,message', [
@@ -158,7 +161,7 @@ def test_manifest_rejections(work, fault, message):
 
     reseal(folder, change)
     with pytest.raises((AssertionError, KeyError), match=message):
-        extract.check_store(folder, ref)
+        extract.check_store(folder, ref, expected_prefix=extract.paths.PREFIX)
 
 
 def test_reject_changed_index_bytes(work):
@@ -166,7 +169,7 @@ def test_reject_changed_index_bytes(work):
     with (folder / 'index.json').open('a') as f:
         f.write('\n')
     with pytest.raises(AssertionError, match='index hash'):
-        extract.check_store(folder, ref)
+        extract.check_store(folder, ref, expected_prefix=extract.paths.PREFIX)
 
 
 def test_refuse_nonempty_folder_without_changing_it(work):
@@ -195,12 +198,13 @@ def test_gate_iv_replay_and_failure_records(work):
     folder, ref, enc, captions = write_store(work, n=100)
     plain = work / 'plain'
     extract.extract_store(ref, captions, enc, plain, prefix='')
-    record = work / 'records/gates/iv.json'
+    record = work / 'records/gates/iv_store.json'
     result = extract.gate_iv(folder, plain, captions, enc, record=record)
     assert set(result) == {'gate', 'status', 'tries', 'details', 'written'}
-    assert result['gate'] == 'iv' and result['status'] == 'pass' and result['tries'] == 1
-    assert result['details']['hash'] is None
+    assert result['gate'] == 'iv_store' and result['status'] == 'pass' and result['tries'] == 1
+    assert 'hash' not in result['details']
     assert result['details']['replay']['min_cosine'] >= 0.999
+    assert result['details']['prefixed_replay']['min_cosine'] >= 0.999
     assert len(result['written']) == 16
     rows = np.load(plain / 'txt.npy', mmap_mode='r+')
     rows[0] = [0, 0, 1]
@@ -216,7 +220,111 @@ def test_smoke_does_not_write_shared_record(work):
     plain = work / 'plain'
     extract.extract_store(ref, captions, enc, plain, prefix='')
     reseal(folder, lambda index: index.update(smoke=True))
-    record = folder / 'records/gates/iv.json'
+    record = folder / 'records/gates/iv_store.json'
     assert extract.gate_iv(folder, plain, captions, enc, record=record, allow_smoke=True)['status'] == 'pass'
     with pytest.raises(AssertionError, match='smoke records stay'):
         extract.gate_iv(folder, plain, captions, enc, record=work / 'elsewhere.json', allow_smoke=True)
+
+
+@pytest.mark.parametrize('cls', [SiglipSo400m, Siglip2So400m, ClipL14])
+def test_check_store_expected_prefix(work, cls):
+    folder, ref, _, _ = write_store(work, cls=cls)
+    assert extract.check_store(folder, ref, expected_prefix=extract.paths.PREFIX)['ok']
+    with pytest.raises(AssertionError, match='stored prefix'):
+        extract.check_store(folder, ref, expected_prefix=None)
+    with pytest.raises(AssertionError, match='stored prefix'):
+        extract.check_store(folder, ref, expected_prefix='Wrong prefix: ')
+    normalized = extract.paths.PREFIX.lower()
+    if cls is ClipL14:
+        with pytest.raises(AssertionError, match='stored prefix'):
+            extract.check_store(folder, ref, expected_prefix=normalized)
+    else:
+        assert extract.check_store(folder, ref, expected_prefix=normalized)['ok']
+    reseal(folder, lambda index: index.pop('prefix'))
+    with pytest.raises(AssertionError, match='stored prefix'):
+        extract.check_store(folder, ref, expected_prefix=extract.paths.PREFIX)
+
+
+@pytest.mark.parametrize('legacy', [False, True])
+def test_plain_store_expected_prefix_none(work, legacy):
+    folder, ref, _, _ = write_store(work, prefix='')
+    if legacy:
+        reseal(folder, lambda index: index.pop('prefix'))
+    assert extract.check_store(folder, ref, expected_prefix=None)['ok']
+    with pytest.raises(AssertionError, match='stored prefix'):
+        extract.check_store(folder, ref, expected_prefix=extract.paths.PREFIX)
+
+
+def gate_inputs(work):
+    folder, ref, enc, captions = write_store(work, n=100)
+    plain = work / 'plain'
+    extract.extract_store(ref, captions, enc, plain, prefix='')
+    return folder, plain, enc, captions
+
+
+@pytest.mark.parametrize('target,label', [('plain', 'empty-prefix'), ('prefixed', 'prefixed')])
+def test_gate_rejects_cosine_between_point9_and_point999(work, target, label):
+    folder, plain, enc, captions = gate_inputs(work)
+    rows = np.load((plain if target == 'plain' else folder) / 'txt.npy', mmap_mode='r+')
+    x = rows[0].astype(np.float32)
+    x /= np.linalg.norm(x)
+    orthogonal = np.cross(x, [0, 0, 1])
+    orthogonal /= np.linalg.norm(orthogonal)
+    rows[0] = 0.95 * x + np.sqrt(1 - 0.95 ** 2) * orthogonal
+    rows.flush()
+    with pytest.raises(AssertionError, match=f'{label} replay'):
+        extract.gate_iv(folder, plain, captions, enc, record=work / 'iv_store.json')
+
+
+def test_gate_requires_zero_truncated_in_entire_store(work):
+    folder, plain, enc, captions = gate_inputs(work)
+    reseal(folder, lambda index: index.update(n_texts_truncated=1))
+    progress = extract._json(folder / 'progress.json')
+    progress['n_truncated'] = 1
+    extract._write(folder / 'progress.json', progress)
+    with pytest.raises(AssertionError, match='zero truncated'):
+        extract.gate_iv(folder, plain, captions, enc, record=work / 'iv_store.json')
+
+
+def test_fake_encoder_distinguishes_empty_and_prefixed_replays(work):
+    folder, plain, enc, captions = gate_inputs(work)
+    prefixed = np.load(folder / 'txt.npy').astype(np.float32)
+    unprefixed = np.load(plain / 'txt.npy').astype(np.float32)
+    cosine = np.sum(prefixed * unprefixed, axis=1)
+    assert (cosine < 0.9).all()
+    assert extract.gate_iv(folder, plain, captions, enc, record=work / 'iv_store.json')['status'] == 'pass'
+
+
+def test_gate_part_filename_and_independent_try_count(work, monkeypatch):
+    folder, plain, enc, captions = gate_inputs(work)
+    gates = work / 'records/gates'
+    gates.mkdir(parents=True)
+    shared, hash_part = gates / 'iv.json', gates / 'iv_hash.json'
+    extract._write(shared, dict(tries=3))
+    extract._write(hash_part, dict(tries=2))
+    before = shared.read_bytes(), hash_part.read_bytes()
+    monkeypatch.setattr(extract.paths, 'GATES', gates)
+    for tries in range(1, 4):
+        result = extract.gate_iv(folder, plain, captions, enc)
+        assert result['gate'] == 'iv_store' and result['tries'] == tries
+    assert extract._json(gates / 'iv_store.json') == result
+    with pytest.raises(AssertionError, match='three tries'):
+        extract.gate_iv(folder, plain, captions, enc)
+    assert (shared.read_bytes(), hash_part.read_bytes()) == before
+
+
+def test_gate_checks_stored_order(work):
+    folder, plain, enc, captions = gate_inputs(work)
+    reseal(folder, lambda index: index['texts'].reverse())
+    with pytest.raises(AssertionError, match='extraction order'):
+        extract.gate_iv(folder, plain, captions, enc, record=work / 'iv_store.json')
+
+
+def test_help_documents_integration_worktree(capsys):
+    with pytest.raises(SystemExit) as exit:
+        extract.main(['--help'])
+    assert exit.value.code == 0
+    help_text = capsys.readouterr().out
+    assert 'cd /project/CoSiR-r29\n' in help_text
+    assert 'iv_store.json' in help_text
+    assert '--expected-prefix' in help_text
