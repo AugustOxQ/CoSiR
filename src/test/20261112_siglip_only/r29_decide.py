@@ -39,12 +39,17 @@ def now():
 
 
 def write_once(path, doc, force=None):
-    """Verdict records are written once. An existing one is refused unless `force` (a reason) is given; the reason and
-    the replaced record are then kept in the new file."""
+    """Verdict records are written once. An existing one is refused unless `force` (a reason) is given; the record then
+    keeps exactly its interface keys, and the reason and the replaced record go to `<name>_forced.json` beside it
+    (an earlier side file is kept under `earlier`), because other tickets' readers assert the exact key set."""
     path = Path(path)
     if path.exists():
         assert force, f'{path.name} exists: a verdict record is written once (--force REASON replaces it)'
-        doc = dict(doc, force_reason=force, replaced=read_json(path))
+        side = path.with_name(f'{path.stem}_forced.json')
+        note = dict(force_reason=force, replaced=read_json(path), written=now())
+        if side.exists():
+            note['earlier'] = read_json(side)
+        write_json(side, note)
     else:
         assert not force, f'{path.name} does not exist: nothing to force'
     return write_json(path, doc)
@@ -96,15 +101,33 @@ def read_gates(records):
     return doc['gates']
 
 
+def gate_blocker(name, gate):
+    """None when the merged gate passes or falls back. Else (kind, text): `parked` (a part is parked, or failed at
+    its third try: §3.5 allows three tries per gate), `open` (a part failed before try 3: a fix and a rerun can still
+    pass it), `incomplete` (a part is missing and none failed). Only the parts that set the status count."""
+    if gate['status'] in ('pass', 'fallback'):
+        return None
+    counted = [p for p in STATUS_FROM.get(name, tuple(gate['parts'])) if p in gate['parts']]
+    failing = {p: gate['parts'][p] for p in counted if gate['parts'][p]['status'] not in ('pass', 'fallback')}
+    for part, doc in sorted(failing.items()):
+        if doc['status'] == 'parked' or doc['tries'] >= 3:
+            return 'parked', f'gate {name} is parked ({part}: {doc["status"]} at try {doc["tries"]}; §3.5)'
+    if failing:
+        tries = max(d['tries'] for d in failing.values())
+        return 'open', f'gate {name} still open (fail at try {tries} of 3)'
+    return 'incomplete', f'gate {name} is incomplete (missing {gate["missing_parts"]})'
+
+
 def require_gates(records):
-    """SC1 and SC2 run only when gates (i), (ii) and (iii) pass or fall back (§3.5: a failed gate parks them)."""
+    """SC1 and SC2 run only when gates (i), (ii) and (iii) pass or fall back (§3.5: a failed gate parks them, but only
+    after its third try: a `fail` before try 3 is still open and refuses with that message)."""
     gates = read_gates(records)
     for name in STAGE1_GATES:
         if name == 'i_b' and name not in gates:
             continue
         assert name in gates, f'gate {name} not in gates.json: run `gates` first'
-        assert gates[name]['status'] in ('pass', 'fallback'), \
-            f'gate {name} is {gates[name]["status"]}: SC1 and SC2 are parked (§3.5)'
+        blocked = gate_blocker(name, gates[name])
+        assert blocked is None, blocked[1]
     return gates
 
 
@@ -122,22 +145,22 @@ def read_crash(records, arm):
 
 def arm_out(records, gates, arm):
     """Why an arm is out, or None. Only on evidence (never a missing `text_<arm>.json`): its crash record, or for K2
-    a failed or parked gate (iv) part. A gate (iv) with a part missing and none failed is no evidence: refuse."""
+    a parked gate (iv) part, or one that failed at its third try. A `fail` before try 3 is still open and a part
+    missing with none failed is no evidence: both refuse."""
     crash = read_crash(records, arm)
     if crash:
         return f'second crash (D21), seed {crash["seed"]}'
     if arm == 'siglip1_prefix':
-        iv = gates['iv']
-        bad = [p for p, d in iv['parts'].items() if d['status'] in ('fail', 'parked')]
-        if bad:
-            return f'gate (iv) failed or parked ({", ".join(sorted(bad))})'
-        assert not iv['missing_parts'], f'gate iv is incomplete (missing {iv["missing_parts"]}): K2 is not out'
+        blocked = gate_blocker('iv', gates['iv'])
+        if blocked and blocked[0] == 'parked':
+            return blocked[1]
+        assert blocked is None, f'{blocked[1]}: K2 is not out'
     return None
 
 
 def read_pick(records):
     doc = read_json(Path(records) / 'prefix_pick.json')
-    assert PICK_KEYS <= set(doc) <= PICK_KEYS | {'force_reason', 'replaced'}, sorted(doc)
+    assert set(doc) == PICK_KEYS, sorted(doc)
     assert doc['kstar'] in CANDIDATES and doc['kstar_form'] == ('plain' if doc['kstar'] == 'siglip1' else 'prefixed')
     assert doc['p1_form'] in ('plain', 'prefixed')
     assert doc['flag'] is None or isinstance(doc['flag'], str)

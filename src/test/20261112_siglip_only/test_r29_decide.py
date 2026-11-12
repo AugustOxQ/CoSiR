@@ -46,14 +46,17 @@ def text_record(arm, values, seeds=None):
     return dict(arm=arm, seeds=seeds, val=dict(cells=cells, group_r0=dict(per_seed=values)))
 
 
-def gate_file(root, part, status='pass'):
-    put(root, f'gates/{part}.json', dict(gate=part, status=status, tries=1, details={}, written='test'))
+def gate_file(root, part, status='pass', tries=1):
+    put(root, f'gates/{part}.json', dict(gate=part, status=status, tries=tries, details={}, written='test'))
 
 
-def put_gates(root, **status):
-    """A merged gates.json as `gates` writes it: every stage 1 gate passes unless `status` says otherwise."""
+def put_gates(root, tries=None, **status):
+    """A merged gates.json as `gates` writes it: every stage 1 gate passes unless `status` says otherwise.
+    A part's `tries` default to 3 when it is not `pass` (a gate that failed at its third try is parked), else 1."""
+    tries = tries or {}
     for part in ('i_a_weights', 'i_a', 'i_c', 'i_c_valpick', 'ii', 'iii', 'iv_store', 'iv_hash'):
-        gate_file(root, part, status.get(part, 'pass'))
+        st = status.get(part, 'pass')
+        gate_file(root, part, st, tries.get(part, 1 if st == 'pass' else 3))
     D.gates(root)
 
 
@@ -101,12 +104,23 @@ def test_sc1_refuses_when_gate_iv_is_incomplete_and_no_part_failed(tmp_path):
 
 
 @pytest.mark.parametrize('part,status', [('iv_store', 'fail'), ('iv_hash', 'fail'), ('iv_store', 'parked')])
-def test_sc1_k2_is_out_when_gate_iv_failed_or_parked(tmp_path, part, status):
+def test_sc1_k2_is_out_when_gate_iv_parked_or_failed_at_try_three(tmp_path, part, status):
     put_gates(tmp_path, **{part: status})
     put_arms(tmp_path, k1=.25, k2=.75, p1=(.125, .5))   # K2 would win and be scored: gate (iv) still takes it out
     got = D.sc1(tmp_path)
     assert (got['kstar'], got['kstar_form'], got['p1_form']) == ('siglip1', 'plain', 'plain')
     assert got['flag'].startswith('siglip1_prefix out') and 'row 1a' in got['flag']
+
+
+@pytest.mark.parametrize('part,n', [('iv_store', 1), ('iv_hash', 2)])
+def test_sc1_gate_iv_fail_before_try_three_is_still_open_and_k2_is_not_out(tmp_path, part, n):
+    put_gates(tmp_path, tries={part: n}, **{part: 'fail'})
+    put_arms(tmp_path)
+    with pytest.raises(AssertionError, match=rf'gate iv still open \(fail at try {n} of 3\)'):
+        D.sc1(tmp_path)
+    assert not (tmp_path / 'prefix_pick.json').exists()
+    put_gates(tmp_path, tries={part: 3}, **{part: 'fail'})     # the third failed try parks it: K2 is out
+    assert D.sc1(tmp_path)['kstar'] == 'siglip1'
 
 
 @pytest.mark.parametrize('arm,kstar', [('siglip1', 'siglip1_prefix'), ('siglip1_prefix', 'siglip1')])
@@ -148,7 +162,7 @@ def test_crash_reader_rejects_missing_and_extra_keys(tmp_path):
 
 
 @pytest.mark.parametrize('gate,status', [('i_a', 'fail'), ('i_c', 'parked'), ('ii', 'fail'), ('iii', 'fail')])
-def test_sc1_and_sc2_refuse_when_gate_i_ii_or_iii_failed(tmp_path, gate, status):
+def test_sc1_and_sc2_refuse_when_gate_i_ii_or_iii_parked(tmp_path, gate, status):
     put_gates(tmp_path, **{gate: status})
     put_arms(tmp_path)
     with pytest.raises(AssertionError, match='parked'):
@@ -156,6 +170,36 @@ def test_sc1_and_sc2_refuse_when_gate_i_ii_or_iii_failed(tmp_path, gate, status)
     put(tmp_path, 'prefix_pick.json', dict(kstar='siglip1', kstar_form='plain', p1_form='plain', flag=None))
     with pytest.raises(AssertionError, match='parked'):
         D.sc2(tmp_path)
+
+
+@pytest.mark.parametrize('gate,n', [('i_a', 1), ('i_c_valpick', 2), ('ii', 1), ('iii', 2)])
+def test_sc1_and_sc2_refuse_a_gate_that_failed_before_try_three_as_still_open(tmp_path, gate, n):
+    put_gates(tmp_path, tries={gate: n}, **{gate: 'fail'})
+    put_arms(tmp_path)
+    shown = {'i_c_valpick': 'i_c'}.get(gate, gate)
+    with pytest.raises(AssertionError, match=rf'gate {shown} still open \(fail at try {n} of 3\)'):
+        D.sc1(tmp_path)
+    put(tmp_path, 'prefix_pick.json', PICK_K1)
+    with pytest.raises(AssertionError, match='still open'):
+        D.sc2(tmp_path)
+
+
+@pytest.mark.parametrize('status,tries,message', [('fail', 3, 'parked'), ('parked', 1, 'parked'),
+                                                  ('fail', 1, 'still open')])
+def test_sc1_and_sc2_refuse_when_a_failing_i_b_record_exists(tmp_path, status, tries, message):
+    put_gates(tmp_path)
+    gate_file(tmp_path, 'i_b', status, tries)
+    D.gates(tmp_path)
+    put_arms(tmp_path)
+    with pytest.raises(AssertionError, match=message):
+        D.sc1(tmp_path)
+    put(tmp_path, 'prefix_pick.json', PICK_K1)
+    with pytest.raises(AssertionError, match=message):
+        D.sc2(tmp_path)
+    gate_file(tmp_path, 'i_b', 'pass')                # a passing i_b record does not block
+    D.gates(tmp_path)
+    (tmp_path / 'prefix_pick.json').unlink()
+    assert D.sc1(tmp_path)['kstar'] == 'siglip1'
 
 
 def test_sc1_and_sc2_refuse_without_gates_json_and_accept_a_fallback(tmp_path):
@@ -175,14 +219,22 @@ def test_sc1_and_sc2_write_once_and_force_keeps_the_reason(tmp_path):
     with pytest.raises(AssertionError):
         D.sc1(tmp_path, force='')
     again = D.sc1(tmp_path, force='re-scored K2 after a store fix')
-    assert again['force_reason'] == 're-scored K2 after a store fix' and again['replaced'] == first
+    assert again == first == json.loads((tmp_path / 'prefix_pick.json').read_text())   # exactly the four keys
+    side = json.loads((tmp_path / 'prefix_pick_forced.json').read_text())
+    assert side['force_reason'] == 're-scored K2 after a store fix' and side['replaced'] == first
+    assert 'earlier' not in side
+    D.sc1(tmp_path, force='again')                        # a second forced rewrite keeps the first side file
+    side = json.loads((tmp_path / 'prefix_pick_forced.json').read_text())
+    assert side['force_reason'] == 'again' and side['earlier']['force_reason'] == 're-scored K2 after a store fix'
     assert D.read_pick(tmp_path)['kstar'] == 'siglip1'
     put(tmp_path, 'groups_siglip1.json', dict(arm='siglip1', seeds=D.SEEDS,
         image=dict(per_seed=[.5]*5), text=dict(per_seed=[.5]*5)))
-    D.sc2(tmp_path)
+    rule = D.sc2(tmp_path)
     with pytest.raises(AssertionError, match='written once'):
         D.sc2(tmp_path)
-    assert D.sc2(tmp_path, force='again')['force_reason'] == 'again'
+    assert D.sc2(tmp_path, force='again') == rule == json.loads((tmp_path / 'pass_rule.json').read_text())
+    assert 'force_reason' not in rule
+    assert json.loads((tmp_path / 'pass_rule_forced.json').read_text())['force_reason'] == 'again'
 
 
 def test_sc1_refuses_misidentified_seed_zero(tmp_path):
