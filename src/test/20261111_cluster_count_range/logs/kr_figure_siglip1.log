@@ -1,0 +1,15 @@
+font: FreeSerif
+row                      emotion     style     genre
+Plain Qwen3                  5/5       4/4       4/4
+Plain SigLIP 1               5/5       4/4       4/4
+SigLIP 1 + TURTLE            5/5       4/4       4/4
+PercepT (SigLIP 1)           5/5       4/4       4/4
+PercepT (CLIP L/14)          5/5       4/4       4/4
+TPIPS                        5/5       4/4       4/4
+CLAY                         5/5       4/4       4/4
+CRL                          5/5       4/4       4/4
+VLM2Vec                      5/5       4/4       4/4
+BERTopic                     5/5       4/4       4/4
+Instructed Qwen3             5/5       4/4       4/4
+CoSiR (ours)                 5/5       4/4       4/4
+wrote /project/CoSiR/src/test/20261111_cluster_count_range/figures/siglip1/supp_cluster_counts.pdf, .png, values.md

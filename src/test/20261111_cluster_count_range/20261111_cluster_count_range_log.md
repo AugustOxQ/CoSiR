@@ -290,3 +290,37 @@ Qwen3 stays; TPIPS, VLM2Vec, BERTopic, PercepT on CLIP L/14 keep their encoders)
 `Tables/main_clustering.tex`. Legend names follow README 2026-11-12 ("Instructed Qwen3"). Legend 5 columns in 3 rows,
 figure 6.875 x 2.7 in (7 columns ran off both edges). Plain Qwen3: light grey dashed, open squares; the other rows
 keep their 2026-11-11 styles. Output `figures/siglip1/`. Preview drawn without CLAY and CRL.
+
+### CLAY and CRL on SigLIP 1 (2026-11-12 20:07)
+`kr_grid_siglip1.py` now also scores CLAY and CRL: r28's `r28_clay_crl.clay_vectors` / `crl_vectors` (SigLIP 1 image and
+text rows; CLAY text set A, the set r28 used for its clustering cell) and `r28_clay_crl.clu_cell` at each K, imported
+read only from r28 commit `f94a90d0`. Run through `res-queue cpu --short` (label `paper:kgrid_s1`, 42 s). Gate: 12 of 12
+reference cells exact (r18's six + TURTLE cells, r28's six class-count cells in `20261112_siglip_main/records/clay_crl.json`),
+max |diff| 0.0. The 13 + TURTLE cells equal the first run. Every CLAY and CRL state used exactly K clusters. Log
+`logs/kr_grid_siglip1.log`; `records/cells_siglip1.json` now holds 39 cells (rows `turtle_siglip1`, `clay_siglip1`,
+`crl_siglip1`).
+
+| aspect | K | CLAY (SigLIP 1) | CRL (SigLIP 1) |
+|---|---|---|---|
+| emotion | 5 / 8 / 9 / 16 / 20 | 0.0651 / 0.0703 / 0.0691 / 0.0761 / 0.0773 | 0.0670 / 0.0793 / 0.0747 / 0.0809 / 0.0803 |
+| style | 10 / 20 / 27 / 40 | 0.4095 / 0.4327 / 0.4371 / 0.4324 | 0.3293 / 0.3650 / 0.3750 / 0.3755 |
+| genre | 5 / 10 / 16 / 20 | 0.4589 / 0.5042 / 0.4934 / 0.4773 | 0.3093 / 0.3935 / 0.4041 / 0.4164 |
+
+Class-count cells against r28's own records: ours 0.0985 / 0.4408 / 0.5279 and plain 0.0612 / 0.3820 / 0.4016 equal
+r28's held replays (r28 log 19:58 and 20:02); PercepT (SigLIP 1) equals r17's `verdicts.json`; CLAY, CRL, + TURTLE as
+above. r28's numbers sheet (`paper_cells.md`) did not exist yet at this time.
+
+### The figure with all 12 rows (`figures/siglip1/`, log `logs/kr_figure_siglip1.log`)
+Ours against the best other line at each K (exact means):
+
+| aspect | K | ours | best other | margin |
+|---|---|---|---|---|
+| emotion | 5 / 8 / 9 / 16 / 20 | 0.0883 / 0.0979 / 0.0985 / 0.1064 / 0.1071 | Instructed Qwen3 at every K | +0.0047 / +0.0080 / +0.0097 / +0.0130 / +0.0150 |
+| style | 10 | 0.4094 | CLAY 0.4095 | -0.0001 |
+| style | 20 / 27 / 40 | 0.4356 / 0.4408 / 0.4478 | CLAY 0.4327 / 0.4371 / 0.4324 | +0.0029 / +0.0037 / +0.0154 |
+| genre | 5 | 0.4762 | Instructed Qwen3 0.4629 | +0.0133 |
+| genre | 10 / 16 | 0.5279 / 0.5182 | CLAY 0.5042 / 0.4934 | +0.0237 / +0.0247 |
+| genre | 20 | 0.5065 | Instructed Qwen3 0.5062 | +0.0003 |
+
+Overlaps in the drawing: CLAY runs under ours in the style panel from 10 to 27 clusters (within 0.004); in the genre
+panel CLAY meets the instructed Qwen3 at 10 and 16 and TPIPS at 20. Open with the user: caption note or inset.

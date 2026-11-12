@@ -1,10 +1,15 @@
 {
  "header": {
-  "protocol": "TURTLE: r18 saved fits on plain SigLIP 1 (starts 0,1,2, no refit), AMI on rows with y >= 0, mean over the 3 starts (ns_metrics.score_partitions)",
-  "code_commit": "e94fb49bce7a032a1e4217e78b1f5cb62afc4217",
+  "protocol": "TURTLE: r18 saved fits on plain SigLIP 1 (starts 0,1,2, no refit), AMI on rows with y >= 0, mean over the 3 starts (ns_metrics.score_partitions). CLAY, CRL: r28_clay_crl vectors on SigLIP 1 and r28_clay_crl.clu_cell (ns_metrics.partitions, states 0,1,2, mean AMI on labelled rows)",
+  "code_commit": "f94a90d05f063150f86b3b0a3a7eeee24e5e9d6d",
   "encoder": "siglip1",
   "held_split": "held",
-  "total_seconds": 2.190896987915039
+  "rows": [
+   "turtle",
+   "clay",
+   "crl"
+  ],
+  "total_seconds": 42.20489764213562
  },
  "cells": [
   {
@@ -25,7 +30,7 @@
     5,
     5
    ],
-   "seconds": 0.1586155891418457,
+   "seconds": 0.06055593490600586,
    "encoder": "siglip1",
    "gate": false
   },
@@ -47,7 +52,7 @@
     8,
     8
    ],
-   "seconds": 0.2238149642944336,
+   "seconds": 0.08310532569885254,
    "encoder": "siglip1",
    "gate": false
   },
@@ -69,7 +74,7 @@
     9,
     9
    ],
-   "seconds": 0.18326330184936523,
+   "seconds": 0.08100676536560059,
    "encoder": "siglip1",
    "gate": true,
    "reference_id": "SC5/artelingo/siglip1/emotion/ami/9/plain_turtle",
@@ -94,7 +99,7 @@
     16,
     16
    ],
-   "seconds": 0.13351702690124512,
+   "seconds": 0.06261253356933594,
    "encoder": "siglip1",
    "gate": false
   },
@@ -116,7 +121,7 @@
     20,
     20
    ],
-   "seconds": 0.15987825393676758,
+   "seconds": 0.06173968315124512,
    "encoder": "siglip1",
    "gate": true,
    "reference_id": "SC5/artelingo/siglip1/emotion/ami/20/plain_turtle",
@@ -141,7 +146,7 @@
     10,
     10
    ],
-   "seconds": 0.15624642372131348,
+   "seconds": 0.06839561462402344,
    "encoder": "siglip1",
    "gate": false
   },
@@ -163,7 +168,7 @@
     20,
     20
    ],
-   "seconds": 0.1702888011932373,
+   "seconds": 0.07260727882385254,
    "encoder": "siglip1",
    "gate": true,
    "reference_id": "SC5/artelingo/siglip1/style/ami/20/plain_turtle",
@@ -188,7 +193,7 @@
     27,
     27
    ],
-   "seconds": 0.22423148155212402,
+   "seconds": 0.10469961166381836,
    "encoder": "siglip1",
    "gate": true,
    "reference_id": "SC5/artelingo/siglip1/style/ami/27/plain_turtle",
@@ -213,7 +218,7 @@
     39,
     40
    ],
-   "seconds": 0.19203519821166992,
+   "seconds": 0.10851311683654785,
    "encoder": "siglip1",
    "gate": false
   },
@@ -235,7 +240,7 @@
     5,
     5
    ],
-   "seconds": 0.12591314315795898,
+   "seconds": 0.04455971717834473,
    "encoder": "siglip1",
    "gate": false
   },
@@ -257,7 +262,7 @@
     10,
     10
    ],
-   "seconds": 0.12970781326293945,
+   "seconds": 0.04912900924682617,
    "encoder": "siglip1",
    "gate": true,
    "reference_id": "SC5/artelingo/siglip1/genre/ami/10/plain_turtle",
@@ -282,7 +287,7 @@
     16,
     16
    ],
-   "seconds": 0.15450453758239746,
+   "seconds": 0.052076101303100586,
    "encoder": "siglip1",
    "gate": false
   },
@@ -304,12 +309,576 @@
     20,
     20
    ],
-   "seconds": 0.1705458164215088,
+   "seconds": 0.05301308631896973,
    "encoder": "siglip1",
    "gate": true,
    "reference_id": "SC5/artelingo/siglip1/genre/ami/20/plain_turtle",
    "reference": 0.3468114080747802,
    "diff": 0.0
+  },
+  {
+   "row": "clay_siglip1",
+   "aspect": "emotion",
+   "k": 5,
+   "mean": 0.06506282755682835,
+   "per_state": [
+    0.06530801173241592,
+    0.06531571416556557,
+    0.06456475677250355
+   ],
+   "source_inputs": "r28_clay_crl.clay_vectors(artelingo, held, emotion, text set A, siglip1)",
+   "n_clusters_used": [
+    5,
+    5,
+    5
+   ],
+   "seconds": 1.0847275257110596,
+   "id": "clay_siglip1/emotion/ami/5",
+   "encoder": "siglip1",
+   "gate": false
+  },
+  {
+   "row": "clay_siglip1",
+   "aspect": "emotion",
+   "k": 8,
+   "mean": 0.0703277091115208,
+   "per_state": [
+    0.06616731437458151,
+    0.07009704720078005,
+    0.0747187657592008
+   ],
+   "source_inputs": "r28_clay_crl.clay_vectors(artelingo, held, emotion, text set A, siglip1)",
+   "n_clusters_used": [
+    8,
+    8,
+    8
+   ],
+   "seconds": 1.6131455898284912,
+   "id": "clay_siglip1/emotion/ami/8",
+   "encoder": "siglip1",
+   "gate": false
+  },
+  {
+   "row": "clay_siglip1",
+   "aspect": "emotion",
+   "k": 9,
+   "mean": 0.06905453311817979,
+   "per_state": [
+    0.06766272106829739,
+    0.07063634404380634,
+    0.06886453424243566
+   ],
+   "source_inputs": "r28_clay_crl.clay_vectors(artelingo, held, emotion, text set A, siglip1)",
+   "n_clusters_used": [
+    9,
+    9,
+    9
+   ],
+   "seconds": 1.895564317703247,
+   "id": "clay_siglip1/emotion/ami/9",
+   "encoder": "siglip1",
+   "gate": true,
+   "reference_id": "r28 clay_crl.json:artelingo/emotion/ami/clay.siglip1",
+   "reference": 0.06905453311817979,
+   "diff": 0.0
+  },
+  {
+   "row": "clay_siglip1",
+   "aspect": "emotion",
+   "k": 16,
+   "mean": 0.07607340179476553,
+   "per_state": [
+    0.07433083066677884,
+    0.07307527406718353,
+    0.08081410065033423
+   ],
+   "source_inputs": "r28_clay_crl.clay_vectors(artelingo, held, emotion, text set A, siglip1)",
+   "n_clusters_used": [
+    16,
+    16,
+    16
+   ],
+   "seconds": 2.8772802352905273,
+   "id": "clay_siglip1/emotion/ami/16",
+   "encoder": "siglip1",
+   "gate": false
+  },
+  {
+   "row": "clay_siglip1",
+   "aspect": "emotion",
+   "k": 20,
+   "mean": 0.07727565372923038,
+   "per_state": [
+    0.07776290984903306,
+    0.07673266381975352,
+    0.07733138751890456
+   ],
+   "source_inputs": "r28_clay_crl.clay_vectors(artelingo, held, emotion, text set A, siglip1)",
+   "n_clusters_used": [
+    20,
+    20,
+    20
+   ],
+   "seconds": 3.4489991664886475,
+   "id": "clay_siglip1/emotion/ami/20",
+   "encoder": "siglip1",
+   "gate": false
+  },
+  {
+   "row": "clay_siglip1",
+   "aspect": "style",
+   "k": 10,
+   "mean": 0.40947677087819395,
+   "per_state": [
+    0.4220811973809746,
+    0.41339932661985945,
+    0.39294978863374785
+   ],
+   "source_inputs": "r28_clay_crl.clay_vectors(artelingo, held, style, text set A, siglip1)",
+   "n_clusters_used": [
+    10,
+    10,
+    10
+   ],
+   "seconds": 1.9503061771392822,
+   "id": "clay_siglip1/style/ami/10",
+   "encoder": "siglip1",
+   "gate": false
+  },
+  {
+   "row": "clay_siglip1",
+   "aspect": "style",
+   "k": 20,
+   "mean": 0.4326924690385889,
+   "per_state": [
+    0.4287686231742618,
+    0.42965047420567987,
+    0.4396583097358249
+   ],
+   "source_inputs": "r28_clay_crl.clay_vectors(artelingo, held, style, text set A, siglip1)",
+   "n_clusters_used": [
+    20,
+    20,
+    20
+   ],
+   "seconds": 3.458561420440674,
+   "id": "clay_siglip1/style/ami/20",
+   "encoder": "siglip1",
+   "gate": false
+  },
+  {
+   "row": "clay_siglip1",
+   "aspect": "style",
+   "k": 27,
+   "mean": 0.43709576451559357,
+   "per_state": [
+    0.436357460223917,
+    0.4423534905218631,
+    0.43257634280100044
+   ],
+   "source_inputs": "r28_clay_crl.clay_vectors(artelingo, held, style, text set A, siglip1)",
+   "n_clusters_used": [
+    27,
+    27,
+    27
+   ],
+   "seconds": 4.632259368896484,
+   "id": "clay_siglip1/style/ami/27",
+   "encoder": "siglip1",
+   "gate": true,
+   "reference_id": "r28 clay_crl.json:artelingo/style/ami/clay.siglip1",
+   "reference": 0.43709576451559357,
+   "diff": 0.0
+  },
+  {
+   "row": "clay_siglip1",
+   "aspect": "style",
+   "k": 40,
+   "mean": 0.43240420209903124,
+   "per_state": [
+    0.43172541651245655,
+    0.424774474878025,
+    0.4407127149066121
+   ],
+   "source_inputs": "r28_clay_crl.clay_vectors(artelingo, held, style, text set A, siglip1)",
+   "n_clusters_used": [
+    40,
+    40,
+    40
+   ],
+   "seconds": 6.5240678787231445,
+   "id": "clay_siglip1/style/ami/40",
+   "encoder": "siglip1",
+   "gate": false
+  },
+  {
+   "row": "clay_siglip1",
+   "aspect": "genre",
+   "k": 5,
+   "mean": 0.4589037355584295,
+   "per_state": [
+    0.43699981418393463,
+    0.4827566851815256,
+    0.4569547073098282
+   ],
+   "source_inputs": "r28_clay_crl.clay_vectors(artelingo, held, genre, text set A, siglip1)",
+   "n_clusters_used": [
+    5,
+    5,
+    5
+   ],
+   "seconds": 1.1608924865722656,
+   "id": "clay_siglip1/genre/ami/5",
+   "encoder": "siglip1",
+   "gate": false
+  },
+  {
+   "row": "clay_siglip1",
+   "aspect": "genre",
+   "k": 10,
+   "mean": 0.5042268675522827,
+   "per_state": [
+    0.5186647201529944,
+    0.4848643603007697,
+    0.5091515222030842
+   ],
+   "source_inputs": "r28_clay_crl.clay_vectors(artelingo, held, genre, text set A, siglip1)",
+   "n_clusters_used": [
+    10,
+    10,
+    10
+   ],
+   "seconds": 2.0674290657043457,
+   "id": "clay_siglip1/genre/ami/10",
+   "encoder": "siglip1",
+   "gate": true,
+   "reference_id": "r28 clay_crl.json:artelingo/genre/ami/clay.siglip1",
+   "reference": 0.5042268675522827,
+   "diff": 0.0
+  },
+  {
+   "row": "clay_siglip1",
+   "aspect": "genre",
+   "k": 16,
+   "mean": 0.49344437695202054,
+   "per_state": [
+    0.486413674971531,
+    0.4871370404133007,
+    0.5067824154712299
+   ],
+   "source_inputs": "r28_clay_crl.clay_vectors(artelingo, held, genre, text set A, siglip1)",
+   "n_clusters_used": [
+    16,
+    16,
+    16
+   ],
+   "seconds": 2.7118008136749268,
+   "id": "clay_siglip1/genre/ami/16",
+   "encoder": "siglip1",
+   "gate": false
+  },
+  {
+   "row": "clay_siglip1",
+   "aspect": "genre",
+   "k": 20,
+   "mean": 0.47730248166710965,
+   "per_state": [
+    0.46856537910482576,
+    0.48609000899539384,
+    0.4772520569011094
+   ],
+   "source_inputs": "r28_clay_crl.clay_vectors(artelingo, held, genre, text set A, siglip1)",
+   "n_clusters_used": [
+    20,
+    20,
+    20
+   ],
+   "seconds": 3.425614833831787,
+   "id": "clay_siglip1/genre/ami/20",
+   "encoder": "siglip1",
+   "gate": false
+  },
+  {
+   "row": "crl_siglip1",
+   "aspect": "emotion",
+   "k": 5,
+   "mean": 0.06699575441590568,
+   "per_state": [
+    0.06501537864312723,
+    0.07097273824070732,
+    0.06499914636388247
+   ],
+   "source_inputs": "r28_clay_crl.crl_vectors(artelingo, held, emotion, siglip1)",
+   "n_clusters_used": [
+    5,
+    5,
+    5
+   ],
+   "seconds": 0.09847116470336914,
+   "id": "crl_siglip1/emotion/ami/5",
+   "encoder": "siglip1",
+   "gate": false
+  },
+  {
+   "row": "crl_siglip1",
+   "aspect": "emotion",
+   "k": 8,
+   "mean": 0.07930422895030617,
+   "per_state": [
+    0.08002340953292929,
+    0.07413585641595787,
+    0.08375342090203136
+   ],
+   "source_inputs": "r28_clay_crl.crl_vectors(artelingo, held, emotion, siglip1)",
+   "n_clusters_used": [
+    8,
+    8,
+    8
+   ],
+   "seconds": 0.13862347602844238,
+   "id": "crl_siglip1/emotion/ami/8",
+   "encoder": "siglip1",
+   "gate": false
+  },
+  {
+   "row": "crl_siglip1",
+   "aspect": "emotion",
+   "k": 9,
+   "mean": 0.07474131269318394,
+   "per_state": [
+    0.07552284598614419,
+    0.07272786877384108,
+    0.07597322331956657
+   ],
+   "source_inputs": "r28_clay_crl.crl_vectors(artelingo, held, emotion, siglip1)",
+   "n_clusters_used": [
+    9,
+    9,
+    9
+   ],
+   "seconds": 0.140838623046875,
+   "id": "crl_siglip1/emotion/ami/9",
+   "encoder": "siglip1",
+   "gate": true,
+   "reference_id": "r28 clay_crl.json:artelingo/emotion/ami/crl.siglip1",
+   "reference": 0.07474131269318394,
+   "diff": 0.0
+  },
+  {
+   "row": "crl_siglip1",
+   "aspect": "emotion",
+   "k": 16,
+   "mean": 0.08087259273134025,
+   "per_state": [
+    0.07967956704121815,
+    0.08183284654370719,
+    0.08110536460909537
+   ],
+   "source_inputs": "r28_clay_crl.crl_vectors(artelingo, held, emotion, siglip1)",
+   "n_clusters_used": [
+    16,
+    16,
+    16
+   ],
+   "seconds": 0.20823407173156738,
+   "id": "crl_siglip1/emotion/ami/16",
+   "encoder": "siglip1",
+   "gate": false
+  },
+  {
+   "row": "crl_siglip1",
+   "aspect": "emotion",
+   "k": 20,
+   "mean": 0.08033816978175064,
+   "per_state": [
+    0.08005223677535872,
+    0.08272804317481343,
+    0.07823422939507976
+   ],
+   "source_inputs": "r28_clay_crl.crl_vectors(artelingo, held, emotion, siglip1)",
+   "n_clusters_used": [
+    20,
+    20,
+    20
+   ],
+   "seconds": 0.25515294075012207,
+   "id": "crl_siglip1/emotion/ami/20",
+   "encoder": "siglip1",
+   "gate": false
+  },
+  {
+   "row": "crl_siglip1",
+   "aspect": "style",
+   "k": 10,
+   "mean": 0.32929307683185743,
+   "per_state": [
+    0.32908625292401383,
+    0.34076758443722105,
+    0.3180253931343374
+   ],
+   "source_inputs": "r28_clay_crl.crl_vectors(artelingo, held, style, siglip1)",
+   "n_clusters_used": [
+    10,
+    10,
+    10
+   ],
+   "seconds": 0.15946698188781738,
+   "id": "crl_siglip1/style/ami/10",
+   "encoder": "siglip1",
+   "gate": false
+  },
+  {
+   "row": "crl_siglip1",
+   "aspect": "style",
+   "k": 20,
+   "mean": 0.3650306438487228,
+   "per_state": [
+    0.36556373982669527,
+    0.37092519457073636,
+    0.3586029971487368
+   ],
+   "source_inputs": "r28_clay_crl.crl_vectors(artelingo, held, style, siglip1)",
+   "n_clusters_used": [
+    20,
+    20,
+    20
+   ],
+   "seconds": 0.26169729232788086,
+   "id": "crl_siglip1/style/ami/20",
+   "encoder": "siglip1",
+   "gate": false
+  },
+  {
+   "row": "crl_siglip1",
+   "aspect": "style",
+   "k": 27,
+   "mean": 0.37499212707568447,
+   "per_state": [
+    0.3742907087109516,
+    0.3684134908669938,
+    0.382272181649108
+   ],
+   "source_inputs": "r28_clay_crl.crl_vectors(artelingo, held, style, siglip1)",
+   "n_clusters_used": [
+    27,
+    27,
+    27
+   ],
+   "seconds": 0.34206700325012207,
+   "id": "crl_siglip1/style/ami/27",
+   "encoder": "siglip1",
+   "gate": true,
+   "reference_id": "r28 clay_crl.json:artelingo/style/ami/crl.siglip1",
+   "reference": 0.37499212707568447,
+   "diff": 0.0
+  },
+  {
+   "row": "crl_siglip1",
+   "aspect": "style",
+   "k": 40,
+   "mean": 0.3754931805502018,
+   "per_state": [
+    0.375443215652499,
+    0.37338296333296006,
+    0.37765336266514626
+   ],
+   "source_inputs": "r28_clay_crl.crl_vectors(artelingo, held, style, siglip1)",
+   "n_clusters_used": [
+    40,
+    40,
+    40
+   ],
+   "seconds": 0.46356821060180664,
+   "id": "crl_siglip1/style/ami/40",
+   "encoder": "siglip1",
+   "gate": false
+  },
+  {
+   "row": "crl_siglip1",
+   "aspect": "genre",
+   "k": 5,
+   "mean": 0.30929975981647756,
+   "per_state": [
+    0.332132411857413,
+    0.286310750565171,
+    0.3094561170268486
+   ],
+   "source_inputs": "r28_clay_crl.crl_vectors(artelingo, held, genre, siglip1)",
+   "n_clusters_used": [
+    5,
+    5,
+    5
+   ],
+   "seconds": 0.10805177688598633,
+   "id": "crl_siglip1/genre/ami/5",
+   "encoder": "siglip1",
+   "gate": false
+  },
+  {
+   "row": "crl_siglip1",
+   "aspect": "genre",
+   "k": 10,
+   "mean": 0.3934531379838429,
+   "per_state": [
+    0.4027913148276937,
+    0.3895112773474013,
+    0.38805682177643386
+   ],
+   "source_inputs": "r28_clay_crl.crl_vectors(artelingo, held, genre, siglip1)",
+   "n_clusters_used": [
+    10,
+    10,
+    10
+   ],
+   "seconds": 0.13900136947631836,
+   "id": "crl_siglip1/genre/ami/10",
+   "encoder": "siglip1",
+   "gate": true,
+   "reference_id": "r28 clay_crl.json:artelingo/genre/ami/crl.siglip1",
+   "reference": 0.3934531379838429,
+   "diff": 0.0
+  },
+  {
+   "row": "crl_siglip1",
+   "aspect": "genre",
+   "k": 16,
+   "mean": 0.4041248036991259,
+   "per_state": [
+    0.4054598627888952,
+    0.3899496444637564,
+    0.4169649038447262
+   ],
+   "source_inputs": "r28_clay_crl.crl_vectors(artelingo, held, genre, siglip1)",
+   "n_clusters_used": [
+    16,
+    16,
+    16
+   ],
+   "seconds": 0.19191646575927734,
+   "id": "crl_siglip1/genre/ami/16",
+   "encoder": "siglip1",
+   "gate": false
+  },
+  {
+   "row": "crl_siglip1",
+   "aspect": "genre",
+   "k": 20,
+   "mean": 0.41642156227935434,
+   "per_state": [
+    0.42036283158452237,
+    0.41802717816340496,
+    0.41087467709013564
+   ],
+   "source_inputs": "r28_clay_crl.crl_vectors(artelingo, held, genre, siglip1)",
+   "n_clusters_used": [
+    20,
+    20,
+    20
+   ],
+   "seconds": 0.23759841918945312,
+   "id": "crl_siglip1/genre/ami/20",
+   "encoder": "siglip1",
+   "gate": false
   }
  ]
 }
