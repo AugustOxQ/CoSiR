@@ -1,10 +1,10 @@
 """r29 Table 8 (ticket 09; spec §3.4, SC8, D8): text-pass time per caption, r28's protocol (r28_time.py: batch 32, three
 warm-up batches, wall time per batch with cuda synchronize, three repeats, foreign GPU processes polled around every repeat,
 tokenisation inside the timed loop, the same 2,000 captions) for (a) the SigLIP 1 text pass (`encode_texts` of
-`load_encoder('siglip_so400m')`) and (b) the new caption tower (`view['cap']` of one K* checkpoint, 1152 -> 2048, fp32) on
+`load_encoder('siglip_so400m')`) and (b) the new caption tower (`view['cap']` of the three aspects' K* checkpoints, timed together as r28's three-aspect pass, 1152 -> 2048, fp32) on
 the stored SigLIP 1 rows of those captions. r28's Qwen3 value is read from r28's record. Descriptive; no verdict.
 
-    python r29_time.py --weights <K* ...>/<aspect>__s<seed>.pt [--out PATH] [--repeats N]
+    python r29_time.py --weights-dir DIR [--seed S] [--out PATH] [--repeats N]
 """
 import argparse
 import hashlib
@@ -35,7 +35,8 @@ SIGLIP_WIDTH, TOWER_WIDTH = 1152, 2048
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--weights', required=True)
+    ap.add_argument('--weights-dir', required=True)
+    ap.add_argument('--seed', type=int, default=0)
     ap.add_argument('--out', default=str(OUT))
     ap.add_argument('--repeats', type=int, default=R28.REPEATS)
     a = ap.parse_args()
@@ -63,11 +64,15 @@ def main():
     assert emb.shape == (N, SIGLIP_WIDTH) and emb.dtype == np.float32
 
     device = torch.device('cuda')
-    view = M.load_view(a.weights, device, expect_store_sha256=C.store_hash(SOURCE))
-    tower = view['cap']
-    assert tower.trunk[0].weight.shape[1] == SIGLIP_WIDTH
-    cfg, _ = M.read_sidecar(a.weights)
-
+    towers, paths = [], []
+    for aspect in P.ASPECTS:                       # as r28: the three aspects' cap sides, one seed
+        w = Path(a.weights_dir) / f'{aspect}__s{a.seed}.pt'
+        cfg, rb = M.read_sidecar(w)
+        assert cfg['aspect'] == aspect and rb['cap_source'] == SOURCE, (w, cfg['aspect'], rb['cap_source'])
+        view = M.load_view(w, device, expect_store_sha256=C.store_hash(rb['cap_source']))
+        assert view['cap'].trunk[0].weight.shape[1] == SIGLIP_WIDTH
+        towers.append(view['cap'])
+        paths.append(str(w))
 
     sys.path.insert(0, str(P.REPO))
     from src.data import feature_extract as FE
@@ -82,7 +87,7 @@ def main():
            'torch': torch.__version__, 'batch': BATCH, 'warmup_batches': WARMUP, 'repeats': a.repeats, 'n_captions': N,
            'sample': r28['sample'], 'caption_sample_ids_sha256': ids_sha, 'same_captions_as': str(R28_RECORD),
            'siglip1_live_vs_stored_cos_min': float(cos.min()), 'gpu_processes_before_start': gpu_before,
-           'caption_tower_weights': str(a.weights), 'caption_tower_aspect': cfg['aspect'],
+           'caption_tower_weights': paths,
            'caption_tower_input': f'stored {SOURCE} rows of the same captions, fp32',
            'qwen3_text_pass_r28': {'ms_per_caption_mean_of_repeats': qwen_ms, 'source': str(R28_RECORD),
                                    'written': r28['written'], 'model': r28['model']}}
@@ -108,13 +113,14 @@ def main():
 
     def enc_cap(xb):       # as r28: host-to-device copy of the batch, forward, copy back
         with torch.no_grad():
-            o = tower(torch.from_numpy(xb).to(device)).cpu().numpy()
-        widths.append(o.shape[1])
+            t = torch.from_numpy(xb).to(device)
+            outs = [m(t).cpu().numpy() for m in towers]
+        widths.extend(o.shape[1] for o in outs)
 
-    out['caption_tower'] = repeats('cap_tower', enc_cap, emb)
+    out['caption_tower_three_aspects'] = repeats('cap_tower', enc_cap, emb)
     assert set(widths) == {TOWER_WIDTH}, set(widths)                              # width check: caption tower
     out['output_widths'] = {'siglip1_text_pass': SIGLIP_WIDTH, 'caption_tower': TOWER_WIDTH}
-    out['caption_tower_params'] = sum(p.numel() for p in tower.parameters())
+    out['caption_tower_params_each'] = [sum(p.numel() for p in m.parameters()) for m in towers]
     out['discarded_repeats'] = [{k: v for k, v in d.items() if k != 'record'} for d in discards]
     out['gpu_processes_after_end'] = PR.poll_gpu()
     out['foreign_during_timing'] = bool(discards)
