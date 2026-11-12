@@ -66,10 +66,6 @@ def code_hashes():
     return {name: hashlib.sha256((HERE / name).read_bytes()).hexdigest() for name in CODE_FILES}
 
 
-def code_sha256():
-    return hashlib.sha256(json.dumps(code_hashes(), sort_keys=True).encode()).hexdigest()
-
-
 # ------------------------------------------------------------------------------------------------------- guards
 def check_root(root, smoke=False):
     """r14's hygiene (nothing inside another round's outputs or the stores), plus: a smoke only under SMOKE_OUT and a
@@ -95,6 +91,7 @@ def require_pass(enc):
 def check_args(enc, source):
     assert enc in ENCODERS, f'encoder {enc!r}: not one of {ENCODERS}'
     assert source in P.CAPTION_SOURCES, f'caption source {source!r}: not one of {sorted(P.CAPTION_SOURCES)}'
+    assert source in P.ENCODER_CAPTION_SOURCES[enc], f'caption source {source!r} does not match encoder {enc!r}'
     require_pass(enc)
     return P.CAPTION_SOURCES[source][1]
 
@@ -133,7 +130,7 @@ def caption_patches(source, width):
         rb = base_rb(*args, **kwargs)
         assert state.cap_sha256 is not None, 'the caption input is read before the rb block'
         rb.update(cap_source=source, cap_width=width, cap_store_sha256=C.store_hash(source),
-                  cap_sha256=state.cap_sha256, r29_code_sha256=code_sha256())
+                  cap_sha256=state.cap_sha256, r29_code_sha256=code_hashes())
         return rb
 
     def run(s, inputs, *args, **kwargs):
@@ -141,6 +138,8 @@ def caption_patches(source, width):
             assert state.cap.shape == (len(s['first']), width)
             assert all(x['cap'].shape == (len(s['first']), CAPTION_ARRAY_WIDTH) for x in inputs.values())
             inputs = {a: dict(x, cap=state.cap) for a, x in inputs.items()}     # the tower input only
+        # The frozen make_config called by base_run writes config.data_sha256.cap / input_cap for Qwen3's graph
+        # space D. The caption tower's actual input is identified by config.rb.cap_sha256 above.
         return base_run(s, inputs, *args, **kwargs)
 
     def record(*args, **kwargs):
@@ -198,8 +197,9 @@ def _sidecar(weights):
 
 
 def load_view(weights, device):
+    _, rb = _sidecar(weights)
     with patch.object(M, 'read_sidecar', _sidecar):
-        return M.load_view(weights, device)
+        return M.load_view(weights, device, expect_store_sha256=C.store_hash(rb['cap_source']))
 
 
 def infer_sides(weights, inputs, device):
@@ -234,12 +234,23 @@ def validation_inputs(source, backbone):
                                               cap=C.painting_means(source, names))
 
 
+def _assert_training_validation(arrays, root, arm, aspect, seed):
+    path = B.paths_of(root, arm, aspect, seed)[1]
+    with np.load(path, allow_pickle=False) as stored:
+        assert set(arrays) == set(stored.files) == {'img', 'cap'}, f'{path}: training-time validation sides differ'
+        for side, x in arrays.items():
+            y = stored[side]
+            assert x.shape == y.shape and x.dtype == y.dtype and x.tobytes() == y.tobytes(), \
+                f'{path}: {side} differs from training-time validation'
+
+
 def export(enc, source, seeds, root, *, kinds=('val', 'held'), device=None, out_root=None, smoke=False, arm=None):
     """The ArtELingo validation (`val`: image and caption side) and held (image side) exports of stored checkpoints, at
     the widths each sidecar records, in r14's format and file names under `out_root/<kind>/<arm>/`. `arm` is the
     weights' arm folder (default: the source; K0's is `k11=40`). `device`: the one the weights were trained on unless
-    given. An existing file must equal what this run would write. Returns {(aspect, seed): {side: array}} of the last
-    kind."""
+    given. Validation into the weights root requires the run record's training device and arrays bit-equal to the
+    training-time validation file. Existing exports require matching metadata and current per-file code hashes.
+    Returns {(aspect, seed): {side: array}} of the last kind."""
     width = check_args(enc, source)
     seeds, arm = list(seeds), arm or source
     assert seeds and len(set(seeds)) == len(seeds) and all(s in B.SEEDS for s in seeds)
@@ -256,6 +267,9 @@ def export(enc, source, seeds, root, *, kinds=('val', 'held'), device=None, out_
                 assert inputs['cap'].shape == (len(names), width)
             assert inputs['img'].shape == (len(names), ctx.width)
             for seed in seeds:
+                own_validation = kind == 'val' and out_root == root
+                if own_validation:
+                    run_device = torch.device(json.loads(B.record_path(root, arm, seed).read_text())['device'])
                 for aspect in ASPECTS:
                     weights, config, weights_sha = B._check_weights(root, arm, aspect, seed, ctx.backbone, smoke)
                     _, rb = _sidecar(weights)
@@ -263,25 +277,35 @@ def export(enc, source, seeds, root, *, kinds=('val', 'held'), device=None, out_
                         source, width, C.store_hash(source)), f'{weights}: trained on another caption source or store'
                     recorded = torch.device(config['device'])
                     used = recorded if device is None else torch.device(device)
+                    if own_validation:
+                        assert recorded == run_device and used == run_device, \
+                            f'{weights}: validation in the weights root requires recorded training device {run_device}'
                     path = out_root / kind / arm / f'{aspect}__s{seed}.npz'
                     meta = dict(kind=kind, arm=arm, scale=B.rg_full.SCALE, aspect=aspect, seed=seed,
                                 encoder=ctx.backbone, rows=len(names), width=B.rb_student.OUT, dtype='float16',
                                 list_sha256=names_sha, weights_sha256=weights_sha,
                                 image_sha256=B.rb_student.sha_array(inputs['img']), device=str(recorded),
                                 export_device=str(used), recipe=B.rg_full.RECIPE, switches=B.V.switches(arm),
-                                cap_source=source, cap_width=width, cap_store_sha256=C.store_hash(source))
+                                cap_source=source, cap_width=width, cap_store_sha256=C.store_hash(source),
+                                r29_code_sha256=code_hashes())
                     if kind == 'val':
                         meta['cap_sha256'] = B.rb_student.sha_array(inputs['cap'])
-                    if path.exists():
+                    existing = path.exists()
+                    if existing:
                         arrays, info = B.rb_student.read_outputs(path)
+                        assert info.get('r29_code_sha256') == meta['r29_code_sha256'], \
+                            f'{path}: r29 export code changed or code hash missing; use a fresh --out-root'
                         assert all(info[k] == v for k, v in meta.items()), f'{path}: existing output differs from this run'
                     else:
-                        out = infer_sides(weights, inputs, used)
-                        for side, y in out.items():
+                        arrays = infer_sides(weights, inputs, used)
+                        for side, y in arrays.items():
                             problem = B.rg_full.vc3_problem(y, n_rows=len(names))
                             assert problem is None, f'{path}: {side}: {problem}'
+                    if own_validation:
+                        _assert_training_validation(arrays, root, arm, aspect, seed)
+                    if not existing:
                         extra = dict(vc3_attempts=1, vc3_problems=[]) if kind == 'held' else {}
-                        B.rb_student.write_outputs(path, out, dict(meta, sha256=B.rb_student.sha_array(out['img']), **extra))
+                        B.rb_student.write_outputs(path, arrays, dict(meta, sha256=B.rb_student.sha_array(arrays['img']), **extra))
                         arrays, info = B.rb_student.read_outputs(path)
                     result[aspect, seed] = arrays
     return result
@@ -389,14 +413,27 @@ def gate_i_c(seeds=(0,), val_device=None, held_device=None, out_root=None, r14_c
     """Gate (i)(c), export part: from r14's SigLIP 1 weights (K0), this module's export writes the validation and held
     exports; they must equal r14's stored ones bit for bit. Devices default to those the stored files were made on.
     `r14_code`: r14's own export functions run on the same devices into `<out>/r14_code`, and the two exports are
-    compared too (code against code, free of the hardware). r28's valpick cells are ticket 05's part."""
+    compared too (code against code, free of the hardware). Each invocation reserves a fresh try folder, including
+    `write=False` checks; only recorded invocations increment the gate record's tries. r28's valpick cells are ticket
+    05's part."""
     arm, seeds = P.K0_ARM, list(seeds)
-    out_root = Path(out_root) if out_root is not None else P.OUT / 'gate_i_c'
+    assert seeds and len(set(seeds)) == len(seeds) and all(s in B.SEEDS for s in seeds)
+    automatic_root = out_root is None
+    if automatic_root:
+        attempt = 1
+        while (P.OUT / 'gate_i_c' / f'try{attempt}').exists():
+            attempt += 1
+        out_root = P.OUT / 'gate_i_c' / f'try{attempt}'
+    out_root = check_root(out_root)
+    assert not out_root.exists() or (out_root.is_dir() and not any(out_root.iterdir())), \
+        f'{out_root}: non-empty gate output; use a fresh --out-root for each try'
+    out_root.mkdir(parents=True, exist_ok=not automatic_root)
     devices = stored_devices(arm, seeds[0])
     devices = dict(val=val_device or devices['val'], held=held_device or devices['held'])
     for kind in ('val', 'held'):
         export('siglip1', 'qwen', seeds, P.K0_ROOT, kinds=(kind,), device=devices[kind], out_root=out_root, arm=arm)
-    details = dict(seeds=seeds, arm=arm, devices=devices, stored_root=str(P.K0_ROOT),
+    details = dict(seeds=seeds, arm=arm, devices=devices, stored_root=str(P.K0_ROOT), out_root=str(out_root),
+                   r29_code_sha256=code_hashes(),
                    vs_stored=compare_exports(out_root, P.K0_ROOT, arm, seeds))
     ok = details['vs_stored']['equal']
     if r14_code:

@@ -141,7 +141,7 @@ def test_sidecar_rb_block_and_run_record_carry_the_caption_fields(monkeypatch):
     runs = T.train('siglip1', 'siglip1', [0], 'cpu', UNIT, smoke=True)
     rb = seen['rb']
     assert (rb['cap_source'], rb['cap_width'], rb['cap_store_sha256']) == ('siglip1', 1152, 'hash-siglip1')
-    assert rb['cap_sha256'] == B.rb_student.sha_array(siglip_means()) and rb['r29_code_sha256'] == T.code_sha256()
+    assert rb['cap_sha256'] == B.rb_student.sha_array(siglip_means()) and rb['r29_code_sha256'] == T.code_hashes()
     assert rb['width'] == 1152 and rb['encoder'] == 'siglip_so400m'                # r14's own fields stay
     assert seen['arm'] == 'siglip1' and seen['v_arm'] == dict(B.V.ARMS[B.rs_full.G_ARM])
     record = runs[0].record
@@ -204,6 +204,10 @@ def test_root_and_stage_guards(monkeypatch, tmp_path):
 
 
 def test_train_refuses_records_of_other_code(monkeypatch, tmp_path):
+    def no_real_data(ctx):
+        pytest.fail('code guard must reject the record before loading data')
+
+    monkeypatch.setattr(B, 'load_data', no_real_data)
     monkeypatch.setattr(P, 'OUT', tmp_path)
     root = tmp_path / 'cstar' / 'siglip1'
     path = B.record_path(root, 'siglip1', 0)
@@ -211,6 +215,25 @@ def test_train_refuses_records_of_other_code(monkeypatch, tmp_path):
     path.write_text(json.dumps(dict(r29_code_sha256={'r29_trainer.py': 'old'})))
     with pytest.raises(AssertionError, match='code changed'):
         T.train('siglip1', 'siglip1', [0], 'cpu', root)
+
+
+@pytest.mark.parametrize('command', ['train', 'export'])
+@pytest.mark.parametrize('encoder,source', [
+    ('siglip1', 'siglip2'), ('siglip1', 'clipl14_prefix'),
+    ('siglip2', 'siglip1'), ('siglip2', 'clipl14'),
+    ('clip_l14', 'siglip2'), ('clip_l14', 'siglip1_prefix'),
+])
+def test_commands_refuse_caption_source_of_another_encoder(monkeypatch, tmp_path, command, encoder, source):
+    monkeypatch.setattr(P, 'OUT', tmp_path)
+    monkeypatch.setattr(P, 'RECORDS', tmp_path / 'records')
+    P.RECORDS.mkdir()
+    (P.RECORDS / 'pass_rule.json').write_text(json.dumps(dict(status='pass')))
+    monkeypatch.setattr(B, 'training_context', lambda *a, **k: pytest.fail('must reject before loading data'))
+    with pytest.raises(AssertionError, match='caption source.*encoder'):
+        if command == 'train':
+            T.train(encoder, source, [0], 'cpu', tmp_path / 'model')
+        else:
+            T.export(encoder, source, [0], tmp_path / 'model')
 
 
 # ------------------------------------------------------------------------------------------------- the exports
@@ -248,7 +271,7 @@ def test_export_rebuilds_each_view_at_its_recorded_widths(monkeypatch, tmp_path)
     w = {a: save_head(tmp_path / 'w', 'siglip1', a, 0, 1152, fields) for a in T.ASPECTS}
     out = T.export('siglip1', 'siglip1', [0], tmp_path / 'w', kinds=('val', 'held'), out_root=P.SMOKE_OUT / 'o', smoke=True)
     for aspect in T.ASPECTS:
-        view = M.load_view(w[aspect])
+        view = M.load_view(w[aspect], expect_store_sha256='hash-siglip1')
         with torch.no_grad():
             want = {side: view[side](torch.from_numpy(x)).numpy().astype(np.float16)
                     for side, x in (('img', img), ('cap', cap))}
@@ -269,6 +292,89 @@ def test_export_refuses_other_caption_source_or_store(monkeypatch, tmp_path):
         save_head(tmp_path / 'w', 'siglip1', a, 0, 1152, fields)
     with pytest.raises(AssertionError, match='another caption source or store'):
         T.export('siglip1', 'siglip1', [0], tmp_path / 'w', kinds=('held',), out_root=P.SMOKE_OUT / 'o', smoke=True)
+
+
+@pytest.mark.parametrize('change', ['missing_hash', 'changed_code'])
+def test_export_reuses_only_outputs_of_current_code(monkeypatch, tmp_path, change):
+    monkeypatch.setattr(P, 'SMOKE_OUT', tmp_path / 'smoke')
+    stub_inputs(monkeypatch, n=5)
+    root = P.SMOKE_OUT / 'model'
+    fields = dict(cap_source='siglip1', cap_width=1152, cap_store_sha256='hash-siglip1')
+    for aspect in T.ASPECTS:
+        save_head(root, 'siglip1', aspect, 0, 1152, fields)
+    T.export('siglip1', 'siglip1', [0], root, kinds=('held',), smoke=True)
+    path = root / 'held' / 'siglip1' / 'emotion__s0.json'
+    info = json.loads(path.read_text())
+    assert info['r29_code_sha256'] == T.code_hashes()
+    monkeypatch.setattr(T, 'infer_sides', lambda *a: pytest.fail('existing output must be reused or refused'))
+    T.export('siglip1', 'siglip1', [0], root, kinds=('held',), smoke=True)
+    if change == 'missing_hash':
+        info.pop('r29_code_sha256')
+        path.write_text(json.dumps(info))
+    else:
+        monkeypatch.setattr(T, 'code_hashes', lambda: dict(info['r29_code_sha256'], **{'r29_trainer.py': 'changed'}))
+    with pytest.raises(AssertionError, match='code changed|code hash'):
+        T.export('siglip1', 'siglip1', [0], root, kinds=('held',), smoke=True)
+
+
+def validation_model(monkeypatch, tmp_path):
+    monkeypatch.setattr(P, 'SMOKE_OUT', tmp_path / 'smoke')
+    stub_inputs(monkeypatch, n=5)
+    root = P.SMOKE_OUT / 'model'
+    fields = dict(cap_source='siglip1', cap_width=1152, cap_store_sha256='hash-siglip1')
+    arrays = {side: np.zeros((5, 2048), dtype=np.float16) for side in ('img', 'cap')}
+    arrays['img'][:, 0], arrays['cap'][:, 1] = 1, 1
+    for aspect in T.ASPECTS:
+        save_head(root, 'siglip1', aspect, 0, 1152, fields)
+        write_export(root, 'val', 'siglip1', aspect, 0, arrays, layout='train')
+    B.record_path(root, 'siglip1', 0).write_text(json.dumps(dict(device='cpu')))
+    devices = []
+    def infer(weights, inputs, device):
+        devices.append(str(device))
+        return {side: x.copy() for side, x in arrays.items()}
+
+    monkeypatch.setattr(T, 'infer_sides', infer)
+    return root, arrays, devices
+
+
+def test_own_root_validation_uses_run_device_and_equals_training_arrays(monkeypatch, tmp_path):
+    root, arrays, devices = validation_model(monkeypatch, tmp_path)
+    T.export('siglip1', 'siglip1', [0], root, kinds=('val',), smoke=True)
+    assert devices == ['cpu'] * 3
+    for aspect in T.ASPECTS:
+        got, info = B.rb_student.read_outputs(root / 'val' / 'siglip1' / f'{aspect}__s0.npz')
+        assert info['export_device'] == 'cpu'
+        assert all(got[side].tobytes() == x.tobytes() for side, x in arrays.items())
+    monkeypatch.setattr(T, 'infer_sides', lambda *a: pytest.fail('verified export should be reused'))
+    T.export('siglip1', 'siglip1', [0], root, kinds=('val',), device='cpu', smoke=True)
+
+
+@pytest.mark.parametrize('mismatch', ['img', 'cap', 'signed_zero', 'reused'])
+def test_own_root_validation_refuses_arrays_different_from_training(monkeypatch, tmp_path, mismatch):
+    root, arrays, devices = validation_model(monkeypatch, tmp_path)
+    if mismatch == 'reused':
+        T.export('siglip1', 'siglip1', [0], root, kinds=('val',), smoke=True)
+    changed = {side: x.copy() for side, x in arrays.items()}
+    if mismatch == 'signed_zero':
+        changed['cap'][0, 2] = np.float16(-0.0)
+    else:
+        changed['img' if mismatch == 'img' else 'cap'][0, 0] += np.float16(0.01)
+    write_export(root, 'val', 'siglip1', 'emotion', 0, changed, layout='train')
+    with pytest.raises(AssertionError, match='training-time validation'):
+        T.export('siglip1', 'siglip1', [0], root, kinds=('val',), smoke=True)
+    if mismatch != 'reused':
+        assert not (root / 'val' / 'siglip1' / 'emotion__s0.npz').exists()
+
+
+@pytest.mark.parametrize('mismatch', ['override', 'run_record'])
+def test_own_root_validation_refuses_device_different_from_run(monkeypatch, tmp_path, mismatch):
+    root, arrays, devices = validation_model(monkeypatch, tmp_path)
+    if mismatch == 'run_record':
+        B.record_path(root, 'siglip1', 0).write_text(json.dumps(dict(device='cuda:7')))
+    with pytest.raises(AssertionError, match='recorded training device'):
+        T.export('siglip1', 'siglip1', [0], root, kinds=('val',), smoke=True,
+                 device='cuda:7' if mismatch == 'override' else None)
+    assert devices == []
 
 
 def test_k0_sidecar_without_caption_fields_is_qwen_at_2048_only_under_k0_root(monkeypatch, tmp_path):
@@ -376,10 +482,41 @@ def test_gate_i_c_runs_export_then_compares_on_the_stored_devices(monkeypatch, t
         (tmp_path / 'k0' / 'held' / 'k11=40').mkdir(parents=True, exist_ok=True)
         (tmp_path / 'k0' / 'held' / 'k11=40' / f'{a}__s0.json').write_text(json.dumps(dict(export_device='cpu')))
     calls = []
-    monkeypatch.setattr(T, 'export', lambda *a, **k: calls.append((a, k)))
+    def export(*a, **k):
+        calls.append((a, k))
+        (k['out_root'] / k['kinds'][0]).mkdir(parents=True)
+
+    monkeypatch.setattr(T, 'export', export)
+    ref_roots = []
+    def reference(*a, **k):
+        ref_roots.append(k['out_root'])
+
+    monkeypatch.setattr(B, 'export_validation', reference)
+    monkeypatch.setattr(B, 'export_held', reference)
     monkeypatch.setattr(T, 'compare_exports', lambda *a, **k: dict(equal=True, items={'x': dict(equal=True)}))
-    result = T.gate_i_c(r14_code=False)
+    result = T.gate_i_c()
     assert result['status'] == 'pass' and result['details']['devices'] == dict(val='cpu', held='cpu')
     assert [(c[1]['kinds'], c[1]['device'], c[1]['arm']) for c in calls] == [(('val',), 'cpu', 'k11=40'),
                                                                               (('held',), 'cpu', 'k11=40')]
-    assert json.loads((tmp_path / 'gates' / 'i_c.json').read_text())['status'] == 'pass'
+    record = json.loads((tmp_path / 'gates' / 'i_c.json').read_text())
+    assert record['status'] == 'pass' and record['details']['r29_code_sha256'] == T.code_hashes()
+    assert record['details']['out_root'] == str(tmp_path / 'gate_i_c' / 'try1')
+    assert ref_roots == [tmp_path / 'gate_i_c' / 'try1' / 'r14_code'] * 2
+    T.gate_i_c(r14_code=False, write=False)
+    assert calls[-1][1]['out_root'] == tmp_path / 'gate_i_c' / 'try2'
+    assert json.loads((tmp_path / 'gates' / 'i_c.json').read_text())['tries'] == 1
+    T.gate_i_c(r14_code=False)
+    record = json.loads((tmp_path / 'gates' / 'i_c.json').read_text())
+    assert record['tries'] == 2 and record['details']['out_root'].endswith('/try3')
+
+
+@pytest.mark.parametrize('write', [True, False])
+def test_gate_i_c_refuses_nonempty_output_before_loading_or_comparing(monkeypatch, tmp_path, write):
+    monkeypatch.setattr(P, 'OUT', tmp_path)
+    out = tmp_path / 'prior'
+    out.mkdir()
+    (out / 'old.npz').write_bytes(b'previous try')
+    monkeypatch.setattr(T, 'stored_devices', lambda *a: pytest.fail('must reject the folder before reading K0'))
+    with pytest.raises(AssertionError, match='non-empty'):
+        T.gate_i_c(out_root=out, write=write)
+    assert (out / 'old.npz').read_bytes() == b'previous try'
