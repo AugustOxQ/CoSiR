@@ -22,3 +22,4 @@ Decision lines: `decisions.md`. Job briefs: `briefs/`.
 - 20:00 G done: candidates 3a 11 (Qwen3 9), 3b 18, Figure 4 top classes amusement / Cubism / still life; 0 of 11 and 0 of 18 overlap with the Qwen3 candidates. Page `/data/SSD2/cosir_r28/20261112_siglip_main/qual/viewer/index.html`. Row-order proof and viewer check asked.
 - 20:01 G checks: c* held row order proven (name list hash equals the sidecar's list_sha256, a0b1139c...); viewer check OK (3a 11, 3b 18, cluster tabs 9 / 27 / 10).
 - 20:02 F plain row: plain SigLIP 1 AMI 0.061 / 0.382 / 0.402, plain-cosine mAP 0.244 / 0.268 / 0.455; Qwen3 replay equals the paper's Table 5 plain row on all six cells (`records/ablation_plain.json`).
+- 20:03 B photos complete, all gates pass (Qwen3 paintings-only replays exact): photo model EmoSet 0.432 / 0.483; paintings only Affection 0.150 / 0.288, EmoSet 0.374 / 0.446; plain EmoSet 0.267 / 0.364 (AMI / mAP). `records/photos.json`.
