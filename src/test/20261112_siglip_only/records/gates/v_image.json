@@ -1,0 +1,1065 @@
+{
+ "details": {
+  "aspects": [
+   "emotion",
+   "style",
+   "genre"
+  ],
+  "cells": [
+   {
+    "diffs": {
+     "comparator_value": 0.0,
+     "d": 0.0,
+     "hi": 0.0,
+     "lo": 0.0,
+     "r": 0.0,
+     "value": 0.0
+    },
+    "id": "artelingo/siglip1/k11=40/emotion/ami9/plain",
+    "max_abs_diff": 0.0,
+    "ok": true,
+    "outcome": "WIN",
+    "record": "r17 SC1/artelingo/siglip1/emotion/ami/9/plain",
+    "recorded_outcome": "WIN"
+   },
+   {
+    "diffs": {
+     "comparator_value": 0.0,
+     "d": 0.0,
+     "hi": 0.0,
+     "lo": 0.0,
+     "r": 0.0,
+     "value": 0.0
+    },
+    "id": "artelingo/siglip1/k11=40/emotion/ami9/teacher",
+    "max_abs_diff": 0.0,
+    "ok": true,
+    "outcome": "WIN",
+    "record": "r17 SC3/artelingo/siglip1/emotion/ami/9/teacher",
+    "recorded_outcome": "WIN"
+   },
+   {
+    "diffs": {
+     "comparator_value": 0.0,
+     "d": 0.0,
+     "hi": 0.0,
+     "lo": 0.0,
+     "r": 0.0,
+     "value": 0.0
+    },
+    "id": "artelingo/siglip1/k11=40/style/ami27/plain",
+    "max_abs_diff": 0.0,
+    "ok": true,
+    "outcome": "WIN",
+    "record": "r17 SC1/artelingo/siglip1/style/ami/27/plain",
+    "recorded_outcome": "WIN"
+   },
+   {
+    "diffs": {
+     "comparator_value": 0.0,
+     "d": 0.0,
+     "hi": 0.0,
+     "lo": 0.0,
+     "r": 0.0,
+     "value": 0.0
+    },
+    "id": "artelingo/siglip1/k11=40/style/ami27/teacher",
+    "max_abs_diff": 0.0,
+    "ok": true,
+    "outcome": "WIN",
+    "record": "r17 SC3/artelingo/siglip1/style/ami/27/teacher",
+    "recorded_outcome": "WIN"
+   },
+   {
+    "diffs": {
+     "comparator_value": 0.0,
+     "d": 0.0,
+     "hi": 0.0,
+     "lo": 0.0,
+     "r": 0.0,
+     "value": 0.0
+    },
+    "id": "artelingo/siglip1/k11=40/genre/ami10/plain",
+    "max_abs_diff": 0.0,
+    "ok": true,
+    "outcome": "WIN",
+    "record": "r17 SC1/artelingo/siglip1/genre/ami/10/plain",
+    "recorded_outcome": "WIN"
+   },
+   {
+    "diffs": {
+     "comparator_value": 0.0,
+     "d": 0.0,
+     "hi": 0.0,
+     "lo": 0.0,
+     "r": 0.0,
+     "value": 0.0
+    },
+    "id": "artelingo/siglip1/k11=40/genre/ami10/teacher",
+    "max_abs_diff": 0.0,
+    "ok": true,
+    "outcome": "WIN",
+    "record": "r17 SC3/artelingo/siglip1/genre/ami/10/teacher",
+    "recorded_outcome": "WIN"
+   },
+   {
+    "diffs": {
+     "comparator_value": 0.0,
+     "d": 0.0,
+     "hi": 0.0,
+     "lo": 0.0,
+     "r": 0.0,
+     "value": 0.0
+    },
+    "id": "artelingo/siglip1/k11=40/emotion/map/plain",
+    "max_abs_diff": 0.0,
+    "ok": true,
+    "outcome": "WIN",
+    "record": "r17 SC7/artelingo/siglip1/emotion/map/-/plain",
+    "recorded_outcome": "WIN"
+   },
+   {
+    "diffs": {
+     "comparator_value": 0.0,
+     "d": 0.0,
+     "hi": 0.0,
+     "lo": 0.0,
+     "r": 0.0,
+     "value": 0.0
+    },
+    "id": "artelingo/siglip1/k11=40/style/map/plain",
+    "max_abs_diff": 0.0,
+    "ok": true,
+    "outcome": "BELOW",
+    "record": "r17 SC7/artelingo/siglip1/style/map/-/plain",
+    "recorded_outcome": "BELOW"
+   },
+   {
+    "diffs": {
+     "comparator_value": 0.0,
+     "d": 0.0,
+     "hi": 0.0,
+     "lo": 0.0,
+     "r": 0.0,
+     "value": 0.0
+    },
+    "id": "artelingo/siglip1/k11=40/genre/map/plain",
+    "max_abs_diff": 0.0,
+    "ok": true,
+    "outcome": "WIN",
+    "record": "r17 SC7/artelingo/siglip1/genre/map/-/plain",
+    "recorded_outcome": "WIN"
+   },
+   {
+    "diffs": {
+     "comparator_value": 0.0,
+     "d": 0.0,
+     "hi": 0.0,
+     "lo": 0.0,
+     "r": 0.0,
+     "value": 0.0
+    },
+    "id": "artelingo/siglip1/k11=40/emotion/map/teacher",
+    "max_abs_diff": 0.0,
+    "ok": true,
+    "outcome": "LEVEL",
+    "record": "r14 SC6 siglip1/emotion",
+    "recorded_outcome": "LEVEL"
+   },
+   {
+    "diffs": {
+     "comparator_value": 0.0,
+     "d": 0.0,
+     "hi": 0.0,
+     "lo": 0.0,
+     "r": 0.0,
+     "value": 0.0
+    },
+    "id": "artelingo/siglip1/k11=40/style/map/teacher",
+    "max_abs_diff": 0.0,
+    "ok": true,
+    "outcome": "WIN",
+    "record": "r14 SC6 siglip1/style",
+    "recorded_outcome": "WIN"
+   },
+   {
+    "diffs": {
+     "comparator_value": 0.0,
+     "d": 0.0,
+     "hi": 0.0,
+     "lo": 0.0,
+     "r": 0.0,
+     "value": 0.0
+    },
+    "id": "artelingo/siglip1/k11=40/genre/map/teacher",
+    "max_abs_diff": 0.0,
+    "ok": true,
+    "outcome": "WIN",
+    "record": "r14 SC6 siglip1/genre",
+    "recorded_outcome": "WIN"
+   }
+  ],
+  "draws": {
+   "ami": 2000,
+   "map": 10000
+  },
+  "intervals_checked": true,
+  "max_abs_diff": 0.0,
+  "picks": [
+   {
+    "diff": 0.0,
+    "name": "ami per_seed emotion s0",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "map R0 per_seed emotion s0",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "ami per_seed emotion s1",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "map R0 per_seed emotion s1",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "ami per_seed emotion s2",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "map R0 per_seed emotion s2",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "ami per_seed emotion s3",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "map R0 per_seed emotion s3",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "ami per_seed emotion s4",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "map R0 per_seed emotion s4",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "ami r emotion",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "map r emotion",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "untold crossfit map emotion",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "ami per_seed style s0",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "map R0 per_seed style s0",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "ami per_seed style s1",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "map R0 per_seed style s1",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "ami per_seed style s2",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "map R0 per_seed style s2",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "ami per_seed style s3",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "map R0 per_seed style s3",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "ami per_seed style s4",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "map R0 per_seed style s4",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "ami r style",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "map r style",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "untold crossfit map style",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "ami per_seed genre s0",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "map R0 per_seed genre s0",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "ami per_seed genre s1",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "map R0 per_seed genre s1",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "ami per_seed genre s2",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "map R0 per_seed genre s2",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "ami per_seed genre s3",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "map R0 per_seed genre s3",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "ami per_seed genre s4",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "map R0 per_seed genre s4",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "ami r genre",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "map r genre",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "untold crossfit map genre",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "untold score",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "untold kept",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table rows",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table center+k0 map emotion",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table center+k0 map style",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table center+k0 map genre",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table center+k0 score",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table center+k0 kept",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table center+k1 map emotion",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table center+k1 map style",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table center+k1 map genre",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table center+k1 score",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table center+k1 kept",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table center+k10 map emotion",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table center+k10 map style",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table center+k10 map genre",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table center+k10 score",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table center+k10 kept",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table center+k3 map emotion",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table center+k3 map style",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table center+k3 map genre",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table center+k3 score",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table center+k3 kept",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table center+k5 map emotion",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table center+k5 map style",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table center+k5 map genre",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table center+k5 score",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table center+k5 kept",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table none+k0 map emotion",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table none+k0 map style",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table none+k0 map genre",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table none+k0 score",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table none+k0 kept",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table none+k1 map emotion",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table none+k1 map style",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table none+k1 map genre",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table none+k1 score",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table none+k1 kept",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table none+k10 map emotion",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table none+k10 map style",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table none+k10 map genre",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table none+k10 score",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table none+k10 kept",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table none+k3 map emotion",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table none+k3 map style",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table none+k3 map genre",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table none+k3 score",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table none+k3 kept",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table none+k5 map emotion",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table none+k5 map style",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table none+k5 map genre",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table none+k5 score",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table none+k5 kept",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten1024+k0 map emotion",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten1024+k0 map style",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten1024+k0 map genre",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten1024+k0 score",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten1024+k0 kept",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten1024+k1 map emotion",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten1024+k1 map style",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten1024+k1 map genre",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten1024+k1 score",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten1024+k1 kept",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten1024+k10 map emotion",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten1024+k10 map style",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten1024+k10 map genre",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten1024+k10 score",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten1024+k10 kept",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten1024+k3 map emotion",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten1024+k3 map style",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten1024+k3 map genre",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten1024+k3 score",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten1024+k3 kept",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten1024+k5 map emotion",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten1024+k5 map style",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten1024+k5 map genre",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten1024+k5 score",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten1024+k5 kept",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten256+k0 map emotion",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten256+k0 map style",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten256+k0 map genre",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten256+k0 score",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten256+k0 kept",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten256+k1 map emotion",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten256+k1 map style",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten256+k1 map genre",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten256+k1 score",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten256+k1 kept",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten256+k10 map emotion",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten256+k10 map style",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten256+k10 map genre",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten256+k10 score",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten256+k10 kept",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten256+k3 map emotion",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten256+k3 map style",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten256+k3 map genre",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten256+k3 score",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten256+k3 kept",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten256+k5 map emotion",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten256+k5 map style",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten256+k5 map genre",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten256+k5 score",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten256+k5 kept",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten64+k0 map emotion",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten64+k0 map style",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten64+k0 map genre",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten64+k0 score",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten64+k0 kept",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten64+k1 map emotion",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten64+k1 map style",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten64+k1 map genre",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten64+k1 score",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten64+k1 kept",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten64+k10 map emotion",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten64+k10 map style",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten64+k10 map genre",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten64+k10 score",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten64+k10 kept",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten64+k3 map emotion",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten64+k3 map style",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten64+k3 map genre",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten64+k3 score",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten64+k3 kept",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten64+k5 map emotion",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten64+k5 map style",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten64+k5 map genre",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten64+k5 score",
+    "ok": true
+   },
+   {
+    "diff": 0.0,
+    "name": "cstar table whiten64+k5 kept",
+    "ok": true
+   }
+  ],
+  "picks_equal": {
+   "cstar": true,
+   "plain": true,
+   "teacher": true,
+   "untold": true
+  },
+  "recomputed_readouts": {
+   "cstar": "center+k10",
+   "plain": "center+k10",
+   "teacher": "center+k10",
+   "untold": "center+k10"
+  },
+  "seconds_cells": 715,
+  "seconds_validation": 1467,
+  "tol": 1e-09
+ },
+ "gate": "v_image",
+ "status": "pass",
+ "tries": 1,
+ "written": "2026-11-13 00:18"
+}

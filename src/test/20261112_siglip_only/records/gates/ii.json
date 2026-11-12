@@ -1,0 +1,60 @@
+{
+ "gate": "ii",
+ "status": "pass",
+ "tries": 1,
+ "details": {
+  "n_values": 135,
+  "tolerance": 1e-06,
+  "max_abs_diff_per_seed_map": 0.0,
+  "mismatched": [],
+  "picks": {
+   "emotion/t2i": {
+    "mine": "center_k10",
+    "r28": "center_k10"
+   },
+   "emotion/i2t": {
+    "mine": "center_k10",
+    "r28": "center_k10"
+   },
+   "emotion/t2t": {
+    "mine": "center_k10",
+    "r28": "center_k10"
+   },
+   "style/t2i": {
+    "mine": "center_k10",
+    "r28": "center_k10"
+   },
+   "style/i2t": {
+    "mine": "center_k10",
+    "r28": "center_k10"
+   },
+   "style/t2t": {
+    "mine": "center_k10",
+    "r28": "center_k10"
+   },
+   "genre/t2i": {
+    "mine": "center_k10",
+    "r28": "center_k10"
+   },
+   "genre/i2t": {
+    "mine": "center",
+    "r28": "center"
+   },
+   "genre/t2t": {
+    "mine": "center_k10",
+    "r28": "center_k10"
+   }
+  },
+  "picks_equal": true,
+  "score_device_note": "r28 scored on cuda; this scoring ran where `score` ran",
+  "replay": {
+   "device": "cpu",
+   "n_files": 15,
+   "min_share_equal": 0.9980177463883696,
+   "all_one_step": true,
+   "rule": "share equal in float16 >= 0.995, every other element one float16 step from the stored value",
+   "passed": true
+  }
+ },
+ "written": "2026-11-12 23:48"
+}
