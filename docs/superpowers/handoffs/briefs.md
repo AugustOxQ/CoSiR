@@ -2352,3 +2352,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-12-r29-build-3-handoff.md
 - New chat: tab 'r29 build 3', session 2b9418e0-21ad-48a7-8bb0-62be669125d0
 
+[brief] CoSiR: r29 build 3 -> r29 build 4 (2026-11-13 00:21 Amsterdam)
+- Done: import clash fixed; 02 merged; 05, 07, 08, 12, 14 built; 05, 07, 08 reviewed (pass after fixes); 07 fixed.
+- State: stage 0 gates (i)(c), (ii), (iv) store, (v) image and (v) text pass on the local GPU and CPU; gate (i)(a) weights bit-equal to r14.
+- Next: Codex fix of 05, fixer for 08, re-review of 07; merge; reviews of 12 and 14; then 10, 11, 13, then 15.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-13-r29-build-4-handoff.md
+- New chat: tab 'r29 build 4', session 15fea542-d562-41b1-91e2-67568c234426
+
