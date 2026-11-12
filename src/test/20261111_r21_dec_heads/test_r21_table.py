@@ -400,7 +400,7 @@ def test_diag_markdown_shows_the_best_epoch_and_flags_only_real_disagreement():
 
 # ------------------------------------------------------------------------------------------------ arms and defaults
 def test_arm_names_are_checked_for_the_real_tree_only():
-    T.check_arm_names(['dec-off', 'dec-plain_l1_w1_S1'], T.R21_FULL)
+    T.check_arm_names(['dec-off', 'dec-plain_l1_w1_S1', 'dec-plain_l0_w5_S2'], T.R21_FULL)
     with pytest.raises(AssertionError):
         T.check_arm_names(['k11=40-no_buddy'], T.R21_FULL)                # a removal arm is not an r21 arm
     T.check_arm_names(['k11=40-no_buddy'], T.R10_FULL)                     # the regression reads r10's tree

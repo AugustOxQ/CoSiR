@@ -5,6 +5,7 @@ Settings: form in off | plain | start | teacher; lam (float, DEC weight); warmup
 `_bal` when balance is on. The two functions are inverse; `parse_arm` refuses any name that `arm_name` would not write.
 Pure Python, no file reads: ticket 03's runner imports it (as `r21_run.parse_arm`, `r21_run.arm_name`).
 """
+import math
 import re
 
 FORMS = ('off', 'plain', 'start', 'teacher')
@@ -19,10 +20,11 @@ def arm_name(settings):
     if settings['form'] == 'off':
         assert all(settings[k] is None for k in ('lam', 'warmup', 'stop', 'balance')), settings
         return 'dec-off'
-    assert isinstance(settings['lam'], (int, float)) and not isinstance(settings['lam'], bool) and settings['lam'] > 0
+    lam = settings['lam']
+    assert isinstance(lam, (int, float)) and not isinstance(lam, bool) and math.isfinite(lam) and lam >= 0
     assert isinstance(settings['warmup'], int) and not isinstance(settings['warmup'], bool) and settings['warmup'] >= 0
     assert settings['stop'] in STOPS and isinstance(settings['balance'], bool), settings
-    return (f"dec-{settings['form']}_l{settings['lam']:g}_w{settings['warmup']}_{settings['stop']}"
+    return (f"dec-{settings['form']}_l{0 if lam == 0 else lam:g}_w{settings['warmup']}_{settings['stop']}"
             + ('_bal' if settings['balance'] else ''))
 
 

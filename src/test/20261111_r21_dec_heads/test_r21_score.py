@@ -13,6 +13,7 @@ import r21_arms  # noqa: E402
 # ------------------------------------------------------------------------------------------------ arm names
 @pytest.mark.parametrize('name, settings', [
     ('dec-off', dict(form='off', lam=None, warmup=None, stop=None, balance=None)),
+    ('dec-plain_l0_w5_S2', dict(form='plain', lam=0.0, warmup=5, stop='S2', balance=False)),
     ('dec-plain_l1_w1_S1', dict(form='plain', lam=1.0, warmup=1, stop='S1', balance=False)),
     ('dec-teacher_l10_w5_S2_bal', dict(form='teacher', lam=10.0, warmup=5, stop='S2', balance=True)),
     ('dec-start_l0.5_w5_S1_bal', dict(form='start', lam=0.5, warmup=5, stop='S1', balance=True)),
@@ -33,6 +34,16 @@ def test_parse_arm_refuses(bad):
 def test_arm_name_refuses_off_with_values():
     with pytest.raises(AssertionError):
         r21_arms.arm_name(dict(form='off', lam=1.0, warmup=None, stop=None, balance=None))
+
+
+@pytest.mark.parametrize('lam', [-1, float('nan'), float('inf'), float('-inf'), True, False])
+def test_arm_name_refuses_invalid_lambda(lam):
+    with pytest.raises(AssertionError):
+        r21_arms.arm_name(dict(form='plain', lam=lam, warmup=5, stop='S2', balance=False))
+
+
+def test_arm_name_normalizes_negative_zero():
+    assert r21_arms.arm_name(dict(form='plain', lam=-0.0, warmup=5, stop='S2', balance=False)) == 'dec-plain_l0_w5_S2'
 
 
 # ------------------------------------------------------------------------------------------------ selection rule
