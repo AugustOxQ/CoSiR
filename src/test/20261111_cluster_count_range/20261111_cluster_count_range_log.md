@@ -324,3 +324,11 @@ Ours against the best other line at each K (exact means):
 
 Overlaps in the drawing: CLAY runs under ours in the style panel from 10 to 27 clusters (within 0.004); in the genre
 panel CLAY meets the instructed Qwen3 at 10 and 16 and TPIPS at 20. Open with the user: caption note or inset.
+
+### Gate against r28's numbers sheet (2026-11-12 20:18)
+`20261112_siglip_main/paper_cells.md` (written 20:16), section Table 2: all 11 rows equal the figure's class-count values
+at three decimals (plain, + TURTLE, CLAY, CRL, PercepT matched and ours on SigLIP 1; Instructed Qwen3, TPIPS, BERTopic,
+VLM2Vec, PercepT on CLIP L/14 unchanged). Ours exactly: `records/per_seed.json` `ours_siglip1/ami/{aspect}/mean` minus the
+r17 SigLIP 1 sweep's cstar mean = 0.0 for all three aspects. The sheet maps the plain row "Qwen3 -> SigLIP 1"; the figure
+also keeps a plain Qwen3 line (0.070 / 0.235 / 0.425, the current .tex L9), as the r28 handoff says plain Qwen3 stays in
+Table 2. Remove that line if the filled Table 2 drops the row.
