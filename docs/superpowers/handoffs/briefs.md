@@ -2295,3 +2295,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-12-paper-plan-4-handoff.md
 - New chat: tab 'paper plan 4', session b3e3470b-e256-40b9-9f3c-812b84681461
 
+[brief] CoSiR: paper plan 4 -> r29 decide (2026-11-12 21:13 Amsterdam)
+- Done: the user chose the next experiment in the paper chat: a SigLIP-only aspect adapter, as a medium loop.
+- State: CoSiR on SigLIP 1 still reads Qwen3 caption embeddings in its caption tower. So texts need Qwen3 at test time.
+- Next: a short grill on the open points below, then a short spec and decision rule. The build and run start after r28 frees the GPU.
+- Blocked: nothing. The runs wait for r28 (ablation and settings check on the GPU tonight).
+- Handoff: docs/superpowers/handoffs/2026-11-12-r29-decide-handoff.md
+- New chat: tab 'r29 decide', session e56ee757-9e45-4ea2-bf6b-4a72cae373fd
+
