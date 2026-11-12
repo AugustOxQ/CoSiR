@@ -2279,3 +2279,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-12-paper-cluster-counts-handoff.md
 - New chat: tab 'paper cluster counts', session cc74b0de-3d55-48b5-976a-88a24279c8a2
 
+[brief] CoSiR: paper plan 2 -> paper plan 3 (2026-11-12 20:20 Amsterdam)
+- Done: new names across Sec. 3 and 4 and the tables; Sec. 3 rebuilt in two parts (graphs, aspect adapter) plus test time; genre term and Table 1 moved to 4.1; Figure 1 redrawn with its new caption.
+- State: the method text is general (any image encoder g, captions from the MLLM); the tables still show Qwen3 numbers.
+- Next: Figure 2 in Figure 1's style, then the tables and 4.2 from r28's `paper_cells.md`.
+- Blocked: the tables wait for r28's numbers sheet.
+- Handoff: docs/superpowers/handoffs/2026-11-12-paper-plan-3-handoff.md
+- New chat: tab 'paper plan 3', session 113b79a8-ca9c-46db-9300-c2ec7556812a
+
