@@ -4,6 +4,7 @@ Controller-owned: tickets import from here and never edit it. A ticket's own con
 the controller (in the hand-back note) for an addition here.
 """
 import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -96,3 +97,16 @@ def check_older_imports():
                     bad.append(f'{name}: {f}')
                 break
     assert not bad, f'older-round modules not from {main} (mixed import): {bad[:5]}'
+
+
+def require_committed(path, why):
+    """The order rule's refusal (spec §3.4, §3.5 row 1b): `path` exists and is committed unchanged in git HEAD of its own
+    repository (presence and commit, not its content or status), else RuntimeError naming `why`."""
+    path = Path(path)
+    if not path.exists():
+        raise RuntimeError(f'no {path.name} at {path}: {why}')
+    git = ['git', '-C', str(path.parent)]
+    tracked = subprocess.run(git + ['ls-files', '--error-unmatch', '--', path.name], capture_output=True)
+    unchanged = subprocess.run(git + ['diff', '--quiet', 'HEAD', '--', path.name], capture_output=True)
+    if tracked.returncode != 0 or unchanged.returncode != 0:
+        raise RuntimeError(f'{path} is not committed unchanged in HEAD: {why}')

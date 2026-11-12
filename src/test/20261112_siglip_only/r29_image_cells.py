@@ -29,7 +29,8 @@ Loader checks are r11's (`rt_data._cstar`): arm, aspect, seed, names hash, `kind
 config, rg.arm (no default), file sha256 (training layout).
 
 Order rule (§3.4): `picks --arm A` reads validation only and writes `records/image_picks_<arm>.json` (once per arm: an existing record is never overwritten); `cells --arm A`
-refuses without that file (and, outside smoke, unless it is committed unchanged in HEAD) and unless the validation files it
+refuses without that file (and, outside smoke, unless it is committed unchanged in HEAD), without `records/pass_rule.json`
+committed unchanged in HEAD (presence and commit, not its status: D9; K0 gate replays need neither), and unless the validation files it
 reads again hash as the picks record says, and writes
 `records/image_cells_<arm>.json`. `gate-v-image` replays r17's SC1, SC3, SC7 and r14's Q1 image cells on K0 (gate (v)).
 """
@@ -561,6 +562,9 @@ def main(argv=None):
         print(f'picks {w.arm}: untold {rec["readouts"]["untold"]["pick"]}, cstar {rec["readouts"]["cstar"]["pick"]}, '
               f'plain {rec["readouts"]["plain"]["pick"]} -> {path} ({time.monotonic() - t0:.0f}s)')
         return 0
+    if not args.allow_uncommitted:       # the order rule: the pass rule is committed before any test number (spec §3.4, §3.5 row 1b)
+        P.require_committed(records_dir() / 'pass_rule.json',
+                            f'commit records/pass_rule.json before the test cells of {args.arm} (spec §3.4, §3.5 row 1b)')
     w = _wiring(args, ('val', 'held'))
     picks = read_picks(args.arm, require_committed=not args.allow_uncommitted)
     assert picks['encoder'] == w.encoder and picks['root'] == str(w.root), 'the picks record is for another model root'
