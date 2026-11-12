@@ -241,15 +241,30 @@ def make_picks(enc='clip_l14', workers=8, out=OUT, crl_unit_variants=True):
     r17's CRL-on-MMArt units). Validation only."""
     data = ValDataEnc(enc)
     picks = {}
+    tables = Path(out) / enc          # r18's table writer names no encoder (`clay__<set>__<A|B>.json`): one folder per encoder
     for set_ in SETS:
         unit, src = encoder_units(set_, enc)
-        picks.update(s1.clay_retrieval(data, set_, unit=unit, source=src, workers=workers, out=out))
+        picks.update(s1.clay_retrieval(data, set_, unit=unit, source=src, workers=workers, out=tables))
         picks[f'clay_textset/clu/{set_}'] = s1.clay_clustering_choice(data, set_)
-        picks[f'crl/{set_}'] = crl_pick(data, set_, unit, src, workers=workers, out=out)
+        picks[f'crl/{set_}'] = crl_pick(data, set_, unit, src, workers=workers, out=tables)
         if crl_unit_variants and set_ == 'artelingo':
             # r11 made CRL's ArtELingo pick in units of Qwen c*'s range: the pick under that unit, as a sensitivity check
             q_unit, q_src = ns_picks.ranges(set_, 'qwen')
-            picks[f'crl_qwen_unit/{set_}'] = crl_pick(data, set_, q_unit, q_src, workers=workers, out=out, tag='__qwenunit')
+            picks[f'crl_qwen_unit/{set_}'] = crl_pick(data, set_, q_unit, q_src, workers=workers, out=tables, tag='__qwenunit')
+    return fix_records(picks, enc, tables, out)
+
+
+def fix_records(picks, enc, tables, out):
+    """Two corrections to the records r18's writers return: `table_path` is made relative to `out` (it includes the encoder folder
+    `tables`), and the retrieval text-set rule names the unit actually used (`enc`'s own c* validation mAP range; r18's wording
+    says CLIP L/14, true for CLIP L/14 only)."""
+    for rec in picks.values():
+        if 'table_path' in rec:
+            rec['table_path'] = str((tables / rec['table_path']).relative_to(out))
+            assert (Path(out) / rec['table_path']).is_file(), rec['table_path']
+        if 'rule' in rec and enc != 'clip_l14':
+            assert 'CLIP L/14 c* range' in rec['rule'], rec['rule']
+            rec['rule'] = rec['rule'].replace('CLIP L/14 c* range', f"{enc}'s own c* validation mAP range (ns_picks.ranges)")
     return picks
 
 
