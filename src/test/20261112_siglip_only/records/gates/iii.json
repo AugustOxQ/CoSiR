@@ -1,0 +1,29 @@
+{
+  "gate": "iii",
+  "status": "pass",
+  "tries": 1,
+  "details": {
+    "checks": {
+      "same_ids": true,
+      "qwen_ids_join_with_painting": true,
+      "painting_counts_equal": true,
+      "train_joins": true,
+      "val_joins": true,
+      "held_joins": true,
+      "roles_disjoint_and_cover_store": true,
+      "annotation_painting_equals_store": true,
+      "role_sizes_equal_ct_counts": true,
+      "train_val_painting_means_ok": true
+    },
+    "n_captions": 308723,
+    "n_paintings": 61402,
+    "roles": {
+      "train": 216107,
+      "val": 30872,
+      "held": 61744
+    },
+    "source": "siglip1",
+    "store_sha256": "a3c43025036c9150171c5891b870493032dfbd1f24f1d964caa4a85b0ea6a81b"
+  },
+  "written": "2026-11-12 22:52"
+}
