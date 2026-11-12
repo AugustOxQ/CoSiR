@@ -183,3 +183,15 @@ Spec: `docs/superpowers/specs/2026-11-11-r21-dec-heads-design.md`. Decision line
   and "CBI" (read as the Davies-Bouldin index; not confirmed with the user), as in the PercepT paper (not checked). The
   user is not sure they apply here, since PercepT has no train/test split. To be discussed in a new chat ("r21 run 2",
   handoff `docs/superpowers/handoffs/2026-11-12-r21-run-2-handoff.md`). The λ = 0 control stays open.
+
+## Run chat 2, 2026-11-12 (from 19:38)
+
+- 19:41: PercepT (arXiv 2606.03345 v1, read by a Sonnet web-fetch agent; Table 3 and appendices from a model summary) names
+  the scores "silhouette score (SI)", "Davies-Bouldin index (DBI)", "Calinski-Harabasz index (CHI)"; "CBI" is not in the
+  paper. They are headline columns of Table 1 (PercepT 0.97 / 291,574 / 0.33; CLIP k-means 0.02 / 1,309 / 3.23), computed
+  on all of ArtELingo (no clustering split); space, distance and partition are not stated; methods of different
+  embedding sizes are compared directly. §5.4.2: "A high SI is the expected outcome of DEC". Internal scores and AMI
+  disagree in its table (hC+DEC SI 0.91, AMI 0.05; VLM2VEC v1 SI 0.03, AMI 0.16).
+- Exports on disk: test 12,281 x 2048 (all arms), validation 6,152 x 2048 (`full/train/<arm>/R6-5/`); the 42,969
+  training paintings are not exported (a forward pass from `full/weights/` would give them). Facts given to the user;
+  the choice of scores, splits and partition is asked, user first.
