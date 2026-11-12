@@ -1,6 +1,6 @@
 # r29: the SigLIP-only aspect adapter: design
 
-> Date: 2026-11-12 21:40 (revised 22:00 after the rule review) · Status: draft · Kind: experiment
+> Date: 2026-11-12 21:40 (revised 22:05 after the rule review and the re-review) · Status: approved 2026-11-12 22:42 · Kind: experiment
 > Builds on: the [r29 decide handoff](../handoffs/2026-11-12-r29-decide-handoff.md); r28's numbers sheet
 > (`src/test/20261112_siglip_main/paper_cells.md`); the grill in the r29 decide chat (2026-11-12, one key question, a
 > scenario check, five minor points and a closing summary; its answers are §4) · Constitution:
@@ -56,7 +56,8 @@ Friday (each job under 1 hour); stage 2 from Friday 19:00, or on DAS6. Report by
 2. c*'s settings stay, although a learning rate of 0.0005 led on seed 0 by 0.0007, inside the 0.0030 seed range (your
    pick, after seeing the recommendation).
 3. The new model trains on the local GPU; the current model was trained on DAS6. In r14 the machine alone moved single
-   cells by up to 0.0024. The pass rule does not correct this; the report shows the change.
+   cells by up to 0.0024. The pass rule does not correct this; the report shows the change (your yes, after seeing
+   the recommendation).
 4. Plain cosine in the pass rule; SigLIP 2 and CLIP L/14 take the caption form that wins on SigLIP 1; texts over the
    token limit are cut and counted (agent defaults).
 5. Stage types (agent default): 1c and the stage 2 tests are claim tests, so the rule had an independent review and a
@@ -284,7 +285,7 @@ picks it.
 | D22 | Inconclusive cells in a ladder | count as neither WIN nor LEVEL; "level L, inconclusive above" when they could raise the level | r14 needed all cells, but this ladder counts cells | agent default | 2026-11-12 22:00 |
 | D23 | Gate tolerances | weights and exports bit for bit; validation cells 1e-6; replayed test cells 1e-9; tower embeddings r28's float16 rule (≥ 99.5% equal, the rest one float16 step); store replay cosine ≥ 0.999; unit norm within 1e-3; gate (i)(a) when CUDA itself is not bit-exact: best epochs within 2, validation cells within K0's per-cell seed ranges | as the earlier rounds' gates (r10, r14, r21, r28); rejected: a bit-for-bit rule only, which a CUDA difference could fail and so park all training | agent default | 2026-11-12 22:00 |
 | D24 | Stage 2 order | E2, E3; MMArt; photo; ablation | cheap and central first; rejected: the paper's table order | agent default | 2026-11-12 22:00 |
-| D25 | Machine | K* trains on the local GPU against r14's node402 K0; gate (i) checks the trainer locally and replays r14's weights; the local minus node402 change is diagnostic (e) | a bit-for-bit retrain of node402 weights cannot pass locally (r14: up to 0.0024 per cell); rejected: retrain K0 locally (changes D4's numbers and the paper's model) | agent default | 2026-11-12 22:00 |
+| D25 | Machine | K* trains on the local GPU against r14's node402 K0; gate (i) checks the trainer locally and replays r14's weights; the local minus node402 change is diagnostic (e) | a bit-for-bit retrain of node402 weights cannot pass locally (r14: up to 0.0024 per cell); rejected: retrain K0 locally (changes D4's numbers and the paper's model) | user, after seeing the recommendation | 2026-11-12 22:42 |
 
 **Amendments:** none.
 

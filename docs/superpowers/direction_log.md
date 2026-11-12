@@ -11,7 +11,7 @@ weekly and stage reports.
 
 The conditioned line's log (2026-09-28 to 2026-10-15, rounds 1 to 9, parked ideas) is archived: [direction log](../../archive/v2_conditioned/docs/superpowers/direction_log.md).
 
-## Now (2026-11-11)
+## Now (2026-11-12)
 
 The new line builds a condition-free model over PercepT: one Qwen3-VL-Embedding instruction per aspect, buddy graphs
 on each view, one shared trunk with emotion, style and genre heads, read once on the default image. On ArtELingo, c*
@@ -34,7 +34,7 @@ ArtELingo emotion that gap comes from one class, contentment (report 2027-01-07)
 both models, and ARI close to c* and below the teacher. After the weekly meeting, text-to-text and cross-modal retrieval are top priority (user, 2026-11-05). r22, an exploration on validation with seed 0,
 is read (user, 2026-11-05): c*'s caption side beats plain Qwen and the teacher's text in 6 of 9 label cells (bar 5; 5 of 9 with one fixed read-out),
 with emotion below the teacher, and pair hits below plain Qwen, which the user expected. The two short checks are read (user, 2026-11-06): on older saved models the own-caption term raises pair hits and lowers label hits; joined c* and plain Qwen scores pass the rule at one weight, a = 0.7, which the user reads as important, with no clear reason yet why that weight helps. r23, the claim loop for the caption side, is read (user, 2026-11-06): c* and late fusion (joined scores, a = 0.7) hold on held ArtELingo and fail on MMArt; the user reads the ArtELingo holds as good and the MMArt failures as no surprise. r24, a short check of the miss, is read (user, 2026-11-08): the failed MMArt counts follow its narrative text, not its paintings or labels; c*'s miss sits in portrait and landscape; the user reads it as not fully explaining why, with interesting findings and directions. Next: the what-is-missing table (the 11-04 coverage tables, updated with r17 to r24), then the plan update (user, 2026-11-08). The pair-hit limit waits for
-the user's talk with the other authors. The what-is-missing table is read (user, 2026-11-08): writing starts in a paper chat (related work, method, experiments, then abstract, introduction and conclusion as draft v1.1; an ARS review and a revision; compact versions last; a temporary title and abstract registered by 11-10). r20 is read and closed (user, 2026-11-10): both paper figures are kept, and in held image retrieval the eight ablation removals follow the clustering ablation (report 2027-01-13); the retrieval column goes into the paper's ablation table, and a teacher version of the figures into the supplementary. r21 (a DEC loss on every head of c*, as rows of the paper's ablation table) was moved forward by the user (2026-11-11) and is specced; build and run follow today. The second instructed embedder and the other checks wait until after 11-16. r25 (VLM2Vec-V2 and text-only BERTopic as the paper's clustering baselines, ArtELingo test) is reported (report 2027-01-14): c* wins all 12 AMI cells; the user's reading waits. r26 (PercepT at paper settings, 40 topics, on its own encoders CLIP L/14 and ModernBERT-GoEmotions) is reported (report 2027-01-15): class-count AMI 0.064 / 0.262 / 0.474, in Table 2; c* is above it in all three, on genre inside its seed range; the strict topic rule collapsed again; the user's reading waits. The stage note's form still waits for the user. Deadlines:
+the user's talk with the other authors. The what-is-missing table is read (user, 2026-11-08): writing starts in a paper chat (related work, method, experiments, then abstract, introduction and conclusion as draft v1.1; an ARS review and a revision; compact versions last; a temporary title and abstract registered by 11-10). r20 is read and closed (user, 2026-11-10): both paper figures are kept, and in held image retrieval the eight ablation removals follow the clustering ablation (report 2027-01-13); the retrieval column goes into the paper's ablation table, and a teacher version of the figures into the supplementary. r21 (a DEC loss on every head of c*, as rows of the paper's ablation table) was moved forward by the user (2026-11-11) and is specced; build and run follow today. The second instructed embedder and the other checks wait until after 11-16. r25 (VLM2Vec-V2 and text-only BERTopic as the paper's clustering baselines, ArtELingo test) is reported (report 2027-01-14): c* wins all 12 AMI cells; the user's reading waits. r26 (PercepT at paper settings, 40 topics, on its own encoders CLIP L/14 and ModernBERT-GoEmotions) is reported (report 2027-01-15): class-count AMI 0.064 / 0.262 / 0.474, in Table 2; c* is above it in all three, on genre inside its seed range; the strict topic rule collapsed again; the user's reading waits. The stage note's form still waits for the user. r29 (a SigLIP-only aspect adapter: no Qwen3 pass at test time; the main model only if it holds on validation) is specced (2026-11-12); build and run follow. Deadlines:
 abstract 2026-11-10, paper 2026-11-16, supplementary 2026-11-23.
 Reporting (user, 2026-11-04): r17's results enter the weekly report of 2026-11-04 only after the user's reading in the r20
 chat, and they stay out of the stage report of 2026-11-04 (29 October to 3 November); the next stage report starts from
@@ -100,6 +100,28 @@ r17.
 - DEC as a fine-tune of the saved c* models (DEC's own order: train, then DEC), in place of DEC inside c*'s training
   (never tried; not chosen by the user, 2026-11-11, who chose PercepT's order; proposed in the r21 decide chat,
   [handoff](handoffs/2026-11-11-r21-build-handoff.md))
+- The wider SigLIP-only model: SigLIP in place of the Qwen3 graphs too (the paper plan's row) (never tried; not
+  chosen by the user, 2026-11-12, who chose the narrower adapter-only version; [proposed in](handoffs/2026-11-12-r29-decide-handoff.md))
+- More encoders with their own text encoders (CLIP B/16, B/32, "and more"), after 11-16 and only if r29 passes
+  (never tried; deferred by the user, 2026-11-12; [proposed in](handoffs/2026-11-12-r29-decide-2-handoff.md))
+
+## 2026-11-12 · r29 decide: a SigLIP-only aspect adapter, the main model only if it holds on validation; spec approved, build next
+
+- **Read:** no new result. The paper chat opened r29 ([decide handoff](handoffs/2026-11-12-r29-decide-handoff.md)).
+  CoSiR on SigLIP 1 reads texts through Qwen3 (3.6 ms per caption); on test its text-to-image emotion mAP is 0.264
+  against the instructed Qwen3's 0.268 and plain SigLIP 1's 0.211 (r28's numbers sheet).
+- **Meaning (C):** none; no results read.
+- **Decided (A):** a SigLIP-only model; medium loop, step 3 skipped (user, 2026-11-12, paper chat). Stage types: a
+  sweep (caption form), incremental on validation, claim tests on test, an ablation (agent default).
+- **Idea (B):** Qwen3 keeps the instructions, graphs, content correction and alignment targets; the caption tower
+  reads the captions' SigLIP 1 text embedding (user). If the image group and the text group each hold within the
+  current model's seed range on validation (one mean per group: user, after seeing the recommendation), it becomes
+  the main model, and SigLIP 2 and CLIP L/14 get their own text encoders; otherwise an extra row or ablation (user).
+  The new model trains on the local GPU against the current model's DAS6 seeds, with the machine difference shown
+  beside the pass rule (user, after seeing the recommendation). The rule had a review and a re-review, both pass
+  after fixes.
+- **Why:** while texts need Qwen3 at test time, the paper's PercepT sentence and its light-model claim are weak.
+- **Links:** [spec](specs/2026-11-12-siglip-only-adapter-design.md) · [decide handoff](handoffs/2026-11-12-r29-decide-handoff.md) · [decide 2 handoff](handoffs/2026-11-12-r29-decide-2-handoff.md) · [build handoff](handoffs/2026-11-12-r29-build-handoff.md)
 
 ## 2026-11-11 · r26 reported: PercepT on its own encoders gives 0.064 / 0.262 / 0.474, now in Table 2; the user's reading is open
 
