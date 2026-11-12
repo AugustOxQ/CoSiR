@@ -438,18 +438,19 @@ def gate_v_image(aspects=ASPECTS, draws=None, validation=True, workers=8, root=P
     t0 = time.monotonic()
     wv = Wiring(root, arm, 'siglip1', splits=('val',))
     wh = Wiring(root, arm, 'siglip1')
-    cells = score_cells(wh, rec_picks, aspects, draws=draws, outputs=outputs, workers=workers)
-    items = compare_cells(cells, r17, r14, check_interval)
-    details = dict(aspects=list(aspects), draws=draws, intervals_checked=check_interval, cells=items,
-                   seconds_cells=round(time.monotonic() - t0), tol=TOL)
-    ok = all(i['ok'] for i in items) and len(items) == 4 * len(aspects)
-    if validation:
-        t1 = time.monotonic()
+    details = dict(aspects=list(aspects), draws=draws, intervals_checked=check_interval, tol=TOL)
+    ok = True
+    if validation:                                       # first: a crash here costs minutes, not the cells' half hour
         body = compute_picks(wv, workers)
         pitems, picks_equal = compare_picks(body, rec_picks)
-        details.update(picks=pitems, picks_equal=picks_equal, seconds_validation=round(time.monotonic() - t1),
+        details.update(picks=pitems, picks_equal=picks_equal, seconds_validation=round(time.monotonic() - t0),
                        recomputed_readouts={k: v['pick'] for k, v in body['readouts'].items()})
-        ok = ok and all(i['ok'] for i in pitems) and all(picks_equal.values())
+        ok = all(i['ok'] for i in pitems) and all(picks_equal.values())
+    t1 = time.monotonic()
+    cells = score_cells(wh, rec_picks, aspects, draws=draws, outputs=outputs, workers=workers)
+    items = compare_cells(cells, r17, r14, check_interval)
+    details.update(cells=items, seconds_cells=round(time.monotonic() - t1))
+    ok = ok and all(i['ok'] for i in items) and len(items) == 4 * len(aspects)
     details['max_abs_diff'] = float(max([i['max_abs_diff'] for i in items] + [i['diff'] for i in details.get('picks', [])]))
     return ok, details
 
