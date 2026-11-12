@@ -253,6 +253,46 @@ def test_silhouette_needs_two_clusters():
         T.silhouette_cosine(np.ones((5, 3)), np.zeros(5, dtype=int))
 
 
+def _blobs():
+    rng = np.random.default_rng(6)
+    x = rng.normal(size=(200, 8)) + np.repeat(rng.normal(size=(4, 8)) * 2, 50, axis=0)
+    return x, np.repeat(np.arange(4), 50)
+
+
+def test_internal_scores_equal_sklearn_on_unit_rows():
+    from sklearn.metrics import calinski_harabasz_score, davies_bouldin_score
+    x, lab = _blobs()
+    u = x / np.linalg.norm(x, axis=1, keepdims=True)
+    got = T.internal_scores_unit(x, lab)
+    assert got['dbi'] == pytest.approx(davies_bouldin_score(u, lab), abs=1e-9)
+    assert got['chi'] == pytest.approx(calinski_harabasz_score(u, lab), rel=1e-9)
+
+
+def test_internal_scores_ignore_row_scale_and_label_values():
+    x, lab = _blobs()
+    a, b = T.internal_scores_unit(x, lab), T.internal_scores_unit(x * 3.0, lab * 5 + 2)
+    assert b['dbi'] == pytest.approx(a['dbi'], abs=1e-9) and b['chi'] == pytest.approx(a['chi'], rel=1e-9)
+
+
+def test_internal_scores_need_two_clusters():
+    with pytest.raises(AssertionError):
+        T.internal_scores_unit(np.ones((5, 3)), np.zeros(5, dtype=int))
+
+
+def test_diag_markdown_has_internal_scores_and_paired_change():
+    def src(si, dbi, chi):
+        return {a: dict(mean=dict(silhouette=np.mean(si), dbi=np.mean(dbi), chi=np.mean(chi), largest=0.2, smallest=0.1),
+                        seeds={str(i): dict(silhouette=si[i], dbi=dbi[i], chi=chi[i]) for i in range(2)}) for a in ASPECTS}
+    doc = dict(sources=dict(cstar=src([0.10, 0.20], [3.0, 3.0], [100., 100.]), arm1=src([0.15, 0.30], [2.5, 2.0], [110., 130.])),
+               dec={}, val={})
+    md = T.diag_markdown(doc)
+    i = md.index('## Internal cluster scores (test)')
+    assert i > md.index('## Silhouette and cluster shares (test)') and i < md.index('## Change from c*, paired by seed')
+    row = [l for l in md.split('## Change from c*')[1].splitlines() if l.startswith('| arm1 |')][0]
+    assert '+0.0750 [+0.0500, +0.1000]' in row and '-0.7500 [-1.0000, -0.5000]' in row and '+20.0 [+10.0, +30.0]' in row
+    assert '| cstar | ' not in md.split('## Change from c*')[1]
+
+
 def test_cluster_shares_count_empty_clusters():
     s = T.cluster_shares(np.array([0, 0, 0, 1, 3]), 5)
     assert s['largest'] == 0.6 and s['smallest'] == 0.0 and s['n_empty'] == 2 and s['n_used'] == 3

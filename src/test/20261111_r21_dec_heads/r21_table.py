@@ -467,6 +467,21 @@ def silhouette_cosine(x, labels):
     return float(s.mean())
 
 
+def internal_scores_unit(x, labels):
+    """Davies-Bouldin (lower = tighter) and Calinski-Harabasz (higher = tighter) on the L2-normalised rows, Euclidean (scikit-learn's
+    default). Unit rows because the k-means partition (and the silhouette) is fitted on unit rows, where Euclidean distance is monotone
+    in cosine distance: one geometry for all three scores. `labels` can be any integers."""
+    from sklearn.metrics import calinski_harabasz_score, davies_bouldin_score
+    x = np.asarray(x, dtype=np.float64)
+    labels = np.asarray(labels)
+    assert x.ndim == 2 and len(labels) == len(x) and np.isfinite(x).all()
+    norm = np.linalg.norm(x, axis=1, keepdims=True)
+    assert (norm > 0).all(), 'a zero row'
+    assert len(np.unique(labels)) >= 2, 'DBI and CHI need two clusters'
+    x = x / norm
+    return dict(dbi=float(davies_bouldin_score(x, labels)), chi=float(calinski_harabasz_score(x, labels)))
+
+
 def cluster_shares(labels, k):
     """Largest and smallest cluster's share of all rows over the k clusters (an empty cluster counts as 0)."""
     labels = np.asarray(labels)
@@ -513,13 +528,13 @@ def _silhouette_row(x, parts, k):
     """Silhouette against state 0's partition, and the cluster shares of state 0 and the mean over the three states."""
     p0 = parts[0]
     shares = [cluster_shares(p, k) for p in parts]
-    return dict(silhouette=silhouette_cosine(x, p0), largest=shares[0]['largest'], smallest=shares[0]['smallest'],
+    return dict(silhouette=silhouette_cosine(x, p0), **internal_scores_unit(x, p0), largest=shares[0]['largest'], smallest=shares[0]['smallest'],
                 n_empty=shares[0]['n_empty'], largest_states=[s['largest'] for s in shares],
                 smallest_states=[s['smallest'] for s in shares])
 
 
 def _mean_rows(rows):
-    keys = ('silhouette', 'largest', 'smallest', 'n_empty')
+    keys = ('silhouette', 'dbi', 'chi', 'largest', 'smallest', 'n_empty')
     return {k: float(np.mean([r[k] for r in rows])) for k in keys}
 
 
@@ -532,7 +547,10 @@ def diag(arms, root, cstar_root, out, workers=8, val_root=None):
     cache = out / 'cache'
     doc = dict(stage='r21_diag', written=time.strftime('%Y-%m-%d %H:%M'), root=str(root), arms=list(arms), seeds=list(SEEDS),
                partition='MiniBatchKMeans at the class count, state 0 (silhouette); shares also over the three states',
-               silhouette='cosine, all 12,281 rows, exact (no sampling)', sources={}, dec={}, val={}, **code_state())
+               silhouette='cosine, all 12,281 rows, exact (no sampling)',
+               internal_scores='DBI and CHI (scikit-learn): L2-normalised rows, Euclidean, against the same state-0 k-means partition at the '
+                               'class count as the silhouette, all 12,281 test rows (lower DBI, higher CHI = tighter)',
+               sources={}, dec={}, val={}, **code_state())
     for aspect in ASPECTS:
         k = ns_paths.CLASS_COUNT[(SET, aspect)]
         sources = [(CSTAR_ARM, cstar_root, 'cstar')] + [(a, root, a) for a in arms]
@@ -586,6 +604,28 @@ def diag_markdown(doc):
     for label, per in doc['sources'].items():
         L.append(f'| {label} | ' + ' | '.join(f"{per[a]['mean']['silhouette']:+.4f} | {per[a]['mean']['largest']:.3f} / {per[a]['mean']['smallest']:.3f}"
                                               for a in ASPECTS) + ' |')
+    L += ['', '## Internal cluster scores (test)', '',
+          'SI = silhouette (cosine), DBI = Davies-Bouldin, CHI = Calinski-Harabasz; unit rows, Euclidean for DBI and CHI, same state-0 '
+          'partition; mean over seeds. Higher SI and CHI = tighter, lower DBI = tighter. CHI depends on the number of points, so compare '
+          'only within this table.', '',
+          '| source | ' + ' | '.join(f'{a} SI / DBI / CHI' for a in ASPECTS) + ' |', '|---|' + '---|' * len(ASPECTS)]
+    for label, per in doc['sources'].items():
+        L.append(f'| {label} | ' + ' | '.join(f"{per[a]['mean']['silhouette']:+.4f} / {per[a]['mean']['dbi']:.4f} / {per[a]['mean']['chi']:.1f}"
+                                              for a in ASPECTS) + ' |')
+    L += ['', '## Change from c*, paired by seed (mean over seeds 0 to 4; [min, max] of the per-seed changes)', '',
+          '| arm | ' + ' | '.join(f'{a} ΔSI / ΔDBI / ΔCHI' for a in ASPECTS) + ' |', '|---|' + '---|' * len(ASPECTS)]
+    for label, per in doc['sources'].items():
+        if label in ('cstar', 'dec-off', 'plain', 'teacher'):
+            continue
+        cells = []
+        for a in ASPECTS:
+            ref = doc['sources']['cstar'][a]['seeds']
+            parts = []
+            for key, fmt in (('silhouette', '+.4f'), ('dbi', '+.4f'), ('chi', '+.1f')):
+                d = [per[a]['seeds'][sd][key] - ref[sd][key] for sd in per[a]['seeds']]
+                parts.append(f'{np.mean(d):{fmt}} [{min(d):{fmt}}, {max(d):{fmt}}]')
+            cells.append(' / '.join(parts))
+        L.append(f'| {label} | ' + ' | '.join(cells) + ' |')
     L += ['', '## DEC epochs, stop and distance from the start clusters (training sidecars, per seed 0 to 4)', '',
           'DEC epochs / stop epoch (the last epoch run) / best epoch (the kept state for S2 arms) / stop reason / fraction of training '
           'paintings away from their DEC-start cluster at the end.', '',
