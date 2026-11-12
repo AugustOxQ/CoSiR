@@ -133,6 +133,12 @@ def _wrap(model, width, device):
     return forward
 
 
+def _load_view(path, device):
+    """(view, rb block) of one saved view. The single call site of `r29_model.load_view`: once it returns (view, rb) (ticket 01
+    review), this body is `return M.load_view(path, device)`."""
+    return M.load_view(path, device), M.read_sidecar(path)[1]
+
+
 def weights_path(arm, aspect, seed):
     info = arm_info(arm)
     return Path(info['root']) / 'weights' / info['folder'] / f'{aspect}__s{seed}.pt'
@@ -146,12 +152,12 @@ def load_towers(arm, aspect, seed, device='cpu'):
     if arm == 'qwen':
         return T.load_sides(aspect, seed, device, root=P29.K0_ROOT)
     path = weights_path(arm, aspect, seed)
-    config, rb = M.read_sidecar(path)
+    view, rb = _load_view(path, device)                  # first: a sidecar that disagrees with its weights is refused here
+    config = M.read_sidecar(path)[0]
     assert config['aspect'] == aspect and config['seed'] == seed, (path, config['aspect'], config['seed'])
     assert rb['cap_source'] == arm and rb['cap_store_sha256'] == C.store_hash(arm), \
         f'{path}: sidecar names {rb["cap_source"]} / {rb["cap_store_sha256"][:12]}, not the store of {arm} as it is now'
     assert rb['width'] == 1152, (path, rb['width'])
-    view = M.load_view(path, device)
     return _wrap(view['img'], rb['width'], device), _wrap(view['cap'], rb['cap_width'], device)
 
 

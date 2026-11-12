@@ -53,6 +53,12 @@ def frame(n_captions_per=2):
                 names=list(NAMES), text=['t'] * len(ids), sample_id=ids)
 
 
+def _read_synthetic(folder, width):
+    index = json.loads((Path(folder) / 'index.json').read_text())['texts']
+    return (np.asarray([r['sample_id'] for r in index], dtype=np.int64), np.asarray([r['painting'] for r in index]),
+            np.load(Path(folder) / 'txt.npy'))
+
+
 @pytest.fixture
 def world(tmp_path, monkeypatch):
     """Synthetic store as 'siglip1' and 'siglip1_prefix', OUT and the text outputs in tmp_path."""
@@ -60,7 +66,7 @@ def world(tmp_path, monkeypatch):
     make_store(tmp_path / 'store_prefix', seed=3)
     monkeypatch.setitem(C.SOURCES, 'siglip1', (tmp_path / 'store', W))
     monkeypatch.setitem(C.SOURCES, 'siglip1_prefix', (tmp_path / 'store_prefix', W))
-    C._read.cache_clear()
+    monkeypatch.setattr(C, '_read', _read_synthetic)             # independent of the real reader's store checks
     monkeypatch.setattr(P29, 'OUT', tmp_path / 'out')
     monkeypatch.setattr(X, 'TEXT_OUT', tmp_path / 'text')
     monkeypatch.setattr(X, 'RECORDS_DIR', tmp_path / 'records')       # not P29.RECORDS: smoke, no git check
