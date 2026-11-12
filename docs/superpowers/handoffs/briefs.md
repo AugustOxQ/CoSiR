@@ -2303,3 +2303,12 @@
 - Handoff: docs/superpowers/handoffs/2026-11-12-r29-decide-handoff.md
 - New chat: tab 'r29 decide', session e56ee757-9e45-4ea2-bf6b-4a72cae373fd
 
+[brief] CoSiR: r21 run 2 -> r21 run 3 (2026-11-12 21:20 Amsterdam)
+- Done: SI, DBI and CHI on test for c* and the three DEC forms; a validation check of long DEC; the λ = 0 code (merged).
+- State: DEC tightens test clusters only a little (genre CHI +14 to +19%); 50 DEC epochs tighten validation clusters up
+  to 5 times in CHI but lower AMI on all three aspects.
+- Next: wait until the user says the SigLIP jobs have ended; then queue the λ = 0 control (5 runs, about 1 h GPU).
+- Blocked: the λ = 0 run waits for the user's go (the GPU runs r28's SigLIP jobs).
+- Handoff: docs/superpowers/handoffs/2026-11-12-r21-run-3-handoff.md
+- New chat: tab 'r21 run 3', session 9621a42b-3f4a-40a6-92eb-eddc6cfdbb51
+
