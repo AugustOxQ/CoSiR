@@ -53,10 +53,14 @@ def read_sidecar(weights):
     return config, rb
 
 
-def load_view(weights, device='cpu'):
+def load_view(weights, device='cpu', *, expect_store_sha256):
     """One saved best view (`nn.ModuleDict` of `img` and `cap`, eval mode) of `<aspect>__s<seed>.pt`, built at the widths
-    its sidecar records. The sidecar's `cap_width` and `width` must equal the weights' first-layer input sizes."""
+    its sidecar records. The sidecar's `cap_width` and `width` must equal the weights' first-layer input sizes, and its
+    `cap_store_sha256` must equal `expect_store_sha256` (the sha256 of the caption store the caller scores against).
+    It cannot load K0's r14 sidecars (they have no `cap_*` fields); gate (i)(c) reads those through bs_cstar's path."""
     config, rb = read_sidecar(weights)
+    assert rb['cap_store_sha256'] == expect_store_sha256, \
+        f'{weights}: sidecar cap_store_sha256 {rb["cap_store_sha256"]} is not the expected {expect_store_sha256}'
     device = torch.device(device)
     state = torch.load(weights, map_location=device, weights_only=True)
     got_cap, got_img = state['cap.trunk.0.weight'].shape[1], state['img.trunk.0.weight'].shape[1]
