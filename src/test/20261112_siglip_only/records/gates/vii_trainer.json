@@ -1,0 +1,30 @@
+{
+  "gate": "vii_trainer",
+  "status": "pass",
+  "tries": 1,
+  "details": {
+    "n_fit": 1024,
+    "n_val": 256,
+    "device": "cpu",
+    "start": "/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/siglip1/weights/k11=40",
+    "settings": {
+      "start": "cstar",
+      "lr": 0.001,
+      "k": 80,
+      "correction": true,
+      "teacher_weight": 0.25,
+      "epochs": 1
+    },
+    "seed": 100,
+    "n_fit_pairs": 4080,
+    "n_dev_pairs": 1017,
+    "results": {
+      "start_state": true,
+      "loss": true,
+      "gradients": true,
+      "trained_state": true,
+      "history": true
+    }
+  },
+  "written": "2026-11-13 00:02"
+}
