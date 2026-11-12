@@ -1,0 +1,253 @@
+{
+ "kind": "r28_settings_check",
+ "encoder": "siglip1",
+ "split": "artelingo validation",
+ "n_val": 6152,
+ "seed": 0,
+ "criterion": "fallback: mean of the six validation cells (AMI at 9/27/10, plain-cosine mAP), c* wins ties; r10 stage 3 criterion not buildable (P, r_a, seeds 1-3, k=20 partitions)",
+ "tie_tolerance": 1e-12,
+ "cstar_arm": "k11=40",
+ "cstar_cells": {
+  "ami/emotion": 0.10263630134046597,
+  "map/emotion": 0.26761598949318854,
+  "ami/style": 0.4629750113112212,
+  "map/style": 0.34909876906169934,
+  "ami/genre": 0.5250533739544693,
+  "map/genre": 0.6019655432369467
+ },
+ "cstar_mean": 0.38489083139966523,
+ "cstar_files": {
+  "emotion": {
+   "path": "/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/siglip1/train/k11=40/R6-5/emotion__Gres__s0.npz",
+   "file_sha256": "03af1b377fe64c2c60b9e6b903013648d12b05f707595f59c61f18931b61eb59"
+  },
+  "style": {
+   "path": "/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/siglip1/train/k11=40/R6-5/style__Fres05__s0.npz",
+   "file_sha256": "559ad404edbe920f7694c3a0b568751adbf45f2f4b393d3cc6c917740d4bf733"
+  },
+  "genre": {
+   "path": "/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/siglip1/train/k11=40/R6-5/genre__R0o__s0.npz",
+   "file_sha256": "36dbbaf1874e2036f60801643280ba504f4aa7b4c77831242e6337cf13eeb23d"
+  }
+ },
+ "rows": {
+  "k11=10": {
+   "cstar": {
+    "ami/emotion": 0.10263630134046597,
+    "map/emotion": 0.26761598949318854,
+    "ami/style": 0.4629750113112212,
+    "map/style": 0.34909876906169934,
+    "ami/genre": 0.5250533739544693,
+    "map/genre": 0.6019655432369467
+   },
+   "row": {
+    "ami/emotion": 0.08910682088384136,
+    "map/emotion": 0.2641423373983361,
+    "ami/style": 0.44733227426419014,
+    "map/style": 0.33419026454419326,
+    "ami/genre": 0.5449369214604216,
+    "map/genre": 0.5984504740130755
+   },
+   "diff": {
+    "ami/emotion": -0.01352948045662461,
+    "ami/style": -0.015642737047031063,
+    "ami/genre": 0.019883547505952337,
+    "map/emotion": -0.003473652094852453,
+    "map/style": -0.014908504517506083,
+    "map/genre": -0.0035150692238712367
+   },
+   "cstar_mean": 0.38489083139966523,
+   "row_mean": 0.37969318209400965,
+   "mean_diff": -0.005197649305655583,
+   "row_wins": false
+  },
+  "k11=20": {
+   "cstar": {
+    "ami/emotion": 0.10263630134046597,
+    "map/emotion": 0.26761598949318854,
+    "ami/style": 0.4629750113112212,
+    "map/style": 0.34909876906169934,
+    "ami/genre": 0.5250533739544693,
+    "map/genre": 0.6019655432369467
+   },
+   "row": {
+    "ami/emotion": 0.09879654322236646,
+    "map/emotion": 0.2677041254563376,
+    "ami/style": 0.4484119257768149,
+    "map/style": 0.34421359430126636,
+    "ami/genre": 0.539511178604141,
+    "map/genre": 0.6039874784143932
+   },
+   "diff": {
+    "ami/emotion": -0.003839758118099515,
+    "ami/style": -0.014563085534406328,
+    "ami/genre": 0.014457804649671724,
+    "map/emotion": 8.81359631490497e-05,
+    "map/style": -0.0048851747604329865,
+    "map/genre": 0.002021935177446421
+   },
+   "cstar_mean": 0.38489083139966523,
+   "row_mean": 0.3837708076292199,
+   "mean_diff": -0.0011200237704453442,
+   "row_wins": false
+  },
+  "k11=80": {
+   "cstar": {
+    "ami/emotion": 0.10263630134046597,
+    "map/emotion": 0.26761598949318854,
+    "ami/style": 0.4629750113112212,
+    "map/style": 0.34909876906169934,
+    "ami/genre": 0.5250533739544693,
+    "map/genre": 0.6019655432369467
+   },
+   "row": {
+    "ami/emotion": 0.10121366644133473,
+    "map/emotion": 0.2687026586467419,
+    "ami/style": 0.4496150189749515,
+    "map/style": 0.34595016088047914,
+    "ami/genre": 0.5427118806522017,
+    "map/genre": 0.6039674211619059
+   },
+   "diff": {
+    "ami/emotion": -0.0014226348991312476,
+    "ami/style": -0.013359992336269721,
+    "ami/genre": 0.01765850669773239,
+    "map/emotion": 0.0010866691535533768,
+    "map/style": -0.0031486081812202027,
+    "map/genre": 0.0020018779249592056
+   },
+   "cstar_mean": 0.38489083139966523,
+   "row_mean": 0.3853601344596025,
+   "mean_diff": 0.00046930305993725385,
+   "row_wins": true
+  },
+  "k6=0.0005": {
+   "cstar": {
+    "ami/emotion": 0.10263630134046597,
+    "map/emotion": 0.26761598949318854,
+    "ami/style": 0.4629750113112212,
+    "map/style": 0.34909876906169934,
+    "ami/genre": 0.5250533739544693,
+    "map/genre": 0.6019655432369467
+   },
+   "row": {
+    "ami/emotion": 0.10584989542460464,
+    "map/emotion": 0.26830414023340937,
+    "ami/style": 0.4609225553975868,
+    "map/style": 0.34988575429294616,
+    "ami/genre": 0.524940364872962,
+    "map/genre": 0.6036546923183502
+   },
+   "diff": {
+    "ami/emotion": 0.0032135940841386684,
+    "ami/style": -0.002052455913634399,
+    "ami/genre": -0.00011300908150724265,
+    "map/emotion": 0.0006881507402208276,
+    "map/style": 0.0007869852312468173,
+    "map/genre": 0.001689149081403496
+   },
+   "cstar_mean": 0.38489083139966523,
+   "row_mean": 0.38559290042330985,
+   "mean_diff": 0.0007020690236446137,
+   "row_wins": true
+  }
+ },
+ "outcomes": {
+  "k11=10": "c* wins or ties",
+  "k11=20": "c* wins or ties",
+  "k11=80": "k11=80 wins",
+  "k6=0.0005": "k6=0.0005 wins"
+ },
+ "row_files": {
+  "k11=10": {
+   "emotion": {
+    "path": "/data/SSD2/cosir_r28/20261112_siglip_main/cstar/siglip1/train/k11=10/R6-5/emotion__Gres__s0.npz",
+    "file_sha256": "e0ea5d20fe22cfe056a8762f5bf81ae80ad86dd178d8a2c886bb5a00fa72075a"
+   },
+   "style": {
+    "path": "/data/SSD2/cosir_r28/20261112_siglip_main/cstar/siglip1/train/k11=10/R6-5/style__Fres05__s0.npz",
+    "file_sha256": "e10d2af71ca072c5d95a4e8172a8dd3919a50ceb439ba2e0fb649631bc8e1389"
+   },
+   "genre": {
+    "path": "/data/SSD2/cosir_r28/20261112_siglip_main/cstar/siglip1/train/k11=10/R6-5/genre__R0o__s0.npz",
+    "file_sha256": "4a8a0d8b724e51bce0c9d2c5a7a5ce6f7e84a8d6b63ba22a316cfe8c32102182"
+   }
+  },
+  "k11=20": {
+   "emotion": {
+    "path": "/data/SSD2/cosir_r28/20261112_siglip_main/cstar/siglip1/train/k11=20/R6-5/emotion__Gres__s0.npz",
+    "file_sha256": "06a26920c9c4242a255f6826ebd6265b1df91e865db22c0148455a1c92d65a24"
+   },
+   "style": {
+    "path": "/data/SSD2/cosir_r28/20261112_siglip_main/cstar/siglip1/train/k11=20/R6-5/style__Fres05__s0.npz",
+    "file_sha256": "cfe6fadf28ff1baae14f47ac1812d2386e0bd2c4e4e9865a57e5061affd9a0c2"
+   },
+   "genre": {
+    "path": "/data/SSD2/cosir_r28/20261112_siglip_main/cstar/siglip1/train/k11=20/R6-5/genre__R0o__s0.npz",
+    "file_sha256": "d1e23311dcd6cc26655e4fb8040d29b87dfc1610e507f47bd2e2d22b903826f3"
+   }
+  },
+  "k11=80": {
+   "emotion": {
+    "path": "/data/SSD2/cosir_r28/20261112_siglip_main/cstar/siglip1/train/k11=80/R6-5/emotion__Gres__s0.npz",
+    "file_sha256": "c3d2c62cd6c00e51f563bac17ee8bec1606257ad8036a3d58541ef77c3ea0a51"
+   },
+   "style": {
+    "path": "/data/SSD2/cosir_r28/20261112_siglip_main/cstar/siglip1/train/k11=80/R6-5/style__Fres05__s0.npz",
+    "file_sha256": "271c326096731b98c89a208088f87bbf2c83848ccfaa407350f94c1de10d6020"
+   },
+   "genre": {
+    "path": "/data/SSD2/cosir_r28/20261112_siglip_main/cstar/siglip1/train/k11=80/R6-5/genre__R0o__s0.npz",
+    "file_sha256": "eb08f4af6bf66ecc01d2fc6fdf2c60791b7c32569070efbbdbc4dd396bb28a92"
+   }
+  },
+  "k6=0.0005": {
+   "emotion": {
+    "path": "/data/SSD2/cosir_r28/20261112_siglip_main/cstar/siglip1/train/k6=0.0005/R6-5/emotion__Gres__s0.npz",
+    "file_sha256": "b77726d22b083a17971477d5d7fa8f978d89bc3212d3a6fd91b7f698262e5605"
+   },
+   "style": {
+    "path": "/data/SSD2/cosir_r28/20261112_siglip_main/cstar/siglip1/train/k6=0.0005/R6-5/style__Fres05__s0.npz",
+    "file_sha256": "6e9241467b8784c1b939b928e1457e4bd121b3cee0d389b6e4b6ffb1694a90b4"
+   },
+   "genre": {
+    "path": "/data/SSD2/cosir_r28/20261112_siglip_main/cstar/siglip1/train/k6=0.0005/R6-5/genre__R0o__s0.npz",
+    "file_sha256": "550f891cfbea042ebf7c60a35605d876bf08cb1297e42d81c91cf6f3d8e64a95"
+   }
+  }
+ },
+ "overall": {
+  "outcome": "k6=0.0005 wins",
+  "winners": [
+   "k11=80",
+   "k6=0.0005"
+  ],
+  "best": "k6=0.0005"
+ },
+ "gate_cstar_vs_valpick": {
+  "source": "/data/SSD2/cosir_r28/20261112_siglip_main/valpick/valpick_siglip1.json",
+  "max_abs_diff": 0.0,
+  "diffs": {
+   "ami/emotion": 0.0,
+   "ami/style": 0.0,
+   "ami/genre": 0.0,
+   "map/emotion": 0.0,
+   "map/style": 0.0,
+   "map/genre": 0.0
+  },
+  "pass": true
+ },
+ "noise_context": {
+  "source": "/data/SSD2/cosir_r28/20261112_siglip_main/valpick/valpick_siglip1.json",
+  "cstar_six_mean_per_seed": [
+   0.38489083139966523,
+   0.3857966619005935,
+   0.38597418779355475,
+   0.3869271679616945,
+   0.38786969161861545
+  ],
+  "range": 0.002978860218950219
+ },
+ "bootstrap": null,
+ "seconds": 66.46661936212331
+}
