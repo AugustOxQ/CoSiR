@@ -2328,3 +2328,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-12-r29-build-handoff.md
 - New chat: tab 'r29 build', session 6401492c-0bf7-4685-afc4-88716629363e
 
+[brief] CoSiR: paper plan 4 -> paper plan 5 (2026-11-12 22:55 Amsterdam)
+- Done: Sec. 4.1 to 4.3 on SigLIP 1; c*'s settings kept after r28's settings check, two sentences in 4.1 (REPO `fde9788`).
+- State: r28's ablation runs on the GPU until about 23:12. Its rows go to `records/ablation_siglip1.json`, then to `paper_cells.md` T5.
+- Next: watch r28, fill Table 5, recheck the 4.1 genre sentence, then show the user the review page for Figures 3 and 4.
+- Blocked: Figures 3 and 4 wait for the user's picks.
+- Handoff: docs/superpowers/handoffs/2026-11-12-paper-plan-5-handoff.md
+- New chat: tab 'paper plan 5', session 6d50ce86-3add-404a-b900-71a5232e538a
+
