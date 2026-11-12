@@ -1,0 +1,845 @@
+{
+ "gate": "v_text",
+ "status": "pass",
+ "tries": 2,
+ "details": {
+  "aspects": [
+   "emotion",
+   "style",
+   "genre"
+  ],
+  "draws": 10000,
+  "intervals_checked": true,
+  "tol": 1e-09,
+  "n_cells": 18,
+  "max_abs_diff": 5.551115123125783e-17,
+  "seconds": 25,
+  "cells": [
+   {
+    "id": "artelingo/qwen/r23_cstar/emotion/t2i/p1",
+    "comparator_row": "plain",
+    "max_abs_diff": 0.0,
+    "diffs": {
+     "d": 0.0,
+     "r": 0.0,
+     "lo": 0.0,
+     "hi": 0.0
+    },
+    "replayed": {
+     "d": 0.04174279738258016,
+     "r": 0.0022895336383411125,
+     "lo": 0.04112096919995591,
+     "hi": 0.04235307777799549
+    },
+    "recorded": {
+     "d": 0.04174279738258016,
+     "r": 0.0022895336383411125,
+     "lo": 0.04112096919995591,
+     "hi": 0.04235307777799549
+    },
+    "outcome": "WIN",
+    "recorded_outcome": "WIN",
+    "readouts_equal": true,
+    "ok": true,
+    "value_diff": 0.0,
+    "comparator_value_diff": 0.0,
+    "replayed_means": {
+     "value": 0.26420160410910964,
+     "comparator_value": 0.22245880672652948
+    },
+    "r28_means": {
+     "value": 0.26420160410910964,
+     "comparator_value": 0.22245880672652948
+    }
+   },
+   {
+    "id": "artelingo/qwen/r23_cstar/emotion/t2i/q1",
+    "comparator_row": "teacher",
+    "max_abs_diff": 0.0,
+    "diffs": {
+     "d": 0.0,
+     "r": 0.0,
+     "lo": 0.0,
+     "hi": 0.0
+    },
+    "replayed": {
+     "d": -0.003613127041326325,
+     "r": 0.0022895336383411125,
+     "lo": -0.004178869316627075,
+     "hi": -0.003053865175649451
+    },
+    "recorded": {
+     "d": -0.003613127041326325,
+     "r": 0.0022895336383411125,
+     "lo": -0.004178869316627075,
+     "hi": -0.003053865175649451
+    },
+    "outcome": "BELOW",
+    "recorded_outcome": "BELOW",
+    "readouts_equal": true,
+    "ok": true,
+    "value_diff": 0.0,
+    "comparator_value_diff": 0.0,
+    "replayed_means": {
+     "value": 0.26420160410910964,
+     "comparator_value": 0.26781473115043597
+    },
+    "r28_means": {
+     "value": 0.26420160410910964,
+     "comparator_value": 0.26781473115043597
+    }
+   },
+   {
+    "id": "artelingo/qwen/r23_cstar/emotion/i2t/p1",
+    "comparator_row": "plain",
+    "max_abs_diff": 0.0,
+    "diffs": {
+     "d": 0.0,
+     "r": 0.0,
+     "lo": 0.0,
+     "hi": 0.0
+    },
+    "replayed": {
+     "d": 0.04726063791888746,
+     "r": 0.0015835392804179338,
+     "lo": 0.045427155185051526,
+     "hi": 0.049055520498061014
+    },
+    "recorded": {
+     "d": 0.04726063791888746,
+     "r": 0.0015835392804179338,
+     "lo": 0.045427155185051526,
+     "hi": 0.049055520498061014
+    },
+    "outcome": "WIN",
+    "recorded_outcome": "WIN",
+    "readouts_equal": true,
+    "ok": true,
+    "value_diff": 5.551115123125783e-17,
+    "comparator_value_diff": 0.0,
+    "replayed_means": {
+     "value": 0.28695315435756563,
+     "comparator_value": 0.23969251643867817
+    },
+    "r28_means": {
+     "value": 0.2869531543575656,
+     "comparator_value": 0.23969251643867817
+    }
+   },
+   {
+    "id": "artelingo/qwen/r23_cstar/emotion/i2t/q1",
+    "comparator_row": "teacher",
+    "max_abs_diff": 0.0,
+    "diffs": {
+     "d": 0.0,
+     "r": 0.0,
+     "lo": 0.0,
+     "hi": 0.0
+    },
+    "replayed": {
+     "d": -0.016579388557577512,
+     "r": 0.0015835392804179338,
+     "lo": -0.01866076319080343,
+     "hi": -0.014545187580883561
+    },
+    "recorded": {
+     "d": -0.016579388557577512,
+     "r": 0.0015835392804179338,
+     "lo": -0.01866076319080343,
+     "hi": -0.014545187580883561
+    },
+    "outcome": "BELOW",
+    "recorded_outcome": "BELOW",
+    "readouts_equal": true,
+    "ok": true,
+    "value_diff": 5.551115123125783e-17,
+    "comparator_value_diff": 0.0,
+    "replayed_means": {
+     "value": 0.28695315435756563,
+     "comparator_value": 0.30353254291514314
+    },
+    "r28_means": {
+     "value": 0.2869531543575656,
+     "comparator_value": 0.30353254291514314
+    }
+   },
+   {
+    "id": "artelingo/qwen/r23_cstar/emotion/t2t/p1",
+    "comparator_row": "plain",
+    "max_abs_diff": 0.0,
+    "diffs": {
+     "d": 0.0,
+     "r": 0.0,
+     "lo": 0.0,
+     "hi": 0.0
+    },
+    "replayed": {
+     "d": 0.09228835389809403,
+     "r": 0.004365562632817288,
+     "lo": 0.09036310434285437,
+     "hi": 0.09391669925479557
+    },
+    "recorded": {
+     "d": 0.09228835389809403,
+     "r": 0.004365562632817288,
+     "lo": 0.09036310434285437,
+     "hi": 0.09391669925479557
+    },
+    "outcome": "WIN",
+    "recorded_outcome": "WIN",
+    "readouts_equal": true,
+    "ok": true,
+    "value_diff": 5.551115123125783e-17,
+    "comparator_value_diff": 0.0,
+    "replayed_means": {
+     "value": 0.3457292531251721,
+     "comparator_value": 0.2534408992270781
+    },
+    "r28_means": {
+     "value": 0.34572925312517216,
+     "comparator_value": 0.2534408992270781
+    }
+   },
+   {
+    "id": "artelingo/qwen/r23_cstar/emotion/t2t/q1",
+    "comparator_row": "teacher",
+    "max_abs_diff": 0.0,
+    "diffs": {
+     "d": 0.0,
+     "r": 0.0,
+     "lo": 0.0,
+     "hi": 0.0
+    },
+    "replayed": {
+     "d": -0.03078036261780065,
+     "r": 0.004365562632817288,
+     "lo": -0.03252473089527328,
+     "hi": -0.029437739248933083
+    },
+    "recorded": {
+     "d": -0.03078036261780065,
+     "r": 0.004365562632817288,
+     "lo": -0.03252473089527328,
+     "hi": -0.029437739248933083
+    },
+    "outcome": "BELOW",
+    "recorded_outcome": "BELOW",
+    "readouts_equal": true,
+    "ok": true,
+    "value_diff": 5.551115123125783e-17,
+    "comparator_value_diff": 0.0,
+    "replayed_means": {
+     "value": 0.3457292531251721,
+     "comparator_value": 0.37650961574297276
+    },
+    "r28_means": {
+     "value": 0.34572925312517216,
+     "comparator_value": 0.37650961574297276
+    }
+   },
+   {
+    "id": "artelingo/qwen/r23_cstar/style/t2i/p1",
+    "comparator_row": "plain",
+    "max_abs_diff": 0.0,
+    "diffs": {
+     "d": 0.0,
+     "r": 0.0,
+     "lo": 0.0,
+     "hi": 0.0
+    },
+    "replayed": {
+     "d": 0.03812138582294147,
+     "r": 0.0017992198418700367,
+     "lo": 0.036835678331761865,
+     "hi": 0.03941159758392712
+    },
+    "recorded": {
+     "d": 0.03812138582294147,
+     "r": 0.0017992198418700367,
+     "lo": 0.036835678331761865,
+     "hi": 0.03941159758392712
+    },
+    "outcome": "WIN",
+    "recorded_outcome": "WIN",
+    "readouts_equal": true,
+    "ok": true,
+    "value_diff": 2.7755575615628914e-17,
+    "comparator_value_diff": 0.0,
+    "replayed_means": {
+     "value": 0.1724772992729384,
+     "comparator_value": 0.13435591344999692
+    },
+    "r28_means": {
+     "value": 0.17247729927293837,
+     "comparator_value": 0.13435591344999692
+    }
+   },
+   {
+    "id": "artelingo/qwen/r23_cstar/style/t2i/q1",
+    "comparator_row": "teacher",
+    "max_abs_diff": 0.0,
+    "diffs": {
+     "d": 0.0,
+     "r": 0.0,
+     "lo": 0.0,
+     "hi": 0.0
+    },
+    "replayed": {
+     "d": 0.015860434814094465,
+     "r": 0.0017992198418700367,
+     "lo": 0.014560047508619181,
+     "hi": 0.017178585880520396
+    },
+    "recorded": {
+     "d": 0.015860434814094465,
+     "r": 0.0017992198418700367,
+     "lo": 0.014560047508619181,
+     "hi": 0.017178585880520396
+    },
+    "outcome": "WIN",
+    "recorded_outcome": "WIN",
+    "readouts_equal": true,
+    "ok": true,
+    "value_diff": 2.7755575615628914e-17,
+    "comparator_value_diff": 0.0,
+    "replayed_means": {
+     "value": 0.1724772992729384,
+     "comparator_value": 0.15661686445884393
+    },
+    "r28_means": {
+     "value": 0.17247729927293837,
+     "comparator_value": 0.15661686445884393
+    }
+   },
+   {
+    "id": "artelingo/qwen/r23_cstar/style/i2t/p1",
+    "comparator_row": "plain",
+    "max_abs_diff": 0.0,
+    "diffs": {
+     "d": 0.0,
+     "r": 0.0,
+     "lo": 0.0,
+     "hi": 0.0
+    },
+    "replayed": {
+     "d": 0.02843587973079094,
+     "r": 0.0010963156687638365,
+     "lo": 0.02776822743462264,
+     "hi": 0.029112621007165114
+    },
+    "recorded": {
+     "d": 0.02843587973079094,
+     "r": 0.0010963156687638365,
+     "lo": 0.02776822743462264,
+     "hi": 0.029112621007165114
+    },
+    "outcome": "WIN",
+    "recorded_outcome": "WIN",
+    "readouts_equal": true,
+    "ok": true,
+    "value_diff": 0.0,
+    "comparator_value_diff": 0.0,
+    "replayed_means": {
+     "value": 0.13793638502585473,
+     "comparator_value": 0.10950050529506379
+    },
+    "r28_means": {
+     "value": 0.13793638502585473,
+     "comparator_value": 0.10950050529506379
+    }
+   },
+   {
+    "id": "artelingo/qwen/r23_cstar/style/i2t/q1",
+    "comparator_row": "teacher",
+    "max_abs_diff": 0.0,
+    "diffs": {
+     "d": 0.0,
+     "r": 0.0,
+     "lo": 0.0,
+     "hi": 0.0
+    },
+    "replayed": {
+     "d": 0.013684554173916022,
+     "r": 0.0010963156687638365,
+     "lo": 0.0131958572233398,
+     "hi": 0.014175906442213544
+    },
+    "recorded": {
+     "d": 0.013684554173916022,
+     "r": 0.0010963156687638365,
+     "lo": 0.0131958572233398,
+     "hi": 0.014175906442213544
+    },
+    "outcome": "WIN",
+    "recorded_outcome": "WIN",
+    "readouts_equal": true,
+    "ok": true,
+    "value_diff": 0.0,
+    "comparator_value_diff": 0.0,
+    "replayed_means": {
+     "value": 0.13793638502585473,
+     "comparator_value": 0.12425183085193871
+    },
+    "r28_means": {
+     "value": 0.13793638502585473,
+     "comparator_value": 0.12425183085193871
+    }
+   },
+   {
+    "id": "artelingo/qwen/r23_cstar/style/t2t/p1",
+    "comparator_row": "plain",
+    "max_abs_diff": 0.0,
+    "diffs": {
+     "d": 0.0,
+     "r": 0.0,
+     "lo": 0.0,
+     "hi": 0.0
+    },
+    "replayed": {
+     "d": 0.012721351521066154,
+     "r": 0.001419255319081908,
+     "lo": 0.012131017932520216,
+     "hi": 0.013309586906516704
+    },
+    "recorded": {
+     "d": 0.012721351521066154,
+     "r": 0.001419255319081908,
+     "lo": 0.012131017932520216,
+     "hi": 0.013309586906516704
+    },
+    "outcome": "WIN",
+    "recorded_outcome": "WIN",
+    "readouts_equal": true,
+    "ok": true,
+    "value_diff": 1.3877787807814457e-17,
+    "comparator_value_diff": 0.0,
+    "replayed_means": {
+     "value": 0.1090219124395355,
+     "comparator_value": 0.09630056091846935
+    },
+    "r28_means": {
+     "value": 0.10902191243953552,
+     "comparator_value": 0.09630056091846935
+    }
+   },
+   {
+    "id": "artelingo/qwen/r23_cstar/style/t2t/q1",
+    "comparator_row": "teacher",
+    "max_abs_diff": 0.0,
+    "diffs": {
+     "d": 0.0,
+     "r": 0.0,
+     "lo": 0.0,
+     "hi": 0.0
+    },
+    "replayed": {
+     "d": 0.011338145154076246,
+     "r": 0.001419255319081908,
+     "lo": 0.010738558404707145,
+     "hi": 0.01194684392352729
+    },
+    "recorded": {
+     "d": 0.011338145154076246,
+     "r": 0.001419255319081908,
+     "lo": 0.010738558404707145,
+     "hi": 0.01194684392352729
+    },
+    "outcome": "WIN",
+    "recorded_outcome": "WIN",
+    "readouts_equal": true,
+    "ok": true,
+    "value_diff": 1.3877787807814457e-17,
+    "comparator_value_diff": 0.0,
+    "replayed_means": {
+     "value": 0.1090219124395355,
+     "comparator_value": 0.09768376728545926
+    },
+    "r28_means": {
+     "value": 0.10902191243953552,
+     "comparator_value": 0.09768376728545926
+    }
+   },
+   {
+    "id": "artelingo/qwen/r23_cstar/genre/t2i/p1",
+    "comparator_row": "plain",
+    "max_abs_diff": 0.0,
+    "diffs": {
+     "d": 0.0,
+     "r": 0.0,
+     "lo": 0.0,
+     "hi": 0.0
+    },
+    "replayed": {
+     "d": 0.06572071880055058,
+     "r": 0.0038192963196493346,
+     "lo": 0.06375398839261683,
+     "hi": 0.06758703655397844
+    },
+    "recorded": {
+     "d": 0.06572071880055058,
+     "r": 0.0038192963196493346,
+     "lo": 0.06375398839261683,
+     "hi": 0.06758703655397844
+    },
+    "outcome": "WIN",
+    "recorded_outcome": "WIN",
+    "readouts_equal": true,
+    "ok": true,
+    "value_diff": 5.551115123125783e-17,
+    "comparator_value_diff": 0.0,
+    "replayed_means": {
+     "value": 0.4836447786811294,
+     "comparator_value": 0.4179240598805788
+    },
+    "r28_means": {
+     "value": 0.48364477868112943,
+     "comparator_value": 0.4179240598805788
+    }
+   },
+   {
+    "id": "artelingo/qwen/r23_cstar/genre/t2i/q1",
+    "comparator_row": "teacher",
+    "max_abs_diff": 0.0,
+    "diffs": {
+     "d": 0.0,
+     "r": 0.0,
+     "lo": 0.0,
+     "hi": 0.0
+    },
+    "replayed": {
+     "d": 0.04029052658664245,
+     "r": 0.0038192963196493346,
+     "lo": 0.03793944317110654,
+     "hi": 0.04259492827494993
+    },
+    "recorded": {
+     "d": 0.04029052658664245,
+     "r": 0.0038192963196493346,
+     "lo": 0.03793944317110654,
+     "hi": 0.04259492827494993
+    },
+    "outcome": "WIN",
+    "recorded_outcome": "WIN",
+    "readouts_equal": true,
+    "ok": true,
+    "value_diff": 5.551115123125783e-17,
+    "comparator_value_diff": 0.0,
+    "replayed_means": {
+     "value": 0.4836447786811294,
+     "comparator_value": 0.4433542520944869
+    },
+    "r28_means": {
+     "value": 0.48364477868112943,
+     "comparator_value": 0.4433542520944869
+    }
+   },
+   {
+    "id": "artelingo/qwen/r23_cstar/genre/i2t/p1",
+    "comparator_row": "plain",
+    "max_abs_diff": 0.0,
+    "diffs": {
+     "d": 0.0,
+     "r": 0.0,
+     "lo": 0.0,
+     "hi": 0.0
+    },
+    "replayed": {
+     "d": 0.05951034175276049,
+     "r": 0.006283789432247111,
+     "lo": 0.056954849346860424,
+     "hi": 0.06219684620400492
+    },
+    "recorded": {
+     "d": 0.05951034175276049,
+     "r": 0.006283789432247111,
+     "lo": 0.056954849346860424,
+     "hi": 0.06219684620400492
+    },
+    "outcome": "WIN",
+    "recorded_outcome": "WIN",
+    "readouts_equal": true,
+    "ok": true,
+    "value_diff": 5.551115123125783e-17,
+    "comparator_value_diff": 0.0,
+    "replayed_means": {
+     "value": 0.4028337575402008,
+     "comparator_value": 0.3433234157874403
+    },
+    "r28_means": {
+     "value": 0.40283375754020084,
+     "comparator_value": 0.3433234157874403
+    }
+   },
+   {
+    "id": "artelingo/qwen/r23_cstar/genre/i2t/q1",
+    "comparator_row": "teacher",
+    "max_abs_diff": 0.0,
+    "diffs": {
+     "d": 0.0,
+     "r": 0.0,
+     "lo": 0.0,
+     "hi": 0.0
+    },
+    "replayed": {
+     "d": 0.0062109284977605594,
+     "r": 0.006283789432247111,
+     "lo": 0.004109402135380041,
+     "hi": 0.00861717183361386
+    },
+    "recorded": {
+     "d": 0.0062109284977605594,
+     "r": 0.006283789432247111,
+     "lo": 0.004109402135380041,
+     "hi": 0.00861717183361386
+    },
+    "outcome": "WIN",
+    "recorded_outcome": "WIN",
+    "readouts_equal": true,
+    "ok": true,
+    "value_diff": 5.551115123125783e-17,
+    "comparator_value_diff": 0.0,
+    "replayed_means": {
+     "value": 0.4028337575402008,
+     "comparator_value": 0.39662282904244023
+    },
+    "r28_means": {
+     "value": 0.40283375754020084,
+     "comparator_value": 0.39662282904244023
+    }
+   },
+   {
+    "id": "artelingo/qwen/r23_cstar/genre/t2t/p1",
+    "comparator_row": "plain",
+    "max_abs_diff": 0.0,
+    "diffs": {
+     "d": 0.0,
+     "r": 0.0,
+     "lo": 0.0,
+     "hi": 0.0
+    },
+    "replayed": {
+     "d": 0.04267381442057827,
+     "r": 0.013483723260436564,
+     "lo": 0.03829232083102407,
+     "hi": 0.047472089154895904
+    },
+    "recorded": {
+     "d": 0.04267381442057827,
+     "r": 0.013483723260436564,
+     "lo": 0.03829232083102407,
+     "hi": 0.047472089154895904
+    },
+    "outcome": "WIN",
+    "recorded_outcome": "WIN",
+    "readouts_equal": true,
+    "ok": true,
+    "value_diff": 5.551115123125783e-17,
+    "comparator_value_diff": 0.0,
+    "replayed_means": {
+     "value": 0.3152138171058485,
+     "comparator_value": 0.27254000268527023
+    },
+    "r28_means": {
+     "value": 0.31521381710584856,
+     "comparator_value": 0.27254000268527023
+    }
+   },
+   {
+    "id": "artelingo/qwen/r23_cstar/genre/t2t/q1",
+    "comparator_row": "teacher",
+    "max_abs_diff": 0.0,
+    "diffs": {
+     "d": 0.0,
+     "r": 0.0,
+     "lo": 0.0,
+     "hi": 0.0
+    },
+    "replayed": {
+     "d": 0.016206992393151542,
+     "r": 0.013483723260436564,
+     "lo": 0.0118225985099417,
+     "hi": 0.021070862111215734
+    },
+    "recorded": {
+     "d": 0.016206992393151542,
+     "r": 0.013483723260436564,
+     "lo": 0.0118225985099417,
+     "hi": 0.021070862111215734
+    },
+    "outcome": "WIN",
+    "recorded_outcome": "WIN",
+    "readouts_equal": true,
+    "ok": true,
+    "value_diff": 5.551115123125783e-17,
+    "comparator_value_diff": 0.0,
+    "replayed_means": {
+     "value": 0.3152138171058485,
+     "comparator_value": 0.29900682471269696
+    },
+    "r28_means": {
+     "value": 0.31521381710584856,
+     "comparator_value": 0.29900682471269696
+    }
+   }
+  ],
+  "p1_plain_check": {
+   "n_cells": 9,
+   "outcomes": {
+    "WIN": 9,
+    "LEVEL": 0,
+    "BELOW": 0
+   },
+   "max_abs_diff": 5.551115123125783e-17,
+   "comparator": "r23 siglip_so400m (head all) at r23 picks, against r28 plain_siglip1",
+   "cells": [
+    {
+     "id": "artelingo/qwen/r23_cstar/emotion/t2i/p1",
+     "comparator_row": "siglip_so400m",
+     "value": 0.26420160410910964,
+     "comparator_value": 0.21095791779139716,
+     "r28_value": 0.26420160410910964,
+     "r28_comparator_value": 0.21095791779139716,
+     "value_diff": 0.0,
+     "comparator_value_diff": 0.0,
+     "d": 0.05324368631771248,
+     "lo": 0.05248840707850493,
+     "hi": 0.05398873149464327,
+     "r": 0.0022895336383411125,
+     "outcome": "WIN",
+     "ok": true
+    },
+    {
+     "id": "artelingo/qwen/r23_cstar/emotion/i2t/p1",
+     "comparator_row": "siglip_so400m",
+     "value": 0.28695315435756563,
+     "comparator_value": 0.2202560332258782,
+     "r28_value": 0.2869531543575656,
+     "r28_comparator_value": 0.2202560332258782,
+     "value_diff": 5.551115123125783e-17,
+     "comparator_value_diff": 0.0,
+     "d": 0.06669712113168744,
+     "lo": 0.06458207796281701,
+     "hi": 0.06878734093316456,
+     "r": 0.0015835392804179338,
+     "outcome": "WIN",
+     "ok": true
+    },
+    {
+     "id": "artelingo/qwen/r23_cstar/emotion/t2t/p1",
+     "comparator_row": "siglip_so400m",
+     "value": 0.3457292531251721,
+     "comparator_value": 0.20610378417989492,
+     "r28_value": 0.34572925312517216,
+     "r28_comparator_value": 0.20610378417989492,
+     "value_diff": 5.551115123125783e-17,
+     "comparator_value_diff": 0.0,
+     "d": 0.1396254689452772,
+     "lo": 0.13752829663459656,
+     "hi": 0.14149744603804415,
+     "r": 0.004365562632817288,
+     "outcome": "WIN",
+     "ok": true
+    },
+    {
+     "id": "artelingo/qwen/r23_cstar/style/t2i/p1",
+     "comparator_row": "siglip_so400m",
+     "value": 0.1724772992729384,
+     "comparator_value": 0.15173477960063678,
+     "r28_value": 0.17247729927293837,
+     "r28_comparator_value": 0.15173477960063678,
+     "value_diff": 2.7755575615628914e-17,
+     "comparator_value_diff": 0.0,
+     "d": 0.020742519672301618,
+     "lo": 0.019437119108036787,
+     "hi": 0.022054095568140704,
+     "r": 0.0017992198418700367,
+     "outcome": "WIN",
+     "ok": true
+    },
+    {
+     "id": "artelingo/qwen/r23_cstar/style/i2t/p1",
+     "comparator_row": "siglip_so400m",
+     "value": 0.13793638502585473,
+     "comparator_value": 0.10743748450364694,
+     "r28_value": 0.13793638502585473,
+     "r28_comparator_value": 0.10743748450364694,
+     "value_diff": 0.0,
+     "comparator_value_diff": 0.0,
+     "d": 0.030498900522207786,
+     "lo": 0.029794770374027238,
+     "hi": 0.031213561404019156,
+     "r": 0.0010963156687638365,
+     "outcome": "WIN",
+     "ok": true
+    },
+    {
+     "id": "artelingo/qwen/r23_cstar/style/t2t/p1",
+     "comparator_row": "siglip_so400m",
+     "value": 0.1090219124395355,
+     "comparator_value": 0.09184162105072782,
+     "r28_value": 0.10902191243953552,
+     "r28_comparator_value": 0.09184162105072782,
+     "value_diff": 1.3877787807814457e-17,
+     "comparator_value_diff": 0.0,
+     "d": 0.01718029138880768,
+     "lo": 0.01656698948576738,
+     "hi": 0.0177852595052194,
+     "r": 0.001419255319081908,
+     "outcome": "WIN",
+     "ok": true
+    },
+    {
+     "id": "artelingo/qwen/r23_cstar/genre/t2i/p1",
+     "comparator_row": "siglip_so400m",
+     "value": 0.4836447786811294,
+     "comparator_value": 0.4188480776008872,
+     "r28_value": 0.48364477868112943,
+     "r28_comparator_value": 0.4188480776008872,
+     "value_diff": 5.551115123125783e-17,
+     "comparator_value_diff": 0.0,
+     "d": 0.06479670108024216,
+     "lo": 0.06262182522024658,
+     "hi": 0.06689615876229105,
+     "r": 0.0038192963196493346,
+     "outcome": "WIN",
+     "ok": true
+    },
+    {
+     "id": "artelingo/qwen/r23_cstar/genre/i2t/p1",
+     "comparator_row": "siglip_so400m",
+     "value": 0.4028337575402008,
+     "comparator_value": 0.3541266688183422,
+     "r28_value": 0.40283375754020084,
+     "r28_comparator_value": 0.3541266688183422,
+     "value_diff": 5.551115123125783e-17,
+     "comparator_value_diff": 0.0,
+     "d": 0.04870708872185858,
+     "lo": 0.04612218177368318,
+     "hi": 0.05146727319511485,
+     "r": 0.006283789432247111,
+     "outcome": "WIN",
+     "ok": true
+    },
+    {
+     "id": "artelingo/qwen/r23_cstar/genre/t2t/p1",
+     "comparator_row": "siglip_so400m",
+     "value": 0.3152138171058485,
+     "comparator_value": 0.25293334788643457,
+     "r28_value": 0.31521381710584856,
+     "r28_comparator_value": 0.25293334788643457,
+     "value_diff": 5.551115123125783e-17,
+     "comparator_value_diff": 0.0,
+     "d": 0.062280469219413936,
+     "lo": 0.05786263805334996,
+     "hi": 0.06713696593778255,
+     "r": 0.013483723260436564,
+     "outcome": "WIN",
+     "ok": true
+    }
+   ]
+  },
+  "candidate": "r23 cstar (Qwen3) files at r23 picks and ranges",
+  "comparators": "teacher (Q1 route) and plain (one-vector P1 route), r23 files at r23 picks"
+ },
+ "written": "2026-11-13 00:01"
+}
