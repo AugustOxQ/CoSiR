@@ -18,9 +18,13 @@ rows (an arm that differs raises).
   P1 plain   r23's SigLIP 1 side row `siglip_so400m` (head `all`) at r23's pick, r23's output folder. A comparator in its
              own right: `label_cell` takes the row name as given, so the row is not routed as a teacher
   P1 prefix  ticket 04's `p1_siglip1_prefix` rows (row `siglip_so400m`, head `all`) at the pick of `records/text_p1_siglip1_
-             prefix.json`, in ticket 04's score root. The form is read from `records/prefix_pick.json` (D20)
+             prefix.json`, in ticket 04's score root. The form is read from `records/prefix_pick.json` (D20: key `p1_form`, `plain`
+             | `prefixed`; the same file names K* in `kstar`, and a cells run for any other arm is refused)
 `label_cell` reads every file through `tcl_paths.score_path` with one output root; `routed` points that function at one root per
 row (candidate `cstar` -> the arm's root, the comparator row -> its own) while a cell is scored, and `mock.patch` restores it.
+
+`cells` refuses, before any number, unless `records/pass_rule.json` is present and committed unchanged (SC2 first, §3.5 row 1b;
+its status is not read, D9) and `records/prefix_pick.json` is committed unchanged and names the arm as K*.
 
 Commands (from the round folder):
     python r29_text_cells.py cells --arm siglip1|siglip1_prefix       -> records/text_cells_<arm>.json
@@ -37,7 +41,9 @@ comparator_row (r23's row name), candidate_readout, comparator_readout, n_querie
 Gate (v) text: on the Qwen3 c* files r23 scored, the same code (candidate row `cstar` at r23's picks and ranges; the two
 comparators r23 used, `teacher` and `plain`: `plain` is a one-vector row, head `all`, as the SigLIP 1 side row is) gives r23's
 18 ArtELingo label cells of SC1 (stage 2 `cells.json`: d, lower, upper, outcome, r) within 1e-9; the cell means are also checked
-against r28's `records/text.json` (`ours_qwen3`, `instructed_qwen3`, `plain_qwen3`), which holds them.
+against r28's `records/text.json` (`ours_qwen3`, `instructed_qwen3`, `plain_qwen3`), which holds them. The record stores each
+replayed cell's values (d, lower, upper, r, the means) beside r23's and r28's. A second part runs the P1 plain route (r23's
+`siglip_so400m` row at r23's pick, against the same c* files) and checks its comparator means against r28's `plain_siglip1`.
 """
 import argparse
 import hashlib
@@ -117,15 +123,15 @@ def paired(cand_root, cand_pick, r, comp_row, comp_root, comp_pick, aspect, dire
                 candidate_readout=row['candidate_readout'], comparator_readout=row['comparator_readout'])
 
 
-def score_cells(arm, encoder, cand, p1, q1, draws=N_DRAWS, aspects=ASPECTS):
+def score_cells(arm, encoder, cand, p1, q1, draws=N_DRAWS, aspects=ASPECTS, names=('p1', 'q1')):
     """The label cells of one candidate against P1 and Q1 (or any two comparators): per aspect and direction, `p1` then `q1`.
     cand = {root, picks: {aspect: {direction: {pick, range, ..}}}}; p1, q1 = {row, root, picks: {aspect: {direction: pick}},
-    form (P1 only)}."""
+    form (P1 only)}. `names` limits the comparators scored (the gate's extra P1 check scores `p1` alone)."""
     out = []
     for a in aspects:
         for d in DIRECTIONS:
             pk = cand['picks'][a][d]
-            for name, comp in (('p1', p1), ('q1', q1)):
+            for name, comp in ((n, c) for n, c in (('p1', p1), ('q1', q1)) if n in names):
                 res = paired(cand['root'], pk['pick'], pk['range'], comp['row'], comp['root'], comp['picks'][a][d], a, d, draws)
                 cell = dict(id=f'{SET}/{encoder}/{arm}/{a}/{d}/{name}', type='text', protocol=PROTOCOL, set=SET, encoder=encoder,
                             arm=arm, aspect=a, direction=d, metric='map', k=None, comparator=name, comparator_row=comp['row'],
@@ -158,14 +164,20 @@ def p1_spec(form, r23_stage1, p1_pick_record):
 
 
 def read_p1_form(path, arm):
-    """P1's caption form (D20) from `records/prefix_pick.json`: key `p1_form`, 'plain' or 'prefixed'. When K1 is K* (arm
+    """P1's caption form (D20) from `records/prefix_pick.json` (ticket 05; keys `kstar`, `kstar_form`, `p1_form`, `flag`). The
+    scored arm must be K* (`kstar`): a losing arm is refused. `p1_form` is 'plain' or 'prefixed'; when K1 is K* (arm
     `siglip1`) D20 never picks a form and P1 is the plain one."""
     path = Path(path)
     if not path.exists():
         raise RuntimeError(f'no prefix_pick record {path}: ticket 05 writes it before stage 1b (spec §3.5)')
     assert arm in ARMS, arm
     doc = json.loads(path.read_text())
-    assert 'p1_form' in doc, f'{path}: key p1_form missing (keys {sorted(doc)})'
+    for key in ('kstar', 'kstar_form', 'p1_form', 'flag'):
+        assert key in doc, f'{path}: key {key} missing (keys {sorted(doc)})'
+    assert doc['kstar'] in ARMS, f'{path}: kstar {doc["kstar"]!r} not in {ARMS}'
+    if doc['kstar'] != arm:
+        raise RuntimeError(f'{path}: K* is {doc["kstar"]!r}, so arm {arm!r} gets no test cells (spec §3.4: K* only)')
+    assert doc['kstar_form'] in P1_FORMS, f'{path}: kstar_form {doc["kstar_form"]!r} not in {P1_FORMS}'
     form = doc['p1_form']
     assert form in P1_FORMS, f'{path}: p1_form {form!r} not in {P1_FORMS}'
     assert arm != 'siglip1' or form == 'plain', f'{path}: K1 is the arm, so P1 is the plain form, not {form!r}'
@@ -176,7 +188,7 @@ def require_committed(path):
     """The record is committed unchanged in git HEAD (outside smoke): the order rule's check for records this step reads."""
     path = Path(path)
     if not path.exists():
-        raise RuntimeError(f'no record {path}')
+        raise RuntimeError(f'no record {path}: {path.name} is written and committed before any test number (spec §3.4, §3.5)')
     if X.is_smoke():
         return
     rel = path.resolve().relative_to(P29.REPO.resolve())
@@ -224,8 +236,11 @@ def sha_file(path):
 def cells(arm, draws=N_DRAWS):
     """The 18 cells of arm A (9 against P1, 9 against Q1) -> records/text_cells_<A>.json. Refuses unless the arm's pick record
     is on record, committed unchanged and made for the store and weights as scored (ticket 04's `require_pick_record`), and
-    the held scores exist (`r29_text.py cells --arm A`)."""
+    the held scores exist (`r29_text.py cells --arm A`). Also refuses unless `records/pass_rule.json` is on record and committed
+    unchanged (SC2 before any test number, §3.5 row 1b; D9: it is checked for presence, not for its status, because the test
+    cells run on a pass and on a fail) and unless `records/prefix_pick.json` names the arm as K* (§3.4: K* only)."""
     assert arm in ARMS, f'arm {arm!r}: one of {ARMS}'
+    require_committed(Path(X.RECORDS_DIR) / 'pass_rule.json')
     pick = X.require_pick_record(arm)
     held_path = X.record_path(arm, held=True)
     if not held_path.exists():
@@ -285,21 +300,27 @@ def compare_to_r23(cells_, recorded, check_interval):
         same = c['candidate_readout'] == rec['candidate_readout'] and c['comparator_readout'] == rec['comparator_readout']
         ok = max(diffs.values()) <= TOL and same and (not check_interval or c['outcome'] == rec['outcome'])
         items.append(dict(id=c['id'], comparator_row=c['comparator_row'], max_abs_diff=float(max(diffs.values())), diffs=diffs,
+                          replayed={k: float(v) for k, v in got.items()}, recorded={k: float(v) for k, v in want.items()},
                           outcome=c['outcome'], recorded_outcome=rec['outcome'], readouts_equal=bool(same), ok=bool(ok)))
     return items
 
 
 def gate_v_text(aspects=ASPECTS, draws=N_DRAWS):
-    """Gate (v), text part: r23's own c* files through this module's code. Returns (ok, details)."""
+    """Gate (v), text part: r23's own c* files through this module's code. Returns (ok, details).
+    (1) The 18 SC1 label cells of r23 (Q1 route `teacher`, one-vector route `plain`): d, lower, upper, r, outcome, read-outs
+    against r23's `stage2/cells.json`, and the cell means against r28's `text.json`. Each cell's replayed values are stored,
+    not only the differences. (2) The P1 plain route (`p1_spec('plain')`: r23's SigLIP 1 side row at r23's pick) on the same
+    c* files: its comparator values against r28's `plain_siglip1` means, and its cells' outcomes."""
     r23 = json.loads(R23_STAGE1.read_text())
     recorded = [c for c in json.loads((R23_OUT / 'stage2/cells.json').read_text())
                 if c['sc'] == 'SC1' and c['group'] == 'art' and c['cell'] == 'label' and c['aspect'] in aspects]
     assert len(recorded) == 2 * len(aspects) * len(DIRECTIONS), len(recorded)
     cand_picks = {a: {d: dict(pick=r23['picks'][KIND][ROW][a][d], range=r23['ranges'][KIND][ROW][a][d]) for d in DIRECTIONS}
                   for a in ASPECTS}
+    cand = dict(root=R23_OUT, picks=cand_picks)
     plain = dict(row='plain', root=R23_OUT, picks=r23['picks'][KIND]['plain'], form='r23 Qwen3 plain row (a one-vector row, as P1)')
     t0 = time.monotonic()
-    got = score_cells('r23_cstar', 'qwen', dict(root=R23_OUT, picks=cand_picks), plain, q1_spec(r23), draws, aspects)
+    got = score_cells('r23_cstar', 'qwen', cand, plain, q1_spec(r23), draws, aspects)
     check_interval = draws == N_DRAWS
     items = compare_to_r23(got, recorded, check_interval)
     refs = dict(cand=r28_means('ours_qwen3'), plain=r28_means('plain_qwen3'), teacher=r28_means('instructed_qwen3'))
@@ -307,12 +328,29 @@ def gate_v_text(aspects=ASPECTS, draws=N_DRAWS):
         comp = refs['plain' if c['comparator_row'] == 'plain' else 'teacher'][c['aspect']][c['direction']]
         item['value_diff'] = abs(c['value'] - refs['cand'][c['aspect']][c['direction']])
         item['comparator_value_diff'] = abs(c['comparator_value'] - comp)
+        item['replayed_means'] = dict(value=c['value'], comparator_value=c['comparator_value'])
+        item['r28_means'] = dict(value=refs['cand'][c['aspect']][c['direction']], comparator_value=comp)
         item['ok'] = bool(item['ok'] and item['value_diff'] <= TOL and item['comparator_value_diff'] <= TOL)
-    ok = all(i['ok'] for i in items) and len(items) == 2 * len(aspects) * len(DIRECTIONS)
+    # the P1 plain route, which r23's records do not hold: its comparator means are r28's `plain_siglip1`
+    p1_ref = r28_means('plain_siglip1')
+    p1_cells = score_cells('r23_cstar', 'qwen', cand, p1_spec('plain', r23, None), q1_spec(r23), draws, aspects, names=('p1',))
+    p1_items = []
+    for c in p1_cells:
+        want = p1_ref[c['aspect']][c['direction']]
+        diff, vdiff = abs(c['comparator_value'] - want), abs(c['value'] - refs['cand'][c['aspect']][c['direction']])
+        p1_items.append(dict(id=c['id'], comparator_row=c['comparator_row'], value=c['value'], comparator_value=c['comparator_value'],
+                             r28_value=refs['cand'][c['aspect']][c['direction']], r28_comparator_value=want, value_diff=vdiff,
+                             comparator_value_diff=diff, d=c['d'], lo=c['lo'], hi=c['hi'], r=c['r'], outcome=c['outcome'],
+                             ok=bool(diff <= TOL and vdiff <= TOL)))
+    p1_check = dict(n_cells=len(p1_items), outcomes={o: sum(i['outcome'] == o for i in p1_items) for o in ('WIN', 'LEVEL', 'BELOW')},
+                    max_abs_diff=float(max(max(i['value_diff'], i['comparator_value_diff']) for i in p1_items)),
+                    comparator='r23 siglip_so400m (head all) at r23 picks, against r28 plain_siglip1', cells=p1_items)
+    ok = (all(i['ok'] for i in items) and len(items) == 2 * len(aspects) * len(DIRECTIONS)
+          and all(i['ok'] for i in p1_items) and len(p1_items) == len(aspects) * len(DIRECTIONS))
     worst = max(max(i['max_abs_diff'], i['value_diff'], i['comparator_value_diff']) for i in items)
     return ok, dict(aspects=list(aspects), draws=draws, intervals_checked=check_interval, tol=TOL, n_cells=len(items),
-                    max_abs_diff=float(worst), seconds=round(time.monotonic() - t0), cells=items,
-                    candidate='r23 cstar (Qwen3) files at r23 picks and ranges',
+                    max_abs_diff=float(max(worst, p1_check['max_abs_diff'])), seconds=round(time.monotonic() - t0), cells=items,
+                    p1_plain_check=p1_check, candidate='r23 cstar (Qwen3) files at r23 picks and ranges',
                     comparators='teacher (Q1 route) and plain (one-vector P1 route), r23 files at r23 picks')
 
 

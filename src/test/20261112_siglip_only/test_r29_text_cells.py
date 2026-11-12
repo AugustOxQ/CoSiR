@@ -250,9 +250,11 @@ def test_score_cells_reads_each_comparator_at_its_own_pick(tmp_path):
         TC.score_cells('siglip1', 'siglip1', cand, p1, q1, draws=5)
 
 
-# ------------------------------------------------------------------------------------------------ P1's form (D20)
+# ------------------------------------------------------------------------------------------------ P1's form (D20), K*
 def write_prefix_pick(path, **kw):
-    Path(path).write_text(json.dumps(kw))
+    doc = dict(kstar='siglip1_prefix', kstar_form='prefixed', p1_form='plain', flag=None)
+    doc.update(kw)
+    Path(path).write_text(json.dumps(doc))
     return path
 
 
@@ -260,18 +262,37 @@ def test_p1_form_is_read_and_asserted(tmp_path):
     f = write_prefix_pick(tmp_path / 'prefix_pick.json', p1_form='prefixed')
     assert TC.read_p1_form(f, 'siglip1_prefix') == 'prefixed'
     f = write_prefix_pick(tmp_path / 'p2.json', p1_form='plain')
-    assert TC.read_p1_form(f, 'siglip1_prefix') == 'plain' and TC.read_p1_form(f, 'siglip1') == 'plain'
+    assert TC.read_p1_form(f, 'siglip1_prefix') == 'plain'
+    f = write_prefix_pick(tmp_path / 'p3.json', kstar='siglip1', kstar_form='plain', p1_form='plain')
+    assert TC.read_p1_form(f, 'siglip1') == 'plain'
 
 
 def test_p1_form_must_fit_the_arm_and_the_vocabulary(tmp_path):
     with pytest.raises(AssertionError):                            # K1 won: D20 never picks a prefixed P1
-        TC.read_p1_form(write_prefix_pick(tmp_path / 'a.json', p1_form='prefixed'), 'siglip1')
+        TC.read_p1_form(write_prefix_pick(tmp_path / 'a.json', kstar='siglip1', p1_form='prefixed'), 'siglip1')
     with pytest.raises(AssertionError):
         TC.read_p1_form(write_prefix_pick(tmp_path / 'b.json', p1_form='both'), 'siglip1_prefix')
     with pytest.raises(AssertionError):
-        TC.read_p1_form(write_prefix_pick(tmp_path / 'c.json', other=1), 'siglip1_prefix')
+        TC.read_p1_form(write_prefix_pick(tmp_path / 'b2.json', kstar_form='both'), 'siglip1_prefix')
+    with pytest.raises(AssertionError):
+        TC.read_p1_form(write_prefix_pick(tmp_path / 'b3.json', kstar='qwen'), 'siglip1_prefix')
+    doc = dict(kstar='siglip1_prefix', kstar_form='prefixed', p1_form='plain', flag=None)
+    for key in doc:                                                # every key of the index's shared interface is asserted
+        (tmp_path / f'no_{key}.json').write_text(json.dumps({k: v for k, v in doc.items() if k != key}))
+        with pytest.raises(AssertionError, match=key):
+            TC.read_p1_form(tmp_path / f'no_{key}.json', 'siglip1_prefix')
     with pytest.raises(RuntimeError, match='prefix_pick'):
         TC.read_p1_form(tmp_path / 'missing.json', 'siglip1')
+
+
+def test_a_losing_arm_is_refused(tmp_path):
+    """Review must-fix 2: `prefix_pick.json` names K*; the other arm gets no test cells."""
+    f = write_prefix_pick(tmp_path / 'a.json', kstar='siglip1', kstar_form='plain', p1_form='plain')
+    with pytest.raises(RuntimeError, match='K\\* is'):
+        TC.read_p1_form(f, 'siglip1_prefix')
+    f = write_prefix_pick(tmp_path / 'b.json', kstar='siglip1_prefix')
+    with pytest.raises(RuntimeError, match='K\\* is'):
+        TC.read_p1_form(f, 'siglip1')
 
 
 def test_p1_spec_plain_is_r23s_side_row_prefixed_is_tickets_04_rows(tmp_path):
@@ -293,18 +314,27 @@ def test_q1_spec_is_r23s_teacher_at_r23s_pick():
 
 
 # ------------------------------------------------------------------------------------------------ refusal (order rule)
+def records_dir(tmp_path, pass_rule=True):
+    d = tmp_path / 'records'
+    d.mkdir()
+    if pass_rule:
+        (d / 'pass_rule.json').write_text(json.dumps(dict(status='fail')))      # D9: present, not its status, is checked
+    return d
+
+
 def test_cells_refuse_without_the_pick_record(tmp_path):
-    with mock.patch.object(X, 'RECORDS_DIR', tmp_path):
+    with mock.patch.object(X, 'RECORDS_DIR', records_dir(tmp_path)), mock.patch.object(X, 'SMOKE', True):
         with pytest.raises(RuntimeError, match='no pick record'):
             TC.cells('siglip1', draws=5)
-    assert not list(tmp_path.glob('text_cells_*.json'))
+    assert not list(tmp_path.glob('**/text_cells_*.json'))
 
 
 def test_cells_refuse_a_record_not_committed_unchanged(tmp_path):
     """The pick record is read through ticket 04's `require_pick_record`: its git check (outside smoke) is the refusal."""
-    with mock.patch.object(X, 'require_pick_record', side_effect=RuntimeError('not committed unchanged in HEAD')) as req:
-        with pytest.raises(RuntimeError, match='not committed'):
-            TC.cells('siglip1', draws=5)
+    with mock.patch.object(X, 'RECORDS_DIR', records_dir(tmp_path)), mock.patch.object(X, 'SMOKE', True):
+        with mock.patch.object(X, 'require_pick_record', side_effect=RuntimeError('not committed unchanged in HEAD')) as req:
+            with pytest.raises(RuntimeError, match='not committed'):
+                TC.cells('siglip1', draws=5)
     req.assert_called_once_with('siglip1')
 
 
@@ -315,9 +345,10 @@ def test_cells_refuse_an_unknown_arm():
 
 def test_cells_refuse_without_the_held_record(tmp_path):
     rec = {'picks': {a: {d: dict(pick='r0', mean=0.1, range=0.01) for d in TC.DIRECTIONS} for a in TC.ASPECTS}}
-    with mock.patch.object(X, 'RECORDS_DIR', tmp_path), mock.patch.object(X, 'require_pick_record', return_value=rec):
-        with pytest.raises(RuntimeError, match='held record'):
-            TC.cells('siglip1', draws=5)
+    with mock.patch.object(X, 'RECORDS_DIR', records_dir(tmp_path)), mock.patch.object(X, 'SMOKE', True):
+        with mock.patch.object(X, 'require_pick_record', return_value=rec):
+            with pytest.raises(RuntimeError, match='held record'):
+                TC.cells('siglip1', draws=5)
 
 
 def test_held_record_picks_must_equal_the_pick_record(tmp_path):
@@ -392,3 +423,283 @@ def test_compare_to_r23_needs_every_cell_once(tmp_path):
         TC.compare_to_r23(cells, recs[1:], check_interval=True)
     with pytest.raises(AssertionError):
         TC.compare_to_r23(cells, recs + [recs[0]], check_interval=True)
+
+
+# ------------------------------------------------------------------------------------------------ `cells` end to end
+def file_mean(root, row, head, seeds, direction, readout, aspect):
+    vals = [np.load(Path(root) / 'scores' / 'art_held' / 'caption' / row / f'{head}__s{sd}__{direction}__{readout}.npz')
+            [f'ap__{aspect}'].astype(np.float64) for sd in seeds]
+    return float(np.mean(vals))
+
+
+class World:
+    """r23's folder (rows cstar, teacher, plain, siglip_so400m), a second root for the prefixed P1, r23's stage 1 and r28's
+    text.json, with the means r28 would hold, on small synthetic files. `patch()` points the module at it."""
+
+    def __init__(self, tmp_path):
+        self.tmp = tmp_path
+        self.root, self.pre = tmp_path / 'r23', tmp_path / 'p1pre'
+        rng = np.random.default_rng(21)
+        picks = {k: {a: {d: v for d in TC.DIRECTIONS} for a in TC.ASPECTS}
+                 for k, v in (('cstar', 'r0'), ('teacher', 'center_k10'), ('plain', 'center'), ('siglip_so400m', 'center'))}
+        self.stage1 = dict(group='art', picks={'caption': picks},
+                           ranges={'caption': {'cstar': {a: {d: 0.004 for d in TC.DIRECTIONS} for a in TC.ASPECTS}}})
+        for root, rows in ((self.root, ('plain', 'siglip_so400m')), (self.pre, ('siglip_so400m',))):
+            for row in rows:
+                for d in TC.DIRECTIONS:
+                    n = len(pid_of(d))
+                    write_unit(root, row, 'all', 'x', d, 'center', {a: rng.uniform(0.05, 0.95, n) for a in TC.ASPECTS})
+        for a in TC.ASPECTS:
+            for d in TC.DIRECTIONS:
+                make_arm(self.root, 'cstar', a, range(5), d, 'r0', rng, aspect=a)
+                make_arm(self.root, 'teacher', a, ['x'], d, 'center_k10', rng, aspect=a)
+        self.r28 = {key: self.means(root, row, head, seeds, rd) for key, root, row, head, seeds, rd in (
+            ('ours_qwen3', self.root, 'cstar', None, range(5), 'r0'), ('instructed_qwen3', self.root, 'teacher', None, ['x'], 'center_k10'),
+            ('plain_qwen3', self.root, 'plain', 'all', ['x'], 'center'), ('plain_siglip1', self.root, 'siglip_so400m', 'all', ['x'], 'center'),
+            ('p1_prefix', self.pre, 'siglip_so400m', 'all', ['x'], 'center'))}
+        (tmp_path / 'stage1.json').write_text(json.dumps(self.stage1))
+        self.write_r28()
+
+    def means(self, root, row, head, seeds, readout):
+        return {a: {d: file_mean(root, row, head or a, seeds, d, readout, a) for d in TC.DIRECTIONS} for a in TC.ASPECTS}
+
+    def write_r28(self):
+        keys = ('ours_qwen3', 'instructed_qwen3', 'plain_qwen3', 'plain_siglip1')
+        (self.tmp / 'r28_text.json').write_text(json.dumps({k: {'cells': {a: {d: {'mean': self.r28[k][a][d]} for d in TC.DIRECTIONS}
+                                                                          for a in TC.ASPECTS}} for k in keys}))
+
+    def pick_record(self, readout='r0'):
+        return {'picks': {a: {d: dict(pick=readout, mean=0.5, range=0.004) for d in TC.DIRECTIONS} for a in TC.ASPECTS}}
+
+    def held_record(self, means, readout='r0'):
+        return {'picks': {a: {d: readout for d in TC.DIRECTIONS} for a in TC.ASPECTS},
+                'cells': {a: {d: dict(mean=means[a][d]) for d in TC.DIRECTIONS} for a in TC.ASPECTS}}
+
+    def patch(self, stack, records):
+        stack.enter_context(mock.patch.object(TC, 'R23_OUT', self.root))
+        stack.enter_context(mock.patch.object(TC, 'R23_STAGE1', self.tmp / 'stage1.json'))
+        stack.enter_context(mock.patch.object(TC, 'R28_TEXT', self.tmp / 'r28_text.json'))
+        stack.enter_context(mock.patch.object(X, 'RECORDS_DIR', records))
+        stack.enter_context(mock.patch.object(X, 'SMOKE', True))
+        stack.enter_context(mock.patch.object(X, 'score_root', lambda arm: {'siglip1': self.root, 'siglip1_prefix': self.root,
+                                                                           'p1_siglip1_prefix': self.pre}[arm]))
+        stack.enter_context(mock.patch.object(X, 'require_pick_record', lambda arm: self.pick_record('center' if arm == 'p1_siglip1_prefix' else 'r0')))
+
+
+@pytest.fixture
+def world(tmp_path):
+    from contextlib import ExitStack
+    w = World(tmp_path)
+    w.records = records_dir(tmp_path)
+    w.set_pick = lambda **kw: write_prefix_pick(w.records / 'prefix_pick.json', **kw)
+    w.set_held = lambda arm, means: (w.records / f'text_{arm}_held.json').write_text(
+        json.dumps(w.held_record(means, 'center' if arm == 'p1_siglip1_prefix' else 'r0')))
+    for arm in ('siglip1', 'siglip1_prefix', 'p1_siglip1_prefix'):     # the files `require_pick_record` (patched) reads
+        (w.records / f'text_{arm}.json').write_text(json.dumps(w.pick_record()))
+    with ExitStack() as stack:
+        w.patch(stack, w.records)
+        yield w
+
+
+def test_cells_end_to_end_plain_p1(world):
+    world.set_pick(kstar='siglip1', kstar_form='plain', p1_form='plain')
+    world.set_held('siglip1', world.r28['ours_qwen3'])
+    path, rec = TC.cells('siglip1', draws=20)
+    assert path == world.records / 'text_cells_siglip1.json' and json.loads(path.read_text())['arm'] == 'siglip1'
+    assert len(rec['cells']) == 18 and rec['p1_form'] == 'plain'
+    p1 = [c for c in rec['cells'] if c['comparator'] == 'p1']
+    assert len(p1) == 9 and all(c['comparator_row'] == 'siglip_so400m' and c['p1_form'] == 'plain' for c in p1)
+    assert all(c['comparator_row'] == 'teacher' for c in rec['cells'] if c['comparator'] == 'q1')
+    assert all(rec[k] for k in ('pick_record', 'held_record', 'prefix_pick'))
+
+
+def test_cells_end_to_end_prefixed_p1(world):
+    world.set_pick(kstar='siglip1_prefix', kstar_form='prefixed', p1_form='prefixed')
+    world.set_held('siglip1_prefix', world.r28['ours_qwen3'])
+    world.set_held('p1_siglip1_prefix', world.r28['p1_prefix'])
+    path, rec = TC.cells('siglip1_prefix', draws=20)
+    p1 = [c for c in rec['cells'] if c['comparator'] == 'p1']
+    assert rec['p1_form'] == 'prefixed' and all(c['p1_form'] == 'prefixed' for c in p1)
+    for c in p1:                                                    # read from ticket 04's root, checked against its held record
+        assert c['comparator_value'] == pytest.approx(world.r28['p1_prefix'][c['aspect']][c['direction']], abs=1e-9)
+
+
+def test_cells_refuse_the_losing_arm(world):
+    world.set_pick(kstar='siglip1', kstar_form='plain', p1_form='plain')
+    world.set_held('siglip1_prefix', world.r28['ours_qwen3'])
+    with pytest.raises(RuntimeError, match='K\\* is'):
+        TC.cells('siglip1_prefix', draws=5)
+    assert not (world.records / 'text_cells_siglip1_prefix.json').exists()
+
+
+def test_cells_refuse_without_pass_rule_record(world):
+    world.set_pick(kstar='siglip1', kstar_form='plain', p1_form='plain')
+    world.set_held('siglip1', world.r28['ours_qwen3'])
+    (world.records / 'pass_rule.json').unlink()
+    with pytest.raises(RuntimeError, match='pass_rule'):
+        TC.cells('siglip1', draws=5)
+    assert not (world.records / 'text_cells_siglip1.json').exists()
+
+
+def test_cells_check_the_candidate_values(world):
+    world.set_pick(kstar='siglip1', kstar_form='plain', p1_form='plain')
+    means = {a: dict(v) for a, v in world.r28['ours_qwen3'].items()}
+    means['genre']['t2t'] += 1e-6
+    world.set_held('siglip1', means)
+    with pytest.raises(AssertionError, match='candidate value'):
+        TC.cells('siglip1', draws=5)
+    assert not (world.records / 'text_cells_siglip1.json').exists()
+
+
+@pytest.mark.parametrize('key, match', [('instructed_qwen3', r'/q1 comparator value'), ('plain_siglip1', r'/p1 comparator value')])
+def test_cells_check_the_comparator_values(world, key, match):
+    world.set_pick(kstar='siglip1', kstar_form='plain', p1_form='plain')
+    world.set_held('siglip1', world.r28['ours_qwen3'])
+    world.r28[key]['style']['i2t'] += 1e-6
+    world.write_r28()
+    with pytest.raises(AssertionError, match=match):
+        TC.cells('siglip1', draws=5)
+    assert not (world.records / 'text_cells_siglip1.json').exists()
+
+
+def test_cells_check_the_prefixed_p1_values_against_its_held_record(world):
+    world.set_pick(kstar='siglip1_prefix', kstar_form='prefixed', p1_form='prefixed')
+    world.set_held('siglip1_prefix', world.r28['ours_qwen3'])
+    bad = {a: dict(v) for a, v in world.r28['p1_prefix'].items()}
+    bad['emotion']['t2i'] += 1e-6
+    world.set_held('p1_siglip1_prefix', bad)
+    with pytest.raises(AssertionError, match='comparator value'):
+        TC.cells('siglip1_prefix', draws=5)
+
+
+# ------------------------------------------------------------------------------------------------ order rule with real git
+def git_repo(tmp_path):
+    import subprocess
+    repo = tmp_path / 'repo'
+    (repo / 'records').mkdir(parents=True)
+    run = lambda *a: subprocess.run(['git', '-C', str(repo), *a], check=True, capture_output=True)  # noqa: E731
+    run('init', '-q')
+    run('config', 'user.email', 'a@b.c')
+    run('config', 'user.name', 'x')
+    return repo, run
+
+
+def test_require_committed_with_git(tmp_path):
+    repo, run = git_repo(tmp_path)
+    f = repo / 'records' / 'a.json'
+    f.write_text('{"a": 1}')
+    with mock.patch.object(TC.P29, 'REPO', repo), mock.patch.object(X, 'SMOKE', False):
+        with pytest.raises(RuntimeError, match='not committed'):
+            TC.require_committed(f)                                  # untracked
+        run('add', 'records/a.json')
+        run('commit', '-q', '-m', 'a')
+        TC.require_committed(f)                                      # committed unchanged
+        f.write_text('{"a": 2}')
+        with pytest.raises(RuntimeError, match='not committed'):
+            TC.require_committed(f)                                  # changed since
+        with pytest.raises(RuntimeError, match='no record'):
+            TC.require_committed(repo / 'records' / 'none.json')
+
+
+@pytest.mark.parametrize('commit_pass_rule, commit_prefix, match', [
+    (False, True, 'pass_rule.json is not committed'),
+    (True, False, 'prefix_pick.json is not committed'),
+])
+def test_cells_refuse_records_not_committed(world, tmp_path, commit_pass_rule, commit_prefix, match):
+    """`cells` names both records in HEAD: an uncommitted pass_rule.json or prefix_pick.json is a refusal, before any number."""
+    repo, run = git_repo(tmp_path)
+    rec = repo / 'records'
+    world.set_pick(kstar='siglip1', kstar_form='plain', p1_form='plain')
+    world.set_held('siglip1', world.r28['ours_qwen3'])
+    for name in ('pass_rule.json', 'prefix_pick.json', 'text_siglip1_held.json'):
+        (rec / name).write_text((world.records / name).read_text())
+    for name, yes in (('pass_rule.json', commit_pass_rule), ('prefix_pick.json', commit_prefix)):
+        if yes:
+            run('add', f'records/{name}')
+    if commit_pass_rule or commit_prefix:
+        run('commit', '-q', '-m', 'x')
+    with mock.patch.object(TC.P29, 'REPO', repo), mock.patch.object(X, 'RECORDS_DIR', rec), mock.patch.object(X, 'SMOKE', False):
+        with pytest.raises(RuntimeError, match=match):
+            TC.cells('siglip1', draws=5)
+    assert not (rec / 'text_cells_siglip1.json').exists()
+
+
+# ------------------------------------------------------------------------------------------------ gate (v) text, end to end
+GATE_DRAWS = 20
+
+
+@pytest.fixture
+def gate_world(world):
+    """The gate on the synthetic world, with r23's `stage2/cells.json` made from the same code (so every cell agrees) at a
+    reduced draw count, which the test makes the module's N_DRAWS (the gate then checks intervals)."""
+    r23 = world.stage1
+    cand_picks = {a: {d: dict(pick='r0', range=0.004) for d in TC.DIRECTIONS} for a in TC.ASPECTS}
+    plain = dict(row='plain', root=world.root, picks=r23['picks']['caption']['plain'], form='x')
+    cells = TC.score_cells('r23_cstar', 'qwen', dict(root=world.root, picks=cand_picks), plain, TC.q1_spec(r23), GATE_DRAWS)
+    (world.root / 'stage2').mkdir()
+    (world.root / 'stage2' / 'cells.json').write_text(json.dumps([rec_cell(c, group='art', cell='label') for c in cells]))
+    with mock.patch.object(TC, 'N_DRAWS', GATE_DRAWS):
+        yield world
+
+
+def test_gate_v_text_passes_and_stores_the_values(gate_world):
+    ok, det = TC.gate_v_text(draws=GATE_DRAWS)
+    assert ok and det['intervals_checked'] and det['n_cells'] == 18 and det['max_abs_diff'] <= 1e-12
+    c = det['cells'][0]
+    assert set(c['replayed']) == {'d', 'r', 'lo', 'hi'} and set(c['recorded']) == {'d', 'r', 'lo', 'hi'}
+    assert set(c['replayed_means']) == {'value', 'comparator_value'} == set(c['r28_means'])
+    assert c['replayed']['lo'] == c['recorded']['lo']
+    p1 = det['p1_plain_check']
+    assert p1['n_cells'] == 9 and len(p1['cells']) == 9 and sum(p1['outcomes'].values()) == 9
+    assert all(i['id'].endswith('/p1') and i['comparator_row'] == 'siglip_so400m' for i in p1['cells'])
+    i = p1['cells'][0]
+    assert {'value', 'comparator_value', 'r28_value', 'r28_comparator_value', 'd', 'lo', 'hi', 'r', 'outcome'} <= set(i)
+    assert i['comparator_value'] == pytest.approx(gate_world.r28['plain_siglip1'][i['id'].split('/')[3]][i['id'].split('/')[4]], abs=1e-12)
+
+
+@pytest.mark.parametrize('key', ['ours_qwen3', 'instructed_qwen3', 'plain_qwen3', 'plain_siglip1'])
+def test_gate_v_text_fails_when_a_cell_mean_differs_from_r28(gate_world, key):
+    """Each of r28's four rows is checked: the candidate, Q1, the one-vector row, and the P1 plain route."""
+    gate_world.r28[key]['genre']['i2t'] += 1e-6
+    gate_world.write_r28()
+    ok, det = TC.gate_v_text(draws=GATE_DRAWS)
+    assert not ok
+
+
+def test_gate_v_text_fails_when_r23_s_cell_differs(gate_world):
+    path = gate_world.root / 'stage2' / 'cells.json'
+    recs = json.loads(path.read_text())
+    recs[3]['lower'] += 1e-6
+    path.write_text(json.dumps(recs))
+    ok, det = TC.gate_v_text(draws=GATE_DRAWS)
+    assert not ok
+
+
+def test_gate_v_text_checks_the_cell_means_with_a_reduced_run_too(gate_world):
+    gate_world.r28['ours_qwen3']['style']['t2t'] += 1e-6
+    gate_world.write_r28()
+    ok, det = TC.gate_v_text(aspects=('style',), draws=5)
+    assert not ok and not det['intervals_checked']
+
+
+# ------------------------------------------------------------------------------------------------ the gate record
+def det(aspects=None, intervals=True):
+    return dict(aspects=list(aspects or TC.ASPECTS), intervals_checked=intervals)
+
+
+def test_a_full_run_writes_the_gate_record_and_counts_tries(tmp_path):
+    with mock.patch.object(X, 'RECORDS_DIR', tmp_path / 'records'):
+        path, rec = TC.write_gate(True, det(), partial_dir=tmp_path / 'partial')
+        assert path == tmp_path / 'records' / 'gates' / 'v_text.json' and rec['status'] == 'pass' and rec['tries'] == 1
+        _, rec = TC.write_gate(False, det(), partial_dir=tmp_path / 'partial')
+        assert rec['status'] == 'fail' and rec['tries'] == 2
+    assert not (tmp_path / 'partial').exists()
+
+
+@pytest.mark.parametrize('d', [det(['style']), det(intervals=False), det(['emotion', 'genre'], intervals=False)])
+def test_a_reduced_run_never_writes_the_gate_record(tmp_path, d):
+    with mock.patch.object(X, 'RECORDS_DIR', tmp_path / 'records'):
+        path, rec = TC.write_gate(True, d, partial_dir=tmp_path / 'partial')
+        assert path == tmp_path / 'partial' / 'v_text.json' and rec['status'] == 'partial-pass'
+        assert TC.write_gate(False, d, partial_dir=tmp_path / 'partial')[1]['status'] == 'partial-fail'
+    assert not (tmp_path / 'records' / 'gates' / 'v_text.json').exists()
