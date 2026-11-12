@@ -23,3 +23,6 @@ when · the choice · the main alternative · where · who · could it change a 
 | 2026-11-12 19:58 | Per-seed image mAP for SigLIP 1 from r14 per-query files (r17 keeps only means) | none | r28_text.py per-seed | worker D | no |
 | 2026-11-12 20:00 | Figure candidates: plain comparison is plain SigLIP 1 (unit rows), counterpart of plain Qwen3; seed 0 and every Qwen3 rule unchanged | none | r28_qual.py load | worker G | maybe (changes every neighbour list) |
 | 2026-11-12 20:00 | Cluster figure: k-means (MiniBatchKMeans, state 0) and r20's per-class gain rule refitted on the SigLIP 1 rows | none (Qwen3 used r20's candidates built the same way) | r28_qual.py partitions, r20cand | worker G | maybe |
+| 2026-11-12 20:04 | CLAY and CRL read-out tolerance in units of SigLIP 1's own c* validation mAP ranges (ns_picks.ranges(set, 'siglip1')) | Qwen3 c* ranges, as r11's CRL used (same CRL pick under both) | r28_clay_crl.py make_picks | worker E | maybe |
+| 2026-11-12 20:04 | CLAY text set by r18's rules unchanged (set A won everywhere); CRL uses set A's 50 values and template | none | r28_clay_crl.py | worker E | no |
+| 2026-11-12 20:04 | SigLIP 1 picks on validation: CLAY none+k10 (as on CLIP L/14), CRL center+k10 (CLIP L/14: none+k10) | none | clay_crl/picks_siglip1.json | worker E | maybe |

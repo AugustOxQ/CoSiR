@@ -1,0 +1,247 @@
+{
+ "cells": {
+  "artelingo/emotion/ami/clay": {
+   "clip_l14": 0.06764750458422945,
+   "plain_siglip1": 0.061246600574685284,
+   "readout": null,
+   "siglip1": 0.06905453311817979,
+   "text_set": "A"
+  },
+  "artelingo/emotion/ami/crl": {
+   "clip_l14": 0.07703790450839205,
+   "plain_siglip1": 0.061246600574685284,
+   "readout": null,
+   "siglip1": 0.07474131269318394,
+   "text_set": null
+  },
+  "artelingo/emotion/map/clay": {
+   "clip_l14": 0.24860327352238737,
+   "plain_siglip1": 0.24523517940817563,
+   "readout": "none+k10",
+   "siglip1": 0.24947788826031103,
+   "text_set": "A"
+  },
+  "artelingo/emotion/map/crl": {
+   "clip_l14": 0.25543451526404665,
+   "plain_siglip1": 0.24523517940817563,
+   "readout": "center+k10",
+   "siglip1": 0.2560085334780955,
+   "text_set": null
+  },
+  "artelingo/genre/ami/clay": {
+   "clip_l14": 0.4854320772940263,
+   "plain_siglip1": 0.4016296241640907,
+   "readout": null,
+   "siglip1": 0.5042268675522827,
+   "text_set": "A"
+  },
+  "artelingo/genre/ami/crl": {
+   "clip_l14": 0.4282651634165209,
+   "plain_siglip1": 0.4016296241640907,
+   "readout": null,
+   "siglip1": 0.3934531379838429,
+   "text_set": null
+  },
+  "artelingo/genre/map/clay": {
+   "clip_l14": 0.5685759421975735,
+   "plain_siglip1": 0.5035387015848326,
+   "readout": "none+k10",
+   "siglip1": 0.5850901018299964,
+   "text_set": "A"
+  },
+  "artelingo/genre/map/crl": {
+   "clip_l14": 0.503303885690985,
+   "plain_siglip1": 0.5035387015848326,
+   "readout": "center+k10",
+   "siglip1": 0.5126663291752999,
+   "text_set": null
+  },
+  "artelingo/style/ami/clay": {
+   "clip_l14": 0.40606567571999497,
+   "plain_siglip1": 0.3820364524775098,
+   "readout": null,
+   "siglip1": 0.43709576451559357,
+   "text_set": "A"
+  },
+  "artelingo/style/ami/crl": {
+   "clip_l14": 0.39039690415578976,
+   "plain_siglip1": 0.3820364524775098,
+   "readout": null,
+   "siglip1": 0.37499212707568447,
+   "text_set": null
+  },
+  "artelingo/style/map/clay": {
+   "clip_l14": 0.31372947086408404,
+   "plain_siglip1": 0.2962197093195602,
+   "readout": "none+k10",
+   "siglip1": 0.35062365489430924,
+   "text_set": "A"
+  },
+  "artelingo/style/map/crl": {
+   "clip_l14": 0.28164381859997545,
+   "plain_siglip1": 0.2962197093195602,
+   "readout": "center+k10",
+   "siglip1": 0.2996079340942323,
+   "text_set": null
+  },
+  "mmart/emotion/ami/clay": {
+   "clip_l14": 0.04029137257074494,
+   "plain_siglip1": 0.03454352778449323,
+   "readout": null,
+   "siglip1": 0.04252479417199757,
+   "text_set": "A"
+  },
+  "mmart/emotion/ami/crl": {
+   "clip_l14": 0.03381449639931922,
+   "plain_siglip1": 0.03454352778449323,
+   "readout": null,
+   "siglip1": 0.040156631809075465,
+   "text_set": null
+  },
+  "mmart/emotion/map/clay": {
+   "clip_l14": 0.1916831555236514,
+   "plain_siglip1": 0.19125931122827552,
+   "readout": "none+k10",
+   "siglip1": 0.1932469118209746,
+   "text_set": "A"
+  },
+  "mmart/emotion/map/crl": {
+   "clip_l14": 0.1919301825906169,
+   "plain_siglip1": 0.19125931122827552,
+   "readout": "center+k10",
+   "siglip1": 0.1980884976826847,
+   "text_set": null
+  },
+  "mmart/genre/ami/clay": {
+   "clip_l14": 0.5039729776535912,
+   "plain_siglip1": 0.40957328984635294,
+   "readout": null,
+   "siglip1": 0.5089443656825884,
+   "text_set": "A"
+  },
+  "mmart/genre/ami/crl": {
+   "clip_l14": 0.44232347217835866,
+   "plain_siglip1": 0.40957328984635294,
+   "readout": null,
+   "siglip1": 0.4092983821506017,
+   "text_set": null
+  },
+  "mmart/genre/map/clay": {
+   "clip_l14": 0.5755353630487756,
+   "plain_siglip1": 0.49322669333886887,
+   "readout": "none+k10",
+   "siglip1": 0.592751879566978,
+   "text_set": "A"
+  },
+  "mmart/genre/map/crl": {
+   "clip_l14": 0.5083999582809149,
+   "plain_siglip1": 0.49322669333886887,
+   "readout": "center+k10",
+   "siglip1": 0.519002585111764,
+   "text_set": null
+  },
+  "mmart/style/ami/clay": {
+   "clip_l14": 0.42400845052019465,
+   "plain_siglip1": 0.391482784477359,
+   "readout": null,
+   "siglip1": 0.4468228719150525,
+   "text_set": "A"
+  },
+  "mmart/style/ami/crl": {
+   "clip_l14": 0.41205536274319243,
+   "plain_siglip1": 0.391482784477359,
+   "readout": null,
+   "siglip1": 0.3844504820741735,
+   "text_set": null
+  },
+  "mmart/style/map/clay": {
+   "clip_l14": 0.3382974427864969,
+   "plain_siglip1": 0.30310640376756215,
+   "readout": "none+k10",
+   "siglip1": 0.37538251198346095,
+   "text_set": "A"
+  },
+  "mmart/style/map/crl": {
+   "clip_l14": 0.31009655351465537,
+   "plain_siglip1": 0.30310640376756215,
+   "readout": "center+k10",
+   "siglip1": 0.3253709368216232,
+   "text_set": null
+  }
+ },
+ "note": "r28 job E part 1: CLAY and CRL on SigLIP 1 (new) beside the CLIP L/14 row (replayed, equal to r18/r17 records) and plain SigLIP 1. Values: AMI at the class counts (MMArt style 20), mean of 3 k-means states; mAP at the validation-picked read-out. ArtELingo held / MMArt test.",
+ "picks_clip_l14_replayed": {
+  "clay/artelingo": {
+   "pick": "none+k10"
+  },
+  "clay/mmart": {
+   "pick": "none+k10"
+  },
+  "clay_textset/clu/artelingo": {
+   "pick": "A"
+  },
+  "clay_textset/clu/mmart": {
+   "pick": "A"
+  },
+  "clay_textset/ret/artelingo": {
+   "pick": "A"
+  },
+  "clay_textset/ret/mmart": {
+   "pick": "A"
+  },
+  "crl/artelingo": {
+   "pick": "none+k10"
+  },
+  "crl/mmart": {
+   "pick": "none+k10"
+  },
+  "crl_qwen_unit/artelingo": {
+   "pick": "none+k10"
+  }
+ },
+ "picks_siglip1": {
+  "clay/artelingo": {
+   "pick": "none+k10"
+  },
+  "clay/mmart": {
+   "pick": "none+k10"
+  },
+  "clay_textset/clu/artelingo": {
+   "pick": "A"
+  },
+  "clay_textset/clu/mmart": {
+   "pick": "A"
+  },
+  "clay_textset/ret/artelingo": {
+   "pick": "A"
+  },
+  "clay_textset/ret/mmart": {
+   "pick": "A"
+  },
+  "crl/artelingo": {
+   "pick": "center+k10"
+  },
+  "crl/mmart": {
+   "pick": "center+k10"
+  },
+  "crl_qwen_unit/artelingo": {
+   "pick": "center+k10"
+  }
+ },
+ "replay_clip_l14": {
+  "max_abs_diff": 0.0,
+  "n": 24,
+  "tol": 1e-06
+ },
+ "sources": {
+  "cells": "/data/SSD2/cosir_r28/20261112_siglip_main/clay_crl/cells_siglip1.json",
+  "picks": ".../picks_siglip1.json",
+  "plain": ".../cells_plain_siglip1.json",
+  "replay": ".../replay_clip_l14.json"
+ },
+ "text_store_check": {
+  "mean_cos": 1.0,
+  "min_cos": 0.9999998807907104,
+  "n": 128
+ }
+}
