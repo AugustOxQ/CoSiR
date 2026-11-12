@@ -45,6 +45,13 @@ CAPTION_SOURCES = {
     'clipl14': (ART / 'clip_l14', 768),                       # E3 if K1 wins
     'clipl14_prefix': (ART / 'clip_l14_capprefix', 768),      # E3 if K2 wins
 }
+# Caption sources each image encoder may take (bs_paths' encoder keys): Qwen3 (K0's input, gate runs) or that encoder's own
+# text store, plain or prefixed (D13). The trainer asserts the pair.
+ENCODER_CAPTION_SOURCES = {
+    'siglip1': ('qwen', 'siglip1', 'siglip1_prefix'),
+    'siglip2': ('qwen', 'siglip2', 'siglip2_prefix'),
+    'clip_l14': ('qwen', 'clipl14', 'clipl14_prefix'),
+}
 OUTPUT_WIDTH = 2048                      # heads, teacher and graph embeddings, loss targets: unchanged (facts §3)
 
 SEEDS = (0, 1, 2, 3, 4)
