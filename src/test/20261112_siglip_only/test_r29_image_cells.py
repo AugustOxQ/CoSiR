@@ -3,6 +3,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 from unittest import mock
 
 import numpy as np
@@ -60,11 +61,15 @@ def _write(root, arm, split, aspect, seed, names, x16, over=None):
         side = dict(kind='held', arm=arm, aspect=aspect, seed=seed, rows=len(names), width=W, dtype='float16',
                     list_sha256=rs_vh.names_sha(names))
         keys = dict(img=x16)
+        side.update(sha256=rs_vh.array_sha(x16), arrays=dict(img=dict(shape=list(x16.shape), dtype=str(x16.dtype),
+                                                                      sha256=rs_vh.array_sha(x16))))
     else:
         p = Path(root) / f'val/{arm}/{aspect}__s{seed}.npz'
         side = dict(kind='val', arm=arm, aspect=aspect, seed=seed, rows=len(names), width=W, dtype='float16',
                     names_sha256=rs_vh.names_sha(names))
         keys = dict(img=x16, cap=x16)
+        side.update(sha256=rs_vh.array_sha(x16), arrays=dict(img=dict(shape=list(x16.shape), dtype=str(x16.dtype),
+                                                                      sha256=rs_vh.array_sha(x16))))
     side.update(over or {})
     p.parent.mkdir(parents=True, exist_ok=True)
     np.savez(p, **keys)
@@ -130,16 +135,56 @@ def test_validation_only_wiring_refuses_held_rows(root):
         w.head('held', 'emotion', 0)
 
 
-def test_val_falls_back_to_r14_training_file_layout(tmp_path):
-    names = NAMES['val']
-    x = _unit16(len(names), 5)
+def _write_train(tmp_path, x, names, over=None, rg=None):
     p = tmp_path / f'train/k11=40/R6-5/emotion__{ic.GRAPHS["emotion"]}__s0.npz'
-    p.parent.mkdir(parents=True)
+    p.parent.mkdir(parents=True, exist_ok=True)
     np.savez(p, img=x, cap=x)
-    p.with_suffix('.json').write_text(json.dumps(dict(config=dict(aspect='emotion', seed=0, names_sha256=dict(dev=rs_vh.names_sha(names)),
-                                                                   rg=dict(arm='k11=40')))))
+    config = dict(mode='full', smoke=False, aspect='emotion', seed=0, graph_row=ic.GRAPHS['emotion'], output_rows=len(names),
+                  names_sha256=dict(dev=rs_vh.names_sha(names)), rg=dict(arm='k11=40') if rg is None else rg)
+    side = dict(config=config, output_sha256=rs_vh.file_sha(p))
+    side.update(over or {})
+    p.with_suffix('.json').write_text(json.dumps(side))
+    return p
+
+
+def test_val_falls_back_to_r14_training_file_layout(tmp_path):
+    x = _unit16(len(NAMES['val']), 5)
+    _write_train(tmp_path, x, NAMES['val'])
     w = ic.Wiring(tmp_path, 'k11=40', 'siglip1', names=lambda split: NAMES[split])
     assert np.array_equal(w.head('val', 'emotion', 0), x)
+
+
+def test_training_layout_refuses_a_sidecar_without_its_arm_or_with_another_file_hash(tmp_path):
+    x = _unit16(len(NAMES['val']), 5)
+    w = ic.Wiring(tmp_path, 'k11=40', 'siglip1', names=lambda split: NAMES[split])
+    _write_train(tmp_path, x, NAMES['val'], rg={})                    # rg.arm missing: no default to the asked arm
+    with pytest.raises(AssertionError, match='arm'):
+        w.head('val', 'emotion', 0)
+    _write_train(tmp_path, x, NAMES['val'], over=dict(output_sha256='0' * 64))
+    with pytest.raises(AssertionError, match='hash'):
+        w.head('val', 'emotion', 0)
+
+
+def test_head_refuses_an_array_that_does_not_match_the_sidecar_hash(root):
+    w = _wiring(root)
+    other = _unit16(7, 99)
+    p = _write(root, 'siglip1', 'held', 'emotion', 0, NAMES['held'], _unit16(7, 1))
+    np.savez(p, img=other)                                              # the file changed after its sidecar was written
+    with pytest.raises(AssertionError, match='sha256'):
+        w.head('held', 'emotion', 0)
+    _write(root, 'siglip1', 'val', 'style', 0, NAMES['val'], _unit16(5, 1), over=dict(sha256='f' * 64))
+    with pytest.raises(AssertionError, match='sha256'):
+        w.head('val', 'style', 0)
+
+
+def test_head_refuses_a_sidecar_of_the_other_split_or_without_the_kind(root):
+    w = _wiring(root)
+    _write(root, 'siglip1', 'held', 'emotion', 0, NAMES['held'], _unit16(7, 1), over=dict(kind='val'))
+    with pytest.raises(AssertionError, match='kind'):
+        w.head('held', 'emotion', 0)
+    _write(root, 'siglip1', 'val', 'emotion', 0, NAMES['val'], _unit16(5, 1), over=dict(kind='held'))
+    with pytest.raises(AssertionError, match='kind'):
+        w.head('val', 'emotion', 0)
 
 
 def test_wired_scorers_read_the_new_root_and_are_restored(root):
@@ -202,3 +247,122 @@ def test_encoder_of_arm():
     assert ic.encoder_of_arm('siglip2') == 'siglip2' and ic.encoder_of_arm('clipl14_prefix') == 'clip_l14'
     with pytest.raises(AssertionError):
         ic.encoder_of_arm('qwen')
+
+
+# ------------------------------------------------------------------------------------------------ order rule, part 2
+def test_picks_record_is_written_once_per_arm(tmp_path):
+    path, _ = ic.write_picks('siglip1', 'siglip1', '/root', dict(a=1), records=tmp_path)
+    first = path.read_text()
+    with pytest.raises(FileExistsError, match='siglip1'):
+        ic.write_picks('siglip1', 'siglip1', '/root', dict(a=2), records=tmp_path)
+    assert path.read_text() == first                                       # the first record is untouched
+    ic.write_picks('siglip2', 'siglip2', '/root', dict(a=3), records=tmp_path)    # another arm: fine
+
+
+def _picks_with_files(w):
+    return dict(validation_files={a: {str(s): dict(path=str(w.path('val', a, s)), sha256=ic.sha_file(w.path('val', a, s)))
+                                      for s in range(5)} for a in ('emotion', 'style', 'genre')})
+
+
+def test_cells_refuse_validation_files_that_changed_after_the_picks(root):
+    w = _wiring(root)
+    picks = _picks_with_files(w)
+    assert ic.score_cells(w, picks, types=()) == []                        # unchanged: passes (no cell types: nothing scored)
+    _write(root, 'siglip1', 'val', 'genre', 2, NAMES['val'], _unit16(5, 77))    # a valid file, but not the one the picks read
+    with pytest.raises(AssertionError, match='validation file'):
+        ic.score_cells(w, picks, types=())
+
+
+# ------------------------------------------------------------------------------------------------ r comes from the picks body
+R_OF = {'emotion': 0.001, 'style': 0.01, 'genre': 0.1}         # other than any recorded K0 range; LEVEL/BELOW depends on it
+
+
+def _fake_picks():
+    names = ('emotion', 'style', 'genre')
+    return dict(ami_ranges={a: dict(r=R_OF[a]) for a in names}, map_ranges={a: dict(r=R_OF[a]) for a in names},
+                readouts=dict(untold=dict(pick='u'), plain=dict(pick='p'), cstar=dict(pick='center+k10'), teacher=dict(pick='t')))
+
+
+def _stat(lo=-0.005):
+    return dict(cand=0.5, comp=0.4, d=0.1, lo=lo, hi=0.2, n_draws=3)
+
+
+def _wire_stub():
+    return SimpleNamespace(encoder='siglip1', arm='siglip1', root='/none')
+
+
+def _check_r(cells):
+    assert [c['aspect'] for c in cells] and all(c['r'] == R_OF[c['aspect']] for c in cells)
+    assert {c['aspect']: c['outcome'] for c in cells} == {'emotion': 'BELOW', 'style': 'LEVEL', 'genre': 'LEVEL'}   # lo = -0.005
+
+
+def test_ami_cells_take_r_from_the_picks_body():
+    labels = lambda set_, split, a: np.arange(200) % ic.ns_paths.CLASS_COUNT[(ic.SET, a)]
+    paired = lambda *a, **k: dict(ami=_stat())
+    with mock.patch.object(ic.ns_data, 'labels', labels), mock.patch.object(ic.ns_clu_cells, '_cand_parts'), \
+            mock.patch.object(ic.ns_clu_cells, '_comp_parts'), mock.patch.object(ic.ns_clu, 'paired_cell', paired):
+        cells = ic.ami_cells(_wire_stub(), _fake_picks(), ic.ASPECTS, 3)
+    _check_r(cells)
+    assert len(cells) == 6
+
+
+def test_map_plain_cells_take_r_from_the_picks_body():
+    class Rows:
+        def __init__(self, *a): pass
+        def ap(self, *a): return dict(ap=np.ones(4), rows=np.arange(4))
+    labels = lambda set_, split, a: np.zeros(4)
+    with mock.patch.object(ic.ns_data, 'labels', labels), mock.patch.object(ic.ns_ret, '_Rows', Rows), \
+            mock.patch.object(ic.ns_ret, 'paired_ret', lambda *a, **k: _stat()):
+        cells = ic.map_plain_cells(_wire_stub(), _fake_picks(), ic.ASPECTS, 3)
+    _check_r(cells)
+
+
+def test_map_teacher_cells_take_r_from_the_picks_body(tmp_path):
+    ones = dict(ap=np.ones((5, 4)), rows=np.arange(4))
+    score_arm = lambda args, stage, arm, cells, get_x, labels, qe_k: {c: ones for c in cells}
+    with mock.patch.object(ic.bs_artret, 'readout_of', lambda *a: SimpleNamespace(k=1)), \
+            mock.patch.object(ic.rt_data, 'labels', lambda split: {a: np.zeros(4) for a in ic.ASPECTS}), \
+            mock.patch.object(ic.bs_artret, '_args', lambda *a: None), \
+            mock.patch.object(ic.bs_artret.rt_run, 'score_arm', score_arm), \
+            mock.patch.object(ic.bs_artret, 'r11_stored', lambda arm, a: dict(ones, pick='t')), \
+            mock.patch.object(ic.rt_stats, 'paired', lambda *a: dict(d=0.1, interval=(-0.005, 0.2))):
+        cells = ic.map_teacher_cells(_wire_stub(), _fake_picks(), ic.ASPECTS, 3, tmp_path)
+    _check_r(cells)
+
+
+# ------------------------------------------------------------------------------------------------ gate (v): compare_picks
+def _table():
+    return {'none+k0': dict(map=dict(emotion=0.25, style=0.3, genre=0.5), score=0.0, kept=True),
+            'center+k10': dict(map=dict(emotion=0.26, style=0.31, genre=0.52), score=1.5, kept=True)}
+
+
+def _pick_body():
+    ranges = {a: dict(r=0.002, per_seed={str(s): 0.3 + s * 1e-3 for s in range(5)}) for a in ic.ASPECTS}
+    return dict(ami_ranges=ranges, map_ranges=ranges,
+                readouts=dict(untold=dict(pick='center+k10', score=3.1, kept=True, map=dict(emotion=0.2, style=0.3, genre=0.5)),
+                              cstar=dict(pick='center+k10', table=_table()), plain=dict(pick='p'), teacher=dict(pick='t')))
+
+
+def _compare(mutate):
+    import copy
+    body, rec = _pick_body(), _pick_body()
+    mutate(body)
+    items, eq = ic.compare_picks(body, rec)
+    return all(i['ok'] for i in items) and all(eq.values())
+
+
+def test_compare_picks_accepts_identical_records():
+    assert _compare(lambda b: None)
+
+
+@pytest.mark.parametrize('mutate', [
+    lambda b: b['readouts']['cstar']['table']['center+k10']['map'].__setitem__('genre', 0.52 + 1e-6),   # one read-out table cell
+    lambda b: b['readouts']['cstar']['table']['none+k0'].__setitem__('score', 1e-6),
+    lambda b: b['readouts']['cstar']['table']['center+k10'].__setitem__('kept', False),
+    lambda b: b['readouts']['cstar']['table'].pop('center+k10'),                                      # a missing row
+    lambda b: b['readouts']['untold'].__setitem__('score', 3.1 + 1e-6),
+    lambda b: b['readouts']['untold'].__setitem__('kept', False),
+    lambda b: b['readouts']['cstar'].__setitem__('pick', 'none+k0'),
+])
+def test_compare_picks_flags_a_difference_in_the_full_readout_table_or_untold_score(mutate):
+    assert not _compare(mutate)

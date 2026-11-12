@@ -25,9 +25,12 @@ Wiring: `Wiring(root, arm, encoder)` is a context manager that points r17's `ns_
   train/<arm>/R6-5/<aspect>__<graph>__s<seed>.npz  r14's training-time validation file, used when val/<arm>/ has no file
                                       (K0: arm k11=40); sidecar config.{aspect, seed, names_sha256.dev, rg.arm}
 Rows join by names: the sidecar's names hash is checked against r11's sorted painting names (C6), never positions.
+Loader checks are r11's (`rt_data._cstar`): arm, aspect, seed, names hash, `kind` = split, rows, array sha256 (export layout);
+config, rg.arm (no default), file sha256 (training layout).
 
-Order rule (§3.4): `picks --arm A` reads validation only and writes `records/image_picks_<arm>.json`; `cells --arm A`
-refuses without that file (and, outside smoke, unless it is committed unchanged in HEAD) and writes
+Order rule (§3.4): `picks --arm A` reads validation only and writes `records/image_picks_<arm>.json` (once per arm: an existing record is never overwritten); `cells --arm A`
+refuses without that file (and, outside smoke, unless it is committed unchanged in HEAD) and unless the validation files it
+reads again hash as the picks record says, and writes
 `records/image_cells_<arm>.json`. `gate-v-image` replays r17's SC1, SC3, SC7 and r14's Q1 image cells on K0 (gate (v)).
 """
 import argparse
@@ -137,7 +140,8 @@ class Wiring:
         """(arm, aspect, seed, names hash) of a sidecar, held or validation (both layouts)."""
         cfg = side.get('config')
         if cfg is not None:
-            return cfg.get('rg', {}).get('arm', self.arm), cfg['aspect'], cfg['seed'], cfg['names_sha256']['dev']
+            assert 'arm' in cfg.get('rg', {}), 'sidecar config has no rg.arm (no default to the asked arm)'
+            return cfg['rg']['arm'], cfg['aspect'], cfg['seed'], cfg['names_sha256']['dev']
         return side['arm'], side['aspect'], side['seed'], side.get('list_sha256', side.get('names_sha256'))
 
     def head(self, split, aspect, seed):
@@ -154,10 +158,30 @@ class Wiring:
             assert 'img' in z.files and set(z.files) <= {'img', 'cap'}, (path, z.files)
             x = z['img']
         assert x.dtype == np.float16 and x.shape == (len(names), ns_paths.CSTAR_WIDTH), (path, x.dtype, x.shape)
+        self._check_sidecar(side, path, split, x, aspect, seed)
         assert np.isfinite(x).all(), f'{path}: non-finite rows'
         dev = float(np.abs(np.linalg.norm(x.astype(np.float32), axis=1) - 1).max())
         assert dev < ns_paths.TOL_UNIT, f'{path}: rows not unit norm (max deviation {dev})'
         return x
+
+    @staticmethod
+    def _check_sidecar(side, path, split, x, aspect, seed):
+        """r11's loader checks (`rt_data._cstar`), per layout. Export layout (held; val of ticket 03): `kind` is the split, rows,
+        width and dtype, and the array hash (top level and `arrays.img`) is the loaded array's. r14's training layout: the config
+        (full run, not smoke, aspect, seed, graph row, output rows) and the hash of the whole file."""
+        cfg = side.get('config')
+        if cfg is not None:
+            assert cfg['mode'] == 'full' and not cfg['smoke'], (path, cfg['mode'], cfg['smoke'])
+            assert cfg['aspect'] == aspect and cfg['seed'] == seed and cfg['graph_row'] == GRAPHS[aspect], path
+            assert cfg['output_rows'] == len(x), (path, cfg['output_rows'], len(x))
+            assert side['output_sha256'] == sha_file(path), f'{path}: validation output file hash'
+            return
+        assert side['kind'] == split, f'{path}: sidecar kind {side.get("kind")!r}, read as {split!r}'
+        assert side['rows'] == len(x) and side['width'] == ns_paths.CSTAR_WIDTH and side['dtype'] == 'float16', path
+        digest = rs_vh.array_sha(x)
+        assert side['sha256'] == digest, f'{path}: sidecar sha256 is not the array hash'
+        assert side['arrays']['img'] == dict(shape=list(x.shape), dtype='float16', sha256=digest), \
+            f'{path}: sidecar arrays.img (shape, dtype, sha256) is not the array'
 
     # --- the scorers' entry points (signatures of the functions they replace)
     def _check(self, set_, enc):
@@ -237,7 +261,7 @@ def compute_picks(w, workers=8, tables_dir=None):
         untold=dict(pick=udoc['pick'], k=int(ro.k), score=row['score'], kept=row['kept'], map=row['map'],
                     r0_map=udoc['table']['none+k0']['map']),
         cstar=dict(pick=cdoc['pick'], score=cdoc['table'][cdoc['pick']]['score'], kept=cdoc['table'][cdoc['pick']]['kept'],
-                   map=cdoc['table'][cdoc['pick']]['map']),
+                   map=cdoc['table'][cdoc['pick']]['map'], table=cdoc['table']),
         plain=dict(pick=ns_ret.reused_pick('plain', SET, enc), source=f'r14 stage1_{enc}.json artret_picks.frozen'),
         teacher=dict(pick=bs_artret.read_json(ns_paths.R11_OUT / 'stage4/picks.json')['instructed'],
                      source='r11 stage4/picks.json instructed'))
@@ -253,6 +277,8 @@ def compute_picks(w, workers=8, tables_dir=None):
 def write_picks(arm, encoder, root, body, records=None):
     rec = dict(arm=arm, encoder=encoder, root=str(root), split='val', written=now(), **body)
     path = Path(records or records_dir()) / f'image_picks_{arm}.json'
+    if path.exists():        # order rule: one record per arm; a new try needs the old file moved aside by the controller
+        raise FileExistsError(f'{path} exists: a picks record is written once per arm (the controller moves it for a new try)')
     ns_paths.write_json(path, rec)
     return path, rec
 
@@ -344,9 +370,22 @@ def map_teacher_cells(w, picks, aspects, draws, outputs, workers=8):
     return out
 
 
-def score_cells(w, picks, aspects=ASPECTS, types=CELL_TYPES, draws=None, outputs=None, workers=8):
+def check_validation_files(w, picks):
+    """The validation files the cells read again (to fit the read-outs) are the ones the picks read: sha256 against the
+    record's `validation_files`, every aspect and seed."""
+    want = picks['validation_files']
+    for a in ASPECTS:
+        for s in SEEDS:
+            got = sha_file(w.path('val', a, s))
+            assert got == want[a][str(s)]['sha256'], f'validation file {w.path("val", a, s)} changed since the picks were written'
+
+
+def score_cells(w, picks, aspects=ASPECTS, types=CELL_TYPES, draws=None, outputs=None, workers=8, check_files=True):
     """The cells of the given types and aspects, from a picks body (record or recorded K0 picks). `draws`: per-metric
-    override of N_DRAWS (replay checks only)."""
+    override of N_DRAWS (replay checks only). `check_files`: the validation files against the picks (off only for K0's
+    recorded picks, which carry no file hashes; the gate's validation part recomputes from those files)."""
+    if check_files:
+        check_validation_files(w, picks)
     draws = dict(N_DRAWS, **(draws or {}))
     outputs = Path(outputs or P.OUT / 'image_cells' / w.encoder / w.arm / 'perquery')
     cells = []
@@ -376,8 +415,9 @@ def recorded_k0_picks():
         ami_ranges={a: s17[f'cstar/{SET}/{enc}/{a}/ami'] for a in ASPECTS},
         map_ranges={a: dict(r=float(r14['artret_ranges']['ranges'][a]), per_seed=r14['artret_ranges']['per_seed'][a])
                     for a in ASPECTS},
-        readouts=dict(untold=dict(pick=pk17['pick'], map=pk17['scores']['map']),
-                      cstar=dict(pick=r14['artret_picks']['cstar']['pick']),
+        readouts=dict(untold=dict(pick=pk17['pick'], map=pk17['scores']['map'], score=pk17['scores']['score'],
+                                  kept=pk17['scores']['kept']),
+                      cstar=dict(pick=r14['artret_picks']['cstar']['pick'], table=r14['artret_picks']['cstar']['table']),
                       plain=dict(pick=ns_ret.reused_pick('plain', SET, enc)),
                       teacher=dict(pick=r14['artret_picks']['teacher']['pick'])))
 
@@ -420,6 +460,15 @@ def compare_picks(body, rec):
         items.append(dict(name=f'ami r {a}', diff=abs(body['ami_ranges'][a]['r'] - rec['ami_ranges'][a]['r'])))
         items.append(dict(name=f'map r {a}', diff=abs(body['map_ranges'][a]['r'] - rec['map_ranges'][a]['r'])))
         items.append(dict(name=f'untold crossfit map {a}', diff=abs(body['readouts']['untold']['map'][a] - rec['readouts']['untold']['map'][a])))
+    items.append(dict(name='untold score', diff=abs(body['readouts']['untold']['score'] - rec['readouts']['untold']['score'])))
+    items.append(dict(name='untold kept', diff=float(body['readouts']['untold']['kept'] != rec['readouts']['untold']['kept'])))
+    bt, rt = body['readouts']['cstar']['table'], rec['readouts']['cstar']['table']     # r14's full read-out table (Q1's pick)
+    items.append(dict(name='cstar table rows', diff=float(set(bt) != set(rt))))
+    for name in sorted(set(bt) & set(rt)):
+        for a in ASPECTS:
+            items.append(dict(name=f'cstar table {name} map {a}', diff=abs(bt[name]['map'][a] - rt[name]['map'][a])))
+        items.append(dict(name=f'cstar table {name} score', diff=abs(bt[name]['score'] - rt[name]['score'])))
+        items.append(dict(name=f'cstar table {name} kept', diff=float(bt[name]['kept'] != rt[name]['kept'])))
     for i in items:
         i['ok'] = bool(i['diff'] <= TOL)
     picks_equal = {k: body['readouts'][k]['pick'] == rec['readouts'][k]['pick'] for k in ('untold', 'cstar', 'plain', 'teacher')}
@@ -447,7 +496,7 @@ def gate_v_image(aspects=ASPECTS, draws=None, validation=True, workers=8, root=P
                        recomputed_readouts={k: v['pick'] for k, v in body['readouts'].items()})
         ok = all(i['ok'] for i in pitems) and all(picks_equal.values())
     t1 = time.monotonic()
-    cells = score_cells(wh, rec_picks, aspects, draws=draws, outputs=outputs, workers=workers)
+    cells = score_cells(wh, rec_picks, aspects, draws=draws, outputs=outputs, workers=workers, check_files=False)
     items = compare_cells(cells, r17, r14, check_interval)
     details.update(cells=items, seconds_cells=round(time.monotonic() - t1))
     ok = ok and all(i['ok'] for i in items) and len(items) == 4 * len(aspects)
