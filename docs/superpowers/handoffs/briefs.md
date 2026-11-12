@@ -2287,3 +2287,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-12-paper-plan-3-handoff.md
 - New chat: tab 'paper plan 3', session 113b79a8-ca9c-46db-9300-c2ec7556812a
 
+[brief] CoSiR: paper plan 3 -> paper plan 4 (2026-11-12 20:44 Amsterdam)
+- Done: Figure 2 redrawn in Figure 1's style, in REPO with its new caption. Tables 2, 3, 4, 6, 7, 8 show SigLIP 1.
+- State: Table 2 AMI of CoSiR on SigLIP 1 is 0.099 / 0.441 / 0.528, against 0.089 / 0.406 / 0.501 for the instructed Qwen3. The text of 4.1 to 4.3 still gives the Qwen3 model's numbers.
+- Next: ask the user for points on 4.1 to 4.3, then write them. Fill Table 5 when r28's ablation lands.
+- Blocked: Table 5 waits for r28 tier 2 (ablation runs tonight).
+- Handoff: docs/superpowers/handoffs/2026-11-12-paper-plan-4-handoff.md
+- New chat: tab 'paper plan 4', session b3e3470b-e256-40b9-9f3c-812b84681461
+
