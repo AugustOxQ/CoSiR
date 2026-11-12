@@ -2255,3 +2255,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-12-r28-run-handoff.md
 - New chat: tab 'r28 run', session dae700bf-e7a2-4618-ae57-fa086b1e35b9
 
+[brief] CoSiR: r21 run -> r21 run 2 (2026-11-12 19:38 Amsterdam)
+- Done: r21 training stages 0c to 2 and the separate re-derivation of the stage 2 table (D16, PASS).
+- State: DEC arms beat c* a little on style (test AMI +0.006 to +0.008 over 0.42) and on genre; emotion shows no clear change. The kept epoch is a confound.
+- Next: discuss with the user which internal cluster scores to add (silhouette, Calinski-Harabasz, Davies-Bouldin) and whether they apply with a train/test split.
+- Blocked: the λ = 0 control (5 GPU runs) waits for the user's yes or no.
+- Handoff: docs/superpowers/handoffs/2026-11-12-r21-run-2-handoff.md
+- New chat: tab 'r21 run 2', session 8f0bba09-3556-4649-8f43-eab8e04e6b78
+
