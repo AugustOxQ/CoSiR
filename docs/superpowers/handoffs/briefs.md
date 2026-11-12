@@ -2312,3 +2312,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-12-r21-run-3-handoff.md
 - New chat: tab 'r21 run 3', session 9621a42b-3f4a-40a6-92eb-eddc6cfdbb51
 
+[brief] CoSiR: r29 decide -> r29 decide 2 (2026-11-12 21:54 Amsterdam)
+- Done: the grill is closed, the r29 spec (the SigLIP-only aspect adapter) is drafted, and the rule review is done: pass after fixes (3 must-fix, 17 should-fix, 9 nits).
+- State: the pass bounds on validation come from r28's records: image group 0.3863 (seed range 0.0030), text group 0.2594 (range 0.0020).
+- Next: apply the review's fixes, paste the brief for the user's approval, then write the direction log entry and cut to the build.
+- Blocked: nothing. r29's main chat waits until r28's run chat ends.
+- Handoff: docs/superpowers/handoffs/2026-11-12-r29-decide-2-handoff.md
+- New chat: tab 'r29 decide 2', session a44d9e83-139a-4965-b14d-429a8ce5365e
+
