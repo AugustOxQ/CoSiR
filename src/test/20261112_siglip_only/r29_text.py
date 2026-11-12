@@ -12,6 +12,8 @@ Arms (the name is the output folder under TEXT_OUT and the stem of the records):
     qwen              K0: r14's c* with the Qwen3 caption input, scored through r28's own loaders (gate (ii))
     siglip1           K1: caption tower on SigLIP 1 text rows      (weights OUT/cstar/siglip1/weights/siglip1/)
     siglip1_prefix    K2: the prefixed store                       (weights OUT/cstar/siglip1/weights/siglip1_prefix/)
+    gate_i_a_new      gate (i)(a)'s run of the new trainer on the Qwen3 input, seed 0 only (weights OUT/gate_i_a/new/weights/qwen/):
+                      K0's protocol on it gives diagnostic (e)'s nine validation text cells; no picks, no held scoring
     p1_siglip1, p1_siglip1_prefix   P1: plain SigLIP 1 (no training), text rows of that store, image rows of the image store
 
     python r29_text.py score --arm A --set art_val|art_held [--aspects ..] [--seeds ..] [--device cpu]
@@ -19,11 +21,16 @@ Arms (the name is the output folder under TEXT_OUT and the stem of the records):
     python r29_text.py cells --arm A          held cells at the picks                             -> records/text_<A>_held.json
     python r29_text.py replay --arm qwen      towers against r14's exports at r28's float16 rule
     python r29_text.py gate-ii                K0 against r28's records                            -> records/gates/ii.json
-    python r29_text.py hash-check [--arms ..] store hash: scorer against the trainer's records     -> records/gates/iv.json
+    python r29_text.py hash-check [--arms ..] store hash: scorer against the trainer's records     -> records/gates/iv_hash.json
 
 `score --set art_held` refuses unless the arm's pick record (`records/text_<A>.json` with its picks) exists, is committed
-unchanged in git HEAD and names the store the scorer reads now (spec §3.4 "Order and C13"). Smoke: set R29_TEXT_OUT to a
-scratch folder (records then go to <it>/records, no git check) and TCL_SMOKE=N, TCL_OUTPUTS=<scratch> as r23.
+unchanged in git HEAD and names the store and weights the scorer reads now (spec §3.4 "Order and C13"). Smoke: set
+R29_TEXT_OUT to a scratch folder and R29_TEXT_SMOKE=1 (records then go to <it>/records, no git check; R29_TEXT_OUT without
+the flag is refused) and TCL_SMOKE=N, TCL_OUTPUTS=<scratch> as r23.
+
+Provenance: each scored unit writes `<score root>/provenance/<set>/<head>__s<seed>.json` = {weights_sha256 (the .pt file;
+None for P1), store_sha256} when it is scored. A unit already on disk is reused only if both equal the current ones; the
+validation record lists them per unit and the order rule checks them again.
 
 Record `records/text_<arm>.json` (read by tickets 05 and 07):
     arm, kind ('candidate' | 'p1'), source, store_sha256, row, head ('aspect' | 'all'), score_root, seeds (ints; ['x'] for P1),
@@ -33,6 +40,7 @@ Record `records/text_<arm>.json` (read by tickets 05 and 07):
     (only after `picks`), score_files = the per-query AP file pattern of the arm's held and validation scores.
 """
 import argparse
+import hashlib
 import json
 import subprocess
 import sys
@@ -55,18 +63,21 @@ KIND = P23.CAPTION
 ASPECTS, SEEDS, DIRECTIONS, READOUTS = P23.ASPECTS, P23.SEEDS, P23.DIRECTIONS, P23.READOUTS
 assert tuple(ASPECTS) == tuple(P29.ASPECTS) and tuple(SEEDS) == tuple(P29.SEEDS)
 DEFAULT_TEXT_OUT = P29.DEFAULT_OUT / 'text'
+SMOKE = os.environ.get('R29_TEXT_SMOKE') == '1'                       # explicit smoke mode: the only way past the git check
+assert SMOKE or 'R29_TEXT_OUT' not in os.environ, 'R29_TEXT_OUT redirects the outputs only with R29_TEXT_SMOKE=1'
 TEXT_OUT = Path(os.environ.get('R29_TEXT_OUT', DEFAULT_TEXT_OUT))     # scores and means, one folder per arm
-RECORDS_DIR = P29.RECORDS if 'R29_TEXT_OUT' not in os.environ else TEXT_OUT / 'records'
+RECORDS_DIR = P29.RECORDS if not SMOKE else TEXT_OUT / 'records'
 IMAGE_ROW = 'siglip_so400m'              # tcl_data's name of the SigLIP 1 side row (images and plain text rows)
 GRAPH = T.GRAPH                          # r14's validation export names
 CANDIDATE_ARMS = ('qwen', 'siglip1', 'siglip1_prefix')
+GATE_I_A_NEW = 'gate_i_a_new'          # gate (i)(a)'s `new` run (r29_trainer.gate_i_a_root('new')), seed 0, source qwen
 P1_FORMS = ('siglip1', 'siglip1_prefix')
 F16_SHARE = 0.995                        # r28's replay rule: at least this share equal in float16, the rest one float16 step
 TOL = 1e-6                               # gate (ii): per-seed mAP against r28's text.json
 
 
 def is_smoke():
-    return Path(RECORDS_DIR).resolve() != P29.RECORDS.resolve()
+    return SMOKE
 
 
 def now():
@@ -75,10 +86,12 @@ def now():
 
 # ------------------------------------------------------------------------------------------------ arms
 def arm_info(arm):
-    """dict(kind, source, row, head_rule, seeds, weights, exports): where an arm's towers, rows and scores are."""
+    """dict(kind, source, row, seeds, root, folder): where an arm's towers, rows and scores are."""
     if arm == 'qwen':
         root, folder = P29.K0_ROOT, P29.K0_ARM
         return dict(kind='candidate', source='qwen', row='cstar', seeds=SEEDS, root=root, folder=folder)
+    if arm == GATE_I_A_NEW:
+        return dict(kind='candidate', source='qwen', row='cstar', seeds=(0,), root=P29.OUT / 'gate_i_a/new', folder='qwen')
     if arm in CANDIDATE_ARMS:
         return dict(kind='candidate', source=arm, row='cstar', seeds=SEEDS, root=P29.OUT / 'cstar/siglip1', folder=arm)
     assert arm in ['p1_' + f for f in P1_FORMS], f'unknown arm {arm!r}'
@@ -133,10 +146,10 @@ def _wrap(model, width, device):
     return forward
 
 
-def _load_view(path, device):
-    """(view, rb block) of one saved view. The single call site of `r29_model.load_view`: once it returns (view, rb) (ticket 01
-    review), this body is `return M.load_view(path, device)`."""
-    return M.load_view(path, device), M.read_sidecar(path)[1]
+def _load_view(path, device, expect_store_sha256):
+    """(view, rb block) of one saved view: the single call site of `r29_model.load_view`, which refuses a sidecar naming
+    another store than `expect_store_sha256`."""
+    return M.load_view(path, device, expect_store_sha256=expect_store_sha256), M.read_sidecar(path)[1]
 
 
 def weights_path(arm, aspect, seed):
@@ -152,10 +165,11 @@ def load_towers(arm, aspect, seed, device='cpu'):
     if arm == 'qwen':
         return T.load_sides(aspect, seed, device, root=P29.K0_ROOT)
     path = weights_path(arm, aspect, seed)
-    view, rb = _load_view(path, device)                  # first: a sidecar that disagrees with its weights is refused here
+    source = arm_info(arm)['source']
+    view, rb = _load_view(path, device, C.store_hash(source))   # first: a sidecar that disagrees with its weights or store is refused
     config = M.read_sidecar(path)[0]
     assert config['aspect'] == aspect and config['seed'] == seed, (path, config['aspect'], config['seed'])
-    assert rb['cap_source'] == arm and rb['cap_store_sha256'] == C.store_hash(arm), \
+    assert rb['cap_source'] == source and rb['cap_store_sha256'] == C.store_hash(source), \
         f'{path}: sidecar names {rb["cap_source"]} / {rb["cap_store_sha256"][:12]}, not the store of {arm} as it is now'
     assert rb['width'] == 1152, (path, rb['width'])
     return _wrap(view['img'], rb['width'], device), _wrap(view['cap'], rb['cap_width'], device)
@@ -169,9 +183,10 @@ def rows(arm, set_name, head, seed, device='cpu'):
     info = arm_info(arm)
     if arm == 'qwen':
         return T.rows(set_name, head, seed, device)                 # r28's route: Qwen3 plain rows, joined inside tcl_data
+    # (gate_i_a_new: the same Qwen3 plain rows, the towers rebuilt from the new trainer's sidecar)
     fr = tcl_data.frame(set_name, KIND)
     image = tcl_data.image(set_name, IMAGE_ROW)
-    text = text_rows(info['source'], fr)
+    text = tcl_data.plain_text(set_name, KIND) if info['source'] == 'qwen' else text_rows(info['source'], fr)   # as r28 for Qwen3
     if info['kind'] == 'p1':
         out = text, image
     else:
@@ -179,6 +194,42 @@ def rows(arm, set_name, head, seed, device='cpu'):
         out = caption_side(text), image_side(image)
     assert out[0].shape[0] == fr['n_t'] and out[1].shape[0] == fr['n_i'], (out[0].shape, out[1].shape)
     return out
+
+
+# ------------------------------------------------------------------------------------------------ provenance
+def file_sha(path):
+    h = hashlib.sha256()
+    with open(path, 'rb') as f:
+        for chunk in iter(lambda: f.read(1 << 20), b''):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def provenance(arm, head, seed):
+    """What a unit's scores depend on as of now: the weights file's sha256 (None for P1) and the caption store's hash."""
+    info = arm_info(arm)
+    weights = file_sha(weights_path(arm, head, seed)) if info['kind'] == 'candidate' else None
+    return dict(weights_sha256=weights, store_sha256=C.store_hash(info['source']))
+
+
+def provenance_path(arm, set_name, head, seed):
+    return score_root(arm) / 'provenance' / set_name / f'{head}__s{seed}.json'
+
+
+def write_provenance(arm, set_name, head, seed, now_prov=None):
+    write_json(provenance_path(arm, set_name, head, seed), now_prov or provenance(arm, head, seed))
+
+
+def check_provenance(arm, set_name, head, seed):
+    """The unit's scores were made from the weights and store as they are now (a retrained or changed one is refused);
+    returns the provenance."""
+    path, now_prov = provenance_path(arm, set_name, head, seed), provenance(arm, head, seed)
+    assert path.exists(), f'{arm}/{set_name}/{head}/s{seed}: scores exist but no provenance file {path}: rescore the unit'
+    then = json.loads(path.read_text())
+    for key, what in (('weights_sha256', 'weights'), ('store_sha256', 'store')):
+        assert then[key] == now_prov[key], \
+            f'{arm}/{set_name}/{head}/s{seed}: scored with other {what} ({then[key]}) than now ({now_prov[key]}): rescore the unit'
+    return now_prov
 
 
 # ------------------------------------------------------------------------------------------------ score
@@ -195,6 +246,9 @@ def require_pick_record(arm):
     info = arm_info(arm)
     assert doc['seeds'] == list(info['seeds']), f'{path}: seeds {doc["seeds"]}, the pick needs {list(info["seeds"])}'
     assert doc['store_sha256'] == C.store_hash(info['source']), f'{path}: the store changed since the picks were made'
+    for head, seed in units(arm, seeds=doc['seeds'] if info['kind'] == 'candidate' else None):
+        assert doc['provenance'][f'{head}__s{seed}'] == provenance(arm, head, seed), \
+            f'{path}: the weights or store of {head}/s{seed} changed since the picks were made'
     if not is_smoke():
         rel = path.resolve().relative_to(P29.REPO.resolve())
         head = subprocess.run(['git', '-C', str(P29.REPO), 'show', f'HEAD:{rel}'], capture_output=True, text=True)
@@ -221,14 +275,17 @@ def score(arm, set_name, aspects=ASPECTS, seeds=None, device='cpu', block=1024):
     import time
     for head, seed in units(arm, aspects, seeds):
         if tcl_score.unit_done(set_name, KIND, info['row'], head, seed, fr, out=root):
+            check_provenance(arm, set_name, head, seed)          # reuse scores only of these weights and this store
             print('done', set_name, head, seed, flush=True)
             continue
         started = time.monotonic()
+        prov = provenance(arm, head, seed)                       # before the towers are read, written after the scoring
         text, image = rows(arm, set_name, head, seed, device)
         tcl_score.score_unit(set_name, KIND, info['row'], head, seed, text, image, fr, flags, device, out=root,
                              block=block, val_n=val_n)
         del text, image
         tcl_score.release(device)
+        write_provenance(arm, set_name, head, seed, prov)
         print(f'{arm}/{set_name}/{head}/s{seed}: {time.monotonic() - started:.1f}s', flush=True)
     if set_name == 'art_val':
         write_val_record(arm)
@@ -273,9 +330,10 @@ def write_val_record(arm, with_picks=False):
         print(f'{arm}: no seed has complete validation scores; no record written')
         return None
     cells = val_cells(arm, done)
+    prov = {f'{head}__s{seed}': check_provenance(arm, 'art_val', head, seed) for head, seed in units(arm, seeds=done)}
     doc = dict(arm=arm, kind=info['kind'], source=info['source'], store_sha256=C.store_hash(info['source']), row=info['row'],
                head='aspect' if info['kind'] == 'candidate' else 'all', score_root=str(score_root(arm)),
-               seeds=list(done), val=dict(cells=cells, group_r0=group_r0(cells, len(done))),
+               seeds=list(done), provenance=prov, val=dict(cells=cells, group_r0=group_r0(cells, len(done))),
                score_files=str(score_root(arm) / 'scores/<set>/caption' / info['row'] /
                                '<head>__s<seed>__<direction>__<readout>.npz'),
                written=now())
@@ -290,6 +348,11 @@ def write_val_record(arm, with_picks=False):
                 vals = per_seed[pick]
                 picks[a][d] = dict(pick=pick, mean=means[pick],
                                    range=None if info['kind'] == 'p1' else float(max(vals) - min(vals)))
+        if arm == 'p1_siglip1':     # the spec uses r23's row at r23's pick: the pick must be r23's committed stage 1 pick
+            r23 = json.loads(Path(T.R23_STAGE1).read_text())['picks'][KIND][IMAGE_ROW]
+            for a in ASPECTS:
+                for d in DIRECTIONS:
+                    assert picks[a][d]['pick'] == r23[a][d], f'p1_siglip1 {a}/{d}: pick {picks[a][d]["pick"]}, r23 {r23[a][d]}'
         doc['picks'] = picks
     write_json(record_path(arm), doc)
     print('wrote', record_path(arm), 'seeds', done, 'picks' if with_picks else '')
@@ -304,6 +367,8 @@ def held_record(arm):
     """records/text_<arm>_held.json: held cells at the recorded picks, from the held score files."""
     info = arm_info(arm)
     doc = require_pick_record(arm)
+    for head, seed in units(arm):
+        check_provenance(arm, 'art_held', head, seed)
     pk = {a: {d: dict(pick=doc['picks'][a][d]['pick']) for d in DIRECTIONS} for a in ASPECTS}
     cells = T.held_cells(score_root(arm), info['row'], pk, info['seeds'])
     out = dict(arm=arm, kind=info['kind'], source=info['source'], store_sha256=doc['store_sha256'], row=info['row'],
@@ -376,27 +441,47 @@ def replay(arm, device='cpu', write=True):
             print('replay', arm, aspect, seed, {k: round(v['share_equal_float16'], 4) for k, v in item.items()}, flush=True)
     doc = dict(arm=arm, device=device, n_files=len(files), **worst,
                rule=f'share equal in float16 >= {F16_SHARE}, every other element one float16 step from the stored value',
-               passed=bool(worst['min_share_equal'] >= F16_SHARE and worst['all_one_step']), files=files)
+               passed=replay_passed(worst['min_share_equal'], worst['all_one_step']), files=files)
     if write:
         write_json(Path(TEXT_OUT) / arm / 'replay.json', doc)
     return doc
 
 
 # ------------------------------------------------------------------------------------------------ gates
-def write_gate(name, status_of_part, part_name, details):
-    """records/gates/<name>.json, merged with what is there: this part's details go under `details[part_name]`; the gate's
-    status is `fail` if any part present failed, else `pass`; `details.parts_present` lists the parts that wrote."""
-    gates = Path(RECORDS_DIR) / 'gates'
-    path = gates / f'{name}.json'
-    old = json.loads(path.read_text()) if path.exists() else dict(tries=0, details={})
-    det = dict(old['details'])
-    det[part_name] = dict(details, status=status_of_part)
-    parts = sorted({k for k, v in det.items() if isinstance(v, dict) and 'status' in v})
-    status = 'fail' if any(det[k]['status'] == 'fail' for k in parts) else 'pass'
-    det['parts_present'] = parts
-    rec = dict(gate=name, status=status, tries=old['tries'] + 1, details=det, written=now())
+def write_gate(name, status, details):
+    """records/gates/<name>.json = {gate, status, tries, details, written} (the index's shape). This ticket's gate files are
+    `ii` and `iv_hash`; ticket 02 writes `iv_store`, ticket 05 merges the parts of (iv)."""
+    path = Path(RECORDS_DIR) / 'gates' / f'{name}.json'
+    tries = json.loads(path.read_text())['tries'] if path.exists() else 0
+    rec = dict(gate=name, status=status, tries=tries + 1, details=details, written=now())
     write_json(path, rec)
     return rec
+
+
+def replay_passed(min_share_equal, all_one_step):
+    """r28's float16 rule for the tower embeddings: at least F16_SHARE of the elements equal, every other one a float16 step."""
+    return bool(min_share_equal >= F16_SHARE and all_one_step)
+
+
+def compare_k0(mine, r28):
+    """Gate (ii)'s comparison of K0's per-seed validation mAP and picks (`validation_picks` form: {aspect: {direction:
+    {per_seed: {readout: [..]}, pick}}}) with r28's. Every value of both sides must be finite and the seed lists of equal
+    length (a NaN or a missing seed raises); a cell whose largest per-seed gap is not <= TOL is mismatched."""
+    worst, mismatched, picks_equal, n = 0.0, [], {}, 0
+    for a in ASPECTS:
+        for d in DIRECTIONS:
+            picks_equal[f'{a}/{d}'] = dict(mine=mine[a][d]['pick'], r28=r28[a][d]['pick'])
+            for r in READOUTS:
+                x, y = (np.asarray(side[a][d]['per_seed'][r], dtype=np.float64) for side in (mine, r28))
+                assert x.shape == y.shape == (len(SEEDS),), f'{a}/{d}/{r}: {len(x)} and {len(y)} seeds, expected {len(SEEDS)}'
+                assert np.isfinite(x).all() and np.isfinite(y).all(), f'{a}/{d}/{r}: a per-seed value is not finite'
+                diff = float(np.max(np.abs(x - y)))
+                worst, n = max(worst, diff), n + len(x)
+                if not diff <= TOL:
+                    mismatched.append(f'{a}/{d}/{r}')
+    picks_ok = all(v['mine'] == v['r28'] for v in picks_equal.values())
+    return dict(n_values=n, tolerance=TOL, max_abs_diff_per_seed_map=worst, mismatched=mismatched, picks=picks_equal,
+                picks_equal=picks_ok, ok=not mismatched and picks_ok)
 
 
 def gate_ii(device='cpu', replay_too=True):
@@ -406,28 +491,20 @@ def gate_ii(device='cpu', replay_too=True):
     arm = 'qwen'
     done = seeds_done(arm)
     assert done == list(SEEDS), f'score --arm qwen --set art_val first: complete seeds {done}'
+    for head, seed in units(arm):
+        check_provenance(arm, 'art_val', head, seed)
     mine = T.validation_picks(score_root(arm), 'cstar', SEEDS)
     r28 = json.loads((P29.R28_RECORDS / 'text.json').read_text())['ours_siglip1']['picks']
-    worst, mismatched, picks_equal = 0.0, [], {}
-    for a in ASPECTS:
-        for d in DIRECTIONS:
-            picks_equal[f'{a}/{d}'] = dict(mine=mine[a][d]['pick'], r28=r28[a][d]['pick'])
-            for r in READOUTS:
-                diff = float(np.max(np.abs(np.asarray(mine[a][d]['per_seed'][r]) - np.asarray(r28[a][d]['per_seed'][r]))))
-                worst = max(worst, diff)
-                if diff > TOL:
-                    mismatched.append(f'{a}/{d}/{r}')
-    picks_ok = all(v['mine'] == v['r28'] for v in picks_equal.values())
-    details = dict(n_values=len(ASPECTS) * len(DIRECTIONS) * len(READOUTS) * len(SEEDS), tolerance=TOL,
-                   max_abs_diff_per_seed_map=worst, mismatched=mismatched, picks=picks_equal, picks_equal=picks_ok,
-                   score_device_note='r28 scored on cuda; this scoring ran where `score` ran')
-    ok = not mismatched and picks_ok
+    details = compare_k0(mine, r28)
+    details['score_device_note'] = 'r28 scored on cuda; this scoring ran where `score` ran'
+    ok = details.pop('ok')
     if replay_too:
         rep = replay(arm, device)
         details['replay'] = {k: rep[k] for k in ('device', 'n_files', 'min_share_equal', 'all_one_step', 'rule', 'passed')}
         ok = ok and rep['passed']
-    rec = write_gate('ii', 'pass' if ok else 'fail', 'text_scorer', details)
-    print('gate (ii):', rec['status'], 'max abs diff', worst, 'mismatched', len(mismatched), 'picks equal', picks_ok)
+    rec = write_gate('ii', 'pass' if ok else 'fail', details)
+    print('gate (ii):', rec['status'], 'max abs diff', details['max_abs_diff_per_seed_map'], 'mismatched',
+          len(details['mismatched']), 'picks equal', details['picks_equal'])
     return rec
 
 
@@ -440,12 +517,13 @@ def _find_hash(doc, where):
 
 
 def hash_check(arms=('siglip1', 'siglip1_prefix')):
-    """Gate (iv), hash part: for each arm the store's index hash as the scorer records it (records/text_<arm>.json), as the
+    """Gate (iv), hash part -> records/gates/iv_hash.json (its own file: ticket 02 writes iv_store.json, ticket 05 merges them).
+    For each arm the store's index hash as the scorer records it (records/text_<arm>.json), as the
     store has it now, and as the trainer records it in every run record and weights sidecar of the arm: all equal."""
     result, ok = {}, True
     for arm in arms:
         info = arm_info(arm)
-        assert info['kind'] == 'candidate' and arm != 'qwen', arm
+        assert info['kind'] == 'candidate' and info['source'] != 'qwen', arm
         now_hash = C.store_hash(arm)
         rec = record_path(arm)
         scorer = json.loads(rec.read_text())['store_sha256'] if rec.exists() else None
@@ -458,7 +536,7 @@ def hash_check(arms=('siglip1', 'siglip1_prefix')):
         result[arm] = dict(scorer_record=scorer, store_now=now_hash, n_run_records=len(runs), n_sidecars=len(sidecars),
                            trainer_hashes=sorted(set(trainer.values())), equal=equal)
         print('hash-check', arm, 'equal' if equal else 'NOT EQUAL')
-    return write_gate('iv', 'pass' if ok else 'fail', 'hash_check', dict(arms=result))
+    return write_gate('iv_hash', 'pass' if ok else 'fail', dict(arms=result))
 
 
 # ------------------------------------------------------------------------------------------------ CLI

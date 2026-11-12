@@ -1,5 +1,7 @@
 """Tests of r29_text on small synthetic stores, towers and score files (no real data)."""
+import hashlib
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -24,6 +26,7 @@ ASPECTS = list(P29.ASPECTS)
 NAMES = ['p0', 'p1', 'p2', 'p3', 'p4', 'p5']
 CAP_IDS = [11, 5, 8, 20, 2, 9, 14, 30, 1, 17, 25, 3]
 CAP_PAINT = [0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5]
+QWEN_HASH = 'ab' * 32                     # stands in for the Qwen store's index hash (the real one needs the CT's data)
 
 
 def make_store(path, seed=0):
@@ -34,8 +37,11 @@ def make_store(path, seed=0):
     x = rng.normal(size=(len(ids), W)).astype(np.float16)
     path.mkdir(parents=True, exist_ok=True)
     texts = [dict(sample_id=i, painting=n, img=0) for i, n in zip(ids, names)]
-    (path / 'index.json').write_text(json.dumps(dict(dim=W, n_texts=len(ids), texts=texts, images=[])))
+    raw = json.dumps(dict(backbone='siglip_so400m', smoke=False, dim=W, n_texts=len(ids), texts=texts, images=[]))
+    (path / 'index.json').write_text(raw)                      # sealed as scripts/extract_features.py does (ticket 01's reader)
     np.save(path / 'txt.npy', x)
+    (path / 'progress.json').write_text(json.dumps(dict(txt_done=len(ids), gate=dict(ok=True),
+                                                         index_sha256=hashlib.sha256(raw.encode()).hexdigest())))
     return dict(zip(ids, x.astype(np.float32)))
 
 
@@ -53,12 +59,6 @@ def frame(n_captions_per=2):
                 names=list(NAMES), text=['t'] * len(ids), sample_id=ids)
 
 
-def _read_synthetic(folder, width):
-    index = json.loads((Path(folder) / 'index.json').read_text())['texts']
-    return (np.asarray([r['sample_id'] for r in index], dtype=np.int64), np.asarray([r['painting'] for r in index]),
-            np.load(Path(folder) / 'txt.npy'))
-
-
 @pytest.fixture
 def world(tmp_path, monkeypatch):
     """Synthetic store as 'siglip1' and 'siglip1_prefix', OUT and the text outputs in tmp_path."""
@@ -66,10 +66,12 @@ def world(tmp_path, monkeypatch):
     make_store(tmp_path / 'store_prefix', seed=3)
     monkeypatch.setitem(C.SOURCES, 'siglip1', (tmp_path / 'store', W))
     monkeypatch.setitem(C.SOURCES, 'siglip1_prefix', (tmp_path / 'store_prefix', W))
-    monkeypatch.setattr(C, '_read', _read_synthetic)             # independent of the real reader's store checks
     monkeypatch.setattr(P29, 'OUT', tmp_path / 'out')
     monkeypatch.setattr(X, 'TEXT_OUT', tmp_path / 'text')
-    monkeypatch.setattr(X, 'RECORDS_DIR', tmp_path / 'records')       # not P29.RECORDS: smoke, no git check
+    monkeypatch.setattr(X, 'RECORDS_DIR', tmp_path / 'records')
+    monkeypatch.setattr(X, 'SMOKE', True)                              # explicit smoke mode: no git check
+    real_hash = C.store_hash
+    monkeypatch.setattr(C, 'store_hash', lambda source: QWEN_HASH if source == 'qwen' else real_hash(source))
     return rows
 
 
@@ -136,7 +138,7 @@ def test_towers_equal_r28s_side_on_the_same_weights(world):
 
 def test_tower_refuses_a_sidecar_naming_another_store(world):
     save_weights('siglip1', 'emotion', 0, store_hash='cd' * 32)
-    with pytest.raises(AssertionError, match='not the store'):
+    with pytest.raises(AssertionError, match='not the expected'):
         X.load_towers('siglip1', 'emotion', 0)
 
 
@@ -194,6 +196,11 @@ def fill(arm, seeds, value):
     for head, seed in X.units(arm, seeds=seeds):
         write_scores(X.score_root(arm), info['row'], head, seed,
                      {(d, r): value(head, seed, d, r) for d in X.DIRECTIONS for r in X.READOUTS})
+        if info['kind'] == 'candidate':                          # the weights the scores came from (only their bytes matter here)
+            w = X.weights_path(arm, head, seed)
+            w.parent.mkdir(parents=True, exist_ok=True)
+            w.write_bytes(f'{arm}/{head}/{seed}'.encode())
+        X.write_provenance(arm, 'art_val', head, seed)
 
 
 def test_seed0_only_record_has_per_seed_values_and_no_picks(world):
@@ -236,7 +243,10 @@ def test_picks_highest_mean_ties_to_first_and_range_at_the_pick(world):
     assert doc['val']['group_r0']['mean'] == pytest.approx(np.mean(doc['val']['group_r0']['per_seed']))
 
 
-def test_p1_record_and_picks(world):
+def test_p1_record_and_picks(world, monkeypatch, tmp_path):
+    stage1 = tmp_path / 'stage1_art.json'                     # r23's committed picks, here all `center`
+    stage1.write_text(json.dumps(dict(picks={X.KIND: {'siglip_so400m': {a: {d: 'center' for d in X.DIRECTIONS} for a in ASPECTS}}})))
+    monkeypatch.setattr(X.T, 'R23_STAGE1', stage1)
     fill('p1_siglip1', [0], lambda a, s, d, r: {'r0': 0.1, 'center': 0.2, 'center_k10': 0.15}[r])
     doc = X.picks('p1_siglip1')
     assert doc['seeds'] == ['x'] and doc['kind'] == 'p1'
@@ -269,19 +279,173 @@ def test_held_refuses_when_the_store_changed_after_the_picks(world, tmp_path):
         X.require_pick_record('siglip1')
 
 
-def test_the_pick_record_must_be_committed_outside_smoke(world, monkeypatch, tmp_path):
+def git(repo, *args):
+    subprocess.run(['git', '-C', str(repo), '-c', 'user.name=t', '-c', 'user.email=t@t', *args], check=True, capture_output=True)
+
+
+@pytest.fixture
+def repo_world(world, monkeypatch, tmp_path):
+    """Not smoke: records in a throw-away git repo that stands in for the project (P29.REPO)."""
+    repo = tmp_path / 'repo'
+    (repo / 'records').mkdir(parents=True)
+    git(repo, 'init', '-q')
+    monkeypatch.setattr(P29, 'REPO', repo)
+    monkeypatch.setattr(X, 'RECORDS_DIR', repo / 'records')
+    monkeypatch.setattr(X, 'SMOKE', False)
     fill('siglip1', range(5), lambda a, s, d, r: 0.2)
     X.picks('siglip1')
-    monkeypatch.setattr(X, 'RECORDS_DIR', P29.RECORDS)               # not smoke now: the git check applies
-    rec = P29.RECORDS / 'text_siglip1.json'
-    if rec.exists():
-        pytest.skip('a real record exists')
-    rec.write_text((tmp_path / 'records' / 'text_siglip1.json').read_text())
-    try:
-        with pytest.raises(RuntimeError, match='not committed'):
-            X.require_pick_record('siglip1')
-    finally:
-        rec.unlink()
+    return repo
+
+
+def test_the_pick_record_must_be_committed_unchanged_outside_smoke(repo_world):
+    repo = repo_world
+    with pytest.raises(RuntimeError, match='not committed'):             # never committed
+        X.require_pick_record('siglip1')
+    git(repo, 'add', 'records')
+    git(repo, 'commit', '-q', '-m', 'picks')
+    assert X.require_pick_record('siglip1')['picks']                       # committed unchanged: fine
+    path = X.record_path('siglip1')
+    doc = json.loads(path.read_text())
+    doc['picks']['emotion']['t2i']['pick'] = 'center'                     # edited after the commit
+    path.write_text(json.dumps(doc, indent=1) + '\n')
+    with pytest.raises(RuntimeError, match='not committed unchanged'):
+        X.require_pick_record('siglip1')
+
+
+def test_the_pick_record_seeds_must_be_the_arms_five_seeds(world):
+    fill('siglip1', range(5), lambda a, s, d, r: 0.2)
+    X.picks('siglip1')
+    assert json.loads(X.record_path('siglip1').read_text())['seeds'] == [0, 1, 2, 3, 4]    # ticket 05 asserts seeds[0] == 0
+    path = X.record_path('siglip1')
+    doc = json.loads(path.read_text())
+    doc['seeds'] = [0, 1, 2, 3]
+    path.write_text(json.dumps(doc))
+    with pytest.raises(AssertionError, match='the pick needs'):
+        X.require_pick_record('siglip1')
+
+
+def test_the_pick_record_must_name_the_weights_as_they_are_now(world):
+    fill('siglip1', range(5), lambda a, s, d, r: 0.2)
+    X.picks('siglip1')
+    X.require_pick_record('siglip1')
+    X.weights_path('siglip1', 'genre', 3).write_bytes(b'retrained')
+    with pytest.raises(AssertionError, match='weights'):
+        X.require_pick_record('siglip1')
+
+
+def test_smoke_redirect_needs_the_explicit_flag(monkeypatch):
+    """R29_TEXT_OUT alone does not switch the git check off: the module refuses to load."""
+    import importlib
+    monkeypatch.setenv('R29_TEXT_OUT', '/tmp/somewhere')
+    monkeypatch.delenv('R29_TEXT_SMOKE', raising=False)
+    with pytest.raises(AssertionError, match='R29_TEXT_SMOKE'):
+        importlib.reload(X)
+    monkeypatch.delenv('R29_TEXT_OUT')
+    importlib.reload(X)
+    assert X.SMOKE is False and Path(X.RECORDS_DIR).resolve() == P29.RECORDS.resolve()
+    monkeypatch.setenv('R29_TEXT_OUT', '/tmp/somewhere')
+    monkeypatch.setenv('R29_TEXT_SMOKE', '1')
+    importlib.reload(X)
+    assert X.SMOKE is True and Path(X.RECORDS_DIR) == Path('/tmp/somewhere/records')
+    monkeypatch.delenv('R29_TEXT_OUT')
+    monkeypatch.delenv('R29_TEXT_SMOKE')
+    importlib.reload(X)
+
+
+# --- provenance: scores belong to the weights and store they were made from ---------------------------------------
+
+def test_a_scored_unit_is_not_reused_after_its_weights_change(world, monkeypatch):
+    fr = frame()
+    rng = np.random.default_rng(5)
+
+    def fake_rows(arm, set_name, head, seed, device='cpu'):
+        t, i = (rng.normal(size=(n, 2048)).astype(np.float32) for n in (fr['n_t'], fr['n_i']))
+        return t / np.linalg.norm(t, axis=1, keepdims=True), i / np.linalg.norm(i, axis=1, keepdims=True)
+    monkeypatch.setattr(tcl_data, 'frame', lambda s, k: fr)
+    monkeypatch.setattr(tcl_data, 'names_label', lambda s, k, a: np.zeros(fr['n_t'], dtype=bool))
+    monkeypatch.setattr(X, 'rows', fake_rows)
+    w = X.weights_path('siglip1', 'emotion', 3)
+    w.parent.mkdir(parents=True, exist_ok=True)
+    w.write_bytes(b'first training')
+    X.score('siglip1', 'art_val', aspects=('emotion',), seeds=[3], block=8)
+    prov = json.loads((X.score_root('siglip1') / 'provenance/art_val/emotion__s3.json').read_text())
+    assert prov == dict(weights_sha256=hashlib.sha256(b'first training').hexdigest(), store_sha256=C.store_hash('siglip1'))
+    X.score('siglip1', 'art_val', aspects=('emotion',), seeds=[3], block=8)            # unchanged: skipped, fine
+    w.write_bytes(b'retrained into the same folder')
+    with pytest.raises(AssertionError, match='weights'):
+        X.score('siglip1', 'art_val', aspects=('emotion',), seeds=[3], block=8)
+    w.write_bytes(b'first training')
+    idx = Path(C.SOURCES['siglip1'][0]) / 'index.json'
+    idx.write_text(idx.read_text() + ' ')                                              # the store's index bytes changed
+    with pytest.raises(AssertionError, match='store'):
+        X.score('siglip1', 'art_val', aspects=('emotion',), seeds=[3], block=8)
+
+
+def test_a_complete_unit_without_provenance_is_refused(world, monkeypatch):
+    fill('siglip1', [0], lambda a, s, d, r: 0.2)
+    (X.score_root('siglip1') / 'provenance/art_val/style__s0.json').unlink()
+    with pytest.raises(AssertionError, match='provenance'):
+        X.write_val_record('siglip1')
+
+
+def test_the_val_record_refuses_scores_of_other_weights(world):
+    fill('siglip1', range(5), lambda a, s, d, r: 0.2)
+    X.write_val_record('siglip1')
+    X.weights_path('siglip1', 'style', 2).write_bytes(b'retrained')
+    with pytest.raises(AssertionError, match='weights'):
+        X.write_val_record('siglip1')
+
+
+def test_the_val_record_lists_each_units_provenance(world):
+    fill('siglip1', [0], lambda a, s, d, r: 0.2)
+    doc = X.write_val_record('siglip1')
+    assert sorted(doc['provenance']) == [f'{a}__s0' for a in sorted(ASPECTS)]
+    assert doc['provenance']['style__s0']['weights_sha256'] == hashlib.sha256(b'siglip1/style/0').hexdigest()
+
+
+# --- P1 picks against r23's committed ones ------------------------------------------------------------------------
+
+def test_p1_picks_must_equal_r23s_committed_picks(world, monkeypatch, tmp_path):
+    fill('p1_siglip1', [0], lambda a, s, d, r: {'r0': 0.1, 'center': 0.2, 'center_k10': 0.15}[r])
+    stage1 = tmp_path / 'stage1_art.json'
+    picks = {a: {d: 'center' for d in X.DIRECTIONS} for a in ASPECTS}
+    stage1.write_text(json.dumps(dict(picks={X.KIND: {'siglip_so400m': picks}})))
+    monkeypatch.setattr(X.T, 'R23_STAGE1', stage1)
+    assert X.picks('p1_siglip1')['picks']['style']['i2t']['pick'] == 'center'
+    picks['style']['i2t'] = 'r0'
+    stage1.write_text(json.dumps(dict(picks={X.KIND: {'siglip_so400m': picks}})))
+    with pytest.raises(AssertionError, match='r23'):
+        X.picks('p1_siglip1')
+
+
+# --- the arm for gate (i)(a)'s new trainer run (diagnostic (e)) -------------------------------------------------------
+
+def test_gate_i_a_new_arm_scores_k0s_protocol_on_the_new_trainers_weights(world, monkeypatch):
+    info = X.arm_info('gate_i_a_new')
+    assert info['kind'] == 'candidate' and info['source'] == 'qwen' and info['row'] == 'cstar' and tuple(info['seeds']) == (0,)
+    assert X.weights_path('gate_i_a_new', 'style', 0) == P29.OUT / 'gate_i_a/new/weights/qwen/style__s0.pt'
+    assert X.units('gate_i_a_new') == [(a, 0) for a in ASPECTS]
+    fill('gate_i_a_new', [0], lambda a, s, d, r: 0.2)
+    assert X.seeds_done('gate_i_a_new') == [0]                                   # one seed is the whole arm
+    assert X.write_val_record('gate_i_a_new')['val']['group_r0']['per_seed'] == [pytest.approx(0.2)]
+    # towers and rows: the caption tower on Qwen3's plain rows (as r28), built from the sidecar of the new trainer
+    fake_hash = QWEN_HASH
+    torch.manual_seed(0)
+    _, views = M.build_model(ASPECTS, torch.device('cpu'), width=W, cap_width=2048)
+    w = X.weights_path('gate_i_a_new', 'genre', 0)
+    torch.save(views['genre'].state_dict(), w)
+    w.with_suffix('.json').write_text(json.dumps(dict(config=dict(aspect='genre', seed=0, rb=dict(
+        width=W, cap_width=2048, cap_source='qwen', cap_store_sha256=fake_hash)))))
+    fr = frame()
+    img = np.random.default_rng(2).normal(size=(6, W)).astype(np.float32)
+    plain = np.random.default_rng(3).normal(size=(12, 2048)).astype(np.float32)
+    monkeypatch.setattr(tcl_data, 'frame', lambda s, k: fr)
+    monkeypatch.setattr(tcl_data, 'image', lambda s, r, aspect='emotion': img)
+    monkeypatch.setattr(tcl_data, 'plain_text', lambda s, k: plain)
+    text, image = X.rows('gate_i_a_new', 'art_val', 'genre', 0)
+    image_side, caption_side = X.load_towers('gate_i_a_new', 'genre', 0)
+    np.testing.assert_array_equal(text, caption_side(plain))
+    np.testing.assert_array_equal(image, image_side(img))
 
 
 # --- end to end on tiny frames: means refit on validation, held reads them -------------------------------------------
@@ -301,6 +465,9 @@ def test_score_refits_means_on_validation_rows_and_held_reads_them(world, monkey
     monkeypatch.setattr(tcl_data, 'frame', lambda s, k: fr)
     monkeypatch.setattr(tcl_data, 'names_label', lambda s, k, a: np.zeros(fr['n_t'], dtype=bool))
     monkeypatch.setattr(X, 'rows', fake_rows)
+    w = X.weights_path('siglip1', 'emotion', 3)
+    w.parent.mkdir(parents=True, exist_ok=True)
+    w.write_bytes(b'weights')
     X.score('siglip1', 'art_val', aspects=('emotion',), seeds=[3], block=8)
     means = np.load(P23.means_path('art_val', X.KIND, 'cstar', 'emotion', 3, out=X.score_root('siglip1')))
     t, i = made[('art_val', 'emotion', 3)]
@@ -328,6 +495,9 @@ def test_held_cells_at_the_recorded_pick(world, monkeypatch):
                 path.parent.mkdir(parents=True, exist_ok=True)
                 np.savez(path, q_pid=np.arange(3, dtype=np.int64), first_rank=np.ones(3, np.float32),
                          **{f'ap__{b}': np.full(3, 0.5 + 0.01 * s, dtype=np.float32) for b in ASPECTS})
+    for a in ASPECTS:
+        for s in range(5):
+            X.write_provenance('siglip1', 'art_held', a, s)
     out = X.held_record('siglip1')
     cell = out['cells']['emotion']['t2i']
     assert cell['readout'] == 'center' and cell['mean'] == pytest.approx(0.52) and cell['n_queries'] == 3
@@ -348,25 +518,80 @@ def make_trainer_records(arm, hash_, seeds=(0,), where='top'):
             (root / 'weights' / arm / f'{a}__s{s}.json').write_text(json.dumps(dict(config=dict(rb=dict(cap_store_sha256=hash_)))))
 
 
-def test_hash_check_pass_and_fail_and_merge_into_the_gate_record(world):
+def test_hash_check_writes_its_own_part_file(world):
     fill('siglip1', range(5), lambda a, s, d, r: 0.2)
     X.write_val_record('siglip1')
     make_trainer_records('siglip1', C.store_hash('siglip1'), seeds=(0, 1))
-    gate = Path(X.RECORDS_DIR) / 'gates' / 'iv.json'
-    gate.parent.mkdir(parents=True, exist_ok=True)
-    gate.write_text(json.dumps(dict(gate='iv', status='pass', tries=1, details=dict(store_part=dict(status='pass', n=3)),
-                                    written='x')))
     rec = X.hash_check(('siglip1',))
-    assert rec['status'] == 'pass' and rec['tries'] == 2
-    assert rec['details']['store_part'] == dict(status='pass', n=3)                       # the other ticket's part is kept
-    assert rec['details']['parts_present'] == ['hash_check', 'store_part']
-    assert rec['details']['hash_check']['arms']['siglip1']['n_run_records'] == 2
+    assert rec['gate'] == 'iv_hash' and rec['status'] == 'pass' and rec['tries'] == 1 and rec['written']
+    assert set(rec) == {'gate', 'status', 'tries', 'details', 'written'}
+    assert rec['details']['arms']['siglip1']['n_run_records'] == 2
+    gates = Path(X.RECORDS_DIR) / 'gates'
+    assert sorted(p.name for p in gates.iterdir()) == ['iv_hash.json']             # ticket 02's iv_store.json is not touched
+    assert json.loads((gates / 'iv_hash.json').read_text()) == rec
     make_trainer_records('siglip1', 'ee' * 32, seeds=(2,), where='config')               # a run trained on another store
     rec = X.hash_check(('siglip1',))
-    assert rec['status'] == 'fail' and rec['details']['hash_check']['status'] == 'fail'
+    assert rec['status'] == 'fail' and rec['tries'] == 2
 
 
 def test_hash_check_fails_without_a_scorer_record_or_trainer_records(world):
     rec = X.hash_check(('siglip1',))
     assert rec['status'] == 'fail'
-    assert rec['details']['hash_check']['arms']['siglip1']['scorer_record'] is None
+    assert rec['details']['arms']['siglip1']['scorer_record'] is None
+
+
+# --- gate (ii): K0 against r28's records -------------------------------------------------------------------------
+
+def k0_values(shift=0.0, picks=None):
+    """What `validation_picks` returns, for all cells: per-seed values at every read-out, and the pick."""
+    out = {}
+    for a in ASPECTS:
+        out[a] = {}
+        for d in X.DIRECTIONS:
+            per_seed = {r: [0.2 + 0.01 * k + 0.001 * s + shift for s in range(5)] for k, r in enumerate(X.READOUTS)}
+            out[a][d] = dict(per_seed=per_seed, means={r: float(np.mean(v)) for r, v in per_seed.items()},
+                             pick=(picks or {}).get((a, d), 'center_k10'))
+    return out
+
+
+def test_gate_ii_passes_on_equal_values_and_picks_and_reports_the_worst_gap():
+    details = X.compare_k0(k0_values(), k0_values())
+    assert details['ok'] and details['mismatched'] == [] and details['picks_equal'] and details['max_abs_diff_per_seed_map'] == 0.0
+    assert details['n_values'] == 3 * 3 * 3 * 5
+
+
+def test_gate_ii_tolerance_is_one_in_a_million():
+    inside = k0_values(shift=5e-7)
+    assert X.compare_k0(inside, k0_values())['ok']
+    off = k0_values()
+    off['style']['t2i']['per_seed']['center'][3] += 2e-6                            # one value off by 2e-6
+    details = X.compare_k0(off, k0_values())
+    assert not details['ok'] and details['mismatched'] == ['style/t2i/center']
+    assert details['max_abs_diff_per_seed_map'] == pytest.approx(2e-6, rel=1e-3)
+
+
+def test_gate_ii_fails_on_one_changed_pick():
+    details = X.compare_k0(k0_values(picks={('genre', 'i2t'): 'r0'}), k0_values())
+    assert not details['ok'] and not details['picks_equal'] and details['mismatched'] == []
+
+
+def test_gate_ii_a_nan_value_is_a_failure_not_a_pass():
+    nan = k0_values()
+    nan['emotion']['t2t']['per_seed']['r0'][2] = float('nan')
+    with pytest.raises(AssertionError, match='finite'):
+        X.compare_k0(nan, k0_values())
+    with pytest.raises(AssertionError, match='finite'):
+        X.compare_k0(k0_values(), nan)
+
+
+def test_gate_ii_needs_the_same_number_of_seeds_on_both_sides():
+    short = k0_values()
+    short['emotion']['t2t']['per_seed']['r0'] = short['emotion']['t2t']['per_seed']['r0'][:4]
+    with pytest.raises(AssertionError, match='seeds'):
+        X.compare_k0(short, k0_values())
+
+
+def test_replay_rule_needs_99_5_percent_equal_and_one_float16_step():
+    assert X.replay_passed(0.998, True)
+    assert not X.replay_passed(0.99, True)             # r28's rule: at least 99.5% of the elements equal
+    assert not X.replay_passed(0.999, False)
