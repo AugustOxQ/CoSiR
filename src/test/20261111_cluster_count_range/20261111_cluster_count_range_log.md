@@ -252,3 +252,41 @@ Every k-means state at every K used exactly K clusters (`n_clusters_used`).
 | emotion | 5 / 8 / 9 / 16 / 20 | 0.06011 / 0.06433 / 0.06358 / 0.06674 / 0.06779 |
 | style | 10 / 20 / 27 / 40 | 0.23288 / 0.25639 / 0.26218 / 0.26280 |
 | genre | 5 / 10 / 16 / 20 | 0.45044 / 0.47444 / 0.46522 / 0.46005 |
+
+## SigLIP 1 lines (the main result moved to SigLIP 1), started 2026-11-12 19:47
+
+Handoff: `docs/superpowers/handoffs/2026-11-12-paper-cluster-counts-handoff.md` (paper chat "paper cluster counts").
+
+### Which saved inputs exist (checked 2026-11-12 19:47)
+| Row (SigLIP 1 unless named) | Grid source | Scoring needed |
+|---|---|---|
+| CoSiR (ours), plain, PercepT (matched) | r17 sweep `/data/SSD2/cosir_r17/20261103_new_scores/outputs/stage3/sweep/artelingo__siglip1.json` (arms cstar, plain, matched; every grid count; complete, not smoke, held split) | none |
+| + TURTLE | r18 saved fits `/data/SSD2/cosir_r18/20261103_outside_methods/outputs/parts/turtle/artelingo/siglip1/plain/k{K}__start{0,1,2}.npz`, all 8 K | AMI of saved partitions, no refit, no GPU |
+| CLAY, CRL | r28 job E (`20261112_siglip_main`, tier 1): SigLIP 1 text embeddings in `/data/SSD2/cosir_r28/20261112_siglip_main/clay_crl/text/` | k-means on the held rows, after r28's cells exist |
+| Instructed Qwen3, plain Qwen3 | r17 sweep `artelingo__qwen.json` (teacher, plain) | none |
+| TPIPS, VLM2Vec, BERTopic, PercepT (CLIP L/14) | `records/cells.json` (their own encoders) | none |
+
+Gate of the r17 SigLIP 1 file: its plain and matched class-count cells equal r17's `verdicts.json` (`SC1/.../plain`,
+`SC2/.../matched`) exactly; its cstar class-count cells round to Table 6's 0.099 / 0.441 / 0.528. The final gate
+against the new Table 2 cells waits for r28's numbers sheet.
+
+### + TURTLE on SigLIP 1 (`kr_grid_siglip1.py`)
+`kr_grid.Grid` with the encoder switched to `siglip1` (module global read at call time); no other change. Gate: r18's six
+recorded cells `SC5/artelingo/siglip1/{aspect}/ami/{k}/plain_turtle` (class count and 20), max |diff| = 0.0. Foreground,
+under 15 s. Log `logs/kr_grid_siglip1_turtle.log`, cells `records/cells_siglip1.json` (rows `turtle_siglip1`).
+TURTLE left one cluster empty in two of three starts at style K = 40 (39, 39, 40 clusters used); at every other K all
+starts used K clusters. The other rows' scorers force K clusters; TURTLE's own fits are kept as they are.
+
+| aspect | K | + TURTLE (SigLIP 1) |
+|---|---|---|
+| emotion | 5 / 8 / 9 / 16 / 20 | 0.0582 / 0.0575 / 0.0567 / 0.0552 / 0.0550 |
+| style | 10 / 20 / 27 / 40 | 0.3209 / 0.3257 / 0.3372 / 0.3292 |
+| genre | 5 / 10 / 16 / 20 | 0.3306 / 0.3651 / 0.3543 / 0.3468 |
+
+### `kr_figure.py --profile siglip1`
+New profile; the default `qwen3` profile is unchanged (replayed into the scratchpad: `values.md` equal, PNG max pixel
+diff 0.0). Rows: the expected new Table 2 (r28 handoff: plain, + TURTLE, PercepT matched, CLAY, CRL on SigLIP 1; plain
+Qwen3 stays; TPIPS, VLM2Vec, BERTopic, PercepT on CLIP L/14 keep their encoders). Not yet checked against the filled
+`Tables/main_clustering.tex`. Legend names follow README 2026-11-12 ("Instructed Qwen3"). Legend 5 columns in 3 rows,
+figure 6.875 x 2.7 in (7 columns ran off both edges). Plain Qwen3: light grey dashed, open squares; the other rows
+keep their 2026-11-11 styles. Output `figures/siglip1/`. Preview drawn without CLAY and CRL.

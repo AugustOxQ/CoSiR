@@ -1,0 +1,315 @@
+{
+ "header": {
+  "protocol": "TURTLE: r18 saved fits on plain SigLIP 1 (starts 0,1,2, no refit), AMI on rows with y >= 0, mean over the 3 starts (ns_metrics.score_partitions)",
+  "code_commit": "e94fb49bce7a032a1e4217e78b1f5cb62afc4217",
+  "encoder": "siglip1",
+  "held_split": "held",
+  "total_seconds": 2.190896987915039
+ },
+ "cells": [
+  {
+   "id": "turtle_siglip1/emotion/ami/5",
+   "row": "turtle_siglip1",
+   "aspect": "emotion",
+   "k": 5,
+   "mean": 0.0582055787898218,
+   "per_state": [
+    0.0587570764472985,
+    0.057677287623642604,
+    0.05818237229852429
+   ],
+   "n_labelled": 12281,
+   "source_inputs": "/data/SSD2/cosir_r18/20261103_outside_methods/outputs/parts/turtle/artelingo/siglip1/plain/k{K}__start{0,1,2}.npz",
+   "n_clusters_used": [
+    5,
+    5,
+    5
+   ],
+   "seconds": 0.1586155891418457,
+   "encoder": "siglip1",
+   "gate": false
+  },
+  {
+   "id": "turtle_siglip1/emotion/ami/8",
+   "row": "turtle_siglip1",
+   "aspect": "emotion",
+   "k": 8,
+   "mean": 0.05752881897285405,
+   "per_state": [
+    0.05665680249611907,
+    0.05787008043985453,
+    0.058059573982588535
+   ],
+   "n_labelled": 12281,
+   "source_inputs": "/data/SSD2/cosir_r18/20261103_outside_methods/outputs/parts/turtle/artelingo/siglip1/plain/k{K}__start{0,1,2}.npz",
+   "n_clusters_used": [
+    8,
+    8,
+    8
+   ],
+   "seconds": 0.2238149642944336,
+   "encoder": "siglip1",
+   "gate": false
+  },
+  {
+   "id": "turtle_siglip1/emotion/ami/9",
+   "row": "turtle_siglip1",
+   "aspect": "emotion",
+   "k": 9,
+   "mean": 0.05672059221911735,
+   "per_state": [
+    0.05612687791262146,
+    0.05695508048915163,
+    0.05707981825557894
+   ],
+   "n_labelled": 12281,
+   "source_inputs": "/data/SSD2/cosir_r18/20261103_outside_methods/outputs/parts/turtle/artelingo/siglip1/plain/k{K}__start{0,1,2}.npz",
+   "n_clusters_used": [
+    9,
+    9,
+    9
+   ],
+   "seconds": 0.18326330184936523,
+   "encoder": "siglip1",
+   "gate": true,
+   "reference_id": "SC5/artelingo/siglip1/emotion/ami/9/plain_turtle",
+   "reference": 0.05672059221911735,
+   "diff": 0.0
+  },
+  {
+   "id": "turtle_siglip1/emotion/ami/16",
+   "row": "turtle_siglip1",
+   "aspect": "emotion",
+   "k": 16,
+   "mean": 0.05523169920416374,
+   "per_state": [
+    0.056236288531854604,
+    0.05460887703675071,
+    0.054849932043885906
+   ],
+   "n_labelled": 12281,
+   "source_inputs": "/data/SSD2/cosir_r18/20261103_outside_methods/outputs/parts/turtle/artelingo/siglip1/plain/k{K}__start{0,1,2}.npz",
+   "n_clusters_used": [
+    16,
+    16,
+    16
+   ],
+   "seconds": 0.13351702690124512,
+   "encoder": "siglip1",
+   "gate": false
+  },
+  {
+   "id": "turtle_siglip1/emotion/ami/20",
+   "row": "turtle_siglip1",
+   "aspect": "emotion",
+   "k": 20,
+   "mean": 0.05503583832967496,
+   "per_state": [
+    0.056218872024995765,
+    0.05597829566183803,
+    0.05291034730219107
+   ],
+   "n_labelled": 12281,
+   "source_inputs": "/data/SSD2/cosir_r18/20261103_outside_methods/outputs/parts/turtle/artelingo/siglip1/plain/k{K}__start{0,1,2}.npz",
+   "n_clusters_used": [
+    20,
+    20,
+    20
+   ],
+   "seconds": 0.15987825393676758,
+   "encoder": "siglip1",
+   "gate": true,
+   "reference_id": "SC5/artelingo/siglip1/emotion/ami/20/plain_turtle",
+   "reference": 0.05503583832967496,
+   "diff": 0.0
+  },
+  {
+   "id": "turtle_siglip1/style/ami/10",
+   "row": "turtle_siglip1",
+   "aspect": "style",
+   "k": 10,
+   "mean": 0.32090845044628846,
+   "per_state": [
+    0.3277819654416818,
+    0.31685039703859996,
+    0.31809298885858356
+   ],
+   "n_labelled": 12281,
+   "source_inputs": "/data/SSD2/cosir_r18/20261103_outside_methods/outputs/parts/turtle/artelingo/siglip1/plain/k{K}__start{0,1,2}.npz",
+   "n_clusters_used": [
+    10,
+    10,
+    10
+   ],
+   "seconds": 0.15624642372131348,
+   "encoder": "siglip1",
+   "gate": false
+  },
+  {
+   "id": "turtle_siglip1/style/ami/20",
+   "row": "turtle_siglip1",
+   "aspect": "style",
+   "k": 20,
+   "mean": 0.3257103927924025,
+   "per_state": [
+    0.3331067707349358,
+    0.31827371728419246,
+    0.32575069035807924
+   ],
+   "n_labelled": 12281,
+   "source_inputs": "/data/SSD2/cosir_r18/20261103_outside_methods/outputs/parts/turtle/artelingo/siglip1/plain/k{K}__start{0,1,2}.npz",
+   "n_clusters_used": [
+    20,
+    20,
+    20
+   ],
+   "seconds": 0.1702888011932373,
+   "encoder": "siglip1",
+   "gate": true,
+   "reference_id": "SC5/artelingo/siglip1/style/ami/20/plain_turtle",
+   "reference": 0.3257103927924025,
+   "diff": 0.0
+  },
+  {
+   "id": "turtle_siglip1/style/ami/27",
+   "row": "turtle_siglip1",
+   "aspect": "style",
+   "k": 27,
+   "mean": 0.33722089383983805,
+   "per_state": [
+    0.33912190161862316,
+    0.3459400797495509,
+    0.32660070015134024
+   ],
+   "n_labelled": 12281,
+   "source_inputs": "/data/SSD2/cosir_r18/20261103_outside_methods/outputs/parts/turtle/artelingo/siglip1/plain/k{K}__start{0,1,2}.npz",
+   "n_clusters_used": [
+    27,
+    27,
+    27
+   ],
+   "seconds": 0.22423148155212402,
+   "encoder": "siglip1",
+   "gate": true,
+   "reference_id": "SC5/artelingo/siglip1/style/ami/27/plain_turtle",
+   "reference": 0.33722089383983805,
+   "diff": 0.0
+  },
+  {
+   "id": "turtle_siglip1/style/ami/40",
+   "row": "turtle_siglip1",
+   "aspect": "style",
+   "k": 40,
+   "mean": 0.3292469895142654,
+   "per_state": [
+    0.32779635987444206,
+    0.3256507852918935,
+    0.33429382337646074
+   ],
+   "n_labelled": 12281,
+   "source_inputs": "/data/SSD2/cosir_r18/20261103_outside_methods/outputs/parts/turtle/artelingo/siglip1/plain/k{K}__start{0,1,2}.npz",
+   "n_clusters_used": [
+    39,
+    39,
+    40
+   ],
+   "seconds": 0.19203519821166992,
+   "encoder": "siglip1",
+   "gate": false
+  },
+  {
+   "id": "turtle_siglip1/genre/ami/5",
+   "row": "turtle_siglip1",
+   "aspect": "genre",
+   "k": 5,
+   "mean": 0.3305736586752877,
+   "per_state": [
+    0.32975108518076157,
+    0.3323234443008982,
+    0.3296464465442033
+   ],
+   "n_labelled": 9949,
+   "source_inputs": "/data/SSD2/cosir_r18/20261103_outside_methods/outputs/parts/turtle/artelingo/siglip1/plain/k{K}__start{0,1,2}.npz",
+   "n_clusters_used": [
+    5,
+    5,
+    5
+   ],
+   "seconds": 0.12591314315795898,
+   "encoder": "siglip1",
+   "gate": false
+  },
+  {
+   "id": "turtle_siglip1/genre/ami/10",
+   "row": "turtle_siglip1",
+   "aspect": "genre",
+   "k": 10,
+   "mean": 0.365094214423398,
+   "per_state": [
+    0.3628647818434551,
+    0.3613465601824076,
+    0.37107130124433146
+   ],
+   "n_labelled": 9949,
+   "source_inputs": "/data/SSD2/cosir_r18/20261103_outside_methods/outputs/parts/turtle/artelingo/siglip1/plain/k{K}__start{0,1,2}.npz",
+   "n_clusters_used": [
+    10,
+    10,
+    10
+   ],
+   "seconds": 0.12970781326293945,
+   "encoder": "siglip1",
+   "gate": true,
+   "reference_id": "SC5/artelingo/siglip1/genre/ami/10/plain_turtle",
+   "reference": 0.365094214423398,
+   "diff": 0.0
+  },
+  {
+   "id": "turtle_siglip1/genre/ami/16",
+   "row": "turtle_siglip1",
+   "aspect": "genre",
+   "k": 16,
+   "mean": 0.3542591251076707,
+   "per_state": [
+    0.35432523436912794,
+    0.36094470934903927,
+    0.3475074316048449
+   ],
+   "n_labelled": 9949,
+   "source_inputs": "/data/SSD2/cosir_r18/20261103_outside_methods/outputs/parts/turtle/artelingo/siglip1/plain/k{K}__start{0,1,2}.npz",
+   "n_clusters_used": [
+    16,
+    16,
+    16
+   ],
+   "seconds": 0.15450453758239746,
+   "encoder": "siglip1",
+   "gate": false
+  },
+  {
+   "id": "turtle_siglip1/genre/ami/20",
+   "row": "turtle_siglip1",
+   "aspect": "genre",
+   "k": 20,
+   "mean": 0.3468114080747802,
+   "per_state": [
+    0.33588605979753255,
+    0.36074425593589193,
+    0.34380390849091624
+   ],
+   "n_labelled": 9949,
+   "source_inputs": "/data/SSD2/cosir_r18/20261103_outside_methods/outputs/parts/turtle/artelingo/siglip1/plain/k{K}__start{0,1,2}.npz",
+   "n_clusters_used": [
+    20,
+    20,
+    20
+   ],
+   "seconds": 0.1705458164215088,
+   "encoder": "siglip1",
+   "gate": true,
+   "reference_id": "SC5/artelingo/siglip1/genre/ami/20/plain_turtle",
+   "reference": 0.3468114080747802,
+   "diff": 0.0
+  }
+ ]
+}
