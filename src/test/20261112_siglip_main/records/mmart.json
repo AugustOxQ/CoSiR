@@ -1,0 +1,204 @@
+{
+ "columns": [
+  "emotion (k=9)",
+  "style (k=20)",
+  "genre (k=10)"
+ ],
+ "note": "r17 / r18 records; Qwen3 values re-read through the same ids and equal the paper rows at 3 decimals",
+ "picks": {
+  "qwen": {
+   "cstar": "center+k10",
+   "n_val": 5769,
+   "percept": "center+k10",
+   "plain": "none+k10",
+   "sources": [
+    "/project/CoSiR/src/test/20261102_mmart_test/records/stage1_qwen.json picks.arms.cstar|frozen",
+    "/project/CoSiR/src/test/20261103_new_scores/records/stage1_picks.json matched/mmart/qwen"
+   ]
+  },
+  "siglip1": {
+   "cstar": "center+k10",
+   "n_val": 5769,
+   "percept": "center+k0",
+   "plain": "none+k10",
+   "sources": [
+    "/project/CoSiR/src/test/20261102_mmart_test/records/stage1_siglip1.json picks.arms.cstar|frozen",
+    "/project/CoSiR/src/test/20261103_new_scores/records/stage1_picks.json matched/mmart/siglip1"
+   ]
+  }
+ },
+ "qwen3": {
+  "cstar_ami": {
+   "sources": [
+    "/project/CoSiR/src/test/20261103_new_scores/records/verdicts.json:1550 SC1/mmart/qwen/emotion/ami/9/plain .cand",
+    "/project/CoSiR/src/test/20261103_new_scores/records/verdicts.json:1678 SC1/mmart/qwen/style/ami/20/plain .cand",
+    "/project/CoSiR/src/test/20261103_new_scores/records/verdicts.json:1806 SC1/mmart/qwen/genre/ami/10/plain .cand"
+   ],
+   "values": [
+    0.053213040107159826,
+    0.42269065444113385,
+    0.5305727207439225
+   ]
+  },
+  "cstar_map": {
+   "sources": [
+    "/project/CoSiR/src/test/20261103_new_scores/records/verdicts.json:12814 SC8/mmart/qwen/emotion/map/-/matched .cand",
+    "/project/CoSiR/src/test/20261103_new_scores/records/verdicts.json:12846 SC8/mmart/qwen/style/map/-/matched .cand",
+    "/project/CoSiR/src/test/20261103_new_scores/records/verdicts.json:12878 SC8/mmart/qwen/genre/map/-/matched .cand"
+   ],
+   "values": [
+    0.20107003792141567,
+    0.3472000228788737,
+    0.6199125990941086
+   ]
+  },
+  "percept_ami": {
+   "sources": [
+    "/project/CoSiR/src/test/20261103_new_scores/records/verdicts.json:4622 SC2/mmart/qwen/emotion/ami/9/matched .comp",
+    "/project/CoSiR/src/test/20261103_new_scores/records/verdicts.json:4750 SC2/mmart/qwen/style/ami/20/matched .comp",
+    "/project/CoSiR/src/test/20261103_new_scores/records/verdicts.json:4878 SC2/mmart/qwen/genre/ami/10/matched .comp"
+   ],
+   "values": [
+    0.03908476130068386,
+    0.192430571273248,
+    0.4387332812476742
+   ]
+  },
+  "percept_map": {
+   "sources": [
+    "/project/CoSiR/src/test/20261103_new_scores/records/verdicts.json:12814 SC8/mmart/qwen/emotion/map/-/matched .comp",
+    "/project/CoSiR/src/test/20261103_new_scores/records/verdicts.json:12846 SC8/mmart/qwen/style/map/-/matched .comp",
+    "/project/CoSiR/src/test/20261103_new_scores/records/verdicts.json:12878 SC8/mmart/qwen/genre/map/-/matched .comp"
+   ],
+   "values": [
+    0.1926069560894349,
+    0.16734482713510967,
+    0.504066305528858
+   ]
+  },
+  "plain_ami": {
+   "sources": [
+    "/project/CoSiR/src/test/20261103_new_scores/records/verdicts.json:1550 SC1/mmart/qwen/emotion/ami/9/plain .comp",
+    "/project/CoSiR/src/test/20261103_new_scores/records/verdicts.json:1678 SC1/mmart/qwen/style/ami/20/plain .comp",
+    "/project/CoSiR/src/test/20261103_new_scores/records/verdicts.json:1806 SC1/mmart/qwen/genre/ami/10/plain .comp"
+   ],
+   "values": [
+    0.038095115357436427,
+    0.23141545638094907,
+    0.45832223543073125
+   ]
+  },
+  "plain_map": {
+   "sources": [
+    "/project/CoSiR/src/test/20261103_new_scores/records/verdicts.json:12046 SC7/mmart/qwen/emotion/map/-/plain .comp",
+    "/project/CoSiR/src/test/20261103_new_scores/records/verdicts.json:12078 SC7/mmart/qwen/style/map/-/plain .comp",
+    "/project/CoSiR/src/test/20261103_new_scores/records/verdicts.json:12110 SC7/mmart/qwen/genre/map/-/plain .comp"
+   ],
+   "values": [
+    0.19352169650697051,
+    0.20459138005426042,
+    0.515121440167476
+   ]
+  },
+  "turtle_ami": {
+   "sources": [
+    "/project/CoSiR/src/test/20261103_outside_methods/records/labels.json:3973 SC5/mmart/qwen/emotion/ami/9/plain_turtle .comp",
+    "/project/CoSiR/src/test/20261103_outside_methods/records/labels.json:4093 SC5/mmart/qwen/style/ami/20/plain_turtle .comp",
+    "/project/CoSiR/src/test/20261103_outside_methods/records/labels.json:4189 SC5/mmart/qwen/genre/ami/10/plain_turtle .comp"
+   ],
+   "values": [
+    0.037777556608306576,
+    0.22276939543306237,
+    0.4216546844836344
+   ]
+  }
+ },
+ "siglip1": {
+  "cstar_ami": {
+   "sources": [
+    "/project/CoSiR/src/test/20261103_new_scores/records/verdicts.json:2318 SC1/mmart/siglip1/emotion/ami/9/plain .cand",
+    "/project/CoSiR/src/test/20261103_new_scores/records/verdicts.json:2446 SC1/mmart/siglip1/style/ami/20/plain .cand",
+    "/project/CoSiR/src/test/20261103_new_scores/records/verdicts.json:2574 SC1/mmart/siglip1/genre/ami/10/plain .cand"
+   ],
+   "values": [
+    0.05293655725853845,
+    0.45458177229532043,
+    0.5394757476597072
+   ]
+  },
+  "cstar_map": {
+   "sources": [
+    "/project/CoSiR/src/test/20261103_new_scores/records/verdicts.json:13006 SC8/mmart/siglip1/emotion/map/-/matched .cand",
+    "/project/CoSiR/src/test/20261103_new_scores/records/verdicts.json:13038 SC8/mmart/siglip1/style/map/-/matched .cand",
+    "/project/CoSiR/src/test/20261103_new_scores/records/verdicts.json:13070 SC8/mmart/siglip1/genre/map/-/matched .cand"
+   ],
+   "values": [
+    0.20205554731577058,
+    0.38305361390261916,
+    0.6282194127511116
+   ]
+  },
+  "percept_ami": {
+   "sources": [
+    "/project/CoSiR/src/test/20261103_new_scores/records/verdicts.json:5390 SC2/mmart/siglip1/emotion/ami/9/matched .comp",
+    "/project/CoSiR/src/test/20261103_new_scores/records/verdicts.json:5518 SC2/mmart/siglip1/style/ami/20/matched .comp",
+    "/project/CoSiR/src/test/20261103_new_scores/records/verdicts.json:5646 SC2/mmart/siglip1/genre/ami/10/matched .comp"
+   ],
+   "values": [
+    0.03847948851743667,
+    0.22006451634776872,
+    0.4796581539467629
+   ]
+  },
+  "percept_map": {
+   "sources": [
+    "/project/CoSiR/src/test/20261103_new_scores/records/verdicts.json:13006 SC8/mmart/siglip1/emotion/map/-/matched .comp",
+    "/project/CoSiR/src/test/20261103_new_scores/records/verdicts.json:13038 SC8/mmart/siglip1/style/map/-/matched .comp",
+    "/project/CoSiR/src/test/20261103_new_scores/records/verdicts.json:13070 SC8/mmart/siglip1/genre/map/-/matched .comp"
+   ],
+   "values": [
+    0.19022358826657304,
+    0.1821524629396192,
+    0.5473265824797953
+   ]
+  },
+  "plain_ami": {
+   "sources": [
+    "/project/CoSiR/src/test/20261103_new_scores/records/verdicts.json:2318 SC1/mmart/siglip1/emotion/ami/9/plain .comp",
+    "/project/CoSiR/src/test/20261103_new_scores/records/verdicts.json:2446 SC1/mmart/siglip1/style/ami/20/plain .comp",
+    "/project/CoSiR/src/test/20261103_new_scores/records/verdicts.json:2574 SC1/mmart/siglip1/genre/ami/10/plain .comp"
+   ],
+   "values": [
+    0.03454352778449323,
+    0.391482784477359,
+    0.40957328984635294
+   ]
+  },
+  "plain_map": {
+   "sources": [
+    "/project/CoSiR/src/test/20261103_new_scores/records/verdicts.json:12238 SC7/mmart/siglip1/emotion/map/-/plain .comp",
+    "/project/CoSiR/src/test/20261103_new_scores/records/verdicts.json:12270 SC7/mmart/siglip1/style/map/-/plain .comp",
+    "/project/CoSiR/src/test/20261103_new_scores/records/verdicts.json:12302 SC7/mmart/siglip1/genre/map/-/plain .comp"
+   ],
+   "values": [
+    0.19125931122827552,
+    0.30310640376756215,
+    0.49322669333886887
+   ]
+  },
+  "turtle_ami": {
+   "sources": [
+    "/project/CoSiR/src/test/20261103_outside_methods/records/labels.json:4645 SC5/mmart/siglip1/emotion/ami/9/plain_turtle .comp",
+    "/project/CoSiR/src/test/20261103_outside_methods/records/labels.json:4765 SC5/mmart/siglip1/style/ami/20/plain_turtle .comp",
+    "/project/CoSiR/src/test/20261103_outside_methods/records/labels.json:4861 SC5/mmart/siglip1/genre/ami/10/plain_turtle .comp"
+   ],
+   "values": [
+    0.030297150589150335,
+    0.3488659841213743,
+    0.37169292513969254
+   ]
+  }
+ },
+ "turtle_parts_dir": "/data/SSD2/cosir_r18/20261103_outside_methods/outputs/parts/turtle/mmart/siglip1",
+ "turtle_parts_files": 49
+}
