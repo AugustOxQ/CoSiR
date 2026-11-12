@@ -2271,3 +2271,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-12-paper-plan-2-handoff.md
 - New chat: tab 'paper plan 2', session 2b2fad58-d75b-4293-938f-75b8ee9ae983
 
+[brief] CoSiR: paper experiments 2 -> paper cluster counts (2026-11-12 19:42 Amsterdam)
+- Done: the Qwen3 cluster-count figure has all 11 Table 2 rows (main `902e0539`). Table 2's PercepT (CLIP L/14) row is filled.
+- State: the main result moved to SigLIP 1 (2026-11-12). The figure still shows Qwen3 lines only.
+- Next: wait for r28's numbers sheet, find the saved SigLIP 1 test inputs per row, then score the grid and redraw.
+- Blocked: r28's numbers (the unattended "CoSiR r28 run" tab, tonight).
+- Handoff: docs/superpowers/handoffs/2026-11-12-paper-cluster-counts-handoff.md
+- New chat: tab 'paper cluster counts', session cc74b0de-3d55-48b5-976a-88a24279c8a2
+
