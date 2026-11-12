@@ -35,15 +35,38 @@ def _folder(source):
     return Path(folder), width
 
 
+# `index['backbone']` of each source's store (scripts/extract_features.py writes `enc.name`; a prefixed store is made by
+# the same encoder as its base store, so it carries the base's name).
+BACKBONE = {'siglip1': 'siglip_so400m', 'siglip1_prefix': 'siglip_so400m',
+            'siglip2': 'siglip2_so400m', 'siglip2_prefix': 'siglip2_so400m',
+            'clipl14': 'clip_l14', 'clipl14_prefix': 'clip_l14'}
+
+
+def _read(source):
+    """(sample_ids int64 [n], painting names [n], txt.npy memmap float16 [n, width]) of a source's store, checked.
+    Cached on the store files' size and mtime, so a rewritten store is read again."""
+    folder, width = _folder(source)
+    assert source in BACKBONE, f'no backbone name for {source!r}'
+    stat = tuple((f.stat().st_size, f.stat().st_mtime_ns)
+                 for f in (folder / 'index.json', folder / 'progress.json', folder / 'txt.npy'))
+    return _read_cached(folder, width, BACKBONE[source], stat)
+
+
 @lru_cache(maxsize=8)
-def _read(folder, width):
-    """(sample_ids int64 [n], painting names [n], txt.npy memmap float16 [n, width]) of a store, checked."""
-    index = json.loads((Path(folder) / 'index.json').read_text())
+def _read_cached(folder, width, backbone, stat):
+    index_bytes = (folder / 'index.json').read_bytes()
+    index = json.loads(index_bytes)
+    progress = json.loads((folder / 'progress.json').read_text())
     texts = index['texts']
     ids = np.asarray([r['sample_id'] for r in texts], dtype=np.int64)
     names = np.asarray([r['painting'] for r in texts])
+    assert index['smoke'] is False, f'{folder}: a smoke store'
+    assert index['backbone'] == backbone, f'{folder}: backbone {index["backbone"]!r}, expected {backbone!r}'
+    assert progress['txt_done'] == index['n_texts'], f'{folder}: txt_done {progress["txt_done"]} != n_texts'
+    assert progress['gate']['ok'] is True, f'{folder}: extraction gate not ok: {progress["gate"]}'
+    assert progress['index_sha256'] == hashlib.sha256(index_bytes).hexdigest(), f'{folder}: index_sha256 differs from index.json'
     assert len(np.unique(ids)) == len(ids), f'{folder}: duplicate caption IDs'
-    raw = np.load(Path(folder) / 'txt.npy', mmap_mode='r')
+    raw = np.load(folder / 'txt.npy', mmap_mode='r')
     assert raw.dtype == np.float16 and raw.shape == (len(ids), width), f'{folder}: txt.npy {raw.shape} {raw.dtype}'
     assert index['dim'] == width and index['n_texts'] == len(ids), f'{folder}: index.json disagrees with the width/rows'
     return ids, names, raw
@@ -76,27 +99,41 @@ def _join(ids, names, sample_ids, paintings):
 def caption_rows(source, sample_ids, paintings):
     """float32 [n, w] stored rows (not re-normalised) of the captions `sample_ids`, in that order; the painting of each
     ID is checked against `paintings` (C6)."""
-    folder, width = _folder(source)
-    ids, names, raw = _read(folder, width)
+    ids, names, raw = _read(source)
     return _values(raw, _join(ids, names, sample_ids, paintings))
+
+
+@lru_cache(maxsize=1)
+def annotation_paintings():
+    """Painting of every ArtELingo caption, by extraction sample ID (annotation row i is sample ID i, as `split2`)."""
+    import r28_trainer  # noqa: F401  (puts the CT's folder on sys.path)
+    import ct2_data
+    records = json.loads(Path(ct2_data.ANNOTATIONS).read_text())
+    assert len(records) == FULL_CAPTIONS
+    return np.asarray([r['painting'] for r in records])
 
 
 def painting_means(source, painting_names):
     """float32 [n, w]: for each painting in the given order, the L2-normalised mean of all its captions' rows, as
-    `ct2_data` makes Qwen's. `qwen` goes through the CT's loaders."""
+    `ct2_data` makes Qwen's. The captions of a painting are the annotations' (ascending sample ID), joined to the store
+    by ID with the painting checked (C6): a missing or relabelled caption, or a store caption the annotations do not
+    give that painting, raises. `qwen` goes through the CT's loaders."""
     names_in = [str(n) for n in painting_names]
     assert len(set(names_in)) == len(names_in), 'repeated painting names'
     if source == 'qwen':
         return _qwen_means(names_in)
-    folder, width = _folder(source)
-    ids, names, raw = _read(folder, width)
+    ids, names, raw = _read(source)
+    ann = annotation_paintings()
     lookup = {n: k for k, n in enumerate(names_in)}
-    pid_all = np.asarray([lookup.get(str(n), -1) for n in names], dtype=np.int64)
-    rows = np.flatnonzero(pid_all >= 0)
-    rows = rows[np.lexsort((ids[rows], pid_all[rows]))]          # painting, then ascending extraction ID, as split2
-    pid = pid_all[rows]
+    pid_ann = np.asarray([lookup.get(str(n), -1) for n in ann], dtype=np.int64)
+    wanted = np.flatnonzero(pid_ann >= 0)                        # ascending sample ID
+    wanted = wanted[np.argsort(pid_ann[wanted], kind='stable')]    # painting, then ascending ID, as split2
+    pid = pid_ann[wanted]
     counts = np.bincount(pid, minlength=len(names_in))
     assert (counts > 0).all(), f'no captions for {[names_in[k] for k in np.flatnonzero(counts == 0)[:5]]}'
+    rows = _join(ids, names, wanted, ann[wanted])
+    n_store = int(np.isin(names, np.asarray(names_in)).sum())
+    assert n_store == len(wanted), f'{source}: {n_store - len(wanted)} extra store captions for the wanted paintings'
     return l2(paint_mean(_values(raw, rows), pid, len(names_in)))
 
 
@@ -172,20 +209,19 @@ def write_gate_record(folder, result, gate='iii'):
     return record
 
 
-def gate_iii(source='siglip1', write=True):
-    """Gate (iii) on the real stores: SigLIP 1 against the Qwen full store (the CT's fallback store), the annotations,
+def gate_iii(source='siglip1', write=False):
+    """Gate (iii) on the real stores (writes `records/gates/iii.json` only with `write=True`: a try is used up by each write): SigLIP 1 against the Qwen full store (the CT's fallback store), the annotations,
     the CT's train and validation captions (`split2('full')`) and the held paintings' captions; also builds the
     painting means of train and validation and checks they are one per painting in the CT's order, finite, unit."""
     import r28_trainer as R
     import ct2_data
     folder, width = _folder(source)
-    sig_ids, sig_names, _ = _read(folder, width)
+    sig_ids, sig_names, _ = _read(source)
     qwen = json.loads((Path(ct2_data.QWEN) / 'index.json').read_text())['texts']
     qwen_ids = np.asarray([r['sample_id'] for r in qwen], dtype=np.int64)
     qwen_names = np.asarray([r['painting'] for r in qwen])
-    records = json.loads(Path(ct2_data.ANNOTATIONS).read_text())
-    assert len(records) == FULL_CAPTIONS == len(sig_ids)
-    ann = np.asarray([r['painting'] for r in records])         # annotation row i is extraction sample ID i (split2)
+    ann = annotation_paintings()                               # annotation row i is extraction sample ID i (split2)
+    assert len(ann) == FULL_CAPTIONS == len(sig_ids)
     s = ct2_data.split2('full')
     in_dev = np.isin(s['pid'], s['dev'])
     held_names, _ = R.B.rb_student.held_names()
@@ -214,5 +250,8 @@ def gate_iii(source='siglip1', write=True):
 
 
 if __name__ == '__main__':
-    result = gate_iii()
+    import argparse
+    ap = argparse.ArgumentParser(description='gate (iii) on the real stores')
+    ap.add_argument('--write', action='store_true', help='write records/gates/iii.json (adds one try)')
+    result = gate_iii(write=ap.parse_args().write)
     print(result['status'], json.dumps(result['details']['checks']))
