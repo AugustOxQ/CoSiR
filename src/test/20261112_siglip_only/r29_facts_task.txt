@@ -1,0 +1,33 @@
+You are doing a read-only fact-finding job in the repo /project/CoSiR (a research project in Python). Work only in that folder. Do not edit, create or delete any file in the repo; do not create `.ccg` task records. The only file you write is the facts brief at
+/tmp/claude-0/-project-CoSiR/e56ee757-9e45-4ea2-bf6b-4a72cae373fd/scratchpad/r29_facts.md
+Delete nothing; list what you would remove. Keep command output short (head, grep, tail); no long-running commands (nothing over about 4 minutes), no GPU use, no training. Python, if needed: `PYTHONDONTWRITEBYTECODE=1 /root/miniconda3/envs/CoSiR/bin/python` (reading small array shapes with numpy mmap_mode='r' is fine).
+
+## Context
+
+The project trains an "aspect adapter": two small towers (an image tower and a caption tower), each a shared trunk plus one head per aspect (emotion, style, genre), trained with a graph-positive contrastive loss on neighbour graphs built from Qwen3-VL-Embedding instructed embeddings. The current main model ("c*" on SigLIP 1) reads the SigLIP 1 image embedding in the image tower and the Qwen3 plain caption embedding (2048 wide, mean over a painting's captions) in the caption tower. The planned next model ("SigLIP-only") keeps every Qwen3 part of training (graphs, content correction, alignment targets) but feeds the caption tower the SigLIP 1 text embedding of the captions (1152 wide) instead of the Qwen3 one, so no input passes through Qwen3 at test time.
+
+Starting points:
+- r14 trainer: `src/test/20261102_backbones_sweep/bs_cstar.py` (docstring lines 1-30; lines 351-390 assert the caption input at width 2048), `bs_cstar_loss.py` in the same folder.
+- Student model: `src/test/20261025_recipe_backbones/rb_student.py` (line ~60, `TrunkSide`, 2048 wide caption trunk), `rb_encoders.py`.
+- r28 (the current round): `src/test/20261112_siglip_main/` — `r28_trainer.py`, `r28_trainer_loss.py`, `r28_text.py` (text-direction scoring, protocol from `src/test/20261106_text_claim/`), `r28_time.py`, `r28_ablation.py`, `r28_mmart.py`, `r28_photos.py`, `records/settings_check.json`, `paper_cells.md`, `decisions.md`.
+- Data loaders: `ct2_data` (find it with grep; `ct2_data.default_captions`, `ct2_data.split2`).
+- SigLIP 1 text store: `/data/SSD2/pre_extract/artelingo_full/siglip_so400m/` (`txt.npy`, `index.json`, `progress.json`, `img.npy`). Feature extraction: `scripts/extract_features.py`.
+
+## Questions (answer each with file:line evidence; say "not found" when you cannot find it, never guess)
+
+1. Caption input in training. Exactly how is the caption-tower input built today (which file holds the Qwen3 per-caption embeddings, how captions are grouped per painting, mean then L2 norm or not)? Which rows/ids join captions to paintings?
+2. SigLIP 1 text store alignment. What do `index.json` and `progress.json` hold? Can the 308,723 rows of `txt.npy` be joined to the same captions and paintings that the Qwen3 caption store uses, by ids (not by position assumptions)? Is the row order the same as the Qwen3 caption store? Are the rows L2-normalised already? dtype and shape.
+3. Every place a 2048 caption width is hard-coded or asserted on the path train -> validation export -> held export -> text scoring (bs_cstar.py, rb_student.py, r28_trainer.py, r28_text.py, any other). List them so an implementer knows what must change for a 1152-wide caption input. Note which widths are the OUTPUT width (heads map to the 2048 instructed width; that stays) versus the caption INPUT width.
+4. Text-direction scoring (r28_text.py and the r23 protocol it copies). Is a text query one caption, or a painting's caption mean? Which caption embeddings does it read for CoSiR (file, ids), and which for "plain SigLIP 1" (its own text tower)? What exactly would change to score a model whose caption tower reads SigLIP 1 text embeddings? Are SigLIP 1 text embeddings present for every caption the validation and test text scoring uses?
+5. The read-out picks for text directions: are they picked on validation per cell? Which file/function?
+6. The photo model (paper Table 7: Affection and EmoSet; `r28_photos.py`, and the r20/r14 photo-model trainer it points at). Does the photo model's training read captions (Affection captions through the caption tower)? If yes, do SigLIP 1 text embeddings of those captions exist anywhere under `/data/SSD2/pre_extract/`?
+7. MMArt (paper Table 4, `r28_mmart.py`): image side only? What would a rerun on new checkpoints need (export function, scorer)?
+8. The ablation (`r28_ablation.py`, paper Table 5): which arms, how many seeds, how long per run (look for recorded times in logs or records), and whether it could take a caption-width parameter.
+9. `records/settings_check.json`: what was compared, which setting is `k6` (what knob, values), the result, and what the log/commit says ("k6=0.0005 ahead by 0.0007, inside seed spread; flagged").
+10. Run time: recorded wall time of one SigLIP 1 c* training run (r14 seed 0 took 341 s per the handoff; confirm from a record) and of the validation + held export and scoring.
+11. Timing of text encoders (`r28_time.py`): could it time the SigLIP 1 text tower per caption with a small change?
+12. SigLIP 1 text extraction with a prefix: in `scripts/extract_features.py`, how is SigLIP 1 text encoded (model id, max length 64, padding)? How many ArtELingo captions would exceed 64 tokens if a prefix such as "Represent the caption: " were added (estimate with the tokenizer if it is in the local HF cache `/data/SSD2/HF_home`; do not download anything)? Recorded extraction time for the 308,723 captions (progress.json or logs).
+
+## Output
+
+Write `/tmp/claude-0/-project-CoSiR/e56ee757-9e45-4ea2-bf6b-4a72cae373fd/scratchpad/r29_facts.md`: one section per question, numbered 1 to 12, short (at most about 10 lines each), each fact with file:line or file path evidence, "not found" or "not checked" where it applies. End with a section "Implementer notes": the list of code changes the SigLIP-only model needs, in order. Then a short "Would remove" list (likely empty).
