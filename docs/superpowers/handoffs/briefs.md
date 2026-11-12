@@ -2336,3 +2336,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-12-paper-plan-5-handoff.md
 - New chat: tab 'paper plan 5', session 6d50ce86-3add-404a-b900-71a5232e538a
 
+[brief] CoSiR: r29 build -> r29 build 2 (2026-11-12 23:09 Amsterdam)
+- Done: 15 tickets written; tickets 01, 03, 04 and 06 built (104 tests pass across them); ticket 01 reviewed: pass after fixes.
+- State: nothing merged into the integration branch yet. Gate (iii) passes on the real stores; gate (v) emotion cells replay exactly.
+- Next: fix ticket 01, review 03, 04, 06, merge; start ticket 02 on Codex; build the rest.
+- Blocked: nothing. Risk: gate (i)(c)'s validation part may fail from the machine alone (§5).
+- Handoff: docs/superpowers/handoffs/2026-11-12-r29-build-2-handoff.md
+- New chat: tab 'r29 build 2', session 2892f187-2561-4298-a764-6f08e33d49a0
+
