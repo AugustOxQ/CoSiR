@@ -207,3 +207,11 @@ Spec: `docs/superpowers/specs/2026-11-11-r21-dec-heads-design.md`. Decision line
   AMI rises in all forms (teacher looser); genre AMI rises only in the teacher form (the least tight change). Per seed
   (15 runs per aspect), Spearman of the change in DBI with the change in AMI -0.56 to -0.60; SI +0.28 to +0.52; CHI +0.31
   to +0.68 (no test). Scale: PercepT SI 0.02 to 0.97; ours moves at most +0.022. The epoch confound still holds.
+- 20:29: **user**: the reports wait for the λ = 0 control; prepare the λ = 0 code now (no run until the SigLIP jobs end); after
+  the λ = 0 run, add a visualisation of the distribution before and after the DEC loss. The user asked whether the small
+  changes come from scoring on the test set. Code prep: Codex `gpt-6.1-terra` medium in worktree `/project/CoSiR-r21-lam0`
+  (branch `r21/lam0`; brief `.scratch/r21-dec-heads/lam0/task.txt`). λ scales the whole DEC term, pull and balance included
+  (`r21_dec.py:107-133`), so at λ = 0 every form has zero DEC loss.
+- Facts for the question: the S2 kept state is epoch 6 (the first DEC epoch) in 14 of 15 emotion runs, 6 to 10 on style,
+  6 to 23 on genre. The 50-DEC-epoch run `dec-plain_l10_w5_S1` (validation, seed 0, `stage1_sheet.md`): AMI -0.0074 /
+  -0.0183 / -0.0157 against c*, its DEC clusters collapse (largest 0.53 / 0.25 / 0.38, smallest 0.00).
