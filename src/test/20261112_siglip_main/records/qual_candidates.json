@@ -1,0 +1,884 @@
+{
+ "model": "SigLIP 1 student c* (k11=40, seed 0); plain = SigLIP 1 image",
+ "page": "/data/SSD2/cosir_r28/20261112_siglip_main/qual/viewer/index.html",
+ "full": "/data/SSD2/cosir_r28/20261112_siglip_main/qual/candidates/candidates.json",
+ "counts": {
+  "set_size": 12281,
+  "public_domain": 9150,
+  "usable": 9149,
+  "panel_a": {
+   "queries": 7565,
+   "gallery": 9149,
+   "kept_by_rule": 50,
+   "kept_by_rule_per_emotion_class": {
+    "amusement": 4,
+    "awe": 8,
+    "contentment": 20,
+    "excitement": 1,
+    "fear": 7,
+    "sadness": 10
+   },
+   "final": 11,
+   "final_per_emotion_class": {
+    "amusement": 2,
+    "awe": 2,
+    "contentment": 2,
+    "excitement": 1,
+    "fear": 2,
+    "sadness": 2
+   }
+  },
+  "panel_b": {
+   "pairs": {
+    "emotion/style": {
+     "P": 9149,
+     "candidates_raw": 7926,
+     "candidates_after_pair_dedup": 6162
+    },
+    "emotion/genre": {
+     "P": 7565,
+     "candidates_raw": 3492,
+     "candidates_after_pair_dedup": 2643
+    },
+    "style/emotion": {
+     "P": 9149,
+     "candidates_raw": 20185,
+     "candidates_after_pair_dedup": 14740
+    },
+    "style/genre": {
+     "P": 7565,
+     "candidates_raw": 6677,
+     "candidates_after_pair_dedup": 5140
+    },
+    "genre/emotion": {
+     "P": 7565,
+     "candidates_raw": 19011,
+     "candidates_after_pair_dedup": 14436
+    },
+    "genre/style": {
+     "P": 7565,
+     "candidates_raw": 12488,
+     "candidates_after_pair_dedup": 10011
+    }
+   },
+   "final": 18
+  },
+  "clusters": {
+   "emotion": 9,
+   "style": 27,
+   "genre": 10
+  }
+ },
+ "panel_a": [
+  {
+   "id": "a1",
+   "query": "lorenzo-lotto_frescoes-in-the-oratory-suardi-in-trescore-scene-of-the-blessing-of-st-brigid-of-kildare-1524",
+   "emotion": "contentment",
+   "counts": {
+    "e_ours": 5,
+    "e_plain": 0,
+    "g_plain": 3,
+    "g_ours": 1
+   },
+   "in_qwen": false
+  },
+  {
+   "id": "a2",
+   "query": "mihaly-munkacsy_yawning-apprentice-1869",
+   "emotion": "fear",
+   "counts": {
+    "e_ours": 5,
+    "e_plain": 1,
+    "g_plain": 3,
+    "g_ours": 0
+   },
+   "in_qwen": false
+  },
+  {
+   "id": "a3",
+   "query": "thomas-cole_the-past-1838",
+   "emotion": "excitement",
+   "counts": {
+    "e_ours": 4,
+    "e_plain": 0,
+    "g_plain": 5,
+    "g_ours": 0
+   },
+   "in_qwen": false
+  },
+  {
+   "id": "a4",
+   "query": "camille-corot_jimieges-1831",
+   "emotion": "awe",
+   "counts": {
+    "e_ours": 4,
+    "e_plain": 0,
+    "g_plain": 4,
+    "g_ours": 1
+   },
+   "in_qwen": false
+  },
+  {
+   "id": "a5",
+   "query": "ilya-repin_follow-me-satan-1895",
+   "emotion": "fear",
+   "counts": {
+    "e_ours": 5,
+    "e_plain": 1,
+    "g_plain": 3,
+    "g_ours": 1
+   },
+   "in_qwen": false
+  },
+  {
+   "id": "a6",
+   "query": "vincent-van-gogh_seated-man-with-a-beard-1886",
+   "emotion": "contentment",
+   "counts": {
+    "e_ours": 4,
+    "e_plain": 0,
+    "g_plain": 4,
+    "g_ours": 1
+   },
+   "in_qwen": false
+  },
+  {
+   "id": "a7",
+   "query": "james-tissot_pharaoh-s-daughter-receives-the-mother-of-moses",
+   "emotion": "awe",
+   "counts": {
+    "e_ours": 4,
+    "e_plain": 0,
+    "g_plain": 5,
+    "g_ours": 2
+   },
+   "in_qwen": false
+  },
+  {
+   "id": "a8",
+   "query": "karoly-ferenczy_archaeology-1896",
+   "emotion": "sadness",
+   "counts": {
+    "e_ours": 4,
+    "e_plain": 0,
+    "g_plain": 3,
+    "g_ours": 4
+   },
+   "in_qwen": false
+  },
+  {
+   "id": "a9",
+   "query": "kuzma-petrov-vodkin_portrait-of-a-p-petrovoy-vodkin-artist-s-mother-1909",
+   "emotion": "sadness",
+   "counts": {
+    "e_ours": 4,
+    "e_plain": 0,
+    "g_plain": 5,
+    "g_ours": 4
+   },
+   "in_qwen": false
+  },
+  {
+   "id": "a10",
+   "query": "niko-pirosmani_girl-with-a-baloon",
+   "emotion": "amusement",
+   "counts": {
+    "e_ours": 4,
+    "e_plain": 0,
+    "g_plain": 4,
+    "g_ours": 4
+   },
+   "in_qwen": false
+  },
+  {
+   "id": "a11",
+   "query": "konstantin-makovsky_musketeer",
+   "emotion": "amusement",
+   "counts": {
+    "e_ours": 5,
+    "e_plain": 1,
+    "g_plain": 4,
+    "g_ours": 5
+   },
+   "in_qwen": false
+  }
+ ],
+ "panel_b": [
+  {
+   "id": "b1",
+   "A": "emotion",
+   "B": "style",
+   "key_i": "michelangelo_the-ancestors-of-christ-asa-1509",
+   "key_j": "vincent-van-gogh_peasant-sitting-by-the-fireplace-worn-out-1881",
+   "b_percentile": 0.9301,
+   "same_pair_in_qwen": false
+  },
+  {
+   "id": "b2",
+   "A": "emotion",
+   "B": "style",
+   "key_i": "paula-modersohn-becker_elizabeth-with-hens-under-an-apple-tree-1902",
+   "key_j": "francisco-goya_all-will-fall-1799",
+   "b_percentile": 0.9248,
+   "same_pair_in_qwen": false
+  },
+  {
+   "id": "b3",
+   "A": "emotion",
+   "B": "style",
+   "key_i": "thomas-cole_the-voyage-of-life-childhood-1840-1",
+   "key_j": "maurice-prendergast_landscape-figures-cottages-and-boats",
+   "b_percentile": 0.9022,
+   "same_pair_in_qwen": false
+  },
+  {
+   "id": "b4",
+   "A": "emotion",
+   "B": "genre",
+   "key_i": "henri-de-toulouse-lautrec_in-batignolles-1888",
+   "key_j": "pietro-perugino_the-pazzi-crucifixion-detail-2",
+   "b_percentile": 0.7138,
+   "same_pair_in_qwen": false
+  },
+  {
+   "id": "b5",
+   "A": "emotion",
+   "B": "genre",
+   "key_i": "jacek-malczewski_poisoned-well",
+   "key_j": "sandro-botticelli_virgin-and-child-with-two-angels-1469(1)",
+   "b_percentile": 0.6079,
+   "same_pair_in_qwen": false
+  },
+  {
+   "id": "b6",
+   "A": "emotion",
+   "B": "genre",
+   "key_i": "thomas-eakins_study-for-taking-the-count-1898",
+   "key_j": "bartolome-bermejo_the-flagellation-of-st-engracia-1477",
+   "b_percentile": 0.5324,
+   "same_pair_in_qwen": false
+  },
+  {
+   "id": "b7",
+   "A": "style",
+   "B": "emotion",
+   "key_i": "john-russell_rural-employment-1786",
+   "key_j": "joshua-reynolds_portrait-of-george-colman-the-elder",
+   "b_percentile": 0.8626,
+   "same_pair_in_qwen": false
+  },
+  {
+   "id": "b8",
+   "A": "style",
+   "B": "emotion",
+   "key_i": "walter-sickert_the-camden-town-murder-or-what-shall-we-do-for-the-rent",
+   "key_j": "konstantin-korovin_a-street-in-vichy-1911",
+   "b_percentile": 0.8486,
+   "same_pair_in_qwen": false
+  },
+  {
+   "id": "b9",
+   "A": "style",
+   "B": "emotion",
+   "key_i": "konstantin-korovin_at-a-noblewoman-sketch-for-the-ballet-the-goldfish-by-ludwig-minkus-1903",
+   "key_j": "nicholas-roerich_oze-1912-1",
+   "b_percentile": 0.8451,
+   "same_pair_in_qwen": false
+  },
+  {
+   "id": "b10",
+   "A": "style",
+   "B": "genre",
+   "key_i": "kuzma-petrov-vodkin_spring-in-the-country-1929-1",
+   "key_j": "kuzma-petrov-vodkin_morning-still-life-1918",
+   "b_percentile": 0.7417,
+   "same_pair_in_qwen": false
+  },
+  {
+   "id": "b11",
+   "A": "style",
+   "B": "genre",
+   "key_i": "john-singer-sargent_bedouin-women-carrying-water-jars-1891",
+   "key_j": "stefan-luchian_interior-cu-garoafe",
+   "b_percentile": 0.6555,
+   "same_pair_in_qwen": false
+  },
+  {
+   "id": "b12",
+   "A": "style",
+   "B": "genre",
+   "key_i": "paul-cezanne_the-card-players-1893",
+   "key_j": "paul-cezanne_still-life-with-fruits-1880",
+   "b_percentile": 0.5477,
+   "same_pair_in_qwen": false
+  },
+  {
+   "id": "b13",
+   "A": "genre",
+   "B": "emotion",
+   "key_i": "andrei-ryabushkin_woman-in-novgorod-peasant-dress",
+   "key_j": "konstantin-makovsky_italian",
+   "b_percentile": 0.4738,
+   "same_pair_in_qwen": false
+  },
+  {
+   "id": "b14",
+   "A": "genre",
+   "B": "emotion",
+   "key_i": "vincent-van-gogh_sketch-of-an-eroded-garden-wall-ornament-1890",
+   "key_j": "kuzma-petrov-vodkin_female-head-1913",
+   "b_percentile": 0.4533,
+   "same_pair_in_qwen": false
+  },
+  {
+   "id": "b15",
+   "A": "genre",
+   "B": "emotion",
+   "key_i": "rembrandt_man-in-oriental-costume",
+   "key_j": "agostino-carracci_democritus",
+   "b_percentile": 0.4117,
+   "same_pair_in_qwen": false
+  },
+  {
+   "id": "b16",
+   "A": "genre",
+   "B": "style",
+   "key_i": "anna-ostroumova-lebedeva_view-of-the-alcazar-segovia",
+   "key_j": "camille-corot_old-bridge-at-limay-on-the-seine",
+   "b_percentile": 0.4933,
+   "same_pair_in_qwen": false
+  },
+  {
+   "id": "b17",
+   "A": "genre",
+   "B": "style",
+   "key_i": "gustave-dore_estocade",
+   "key_j": "pierre-bonnard_at-the-circus-1897",
+   "b_percentile": 0.4852,
+   "same_pair_in_qwen": false
+  },
+  {
+   "id": "b18",
+   "A": "genre",
+   "B": "style",
+   "key_i": "georges-lemmen_portrait-of-the-artist-s-sister-1891",
+   "key_j": "edgar-degas_portrait-of-a-lady-in-grey-1865",
+   "b_percentile": 0.4465,
+   "same_pair_in_qwen": false
+  }
+ ],
+ "clusters": {
+  "emotion": [
+   {
+    "id": "c-emotion-1",
+    "cls": "amusement",
+    "gain": 0.1643,
+    "in_figure": [
+     "aubrey-beardsley_the-stomach-dance-1893",
+     "william-turner_two-women-and-a-letter",
+     "jacob-jordaens_meleager-and-atalanta-1618",
+     "hans-baldung_amur"
+    ]
+   },
+   {
+    "id": "c-emotion-2",
+    "cls": "sadness",
+    "gain": 0.1374,
+    "in_figure": [
+     "giovanni-boldini_portrait-of-sarah-bernhardt",
+     "kuzma-petrov-vodkin_yellow-face-female-face-1921",
+     "ilya-repin_hunchback-1-1881",
+     "rembrandt_a-study-of-an-elderly-man-in-a-cap"
+    ]
+   },
+   {
+    "id": "c-emotion-3",
+    "cls": "fear",
+    "gain": 0.1037,
+    "in_figure": [
+     "peter-paul-rubens_the-baptism-of-christ",
+     "sebastien-bourdon_moses-and-the-brazen-serpent-1654",
+     "hans-holbein-the-younger_noli-me-tangere",
+     "albrecht-durer_jesus-christ-on-the-mount-of-olives"
+    ]
+   },
+   {
+    "id": "c-emotion-4",
+    "cls": "disgust",
+    "gain": 0.0308,
+    "in_figure": [
+     "aubrey-beardsley_the-stomach-dance-1893",
+     "william-turner_two-women-and-a-letter",
+     "jacob-jordaens_meleager-and-atalanta-1618",
+     "hans-baldung_amur"
+    ]
+   },
+   {
+    "id": "c-emotion-5",
+    "cls": "excitement",
+    "gain": 0.0187,
+    "in_figure": [
+     "vladimir-makovsky_easter-mass-1888",
+     "jan-steen_wedding-of-tobias-and-sarah",
+     "jan-steen_a-village-wedding",
+     "adriaen-van-de-venne_princes-maurits-and-frederik-hendrik-of-orange-at-the-valkenburg-horse-fair"
+    ]
+   },
+   {
+    "id": "c-emotion-6",
+    "cls": "anger",
+    "gain": -0.0081,
+    "in_figure": [
+     "fernand-leger_still-life-with-candle",
+     "juan-gris_still-life-with-fruit-bowl-and-mandolin-1919",
+     "juan-gris_guitar-and-fruit-bowl-on-a-table-1918",
+     "amadeo-de-souza-cardoso_the-life-of-instruments"
+    ]
+   },
+   {
+    "id": "c-emotion-7",
+    "cls": "contentment",
+    "gain": -0.0098,
+    "in_figure": [
+     "john-henry-twachtman_reflections-1894",
+     "georges-seurat_village-road-1883",
+     "alfred-sisley_wiese-by-1880",
+     "maxime-maufra_saint-jean-du-doigt-1906"
+    ]
+   },
+   {
+    "id": "c-emotion-8",
+    "cls": "something else",
+    "gain": -0.0183,
+    "in_figure": [
+     "fernand-leger_still-life-with-candle",
+     "juan-gris_still-life-with-fruit-bowl-and-mandolin-1919",
+     "juan-gris_guitar-and-fruit-bowl-on-a-table-1918",
+     "amadeo-de-souza-cardoso_the-life-of-instruments"
+    ]
+   },
+   {
+    "id": "c-emotion-9",
+    "cls": "awe",
+    "gain": -0.0505,
+    "in_figure": [
+     "peter-paul-rubens_the-baptism-of-christ",
+     "sebastien-bourdon_moses-and-the-brazen-serpent-1654",
+     "hans-holbein-the-younger_noli-me-tangere",
+     "albrecht-durer_jesus-christ-on-the-mount-of-olives"
+    ]
+   }
+  ],
+  "style": [
+   {
+    "id": "c-style-1",
+    "cls": "Cubism",
+    "gain": 0.3576,
+    "in_figure": [
+     "juan-gris_harlequin-with-guitar-1919",
+     "louis-marcoussis_still-life-with-envelope",
+     "amadeo-de-souza-cardoso_the-life-of-instruments",
+     "vladimir-tatlin_the-fishmonger-1911"
+    ]
+   },
+   {
+    "id": "c-style-2",
+    "cls": "Symbolism",
+    "gain": 0.2439,
+    "in_figure": [
+     "edward-burne-jones_nymphs-of-the-stars-1896",
+     "gustave-moreau_pasiphae-and-the-bul-1880",
+     "gustave-moreau_chimera",
+     "nikolaos-gyzis_vernal-symphony-1886"
+    ]
+   },
+   {
+    "id": "c-style-3",
+    "cls": "Art_Nouveau_Modern",
+    "gain": 0.2273,
+    "in_figure": [
+     "raphael-kirchner_girls-with-purple-surrounds-1900-7",
+     "raphael-kirchner_leda-and-the-swan-5",
+     "raphael-kirchner_leda-and-the-swan-2",
+     "raphael-kirchner_clovers-1899-1"
+    ]
+   },
+   {
+    "id": "c-style-4",
+    "cls": "Rococo",
+    "gain": 0.1983,
+    "in_figure": [
+     "joshua-reynolds_portrait-of-charles-hamilton-8th-early-of-haddington",
+     "louise-elisabeth-vigee-le-brun_ekaterina-i-kutuzova-wife-of-russian-field-marshal-m-i-kutuzov-1795",
+     "fyodor-rokotov_portrait-of-varvara-nikolaevna-surovceva",
+     "alexey-venetsianov_portrait-of-natalia-pavlovna-stroganova"
+    ]
+   },
+   {
+    "id": "c-style-5",
+    "cls": "Post_Impressionism",
+    "gain": 0.1953,
+    "in_figure": [
+     "nicolae-tonitza_cafe-in-mangalia",
+     "nicolae-tonitza_unknown-title-1",
+     "amadeo-de-souza-cardoso_cafe-in-paris-1908",
+     "chaim-soutine_white-house-on-a-hill"
+    ]
+   },
+   {
+    "id": "c-style-6",
+    "cls": "Impressionism",
+    "gain": 0.1539,
+    "in_figure": [
+     "pierre-auguste-renoir_seated-woman-in-a-green-robe",
+     "pierre-auguste-renoir_head-of-a-young-woman-1893",
+     "pierre-auguste-renoir_young-woman-reading-an-illustrated-journal",
+     "pierre-auguste-renoir_the-bather"
+    ]
+   },
+   {
+    "id": "c-style-7",
+    "cls": "Mannerism_Late_Renaissance",
+    "gain": 0.1436,
+    "in_figure": [
+     "lorenzo-lotto_madonna-and-child-with-st-jerome-st-joseph-and-st-anne-1534",
+     "paolo-veronese_conversion-of-st-pantaleon-1588",
+     "andrea-mantegna_the-baptism-of-christ-1506",
+     "annibale-carracci_the-mystic-marriage-of-st-catherine-1587"
+    ]
+   },
+   {
+    "id": "c-style-8",
+    "cls": "Baroque",
+    "gain": 0.1243,
+    "in_figure": [
+     "gerard-terborch_a-young-woman-playing-a-theorbo-to-two-men",
+     "rembrandt_portrait-of-a-man-1632",
+     "jan-steen_easy-come-easy-go",
+     "frans-hals_portrait-of-paulus-verschuur-1643"
+    ]
+   },
+   {
+    "id": "c-style-9",
+    "cls": "Early_Renaissance",
+    "gain": 0.1128,
+    "in_figure": [
+     "pietro-perugino_the-presepio-detail-1",
+     "andrea-mantegna_the-virgin-and-child-with-saint-jerome-and-louis-of-toulouse-1455",
+     "pietro-perugino_madonna-of-loreta-annunciation",
+     "andrea-mantegna_calvary-central-predella-panel-from-the-st-zeno-of-verona-altarpiece-1459"
+    ]
+   },
+   {
+    "id": "c-style-10",
+    "cls": "Realism",
+    "gain": 0.1064,
+    "in_figure": [
+     "aleksey-savrasov_spring-thaw",
+     "t.-c.-steele_the-ohio-river-from-the-college-campus-honover-1892",
+     "ivan-shishkin_forest-stream",
+     "arkhip-kuindzhi_the-north-1879"
+    ]
+   },
+   {
+    "id": "c-style-11",
+    "cls": "Fauvism",
+    "gain": 0.0725,
+    "in_figure": [
+     "raoul-dufy_storm-at-sainte-adresse-1909",
+     "max-pechstein_liegender-akt-mit-katze-1909",
+     "henri-matisse_view-of-collioure",
+     "amedeo-modigliani_head-of-a-young-woman-1908-1"
+    ]
+   },
+   {
+    "id": "c-style-12",
+    "cls": "Pointillism",
+    "gain": 0.0603,
+    "in_figure": [
+     "gustave-loiseau_by-the-oise-at-parmain-1898",
+     "camille-pissarro_field-of-oats-in-eragny-1885",
+     "camille-pissarro_study-at-pontoise",
+     "camille-pissarro_quai-malaquais-in-the-afternoon-sunshine-1903"
+    ]
+   },
+   {
+    "id": "c-style-13",
+    "cls": "Romanticism",
+    "gain": 0.0431,
+    "in_figure": [
+     "karl-bodmer_view-of-the-godesburg-and-the-seven-mountains",
+     "bernardo-bellotto_zwinger-waterway-1750",
+     "john-crome_a-barge-with-a-wounded-soldier",
+     "ivan-aivazovsky_the-harbor-at-odessa-on-the-black-sea-1852"
+    ]
+   },
+   {
+    "id": "c-style-14",
+    "cls": "Northern_Renaissance",
+    "gain": 0.0257,
+    "in_figure": [
+     "pietro-perugino_the-presepio-detail-1",
+     "andrea-mantegna_the-virgin-and-child-with-saint-jerome-and-louis-of-toulouse-1455",
+     "pietro-perugino_madonna-of-loreta-annunciation",
+     "andrea-mantegna_calvary-central-predella-panel-from-the-st-zeno-of-verona-altarpiece-1459"
+    ]
+   },
+   {
+    "id": "c-style-15",
+    "cls": "Color_Field_Painting",
+    "gain": 0.0248,
+    "in_figure": [
+     "bradley-walker-tomlin_shapes-1950",
+     "mikalojus-ciurlionis_butterflies-1906",
+     "bradley-walker-tomlin_number-7-1953",
+     "bradley-walker-tomlin_number-13-1949"
+    ]
+   },
+   {
+    "id": "c-style-16",
+    "cls": "High_Renaissance",
+    "gain": 0.0218,
+    "in_figure": [
+     "lorenzo-lotto_madonna-and-child-with-st-jerome-st-joseph-and-st-anne-1534",
+     "paolo-veronese_conversion-of-st-pantaleon-1588",
+     "andrea-mantegna_the-baptism-of-christ-1506",
+     "annibale-carracci_the-mystic-marriage-of-st-catherine-1587"
+    ]
+   },
+   {
+    "id": "c-style-17",
+    "cls": "Synthetic_Cubism",
+    "gain": 0.02,
+    "in_figure": [
+     "juan-gris_harlequin-with-guitar-1919",
+     "louis-marcoussis_still-life-with-envelope",
+     "amadeo-de-souza-cardoso_the-life-of-instruments",
+     "vladimir-tatlin_the-fishmonger-1911"
+    ]
+   },
+   {
+    "id": "c-style-18",
+    "cls": "Analytical_Cubism",
+    "gain": 0.0185,
+    "in_figure": [
+     "juan-gris_harlequin-with-guitar-1919",
+     "louis-marcoussis_still-life-with-envelope",
+     "amadeo-de-souza-cardoso_the-life-of-instruments",
+     "vladimir-tatlin_the-fishmonger-1911"
+    ]
+   },
+   {
+    "id": "c-style-19",
+    "cls": "New_Realism",
+    "gain": 0.0102,
+    "in_figure": [
+     "william-merritt-chase_portrait-of-a-woman-1",
+     "valentin-serov_by-the-window-portrait-of-olga-trubnikova-1885",
+     "ivan-kramskoy_portrait-of-a-woman",
+     "valentin-serov_children-sasha-and-yura-serov-1899"
+    ]
+   },
+   {
+    "id": "c-style-20",
+    "cls": "Ukiyo_e",
+    "gain": -0.0057,
+    "in_figure": [
+     "utagawa-toyokuni_chushingura-scene-1811",
+     "keisai-eisen_seki-shiratama-of-the-sano-matsuya-1823(1)",
+     "keisai-eisen_dinner-and-love-on-the-river-1840",
+     "utagawa-kunisada_the-actor-playing-a-farmer"
+    ]
+   },
+   {
+    "id": "c-style-21",
+    "cls": "Contemporary_Realism",
+    "gain": -0.0075,
+    "in_figure": [
+     "nicholas-roerich_path-to-kailas-1931-1",
+     "nicholas-roerich_remember-1945",
+     "nicholas-roerich_tibet-1937",
+     "mikalojus-ciurlionis_spring-motif-1908"
+    ]
+   },
+   {
+    "id": "c-style-22",
+    "cls": "Action_painting",
+    "gain": -0.011,
+    "in_figure": [
+     "bradley-walker-tomlin_shapes-1950",
+     "mikalojus-ciurlionis_butterflies-1906",
+     "bradley-walker-tomlin_number-7-1953",
+     "bradley-walker-tomlin_number-13-1949"
+    ]
+   },
+   {
+    "id": "c-style-23",
+    "cls": "Expressionism",
+    "gain": -0.0382,
+    "in_figure": [
+     "raoul-dufy_storm-at-sainte-adresse-1909",
+     "max-pechstein_liegender-akt-mit-katze-1909",
+     "henri-matisse_view-of-collioure",
+     "amedeo-modigliani_head-of-a-young-woman-1908-1"
+    ]
+   },
+   {
+    "id": "c-style-24",
+    "cls": "Pop_Art",
+    "gain": -0.0429,
+    "in_figure": [
+     "fernand-leger_face-with-both-hands-1954",
+     "fernand-leger_the-album-circus-1950-9",
+     "henri-laurens_untitled-from-dialogues(1)",
+     "fernand-leger_the-pool"
+    ]
+   },
+   {
+    "id": "c-style-25",
+    "cls": "Naive_Art_Primitivism",
+    "gain": -0.0888,
+    "in_figure": [
+     "nicholas-roerich_path-to-kailas-1931-1",
+     "nicholas-roerich_remember-1945",
+     "nicholas-roerich_tibet-1937",
+     "mikalojus-ciurlionis_spring-motif-1908"
+    ]
+   },
+   {
+    "id": "c-style-26",
+    "cls": "Abstract_Expressionism",
+    "gain": -0.1602,
+    "in_figure": [
+     "bradley-walker-tomlin_shapes-1950",
+     "mikalojus-ciurlionis_butterflies-1906",
+     "bradley-walker-tomlin_number-7-1953",
+     "bradley-walker-tomlin_number-13-1949"
+    ]
+   },
+   {
+    "id": "c-style-27",
+    "cls": "Minimalism",
+    "gain": -0.2811,
+    "in_figure": [
+     "bradley-walker-tomlin_shapes-1950",
+     "mikalojus-ciurlionis_butterflies-1906",
+     "bradley-walker-tomlin_number-7-1953",
+     "bradley-walker-tomlin_number-13-1949"
+    ]
+   }
+  ],
+  "genre": [
+   {
+    "id": "c-genre-1",
+    "cls": "still_life",
+    "gain": 0.6991,
+    "in_figure": [
+     "paul-cezanne_tulips-in-a-vase-1892",
+     "francisc-sirato_flori",
+     "paul-gauguin_flowers-in-a-fruit-bowl-1894",
+     "paul-gauguin_the-vase-of-nasturtiums-1886"
+    ]
+   },
+   {
+    "id": "c-genre-2",
+    "cls": "genre_painting",
+    "gain": 0.3136,
+    "in_figure": [
+     "fyodor-bronnikov_street-in-italy-1890",
+     "paul-gauguin_breton-fisherman-1888",
+     "camille-pissarro_cowherd-1883",
+     "anders-zorn_our-daily-bread-1886"
+    ]
+   },
+   {
+    "id": "c-genre-3",
+    "cls": "cityscape",
+    "gain": 0.3076,
+    "in_figure": [
+     "valentin-serov_st-mark-plaza-in-venice-1887",
+     "anna-ostroumova-lebedeva_petersburg-kryukov-canal-1910",
+     "anna-ostroumova-lebedeva_amsterdam-1913",
+     "fyodor-bronnikov_street-in-italy-1"
+    ]
+   },
+   {
+    "id": "c-genre-4",
+    "cls": "landscape",
+    "gain": 0.2118,
+    "in_figure": [
+     "maxime-maufra_landscape-by-the-water",
+     "vincent-van-gogh_landscape-with-dunes-1883",
+     "paul-cezanne_mont-sainte-victoire-1867",
+     "john-singer-sargent_olive-trees-corfu-1909"
+    ]
+   },
+   {
+    "id": "c-genre-5",
+    "cls": "illustration",
+    "gain": 0.1253,
+    "in_figure": [
+     "gustave-dore_pantagruel-1",
+     "felicien-rops_illustration-of-les-diaboliques-2",
+     "gustave-dore_semiramide-spidocchiatrice-di-straccioni-1854",
+     "gustave-dore_idylls-of-the-king-4"
+    ]
+   },
+   {
+    "id": "c-genre-6",
+    "cls": "portrait",
+    "gain": 0.1086,
+    "in_figure": [
+     "francisco-goya_self-portrait-1815",
+     "thomas-eakins_signora-gomez-d-arza-1902",
+     "edouard-manet_victorine-meurent-1862",
+     "vasily-perov_portrait-of-an-unknown-1"
+    ]
+   },
+   {
+    "id": "c-genre-7",
+    "cls": "nude_painting",
+    "gain": 0.1002,
+    "in_figure": [
+     "egon-schiele_reclining-girl-on-a-pillow-1910",
+     "egon-schiele_seated-woman-with-her-left-hand-in-her-hair-1914",
+     "egon-schiele_reclining-woman-with-blond-hair-1914",
+     "egon-schiele_self-portrait-as-prisoner-1912"
+    ]
+   },
+   {
+    "id": "c-genre-8",
+    "cls": "sketch_and_study",
+    "gain": 0.0457,
+    "in_figure": [
+     "egon-schiele_reclining-girl-on-a-pillow-1910",
+     "egon-schiele_seated-woman-with-her-left-hand-in-her-hair-1914",
+     "egon-schiele_reclining-woman-with-blond-hair-1914",
+     "egon-schiele_self-portrait-as-prisoner-1912"
+    ]
+   },
+   {
+    "id": "c-genre-9",
+    "cls": "religious_painting",
+    "gain": 0.0297,
+    "in_figure": [
+     "mabuse_christ-on-the-mount-of-olives",
+     "hans-holbein-the-younger_noli-me-tangere",
+     "andrea-mantegna_the-baptism-of-christ-1506",
+     "pietro-perugino_the-presepio-detail-1"
+    ]
+   },
+   {
+    "id": "c-genre-10",
+    "cls": "abstract_painting",
+    "gain": 0.0026,
+    "in_figure": [
+     "bradley-walker-tomlin_shapes-1950",
+     "bradley-walker-tomlin_maneuver-for-position-1947",
+     "bradley-walker-tomlin_all-souls-night-1947",
+     "bradley-walker-tomlin_number-13-1949"
+    ]
+   }
+  ]
+ }
+}
