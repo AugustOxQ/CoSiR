@@ -2344,3 +2344,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-12-r29-build-2-handoff.md
 - New chat: tab 'r29 build 2', session 2892f187-2561-4298-a764-6f08e33d49a0
 
+[brief] CoSiR: r29 build 2 -> r29 build 3 (2026-11-12 23:35 Amsterdam)
+- Done: tickets 01, 03, 04, 06, 09 reviewed, fixed and merged; 02 reviewed (pass after fixes). Gate (i)(c) passes on the local GPU.
+- State: 107 of 113 round tests pass; 6 fail only when the text scorer's and the trainer's tests share a process (an import-path clash). Fix it first.
+- Next: fix the import clash, Codex fix of 02, then tickets 05 and 07, then 08, then stage 2 (10 to 15).
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-12-r29-build-3-handoff.md
+- New chat: tab 'r29 build 3', session 2b9418e0-21ad-48a7-8bb0-62be669125d0
+
