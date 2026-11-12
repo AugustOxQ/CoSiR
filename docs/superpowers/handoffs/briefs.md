@@ -2239,3 +2239,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-11-paper-sec4-tables-7-handoff.md
 - New chat: tab 'paper sec4 tables 7', session 55d48b24-f5ea-49ee-8159-aa306c945026
 
+[brief] CoSiR: paper sec4 tables 7 -> paper plan 1 (2026-11-12 17:57 Amsterdam)
+- Done: both PercepT (CLIP L/14) rows in Tables 2 and 3, below CoSiR; caption trims; registration keywords and abstract; the new related-work paragraph "Neighbour graphs as supervision".
+- State: Sections 2 and 4 hold all table rows. The meeting changed the storyline: any aspects, graphs first, a SigLIP student.
+- Next: ask the user which plan item to start. The plan is `notes/paper_plan.md`.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-12-paper-plan-1-handoff.md
+- New chat: tab 'paper plan 1', session 97e741f9-c04d-4e56-a367-a386d3b51ee8
+
