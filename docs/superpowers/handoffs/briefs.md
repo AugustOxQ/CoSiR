@@ -2263,3 +2263,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-12-r21-run-2-handoff.md
 - New chat: tab 'r21 run 2', session 8f0bba09-3556-4649-8f43-eab8e04e6b78
 
+[brief] CoSiR: paper plan 1 -> paper plan 2 (2026-11-12 19:40 Amsterdam)
+- Done: the user made the method general and moved the main result to the SigLIP 1 student; r28 (opened tonight) makes the SigLIP 1 numbers.
+- State: the LaTeX still says teacher and student and shows Qwen3 rows. SigLIP 1 student: AMI 0.099 / 0.441 / 0.528 against the instructed Qwen3's 0.089 / 0.406 / 0.501.
+- Next: apply the new names across Sections 3 and 4, then the Section 3 restructure and Figure 1.
+- Blocked: the table numbers wait for r28's numbers sheet.
+- Handoff: docs/superpowers/handoffs/2026-11-12-paper-plan-2-handoff.md
+- New chat: tab 'paper plan 2', session 2b2fad58-d75b-4293-938f-75b8ee9ae983
+
