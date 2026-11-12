@@ -258,11 +258,12 @@ def fix_records(picks, enc, tables, out):
     """Two corrections to the records r18's writers return: `table_path` is made relative to `out` (it includes the encoder folder
     `tables`), and the retrieval text-set rule names the unit actually used (`enc`'s own c* validation mAP range; r18's wording
     says CLIP L/14, true for CLIP L/14 only)."""
-    for rec in picks.values():
+    for key, rec in picks.items():
         if 'table_path' in rec:
             rec['table_path'] = str((tables / rec['table_path']).relative_to(out))
             assert (Path(out) / rec['table_path']).is_file(), rec['table_path']
-        if 'rule' in rec and enc != 'clip_l14':
+        # only the retrieval text-set rule names a unit; the clustering text-set rule (AMI at 20) has none
+        if key.startswith('clay_textset/ret/') and enc != 'clip_l14':
             assert 'CLIP L/14 c* range' in rec['rule'], rec['rule']
             rec['rule'] = rec['rule'].replace('CLIP L/14 c* range', f"{enc}'s own c* validation mAP range (ns_picks.ranges)")
     return picks
