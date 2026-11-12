@@ -223,3 +223,11 @@ Spec: `docs/superpowers/specs/2026-11-11-r21-dec-heads-design.md`. Decision line
   own random_state, teacher from teacher data, no torch RNG, so at λ = 0 the three forms train the same: one arm,
   `dec-plain_l0_w5_S2`, controls all three. The sidecars' shares and movement are the last DEC epoch's, not the kept one's.
   Not run yet (the user: after the SigLIP jobs).
+- 20:45: **user**: yes to the validation check; the visualisation after λ = 0 is both a UMAP of the head outputs coloured by
+  label and per-painting silhouette histograms, seed 0, for c*, the λ = 0 control, the three DEC forms and the 50-epoch run.
+- Validation check (`r21_val_internal.py` -> `scores/val_internal.{txt,json}`, res-queue cpu 2.6 min; seed 0, one seed, no
+  interval). S2 AMI equals the stage 1 sheet. The 50-DEC-epoch runs at λ = 10 (S1, W 1 and W 5) are much tighter on these
+  unseen paintings: CHI emotion 261 -> 1,288 / 1,384, style 278 -> 669 / 640, genre 438 -> 619 / 617; SI emotion +0.043 /
+  +0.037, genre +0.047 / +0.051, style -0.024 / -0.031. Their AMI falls on all three (-0.012 / -0.007, -0.009 / -0.018,
+  -0.025 / -0.016). At λ = 1 the 50-epoch runs get looser on emotion and style (CHI -50 to -119). Reading (agent): the
+  split is not why the test changes are small; the short DEC in the kept state is; longer DEC tightens and lowers AMI.
