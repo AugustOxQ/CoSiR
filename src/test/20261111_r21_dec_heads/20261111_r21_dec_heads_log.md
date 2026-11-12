@@ -195,3 +195,15 @@ Spec: `docs/superpowers/specs/2026-11-11-r21-dec-heads-design.md`. Decision line
 - Exports on disk: test 12,281 x 2048 (all arms), validation 6,152 x 2048 (`full/train/<arm>/R6-5/`); the 42,969
   training paintings are not exported (a forward pass from `full/weights/` would give them). Facts given to the user;
   the choice of scores, splits and partition is asked, user first.
+- 19:44: **user**: "CBI" is DBI; scores SI, DBI, CHI on test only, no training-paintings scores ("different from PercepT's job").
+  λ = 0 control not now: the GPU goes to the Qwen3-to-SigLIP switch for several hours; try λ = 0 after it.
+- 19:48: DBI and CHI added to `r21_table.py` diag (16ce54d7; Sonnet `medium` worker; 57 tests pass; decision line 19:46: unit
+  rows, Euclidean, the silhouette's state-0 partition). `diag` rerun (res-queue cpu, 128 s); silhouette equals the 11-11 run
+  (max |diff| 0). Old files kept as `scores/diag_before_dbi_chi.{json,md}`. Join with the stage 2 table:
+  `r21_join_internal.py` -> `scores/internal_join.txt`.
+- 19:52: reading (agent): DEC makes the test clusters only a little tighter. Genre: CHI up in all forms (+14 to +19%, 5 of 5
+  seeds); SI and DBI tighter for plain and start. Style: CHI up for plain (+35%) and start (+12%); SI and DBI mixed (2 of 5
+  seeds); teacher looser. Emotion: start and teacher looser on all three; plain flat. AMI and mAP move without them: style
+  AMI rises in all forms (teacher looser); genre AMI rises only in the teacher form (the least tight change). Per seed
+  (15 runs per aspect), Spearman of the change in DBI with the change in AMI -0.56 to -0.60; SI +0.28 to +0.52; CHI +0.31
+  to +0.68 (no test). Scale: PercepT SI 0.02 to 0.97; ours moves at most +0.022. The epoch confound still holds.
