@@ -212,15 +212,22 @@ def read_source(source, claim, arm, encoder, records):
     return out, dict(path=str(path), sha256=sha_file(path), n_cells=len(out))
 
 
-def gate_status(records, gate):
+def gate_status(records, gate, open_ok=False):
     """Status of records/gates/<gate>.json: pass, fail or parked. An absent record raises "gate <id> not run"; any other status
-    raises (`fallback` is gate i_*'s only)."""
+    raises (`fallback` is gate i_*'s only). A `fail` with tries < 3 is still open (§3.5: at most three tries; a gate that still
+    fails parks what it serves): it raises "still open" (the ladder is write-once, so it must not freeze a claim the run can still
+    fix), or with `open_ok` (the sheet) returns 'open'. A `fail` with tries >= 3 parks, as `parked` does."""
     path = Path(records) / 'gates' / f'{gate}.json'
     if not path.exists():
         raise RuntimeError(f'gate {gate} not run: no {path}')
     g = json.loads(path.read_text())
     assert g.get('gate') == gate and 'status' in g, path
     assert g['status'] in GATE_STATUSES, f'{path}: status {g["status"]!r}, one of {GATE_STATUSES}'
+    tries = int(g.get('tries', 0))
+    if g['status'] == 'fail' and tries < 3:
+        if open_ok:
+            return 'open'
+        raise RuntimeError(f'gate {gate} still open (fail at try {tries} of 3): fix it or let it park before the ladder')
     return g['status']
 
 
@@ -265,12 +272,12 @@ def claim_gates(claim, arm, encoder, records, strict=True):
     out = {}
     for g in needed_gates(claim, arm, encoder, records, strict):
         if strict or (Path(records) / 'gates' / f'{g}.json').exists():
-            out[g] = gate_status(records, g)
+            out[g] = gate_status(records, g, open_ok=not strict)
     return out
 
 
 def parked_by(gates):
-    """The first gate whose part is `fail` or `parked` (a gate that failed its tries parks what it serves, §3.5), or None."""
+    """The first gate whose part is `parked`, or `fail` at 3 tries (an open fail never gets here: `gate_status`), or None."""
     return next((g for g, st in gates.items() if st in ('fail', 'parked')), None)
 
 
@@ -328,6 +335,13 @@ def build_record(claim, arm, encoder=None, records=None, missing_ok=None, repo=N
     gates = claim_gates(claim, arm, enc, records)
     parking = parked_by(gates)
     cells, status, files = collect(claim, arm, enc, records)
+    if parking is None:                      # a cell missing from a file that exists is a writer bug (a whole missing file is below)
+        for key in spec['cells']:
+            for comp in ('P1', 'Q1'):
+                if status[spec['source'][key[2]]] == 'read' and cells[(key, comp)] is None:
+                    src = spec['source'][key[2]]
+                    raise RuntimeError(f'{src}_cells_{arm}.json exists but lacks the cell {cell_name(key)} against {comp}: a writer bug, '
+                                       'not a cell that was not run')
     absent = sorted(s for s, v in status.items() if v == 'not run')
     if absent and parking is None and not missing_ok:
         raise RuntimeError(f'{claim} {arm}: cell file(s) {absent} not written yet (`{absent[0]}_cells_{arm}.json`): run those cells first, '

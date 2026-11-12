@@ -252,13 +252,14 @@ def test_a_missing_cell_file_of_a_parked_claim_needs_no_missing_ok(tmp_path):
     assert rec['parked_by'] == 'v_text' and 'missing_ok' not in rec and rec['level'] == 0
 
 
-def test_a_missing_single_cell_is_not_run(tmp_path):
+def test_a_cell_missing_inside_an_existing_file_raises_naming_it(tmp_path):
     img, txt = art_cells([W] * 15, [W] * 15)
     img = [c for c in img if c['id'] != 'artelingo/siglip1/siglip1/style/map/plain']
     write_cells(tmp_path, 'siglip1', img, txt)
-    rec = L.build_record('SC3', 'siglip1', records=tmp_path)
-    assert rec['counts']['p1_win'] == 14 and rec['counts']['p1_inconclusive'] == 1
-    assert rec['level'] == 1 and rec['inconclusive_above']
+    with pytest.raises(RuntimeError, match=r'image_cells_siglip1.json exists but lacks the cell artelingo/style/map against P1'):
+        L.build_record('SC3', 'siglip1', records=tmp_path)
+    with pytest.raises(RuntimeError, match='writer bug'):
+        L.build_record('SC3', 'siglip1', records=tmp_path, missing_ok='x')      # --missing-ok is for a whole file only
 
 
 def test_recorded_inconclusive_outcome_counts_as_neither(tmp_path):
@@ -513,6 +514,25 @@ def test_a_gate_record_must_name_its_own_gate(tmp_path):
     (tmp_path / 'gates' / 'v_image.json').write_text(json.dumps(dict(gate='v_text', status='pass')))
     with pytest.raises(AssertionError):
         L.build_record('SC3', arm, records=tmp_path)
+
+
+@pytest.mark.parametrize('tries', [0, 1, 2])
+def test_a_failed_gate_with_fewer_than_three_tries_is_still_open(tmp_path, tries):
+    arm = _claim_files(tmp_path, 'SC3')
+    put_gate(tmp_path, 'v_text', 'fail', tries)
+    with pytest.raises(RuntimeError, match=rf'gate v_text still open \(fail at try {tries} of 3\)'):
+        L.build_record('SC3', arm, records=tmp_path)
+    for t_ in (3, 4):                                      # a fail at three tries parks, as `parked` does
+        put_gate(tmp_path, 'v_text', 'fail', t_)
+        assert L.build_record('SC3', arm, records=tmp_path)['parked_by'] == 'v_text'
+
+
+def test_the_sheet_does_not_crash_on_an_open_gate_and_shows_no_parking(tmp_path):
+    img, txt = art_cells([W] * 15, [W] * 15)
+    write_cells(tmp_path / 'records', 'siglip1', img, txt)
+    put_gate(tmp_path / 'records', 'v_text', 'fail', 1)
+    L.write_sheet(records=tmp_path / 'records', out=tmp_path / 'p.md')
+    assert 'parked' not in (tmp_path / 'p.md').read_text().split('## SC4')[0]
 
 
 def test_gate_pass_leaves_cells_counted(tmp_path):
