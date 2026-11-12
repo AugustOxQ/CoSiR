@@ -18,9 +18,9 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import r29_paths as P  # noqa: E402
 
-sys.path.insert(0, str(P.R28_ROUND))   # for `import r28_trainer` (r14's folders), used by the Qwen paths and the gate
-sys.path.insert(0, str(P.TEST / '20261017_aspect_premise_checks'))
+P.use_older_rounds()   # r28's folder for `import r28_trainer` (r14's folders), used by the Qwen paths and the gate
 from apc_data import l2, paint_mean  # noqa: E402  (the CT's own mean and normalisation)
+P.check_older_imports()  # every older-round module loaded so far is the main checkout's copy
 
 SOURCES = P.CAPTION_SOURCES              # tests patch this dict; name -> (store folder or None, input width)
 CHUNK = 8192

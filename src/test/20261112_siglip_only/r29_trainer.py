@@ -43,11 +43,13 @@ import torch
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import r29_paths as P  # noqa: E402
+P.use_older_rounds()
 import r29_captions as C  # noqa: E402
 import r29_model as M  # noqa: E402
 import r28_trainer  # noqa: E402  (imports r14's bs_cstar with r10 from this checkout and puts the older rounds on sys.path)
 import ct2_d2  # noqa: E402
 import ct2_data  # noqa: E402
+P.check_older_imports()  # every older-round module loaded so far is the main checkout's copy
 
 B = r28_trainer.B
 ASPECTS = tuple(B.ASPECTS)

@@ -50,7 +50,7 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import r29_paths as P  # noqa: E402
 
-sys.path.insert(0, str(P.TEST / '20261103_new_scores'))      # r17 (this checkout's copy; it puts the older rounds on sys.path)
+P.use_older_rounds()      # r17's folder puts the older rounds on sys.path
 import ns_paths  # noqa: E402
 
 ns_paths.add_rounds()
@@ -65,6 +65,7 @@ import rt_data  # noqa: E402
 import rt_metrics  # noqa: E402
 import rt_readout  # noqa: E402
 import rt_stats  # noqa: E402
+P.check_older_imports()  # every older-round module loaded so far is the main checkout's copy
 
 ASPECTS = tuple(P.ASPECTS)
 SEEDS = tuple(P.SEEDS)

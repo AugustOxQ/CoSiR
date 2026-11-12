@@ -54,10 +54,12 @@ import numpy as np
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import r29_paths as P29  # noqa: E402
+P29.use_older_rounds()
 import r29_captions as C  # noqa: E402
 import r29_model as M  # noqa: E402
 import r28_text as T  # noqa: E402  (r23's protocol on r14's SigLIP 1 c*; puts the r23 folder on sys.path)
 import tcl_paths as P23  # noqa: E402
+P29.check_older_imports()  # every older-round module loaded so far is the main checkout's copy
 
 KIND = P23.CAPTION
 ASPECTS, SEEDS, DIRECTIONS, READOUTS = P23.ASPECTS, P23.SEEDS, P23.DIRECTIONS, P23.READOUTS

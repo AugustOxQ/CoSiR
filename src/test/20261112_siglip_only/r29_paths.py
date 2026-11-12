@@ -4,6 +4,7 @@ Controller-owned: tickets import from here and never edit it. A ticket's own con
 the controller (in the hand-back note) for an addition here.
 """
 import os
+import sys
 from pathlib import Path
 
 ROUND = Path(__file__).resolve().parent
@@ -22,10 +23,15 @@ SMOKE_OUT = DEFAULT_OUT / 'smoke'
 R14_OUT = Path('/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs')
 K0_ROOT = R14_OUT / 'cstar/siglip1'      # weights/k11=40/<aspect>__s<seed>.pt, train/k11=40/, held/k11=40/
 K0_ARM = 'k11=40'
-R28_ROUND = TEST / '20261112_siglip_main'
+# Older rounds (r10 to r28) are imported from the main checkout only: their frozen modules hard-code its paths and its
+# gitignored inputs live only there. After the merge into main it equals TEST. r29's own folder stays ROUND.
+OLDER = MAIN / 'src' / 'test'
+R28_ROUND = OLDER / '20261112_siglip_main'
 R28_RECORDS = R28_ROUND / 'records'
-R14_ROUND = TEST / '20261102_backbones_sweep'
-R23_ROUND = TEST / '20261106_text_claim'
+R14_ROUND = OLDER / '20261102_backbones_sweep'
+R23_ROUND = OLDER / '20261106_text_claim'
+R17_ROUND = OLDER / '20261103_new_scores'
+APC_ROUND = OLDER / '20261017_aspect_premise_checks'
 
 # Feature stores (D15: new stores only in new folders)
 PRE = Path('/data/SSD2/pre_extract')
@@ -63,3 +69,30 @@ K0_IMAGE_MEAN = 0.3862917081
 K0_IMAGE_SEEDS = (0.3848908314, 0.3878696916)   # (min, max) of the five per-seed image group means
 K0_TEXT_MEAN = 0.2593512884
 K0_TEXT_SEEDS = (0.2586239413, 0.2606346548)    # (min, max) of the five per-seed text group means
+
+
+# One place sets where older rounds are imported from (every r29 module calls these; none inserts older folders itself).
+def use_older_rounds():
+    """Put the older-round folders the r29 modules need on sys.path, in one fixed order (later = searched first)."""
+    for folder in (APC_ROUND, R17_ROUND, R28_ROUND):
+        if str(folder) in sys.path:
+            sys.path.remove(str(folder))
+        sys.path.insert(0, str(folder))
+
+
+def check_older_imports():
+    """Fail loudly if a loaded module of an older round (any checkout's src/test/<round>, other than r29's own) is not
+    the main checkout's copy: frozen modules assert where their siblings came from, so a mixed import breaks later."""
+    own, main = ROUND.name, OLDER.resolve()
+    bad = []
+    for name, mod in list(sys.modules.items()):
+        f = getattr(mod, '__file__', None)
+        if not f:
+            continue
+        parts = Path(f).resolve().parts
+        for i in range(len(parts) - 3):
+            if parts[i] == 'src' and parts[i + 1] == 'test' and parts[i + 3:] and parts[i + 2] != own:
+                if Path(*parts[:i + 2]) != main:
+                    bad.append(f'{name}: {f}')
+                break
+    assert not bad, f'older-round modules not from {main} (mixed import): {bad[:5]}'

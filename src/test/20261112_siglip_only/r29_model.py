@@ -14,11 +14,12 @@ from torch import nn
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import r29_paths as P  # noqa: E402
-sys.path.insert(0, str(P.R28_ROUND))
+P.use_older_rounds()
 import r28_trainer  # noqa: E402  (puts r14's and the older rounds' folders on sys.path, as r28 does)
 import rb_rows  # noqa: E402
 import rb_student  # noqa: E402
 import ms_train  # noqa: E402
+P.check_older_imports()  # every older-round module loaded so far is the main checkout's copy
 
 REFERENCE_ROW = rb_rows.recipe(rb_rows.REFERENCE)['base']
 SIDECAR_KEYS = ('width', 'cap_width', 'cap_source', 'cap_store_sha256')   # in the sidecar's config['rb'] block

@@ -18,7 +18,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import r29_paths as P  # noqa: E402
 
-sys.path.insert(0, str(P.R28_ROUND))
+P.use_older_rounds()
 import r28_time as R28  # noqa: E402  (imports pp_paths first, as it requires; puts r19's pp_probe on sys.path)
 import pp_probe as PR  # noqa: E402
 import r29_captions as C  # noqa: E402
@@ -26,6 +26,7 @@ import r29_model as M  # noqa: E402
 
 import numpy as np  # noqa: E402
 import torch  # noqa: E402
+P.check_older_imports()  # every older-round module loaded so far is the main checkout's copy
 
 R28_RECORD = P.R28_RECORDS / 'time_text.json'
 OUT = P.RECORDS / 'time_text.json'
