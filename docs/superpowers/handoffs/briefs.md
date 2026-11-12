@@ -2320,3 +2320,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-12-r29-decide-2-handoff.md
 - New chat: tab 'r29 decide 2', session a44d9e83-139a-4965-b14d-429a8ce5365e
 
+[brief] CoSiR: r29 decide 2 -> r29 build (2026-11-12 22:43 Amsterdam)
+- Done: r29 decided and specced: the aspect adapter reads SigLIP 1 only; Qwen3 keeps the graphs, correction and targets. Spec approved 22:42.
+- State: no code yet. The pass bounds come from r28's records: image group 0.3863 (seed range 0.0030), text group 0.2594 (range 0.0020).
+- Next: to-tickets from the spec, build, final review; merge to main, push, then open the r29 run chat.
+- Blocked: nothing. r28's run chat holds the local GPU tonight; smoke runs queue with --short.
+- Handoff: docs/superpowers/handoffs/2026-11-12-r29-build-handoff.md
+- New chat: tab 'r29 build', session 6401492c-0bf7-4685-afc4-88716629363e
+
