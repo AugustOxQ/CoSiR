@@ -2,7 +2,7 @@
 
 Written 2026-11-12 by r28 job H. Check: `python r28_cells_check.py` (same folder) reads every source named below and the .tex files and compares at three decimals.
 
-How to read: Table numbers follow the order of the Tables folder (2 main_clustering, 3 main_retrieval, 4 mmart, 5 ablation, 6 encoders, 7 photos, 8 cost). Each cell group is three columns: `now` (the current cell in the .tex, with `L<n>` = line n of that file), `SigLIP 1` (the new value, a mean over five seeds unless the source is a single scored value), `source` (record file and key; `{a}` = emotion / style / genre in that order, `{k}` = class count 9 / 27 / 10). Cells are Emotion / Style / Genre. `r28` = `src/test/20261112_siglip_main/records/`, `r17` = `src/test/20261103_new_scores/records/`, `r18` = `src/test/20261103_outside_methods/records/`, `r20` = `src/test/20261111_encoder_photo_tables/records/`. All values are ArtELingo test unless said. Rows with no SigLIP 1 value: the cell says why (the model keeps its own backbone, or it is outside this round).
+How to read: Table numbers follow the order of the Tables folder (2 main_clustering, 3 main_retrieval, 4 mmart, 5 ablation, 6 encoders, 7 photos, 8 cost). Each cell group is three columns: `now` (the current cell in the .tex, with `L<n>` = line n of that file), `SigLIP 1` (the new value, a mean over five seeds unless the source is a single scored value), `source` (record file and key; `{a}` = emotion / style / genre in that order, `{k}` = class count 9 / 27 / 10). Cells are Emotion / Style / Genre. `r28` = `src/test/20261112_siglip_main/records/`, `r17` = `src/test/20261103_new_scores/records/`, `r18` = `src/test/20261103_outside_methods/records/`, `r20` = `src/test/20261111_encoder_photo_tables/records/`. All values are ArtELingo test unless said. The `now` cells are the .tex of 2026-11-12 about 20:00; the paper chat has since put the SigLIP 1 values into the tables (Table 5 at 23:15), so check with `r28_cells_check.py --values-only` (every value cell against its source; the `now` cells are skipped). Table 5's removal cells are checked in the paper's sign style (+ for a gain, 0.000 for under 0.0005). Rows with no SigLIP 1 value: the cell says why (the model keeps its own backbone, or it is outside this round).
 
 ## Encoder pick on validation (`r28/valpick.json`)
 
@@ -81,17 +81,17 @@ Read-outs picked on the ArtELingo validation paintings that MMArt labels (`r28/m
 
 ## Table 5 (ablation.tex)
 
-AMI at the class counts and plain-cosine mAP, five seeds (c* is the replay of r14's saved SigLIP 1 models, gate exact against r17: `ablation_ref_replay.json gate_pass`). The plain row is `ablation_plain.json` (single deterministic run). The four removal rows are the change from c* and are not run yet; the paper chat fills them from the ablation runs.
+AMI at the class counts and plain-cosine mAP, five seeds (c* is the replay of r14's saved SigLIP 1 models, gate exact against r17: `ablation_ref_replay.json gate_pass`). The plain row is `ablation_plain.json` (single deterministic run). The four removal rows are the change from c* (removal minus c*, the difference of the five-seed means before rounding), trained in r28 on SigLIP 1 with r14's recipe and scored the same way (`ablation_siglip1.json`; arm names: instructed_graphs, content_correction, buddy = graph-positive loss, relational). Signs as the paper writes them (+ for a gain, 0.000 for a change under 0.0005).
 
 <!-- table: T5 -->
 
 | Row | now AMI | SigLIP 1 AMI | source AMI | now mAP | SigLIP 1 mAP | source mAP |
 |---|---|---|---|---|---|---|
 | CoSiR (ours) = c* | L11: 0.102 / 0.411 / 0.510 | 0.099 / 0.441 / 0.528 | `r28/ablation_ref_replay.json :: ami/{a}/mean` | L11: 0.264 / 0.311 / 0.590 | 0.263 / 0.340 / 0.599 | `r28/ablation_ref_replay.json :: map_plain_cosine/{a}/mean` |
-| Instructed graphs (removal) | L13: -0.033 / -0.186 / +0.010 | pending (ablation runs) | none | L13: -0.021 / -0.122 / +0.001 | pending (ablation runs) | none |
-| Content correction (removal) | L14: -0.016 / -0.068 / 0.000 | pending (ablation runs) | none | L14: -0.007 / -0.058 / -0.001 | pending (ablation runs) | none |
-| Graph-positive loss (removal) | L15: -0.029 / -0.140 / +0.008 | pending (ablation runs) | none | L15: -0.018 / -0.098 / 0.000 | pending (ablation runs) | none |
-| Relational term (removal) | L16: +0.001 / -0.002 / -0.071 | pending (ablation runs) | none | L16: 0.000 / -0.001 / -0.129 | pending (ablation runs) | none |
+| Instructed graphs (removal) | L13: -0.033 / -0.186 / +0.010 | -0.031 / -0.210 / -0.007 | `r28/ablation_siglip1.json :: deltas_vs_cstar/instructed_graphs/{a}/ami/delta` | L13: -0.021 / -0.122 / +0.001 | -0.020 / -0.143 / -0.001 | `r28/ablation_siglip1.json :: deltas_vs_cstar/instructed_graphs/{a}/map/delta` |
+| Content correction (removal) | L14: -0.016 / -0.068 / 0.000 | -0.011 / -0.079 / -0.004 | `r28/ablation_siglip1.json :: deltas_vs_cstar/content_correction/{a}/ami/delta` | L14: -0.007 / -0.058 / -0.001 | -0.006 / -0.069 / 0.000 | `r28/ablation_siglip1.json :: deltas_vs_cstar/content_correction/{a}/map/delta` |
+| Graph-positive loss (removal) | L15: -0.029 / -0.140 / +0.008 | -0.033 / -0.164 / -0.006 | `r28/ablation_siglip1.json :: deltas_vs_cstar/buddy/{a}/ami/delta` | L15: -0.018 / -0.098 / 0.000 | -0.018 / -0.118 / 0.000 | `r28/ablation_siglip1.json :: deltas_vs_cstar/buddy/{a}/map/delta` |
+| Relational term (removal) | L16: +0.001 / -0.002 / -0.071 | +0.001 / +0.006 / -0.067 | `r28/ablation_siglip1.json :: deltas_vs_cstar/relational/{a}/ami/delta` | L16: 0.000 / -0.001 / -0.129 | 0.000 / -0.001 / -0.114 | `r28/ablation_siglip1.json :: deltas_vs_cstar/relational/{a}/map/delta` |
 | Plain embedding | L18: 0.070 / 0.235 / 0.425 | 0.061 / 0.382 / 0.402 | `r28/ablation_plain.json :: encoders/siglip1/cells/{a}/ami` | L18: 0.242 / 0.180 / 0.476 | 0.244 / 0.268 / 0.455 | `r28/ablation_plain.json :: encoders/siglip1/cells/{a}/map` |
 
 ## Table 6 (encoders.tex): SigLIP 1 block, already in the .tex
@@ -150,7 +150,6 @@ Not copied here. `r28/per_seed.json`: for every Table 2 and Table 3 image cell o
 
 Cells of Tables 2 to 8 with a SigLIP 1 slot but no value:
 
-- Table 5, rows Instructed graphs, Content correction, Graph-positive loss, Relational term, all six cells each (24 cells): "pending (ablation runs)". The four removals have not been trained on SigLIP 1.
 - Table 4, + TURTLE, the three mAP cells: TURTLE gives clusters only, no retrieval embedding (stays `--`).
 - Table 7, Plain embedding and CoSiR on SigLIP 2 and on CLIP L/14, the four EmoSet cells per row (stay `--`) and the SigLIP 2 / CLIP L/14 "paintings only" rows: outside this round (the plan scores EmoSet on Qwen3 and SigLIP 1 only).
 - Table 3, CLAY and CRL: only the image-to-image block exists in the .tex, so no text-direction slot.

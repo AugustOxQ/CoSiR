@@ -140,3 +140,24 @@ def test_default_encoder_is_clip_l14():
     import inspect
     for f in (m.clay_vectors, m.crl_vectors, m.images, m.text_rows, m.score_cells, m.make_picks):
         assert inspect.signature(f).parameters['enc'].default == 'clip_l14', f.__name__
+
+
+def test_fix_records_renames_only_the_retrieval_unit(tmp_path):
+    """The clustering text-set rule names no unit and is left as it is; the retrieval rule gets the encoder's own unit;
+    table paths become relative to `out` (regression: the first fix wave asserted the unit on every rule)."""
+    out, tables = tmp_path, tmp_path / 'siglip1'
+    (tables / 'stage1').mkdir(parents=True)
+    (tables / 'stage1' / 't.json').write_text('{}')
+    clu = 'B only if the mean over aspects of validation AMI at 20 exceeds A by more than 0.001'
+    picks = {'clay_textset/clu/artelingo': dict(set='A', rule=clu),
+             'clay_textset/ret/artelingo': dict(set='A', rule='mAP / CLIP L/14 c* range exceeds A by 0.1'),
+             'crl/artelingo': dict(pick='none+k10', table_path='stage1/t.json')}
+    got = m.fix_records(picks, 'siglip1', tables, out)
+    assert got['clay_textset/clu/artelingo']['rule'] == clu
+    assert 'CLIP L/14' not in got['clay_textset/ret/artelingo']['rule']
+    assert "siglip1's own c* validation mAP range" in got['clay_textset/ret/artelingo']['rule']
+    assert got['crl/artelingo']['table_path'] == 'siglip1/stage1/t.json'
+    with pytest.raises(AssertionError):     # a rule outside the retrieval text set that names CLIP L/14 is refused
+        m.fix_records({'crl/x': dict(pick='none+k10', rule='unit: CLIP L/14 c* range')}, 'siglip1', tables, out)
+    keep = m.fix_records({'clay_textset/ret/x': dict(rule='a CLIP L/14 c* range b')}, 'clip_l14', tables, out)
+    assert keep['clay_textset/ret/x']['rule'] == 'a CLIP L/14 c* range b'

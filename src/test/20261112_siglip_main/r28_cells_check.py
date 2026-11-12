@@ -6,7 +6,7 @@ column (its source). A source is one or more refs joined by " ; ":
   ALIAS/file.json :: id=<cell id with {a}/{k}> => field   (verdict / label cell lists)
 {a}, {i} expand over emotion, style, genre (a ref that uses them gives three values); {k} is the class count.
 "now" cells ("L<n>: v / v / v") are checked against the numbers on line n of the paper .tex file.
-Run:  PYTHONDONTWRITEBYTECODE=1 python r28_cells_check.py     (exit 0 and "PASS" when all match)
+Run:  PYTHONDONTWRITEBYTECODE=1 python r28_cells_check.py [--values-only]   (exit 0 and "PASS" when all match)
 """
 import json, re, sys, os
 
@@ -25,6 +25,9 @@ SKIP = {"main_clustering": 3, "main_retrieval": 3, "mmart": 1, "ablation": 1, "e
 TEXNAME = {"T2": "main_clustering", "T3": "main_retrieval", "T4": "mmart", "T5": "ablation", "T6": "encoders",
            "T7": "photos", "T8": "cost"}
 _cache = {}
+# --values-only: check every value cell against its source and skip the "now" cells: they are the .tex of 2026-11-12
+# about 20:00, and the paper chat has since put the SigLIP 1 values into the tables (Table 5 at 23:15).
+VALUES_ONLY = "--values-only" in sys.argv
 
 
 def load(path):
@@ -35,6 +38,20 @@ def load(path):
 
 def fmt(v):
     return f"{v:.3f}"
+
+
+def signed(v):
+    """A change as the paper writes it: "+" before a gain, "0.000" for a change that rounds to zero."""
+    s = fmt(v)
+    return "0.000" if s in ("0.000", "-0.000") else (s if s.startswith("-") else "+" + s)
+
+
+def norm(s):
+    """The sheet writes changes as the paper does (Table 5): "+" before a gain and "0.000" for a change that
+    rounds to zero; drop the "+" and the sign of a zero so both sides compare as fmt() writes them."""
+    s = s.strip()
+    s = s[1:] if s.startswith("+") else s
+    return "0.000" if s == "-0.000" else s
 
 
 def _walk(d, path):
@@ -131,10 +148,17 @@ def main():
                     vals = []
                     for ref in src.split(" ; "):
                         vals += [fmt(v) for v in resolve(ref)]
-                    got = [t.strip() for t in cell.split(" / ")]
+                    if table == "T5" and "(removal)" in row[0]:      # changes: the exact paper sign style
+                        got = [t.strip() for t in cell.split(" / ")]
+                        vals = [signed(float(v)) for v in vals]
+                    else:
+                        got = [norm(t) for t in cell.split(" / ")]
+                        vals = [norm(v) for v in vals]
                     n_value += len(got)
                     if got != vals:
                         bad.append((table, row[0], h, got, vals))
+                elif h.startswith("now") and VALUES_ONLY:
+                    continue  # the paper chat has moved the tables to SigLIP 1 since the snapshot
                 elif h.startswith("now"):
                     mm = re.fullmatch(r"L(\d+): (.*)", row[j])
                     if not mm:

@@ -2328,3 +2328,27 @@
 - Handoff: docs/superpowers/handoffs/2026-11-12-r29-build-handoff.md
 - New chat: tab 'r29 build', session 6401492c-0bf7-4685-afc4-88716629363e
 
+[brief] CoSiR: paper plan 4 -> paper plan 5 (2026-11-12 22:55 Amsterdam)
+- Done: Sec. 4.1 to 4.3 on SigLIP 1; c*'s settings kept after r28's settings check, two sentences in 4.1 (REPO `fde9788`).
+- State: r28's ablation runs on the GPU until about 23:12. Its rows go to `records/ablation_siglip1.json`, then to `paper_cells.md` T5.
+- Next: watch r28, fill Table 5, recheck the 4.1 genre sentence, then show the user the review page for Figures 3 and 4.
+- Blocked: Figures 3 and 4 wait for the user's picks.
+- Handoff: docs/superpowers/handoffs/2026-11-12-paper-plan-5-handoff.md
+- New chat: tab 'paper plan 5', session 6d50ce86-3add-404a-b900-71a5232e538a
+
+[brief] CoSiR: r29 build -> r29 build 2 (2026-11-12 23:09 Amsterdam)
+- Done: 15 tickets written; tickets 01, 03, 04 and 06 built (104 tests pass across them); ticket 01 reviewed: pass after fixes.
+- State: nothing merged into the integration branch yet. Gate (iii) passes on the real stores; gate (v) emotion cells replay exactly.
+- Next: fix ticket 01, review 03, 04, 06, merge; start ticket 02 on Codex; build the rest.
+- Blocked: nothing. Risk: gate (i)(c)'s validation part may fail from the machine alone (§5).
+- Handoff: docs/superpowers/handoffs/2026-11-12-r29-build-2-handoff.md
+- New chat: tab 'r29 build 2', session 2892f187-2561-4298-a764-6f08e33d49a0
+
+[brief] CoSiR: r29 build 2 -> r29 build 3 (2026-11-12 23:35 Amsterdam)
+- Done: tickets 01, 03, 04, 06, 09 reviewed, fixed and merged; 02 reviewed (pass after fixes). Gate (i)(c) passes on the local GPU.
+- State: 107 of 113 round tests pass; 6 fail only when the text scorer's and the trainer's tests share a process (an import-path clash). Fix it first.
+- Next: fix the import clash, Codex fix of 02, then tickets 05 and 07, then 08, then stage 2 (10 to 15).
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-12-r29-build-3-handoff.md
+- New chat: tab 'r29 build 3', session 2b9418e0-21ad-48a7-8bb0-62be669125d0
+
