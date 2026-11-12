@@ -238,7 +238,8 @@ def main(argv=None):
     parser.add_argument('--reference', type=Path, default=paths.CAPTION_SOURCES['siglip1'][0])
     parser.add_argument('--annotations', type=Path, default=extractor.ARTELINGO_ANN)
     parser.add_argument('--prefix', default=paths.PREFIX)
-    parser.add_argument('--expected-prefix', help='check: raw prefix expected in manifest; omit for plain stores')
+    parser.add_argument('--expected-prefix', help='check: raw prefix expected in manifest (or --plain)')
+    parser.add_argument('--plain', action='store_true', help='check: the store must be plain (no prefix)')
     parser.add_argument('--out', type=Path)
     parser.add_argument('--store', type=Path)
     parser.add_argument('--limit', type=int, help='first N captions; smoke only, explicit --out required')
@@ -248,6 +249,7 @@ def main(argv=None):
     reference, _, _ = _read(args.reference)
     if args.command == 'check':
         assert args.store is not None and args.limit is None
+        assert args.plain != (args.expected_prefix is not None), 'check needs exactly one of --plain, --expected-prefix'
         print(json.dumps(check_store(args.store, reference, expected_prefix=args.expected_prefix)))
         return
     if args.limit is not None:
