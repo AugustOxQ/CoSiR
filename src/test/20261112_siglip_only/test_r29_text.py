@@ -5,6 +5,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from unittest import mock
+
 import numpy as np
 import pytest
 import torch
@@ -12,6 +14,7 @@ import torch
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import r29_text as X  # noqa: E402
+import r28_text as T  # noqa: E402
 import r29_captions as C  # noqa: E402
 import r29_model as M  # noqa: E402
 import r29_paths as P29  # noqa: E402
@@ -419,6 +422,59 @@ def test_p1_picks_must_equal_r23s_committed_picks(world, monkeypatch, tmp_path):
 
 
 # --- the arm for gate (i)(a)'s new trainer run (diagnostic (e)) -------------------------------------------------------
+
+class Reached(Exception):
+    """Raised by a stub placed after the checks: the call got past the pass-rule refusal."""
+
+
+def pass_rule_path():
+    return Path(X.RECORDS_DIR) / 'pass_rule.json'
+
+
+@pytest.mark.parametrize('arm', ['siglip1', 'siglip1_prefix'])
+@pytest.mark.parametrize('call', ['score_held', 'cells'])
+def test_candidate_test_numbers_refuse_without_a_committed_pass_rule(repo_world, monkeypatch, arm, call):
+    """`score --set art_held` and `cells` of a candidate arm: no pass_rule.json, an uncommitted one, a modified one are
+    refusals before the pick record is even read; a committed one (pass or fail: D9) lets the call through."""
+    repo = repo_world
+    monkeypatch.setattr(X, 'require_pick_record', mock.Mock(side_effect=Reached))     # the next check after the pass rule
+    run = X.held_record if call == 'cells' else lambda a: X.score(a, 'art_held')
+    with pytest.raises(RuntimeError, match='no pass_rule.json'):
+        run(arm)                                                      # absent
+    pass_rule_path().write_text('{"status": "fail"}\n')
+    with pytest.raises(RuntimeError, match='pass_rule.json is not committed'):
+        run(arm)                                                      # present, not committed
+    git(repo, 'add', 'records')
+    git(repo, 'commit', '-q', '-m', 'rule')
+    with pytest.raises(Reached):
+        run(arm)                                                      # committed unchanged, status fail: through
+    pass_rule_path().write_text('{"status": "pass"}\n')
+    with pytest.raises(RuntimeError, match='pass_rule.json is not committed'):
+        run(arm)                                                      # modified since the commit
+
+
+@pytest.mark.parametrize('arm', ['qwen', 'gate_i_a_new', 'p1_siglip1'])
+def test_k0_and_gate_paths_run_without_a_pass_rule(repo_world, monkeypatch, arm):
+    """K0 (qwen) and the gate (i)(a) arm are replays, not candidate test numbers: held scoring of them goes past the pass
+    rule with none on record (it stops at the next check, the pick record, here a stub)."""
+    assert not pass_rule_path().exists()
+    monkeypatch.setattr(X, 'require_pick_record', mock.Mock(side_effect=Reached))
+    with pytest.raises(Reached):
+        X.score(arm, 'art_held')
+    with pytest.raises(Reached):
+        X.held_record(arm)
+
+
+def test_gate_ii_runs_without_a_pass_rule(repo_world, monkeypatch):
+    """Gate (ii) reads K0's validation scores only and never asks for pass_rule.json."""
+    assert not pass_rule_path().exists()
+    monkeypatch.setattr(P29, 'require_committed', mock.Mock(side_effect=AssertionError('asked for a committed record')))
+    monkeypatch.setattr(X, 'seeds_done', lambda arm: list(X.SEEDS))
+    monkeypatch.setattr(X, 'check_provenance', mock.Mock())
+    monkeypatch.setattr(T, 'validation_picks', mock.Mock(side_effect=Reached))
+    with pytest.raises(Reached):
+        X.gate_ii(replay_too=False)
+
 
 def test_gate_i_a_new_arm_scores_k0s_protocol_on_the_new_trainers_weights(world, monkeypatch):
     info = X.arm_info('gate_i_a_new')
