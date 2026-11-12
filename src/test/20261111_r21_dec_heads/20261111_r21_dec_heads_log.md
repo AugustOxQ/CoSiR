@@ -215,3 +215,11 @@ Spec: `docs/superpowers/specs/2026-11-11-r21-dec-heads-design.md`. Decision line
 - Facts for the question: the S2 kept state is epoch 6 (the first DEC epoch) in 14 of 15 emotion runs, 6 to 10 on style,
   6 to 23 on genre. The 50-DEC-epoch run `dec-plain_l10_w5_S1` (validation, seed 0, `stage1_sheet.md`): AMI -0.0074 /
   -0.0183 / -0.0157 against c*, its DEC clusters collapse (largest 0.53 / 0.25 / 0.38, smallest 0.00).
+- 20:33: λ = 0 code ready: Codex f76eae2a (`arm_name` accepts finite λ >= 0; tests), merged into main (7fe3fd3c); 142 tests
+  pass on main. Codex's facts (code read, file:line in its log `.scratch/r21-dec-heads/lam0/out.log`): at λ = 0 the DEC
+  branch still runs from epoch 6 (centres and P at the end of epoch 5, the extra train-mode forward passes), so the
+  dropout draws per step follow the λ = 10 plain arm until the trajectories (head stop times) part; S2 keeps the best c*
+  dev loss (DEC not in it) among epochs >= 6 with the same patience; plain and start centres come from k-means with its
+  own random_state, teacher from teacher data, no torch RNG, so at λ = 0 the three forms train the same: one arm,
+  `dec-plain_l0_w5_S2`, controls all three. The sidecars' shares and movement are the last DEC epoch's, not the kept one's.
+  Not run yet (the user: after the SigLIP jobs).
