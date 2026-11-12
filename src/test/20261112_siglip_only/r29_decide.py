@@ -12,6 +12,7 @@ from zoneinfo import ZoneInfo
 import numpy as np
 
 import r29_paths as P
+import r29_captions as C   # the shared gate-record writer (three-try limit); also puts older rounds on sys.path via P
 
 ASPECTS = P.ASPECTS
 SEEDS = list(P.SEEDS)
@@ -34,7 +35,19 @@ def write_json(path, doc):
 
 
 def now():
-    return datetime.now(ZoneInfo('Europe/Amsterdam')).isoformat(timespec='seconds')
+    return datetime.now(ZoneInfo('Europe/Amsterdam')).strftime('%Y-%m-%d %H:%M')   # Amsterdam time, as r29_captions
+
+
+def write_once(path, doc, force=None):
+    """Verdict records are written once. An existing one is refused unless `force` (a reason) is given; the reason and
+    the replaced record are then kept in the new file."""
+    path = Path(path)
+    if path.exists():
+        assert force, f'{path.name} exists: a verdict record is written once (--force REASON replaces it)'
+        doc = dict(doc, force_reason=force, replaced=read_json(path))
+    else:
+        assert not force, f'{path.name} does not exist: nothing to force'
+    return write_json(path, doc)
 
 
 def numbers(values, n):
@@ -63,31 +76,105 @@ def read_text(records, arm):
         assert set(cells[a]) == {'t2i', 'i2t', 't2t'}, cells[a].keys()
         for d in ('t2i', 'i2t', 't2t'):
             flat[f'{a}/{d}'] = numbers(cells[a][d]['per_seed']['r0'], len(seeds))
+    # The stored group value is the mean of the nine r0 cells, seed by seed (to 1e-12: ticket 04 reduces in its own
+    # order, which can differ from numpy's in the last place; a wrong group differs by far more).
+    for i in range(len(seeds)):
+        mean = float(np.mean([flat[c][i] for c in TEXT_CELLS]))
+        assert abs(mean - group[i]) <= 1e-12, f'{arm} seed {seeds[i]}: group_r0 {group[i]} != mean of nine cells {mean}'
     return dict(arm=arm, seeds=seeds, per_seed=group, cells=flat)
 
 
-def sc1(records=P.RECORDS):
-    """SC1 seed 0; §3.5 one arm out; D20 P1 form chosen only when K2 wins."""
+# Gate (i) is its parts i_a, i_b (a test: its record is read only if one exists) and i_c; then (ii) and (iii).
+STAGE1_GATES = ('i_a', 'i_b', 'i_c', 'ii', 'iii')
+CRASH_KEYS = {'arm', 'seed', 'status', 'tries', 'details', 'written'}
+PICK_KEYS = {'kstar', 'kstar_form', 'p1_form', 'flag'}
+
+
+def read_gates(records):
+    doc = read_json(Path(records) / 'gates.json')
+    assert isinstance(doc['gates'], dict), 'gates.json: no gates'
+    return doc['gates']
+
+
+def require_gates(records):
+    """SC1 and SC2 run only when gates (i), (ii) and (iii) pass or fall back (§3.5: a failed gate parks them)."""
+    gates = read_gates(records)
+    for name in STAGE1_GATES:
+        if name == 'i_b' and name not in gates:
+            continue
+        assert name in gates, f'gate {name} not in gates.json: run `gates` first'
+        assert gates[name]['status'] in ('pass', 'fallback'), \
+            f'gate {name} is {gates[name]["status"]}: SC1 and SC2 are parked (§3.5)'
+    return gates
+
+
+def read_crash(records, arm):
+    """`records/crash_<arm>.json` (ticket 15's runner, D21's second crash), or None."""
+    path = Path(records) / f'crash_{arm}.json'
+    if not path.exists():
+        return None
+    doc = read_json(path)
+    assert set(doc) == CRASH_KEYS, (path.name, sorted(doc))
+    assert doc['arm'] == arm and doc['status'] == 'out' and doc['tries'] == 2, doc
+    assert type(doc['seed']) is int and isinstance(doc['details'], (str, dict)) and isinstance(doc['written'], str), doc
+    return doc
+
+
+def arm_out(records, gates, arm):
+    """Why an arm is out, or None. Only on evidence (never a missing `text_<arm>.json`): its crash record, or for K2
+    a failed or parked gate (iv) part. A gate (iv) with a part missing and none failed is no evidence: refuse."""
+    crash = read_crash(records, arm)
+    if crash:
+        return f'second crash (D21), seed {crash["seed"]}'
+    if arm == 'siglip1_prefix':
+        iv = gates['iv']
+        bad = [p for p, d in iv['parts'].items() if d['status'] in ('fail', 'parked')]
+        if bad:
+            return f'gate (iv) failed or parked ({", ".join(sorted(bad))})'
+        assert not iv['missing_parts'], f'gate iv is incomplete (missing {iv["missing_parts"]}): K2 is not out'
+    return None
+
+
+def read_pick(records):
+    doc = read_json(Path(records) / 'prefix_pick.json')
+    assert PICK_KEYS <= set(doc) <= PICK_KEYS | {'force_reason', 'replaced'}, sorted(doc)
+    assert doc['kstar'] in CANDIDATES and doc['kstar_form'] == ('plain' if doc['kstar'] == 'siglip1' else 'prefixed')
+    assert doc['p1_form'] in ('plain', 'prefixed')
+    assert doc['flag'] is None or isinstance(doc['flag'], str)
+    return doc
+
+
+def sc1(records=P.RECORDS, force=None):
+    """SC1 seed 0; §3.5 row 1a (an arm out only on evidence); D20 P1 form chosen only when K2 is K*.
+    Writes `prefix_pick.json` = {kstar, kstar_form, p1_form, flag}. Both arms out: no pick, stage 1 inconclusive."""
     records = Path(records)
+    gates = require_gates(records)
+    out = {arm: arm_out(records, gates, arm) for arm in CANDIDATES}
+    out = {arm: why for arm, why in out.items() if why}
+    if len(out) == 2:
+        print(f'stage 1 is inconclusive: both arms out ({out}); no pick written')
+        return dict(status='inconclusive', out=out)
     values = {}
     for arm in CANDIDATES:
-        if (records / f'text_{arm}.json').exists():
-            text = read_text(records, arm)
-            assert text['seeds'][0] == 0, f'{arm}: SC1 requires seed 0 first'
-            values[arm] = text['per_seed'][0]
-    if not values:
-        return write_json(records / 'prefix_pick.json', dict(status='inconclusive', arm=None,
-                          no_comparison=True, reason='both arms out', written=now()))
-    arm = max(values, key=values.get)  # insertion order makes exact ties K1
-    p1_values, form = {}, 'siglip1'
-    if arm == 'siglip1_prefix':
-        for f in CANDIDATES:
-            p1_values[f] = read_text(records, 'p1_' + f)['per_seed'][0]
-        form = max(p1_values, key=p1_values.get)  # D20 exact tie: plain
-    return write_json(records / 'prefix_pick.json', dict(status='picked', arm=arm, seed=0,
-                      text_group=values, p1_form=form, p1_text_group=p1_values,
-                      no_comparison=len(values) == 1, missing_arms=[a for a in CANDIDATES if a not in values],
-                      readout='r0', written=now()))
+        if arm in out:
+            continue
+        assert (records / f'text_{arm}.json').exists(), \
+            f'text_{arm}.json missing: {arm} is not scored and has no crash or gate (iv) record, so it is not out'
+        text = read_text(records, arm)
+        assert text['seeds'][0] == 0, f'{arm}: SC1 requires seed 0 first'
+        values[arm] = text['per_seed'][0]
+    kstar = max(values, key=values.get)  # insertion order makes exact ties K1
+    p1_form = 'plain'
+    if kstar == 'siglip1_prefix':
+        p1 = {f: read_text(records, 'p1_' + f)['per_seed'][0] for f in CANDIDATES}
+        p1_form = 'prefixed' if p1['siglip1_prefix'] > p1['siglip1'] else 'plain'   # D20 exact tie: plain
+    flag = None
+    if out:
+        (gone, why), = out.items()
+        flag = f'{gone} out ({why}): {kstar} is K* with no comparison (§3.5 row 1a)'
+    print('SC1 seed 0 text group:', values)
+    return write_once(records / 'prefix_pick.json', dict(kstar=kstar,
+                      kstar_form='plain' if kstar == 'siglip1' else 'prefixed', p1_form=p1_form, flag=flag), force)
 
 
 def sc2_level(image, text, baseline):
@@ -144,22 +231,22 @@ def k0_baseline(r28_records=P.R28_RECORDS):
     return result
 
 
-def sc2(records=P.RECORDS):
+def sc2(records=P.RECORDS, force=None):
     records = Path(records)
-    pick = read_json(records / 'prefix_pick.json')  # missing pick refuses before any scoring
-    assert pick['status'] == 'picked' and pick['arm'] in CANDIDATES, pick
-    arm = pick['arm']
+    require_gates(records)
+    pick = read_pick(records)  # missing pick (or both arms out) refuses before any scoring
+    arm = pick['kstar']
     groups_doc = read_json(records / f'groups_{arm}.json')
     assert groups_doc['arm'] == arm and groups_doc['seeds'] == SEEDS, 'SC2 requires all five seeds'
     values = {g: numbers(groups_doc[g]['per_seed'], 5) for g in ('image', 'text')}
     means = {g: float(np.mean(v)) for g, v in values.items()}
     baseline = k0_baseline()
     level = sc2_level(means['image'], means['text'], baseline)
-    return write_json(records / 'pass_rule.json', dict(arm=arm, seeds=SEEDS, level=level,
+    return write_once(records / 'pass_rule.json', dict(arm=arm, seeds=SEEDS, level=level,
                       status='pass' if level >= 1 else 'fail', mean=means, per_seed=values,
                       m={g: b['m'] for g, b in baseline.items()}, r={g: b['r'] for g, b in baseline.items()},
                       bounds={g: dict(lower=b['lower'], best=b['best']) for g, b in baseline.items()},
-                      k0=baseline, readout='r0', written=now()))
+                      k0=baseline, readout='r0', written=now()), force)
 
 
 def arm_location(arm):
@@ -236,7 +323,8 @@ def gate_i_a_verdict(weights, k0_cells, new_cells=None):
     if main['equal']:
         return dict(status='pass', details=result)
     repeat = comparisons.get('r14_vs_r14_b')
-    if repeat is None or repeat['equal']:
+    assert repeat is not None, 'r14_b repeat missing: run r14\'s trainer once more first (§3.5); no try spent'
+    if repeat['equal']:
         result['reason'] = 'r14 nondeterminism not demonstrated'
         return dict(status='fail', details=result)
     assert new_cells is not None, 'CUDA fallback requires new-trainer validation cells'
@@ -253,13 +341,8 @@ def gate_i_a_verdict(weights, k0_cells, new_cells=None):
 
 
 def write_gate(records, part, verdict):
-    path = Path(records) / 'gates' / f'{part}.json'
-    previous = read_json(path) if path.exists() else None
-    if previous:
-        assert previous['gate'] == part
-    tries = previous['tries'] + 1 if previous else 1
-    assert 1 <= tries <= 3, f'{part}: at most three recorded tries (§3.5)'
-    return write_json(path, dict(gate=part, **verdict, tries=tries, written=now()))
+    """The shared writer: `records/gates/<part>.json`, tries counted, a fourth recorded try raises (§3.5)."""
+    return C.write_gate_record(Path(records) / 'gates', verdict, gate=part)
 
 
 def gate_i_a(records=P.RECORDS):
@@ -297,9 +380,12 @@ def gate_i_c_valpick(root=None, records=P.RECORDS):
     return write_gate(records, 'i_c_valpick', verdict)
 
 
-# A standalone gate file cannot hide absent parts. i_c is the trainer/export part.
+# A standalone gate file cannot hide absent parts. i_c is the trainer/export part. Every part must be present; the
+# status comes from every part (iv, i_c: co-equal) or, for i_a, from ticket 05's verdict alone: ticket 03's
+# `i_a_weights` says `fail` whenever the weights differ, which D23's fallback can still pass.
 GATE_PARTS = {'iv': ('iv_store', 'iv_hash'), 'i_a': ('i_a_weights', 'i_a'),
               'i_c': ('i_c', 'i_c_valpick')}
+STATUS_FROM = {'i_a': ('i_a',)}
 
 
 def gates(records=P.RECORDS):
@@ -318,7 +404,7 @@ def gates(records=P.RECORDS):
         required = GATE_PARTS.get(gate, (gate,))
         present = {p: parts[p] for p in required if p in parts}
         missing = [p for p in required if p not in parts]
-        statuses = [p['status'] for p in present.values()]
+        statuses = [present[p]['status'] for p in STATUS_FROM.get(gate, required) if p in present]
         status = ('parked' if 'parked' in statuses else 'fail') if missing or any(
             s not in ('pass', 'fallback') for s in statuses) else ('fallback' if 'fallback' in statuses else 'pass')
         merged[gate] = dict(gate=gate, status=status, missing_parts=missing, parts=present,
@@ -371,7 +457,11 @@ def diagnostics(records=P.RECORDS):
     local = read_groups(records, 'gate_i_a_new', [0])
     assert Path(local['root']) == P.OUT / 'gate_i_a/new', 'diagnostic (e) must use the gate new run'
     baseline = k0_baseline()
-    plain = read_text(records, 'p1_siglip1')  # (c): plain input, even if D20 chose prefixed P1
+    pick = read_pick(records)
+    assert pick['kstar'] == arm, (pick['kstar'], arm)
+    # (c): "plain SigLIP 1" is the frozen encoder's caption embedding in the form K*'s tower reads (`kstar_form`:
+    # prefixed when K* is K2), at r0 -- not D20's `p1_form`, which is the test comparator's form.
+    plain = read_text(records, 'p1_siglip1_prefix' if pick['kstar_form'] == 'prefixed' else 'p1_siglip1')
     a = {g: cell_changes(candidate[g]['cells'], baseline[g]['cells']) for g in ('image', 'text')}
     e = {g: cell_changes(local[g]['cells'], baseline[g]['cells'], seed0=True) for g in ('image', 'text')}
     e.update(arm='gate_i_a_new', seed=0, root=str(P.OUT / 'gate_i_a/new'), reference='K0 node402 seed 0')
@@ -383,7 +473,7 @@ def diagnostics(records=P.RECORDS):
         key = f'{aspect}/t2t'
         new, old = float(np.mean(candidate['text']['cells'][key])), plain['cells'][key][0]
         c[aspect] = dict(candidate=new, plain=old, difference=new-old)
-    return write_json(records / 'diagnostics_val.json', dict(arm=arm, a=a, b=b, c=c, e=e,
+    return write_json(records / 'diagnostics_val.json', dict(arm=arm, a=a, b=b, c=c, c_input_form=pick['kstar_form'], e=e,
                       pass_rule=rule, readout='r0', written=now()))
 
 
@@ -393,6 +483,8 @@ def cli_parser():
     for command in ('groups', 'sc1', 'sc2', 'gate-i-a', 'gate-i-c-valpick', 'gates', 'diagnostics'):
         p = sub.add_parser(command)
         p.add_argument('--records', type=Path, default=P.RECORDS)
+        if command in ('sc1', 'sc2'):
+            p.add_argument('--force', metavar='REASON', help='replace an existing record; the reason is kept in the file')
         if command == 'groups':
             p.add_argument('--arm', choices=(*CANDIDATES, 'qwen', 'gate_i_a_new'), required=True)
             p.add_argument('--seeds', type=int, nargs='+', choices=SEEDS, required=True)
@@ -408,9 +500,10 @@ def main(argv=None):
         result = groups(args.arm, args.seeds, args.root, args.records)
     elif args.command == 'gate-i-c-valpick':
         result = gate_i_c_valpick(args.root, args.records)
+    elif args.command in ('sc1', 'sc2'):
+        result = {'sc1': sc1, 'sc2': sc2}[args.command](args.records, args.force)
     else:
-        result = {'sc1': sc1, 'sc2': sc2, 'gate-i-a': gate_i_a,
-                  'gates': gates, 'diagnostics': diagnostics}[args.command](args.records)
+        result = {'gate-i-a': gate_i_a, 'gates': gates, 'diagnostics': diagnostics}[args.command](args.records)
     print(args.command, result.get('status', 'written'),
           f'level={result["level"]}' if 'level' in result else '')
     return 1 if result.get('status') in ('fail', 'inconclusive') else 0
