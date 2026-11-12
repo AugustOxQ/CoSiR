@@ -12,7 +12,7 @@
   4
  ],
  "list_sha256": "a0b1139c6056fd858ddbd2ee1dd4bafd1453e590818c6aa59883364c0288a876",
- "git_head": "16ce54d7e58953efa604919fef6da4f8d9d7d943",
+ "git_head": "2952f13e1ef4e440226a9d2b7ccf885d61d59f65",
  "class_count": {
   "emotion": 9,
   "style": 27,
@@ -192,5 +192,5 @@
   "all_pass": true
  },
  "gate_pass": true,
- "seconds": 234.0786506589502
+ "seconds": 961.055735510774
 }
