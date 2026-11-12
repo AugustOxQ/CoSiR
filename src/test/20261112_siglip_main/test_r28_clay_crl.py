@@ -157,5 +157,7 @@ def test_fix_records_renames_only_the_retrieval_unit(tmp_path):
     assert 'CLIP L/14' not in got['clay_textset/ret/artelingo']['rule']
     assert "siglip1's own c* validation mAP range" in got['clay_textset/ret/artelingo']['rule']
     assert got['crl/artelingo']['table_path'] == 'siglip1/stage1/t.json'
+    with pytest.raises(AssertionError):     # a rule outside the retrieval text set that names CLIP L/14 is refused
+        m.fix_records({'crl/x': dict(pick='none+k10', rule='unit: CLIP L/14 c* range')}, 'siglip1', tables, out)
     keep = m.fix_records({'clay_textset/ret/x': dict(rule='a CLIP L/14 c* range b')}, 'clip_l14', tables, out)
     assert keep['clay_textset/ret/x']['rule'] == 'a CLIP L/14 c* range b'

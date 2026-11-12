@@ -266,6 +266,8 @@ def fix_records(picks, enc, tables, out):
         if key.startswith('clay_textset/ret/') and enc != 'clip_l14':
             assert 'CLIP L/14 c* range' in rec['rule'], rec['rule']
             rec['rule'] = rec['rule'].replace('CLIP L/14 c* range', f"{enc}'s own c* validation mAP range (ns_picks.ranges)")
+    if enc != 'clip_l14':          # no rule of another encoder may still name CLIP L/14's unit
+        assert not any('CLIP L/14' in str(r.get('rule', '')) for r in picks.values()), enc
     return picks
 
 

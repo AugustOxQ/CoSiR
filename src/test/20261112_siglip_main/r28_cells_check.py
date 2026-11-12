@@ -25,8 +25,8 @@ SKIP = {"main_clustering": 3, "main_retrieval": 3, "mmart": 1, "ablation": 1, "e
 TEXNAME = {"T2": "main_clustering", "T3": "main_retrieval", "T4": "mmart", "T5": "ablation", "T6": "encoders",
            "T7": "photos", "T8": "cost"}
 _cache = {}
-# --values-only: check every value cell against its source, and the "now" snapshot only for Table 5. The other
-# tables' "now" cells are the .tex of 2026-11-12 about 20:00; the paper chat has since put the SigLIP 1 values in them.
+# --values-only: check every value cell against its source and skip the "now" cells: they are the .tex of 2026-11-12
+# about 20:00, and the paper chat has since put the SigLIP 1 values into the tables (Table 5 at 23:15).
 VALUES_ONLY = "--values-only" in sys.argv
 
 
@@ -38,6 +38,12 @@ def load(path):
 
 def fmt(v):
     return f"{v:.3f}"
+
+
+def signed(v):
+    """A change as the paper writes it: "+" before a gain, "0.000" for a change that rounds to zero."""
+    s = fmt(v)
+    return "0.000" if s in ("0.000", "-0.000") else (s if s.startswith("-") else "+" + s)
 
 
 def norm(s):
@@ -142,13 +148,17 @@ def main():
                     vals = []
                     for ref in src.split(" ; "):
                         vals += [fmt(v) for v in resolve(ref)]
-                    got = [norm(t) for t in cell.split(" / ")]
-                    vals = [norm(v) for v in vals]
+                    if table == "T5" and "(removal)" in row[0]:      # changes: the exact paper sign style
+                        got = [t.strip() for t in cell.split(" / ")]
+                        vals = [signed(float(v)) for v in vals]
+                    else:
+                        got = [norm(t) for t in cell.split(" / ")]
+                        vals = [norm(v) for v in vals]
                     n_value += len(got)
                     if got != vals:
                         bad.append((table, row[0], h, got, vals))
-                elif h.startswith("now") and VALUES_ONLY and table != "T5":
-                    continue  # the paper chat has moved these tables to SigLIP 1 since the snapshot
+                elif h.startswith("now") and VALUES_ONLY:
+                    continue  # the paper chat has moved the tables to SigLIP 1 since the snapshot
                 elif h.startswith("now"):
                     mm = re.fullmatch(r"L(\d+): (.*)", row[j])
                     if not mm:
