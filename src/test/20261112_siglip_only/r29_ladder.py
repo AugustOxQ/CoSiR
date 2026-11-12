@@ -18,16 +18,21 @@ Cell records read (written by tickets 06, 07; 11 and 13 write the same shape, fi
   {arm, encoder, cells: [..]}; a cell holds id `<set>/<encoder>/<arm>/<aspect>/<measure>/<comparator>` (measure ami<k>, map,
   t2i, i2t, t2t; comparator: image cells plain / teacher, text cells p1 / q1; P1 = plain = p1, Q1 = teacher = q1, the other
   form in a file is refused) and type, protocol, comparator, aspect, arm, value, d, r, outcome, lo, hi (no `interval` key). Every read asserts these; the outcome must be the rule's
-  word for lo and r (`outcome`, as r11 and ticket 06). A missing file or cell is "not run", counted as neither.
+  word for lo and r (`outcome`, as r11 and ticket 06). A missing cell inside a file is "not run", counted as neither; a missing
+  FILE refuses the ladder (unless a gate parks the claim, or `--missing-ok <reason>`, which goes into the record).
+Order and gates: SC3 to SC6 need records/pass_rule.json present and committed unchanged in HEAD (SC2 parked: refused, 1c does not
+  run; SC4 to SC6 also status pass, D3). Gate parking: `GATE_PARKS` (spec §3.5); an absent gate record the claim needs raises
+  "gate <id> not run"; status fail or parked parks the claim's cells.
 
 CLI (from the round folder):
-  ladder --claim SC3|SC4|SC5|SC6 --arm A [--encoder E]   records/<claim>_<arm>.json (SC4: SC4_<encoder>_<arm>.json), once
+  ladder --claim SC3|SC4|SC5|SC6 --arm A [--encoder E] [--missing-ok REASON]   records/<claim>_<arm>.json (SC4: SC4_<encoder>_<arm>.json), once
   sheet [--out FILE]                                     rewrite paper_cells.md from every cell record present
   diag-d --arm A [--claim SC3|SC4] [--encoder E]         records/diag_d_<claim>_<arm>.json, after the ladder record exists
 """
 import argparse
 import hashlib
 import json
+import subprocess
 import sys
 import time
 from datetime import datetime
@@ -64,7 +69,26 @@ CLAIMS = {
     'SC6': dict(cells=[(s, None, m) for s in ('affection', 'emoset') for m in IMG_MEASURES], most=3, stage2=True,
                 data='Affection and EmoSet test', sets=('affection', 'emoset'), source={m: 'photo' for m in IMG_MEASURES}),
 }
-GATES = {'image': ('v_image',), 'text': ('v_text',), 'mmart': ('v_mmart', 'vi'), 'photo': ('v_photo', 'vii_photo')}
+# Gate parking (spec §3.5 "What a failed gate parks"; ruling of build 4). One table: gate id -> the claims whose outcomes it parks.
+# A gate part with status `fail` or `parked` parks ALL cells of each claim listed (all cells of a claim count inconclusive).
+#   (v) image, (v) text   the outcomes of SC3 to SC6 ("a failed (v) parks the outcomes of SC3 to SC6")
+#   (v) MMArt rebuild, (vi) MMArt   SC5 ("a failed rebuild parks only the cells that use that comparator"; (vi) parks SC5)
+#   (v) photo rebuild     SC6; the record cannot say which comparator's cells, and every SC6 cell set has a P1 and a Q1 comparator
+#                         of the rebuilt kind, so all SC6 cells (alternative: only the cells of the failed comparator)
+#   (vii) trainer, (vii) photo scorer, (viii) Affection store (ticket 12 and 13's parts)   SC6 (§3.5: (vii) parks SC6, (viii)
+#                         the piece whose store fails)
+#   (viii) store of encoder E's K* arm: SC4 of E only (not SigLIP 1), the gate `viii_<cap_source>` named by `store_gate`
+GATE_PARKS = {
+    'v_image': ('SC3', 'SC4', 'SC5', 'SC6'),
+    'v_text': ('SC3', 'SC4', 'SC5', 'SC6'),
+    'v_mmart': ('SC5',),
+    'vi': ('SC5',),
+    'v_photo': ('SC6',),
+    'vii_trainer': ('SC6',),
+    'vii_photo': ('SC6',),
+    'viii_affection': ('SC6',),
+}
+GATE_STATUSES = ('pass', 'fail', 'parked')       # `fallback` is gate i_*'s status only; ticket 08 reads no i_* gate
 
 
 def now():
@@ -129,7 +153,7 @@ def sentence(level, n, w1, wq):
     if level == 2:
         assert wq is None
         return f'{STEM} every cell.'
-    return f'{STEM} every cell, and it is level with or above the instructed Qwen3 in {wq} of {n} cells.'
+    return f'{STEM} every cell and it is level with or above the instructed Qwen3 in {wq} of {n} cells.'
 
 
 # ================================================================================================ reading cell records
@@ -189,13 +213,65 @@ def read_source(source, claim, arm, encoder, records):
 
 
 def gate_status(records, gate):
-    """('absent'|status, tries) of records/gates/<gate>.json."""
+    """Status of records/gates/<gate>.json: pass, fail or parked. An absent record raises "gate <id> not run"; any other status
+    raises (`fallback` is gate i_*'s only)."""
     path = Path(records) / 'gates' / f'{gate}.json'
     if not path.exists():
-        return 'absent', 0
+        raise RuntimeError(f'gate {gate} not run: no {path}')
     g = json.loads(path.read_text())
     assert g.get('gate') == gate and 'status' in g, path
-    return g['status'], int(g.get('tries', 0))
+    assert g['status'] in GATE_STATUSES, f'{path}: status {g["status"]!r}, one of {GATE_STATUSES}'
+    return g['status']
+
+
+def read_kstar_form(records, arm):
+    """`records/prefix_pick.json` (ticket 05; keys kstar, kstar_form, p1_form, flag): K*'s caption form for SC4's store gate."""
+    path = Path(records) / 'prefix_pick.json'
+    if not path.exists():
+        raise RuntimeError(f'no {path}: ticket 05 writes it (SC4 needs K*\'s caption form to name its store gate)')
+    doc = json.loads(path.read_text())
+    for key in ('kstar', 'kstar_form', 'p1_form', 'flag'):
+        assert key in doc, f'{path}: key {key} missing (keys {sorted(doc)})'
+    assert doc['kstar_form'] in ('plain', 'prefixed'), f'{path}: kstar_form {doc["kstar_form"]!r}'
+    return doc['kstar_form']
+
+
+def store_gate(encoder, form):
+    """SC4's store gate `viii_<cap_source>`: the `r29_paths.CAPTION_SOURCES` name of the store that encoder's K* arm reads, through
+    `r29_paths.ENCODER_CAPTION_SOURCES` (qwen, plain, prefixed) and K*'s form. None for SigLIP 1 (its store gates are ticket 02's)."""
+    if encoder == 'siglip1':
+        return None
+    _qwen, plain, prefixed = P.ENCODER_CAPTION_SOURCES[encoder]
+    src = {'plain': plain, 'prefixed': prefixed}[form]
+    assert src in P.CAPTION_SOURCES, src
+    return f'viii_{src}', src
+
+
+def needed_gates(claim, arm, encoder, records, strict=True):
+    """The gate ids that can park `claim` for this arm, in the order of GATE_PARKS then the SC4 store gate. A sheet (not strict)
+    skips the store gate when prefix_pick.json is absent."""
+    gates = [g for g, claims in GATE_PARKS.items() if claim in claims]
+    if claim == 'SC4' and encoder != 'siglip1':
+        if strict or (Path(records) / 'prefix_pick.json').exists():
+            gate, src = store_gate(encoder, read_kstar_form(records, arm))
+            assert arm == src, f'SC4 arm {arm!r}: encoder {encoder!r} with K*\'s form reads the store {src!r}'
+            gates.append(gate)
+    return gates
+
+
+def claim_gates(claim, arm, encoder, records, strict=True):
+    """{gate id: status} of the gates the claim needs. strict: an absent record raises "gate <id> not run" (the ladder); the sheet
+    shows what exists."""
+    out = {}
+    for g in needed_gates(claim, arm, encoder, records, strict):
+        if strict or (Path(records) / 'gates' / f'{g}.json').exists():
+            out[g] = gate_status(records, g)
+    return out
+
+
+def parked_by(gates):
+    """The first gate whose part is `fail` or `parked` (a gate that failed its tries parks what it serves, §3.5), or None."""
+    return next((g for g, st in gates.items() if st in ('fail', 'parked')), None)
 
 
 def collect(claim, arm, encoder, records):
@@ -211,15 +287,35 @@ def collect(claim, arm, encoder, records):
     return {(k, c): got.get((k, c)) for k in spec['cells'] for c in ('P1', 'Q1')}, status, files
 
 
-def check_pass_rule(records):
-    """D3: stage 2 claim tests refuse unless records/pass_rule.json says pass."""
+def is_committed(path, repo=None):
+    """True unless `path` is in the checkout `repo` and differs from its content in git HEAD (a file elsewhere, as in a smoke run
+    or a test folder, is not checked)."""
+    path, repo = Path(path).resolve(), Path(repo or P.REPO).resolve()
+    if not path.is_relative_to(repo):
+        return True
+    head = subprocess.run(['git', '-C', str(repo), 'show', f'HEAD:{path.relative_to(repo)}'], capture_output=True, text=True)
+    return head.returncode == 0 and head.stdout == path.read_text()
+
+
+def check_pass_rule(records, stage2, repo=None):
+    """SC3 to SC6 refuse unless records/pass_rule.json is present and committed unchanged in HEAD (§3.5 row 1b: SC2 before any test
+    number; presence and commit, not status, as ticket 07's `cells`, D9). A parked SC2 refuses: 1c and stage 2 do not run (§6).
+    Stage 2 claims (SC4 to SC6) also need status pass (D3)."""
     path = Path(records) / 'pass_rule.json'
-    if not path.exists() or json.loads(path.read_text()).get('status') != 'pass':
+    if not path.exists():
+        raise RuntimeError(f'no {path}: pass_rule.json is written and committed before any test number (spec §3.5 row 1b)')
+    if not is_committed(path, repo):
+        raise RuntimeError(f'{path.name} is not committed unchanged in HEAD: commit it before the claim tests (spec §3.4, §3.5)')
+    status = json.loads(path.read_text()).get('status')
+    if status == 'parked':
+        raise RuntimeError(f'{path}: SC2 is parked, so stage 1 is inconclusive: 1c does not run (spec §6)')
+    if stage2 and status != 'pass':
         raise RuntimeError(f'{path}: stage 2 (SC4 to SC6) needs records/pass_rule.json with status pass (D3)')
 
 
-def build_record(claim, arm, encoder=None, records=None):
-    """The ladder record of one claim and arm (nothing written)."""
+def build_record(claim, arm, encoder=None, records=None, missing_ok=None, repo=None):
+    """The ladder record of one claim and arm (nothing written). `missing_ok`: a reason that lets a cell file be absent (it goes
+    into the record); a cell file that is absent otherwise refuses the run, unless a gate parks the claim."""
     records = Path(records or records_dir())
     spec = CLAIMS[claim]
     enc = encoder_of_arm(arm)
@@ -228,26 +324,21 @@ def build_record(claim, arm, encoder=None, records=None):
         assert enc == 'siglip1', f'SC3 is K*, on SigLIP 1; arm {arm!r} is on {enc!r}'
     if claim in ('SC5', 'SC6'):
         assert enc == 'siglip1', f'{claim} is K* / F1 on SigLIP 1; arm {arm!r} is on {enc!r}'
-    if spec['stage2']:
-        check_pass_rule(records)
+    check_pass_rule(records, spec['stage2'], repo)
+    gates = claim_gates(claim, arm, enc, records)
+    parking = parked_by(gates)
     cells, status, files = collect(claim, arm, enc, records)
-    gates, parked = {}, {}
-    for source in status:
-        for g in GATES[source]:
-            st, tries = gate_status(records, g)
-            gates[g] = st
-            if st == 'parked' or (st == 'fail' and tries >= 3):
-                parked[source] = g
-            elif st == 'fail':
-                raise RuntimeError(f'gate {g} has failed {tries} time(s) and is still open: fix it or park it before the ladder')
+    absent = sorted(s for s, v in status.items() if v == 'not run')
+    if absent and parking is None and not missing_ok:
+        raise RuntimeError(f'{claim} {arm}: cell file(s) {absent} not written yet (`{absent[0]}_cells_{arm}.json`): run those cells first, '
+                           'or give --missing-ok <reason> (the reason goes into the record)')
     rows, p1, q1 = [], [], []
     for key in spec['cells']:
         row = dict(cell=cell_name(key))
         for comp, lst in (('P1', p1), ('Q1', q1)):
             c = cells[(key, comp)]
-            src = spec['source'][key[2]]
-            if src in parked:
-                o, why = INC, f'gate {parked[src]} parked'
+            if parking is not None:
+                o, why = INC, f'gate {parking} parked'
             elif c is None:
                 o, why = INC, 'not run'
             else:
@@ -261,12 +352,15 @@ def build_record(claim, arm, encoder=None, records=None):
     c, n, lvl = lad['counts'], lad['n_cells'], lad['level']
     assert n == len(spec['cells'])
     ids = lambda comp, outs: [r['cell'] for r, o in zip(rows, comp) if o in outs]
-    return dict(claim=claim, arm=arm, encoder=enc, scope=f'{spec["data"]}, encoder {enc}', written=now(), n_cells=n,
-                most=spec['most'], level=lvl, inconclusive_above=lad['inconclusive_above'], report=lad['report'],
-                counts=c, sentence=sentence(lvl, n, c['p1_win'] if lvl else None, c['q1_win_or_level'] if lvl == 3 else None),
-                counted=dict(p1_win=ids(p1, (W,)), q1_win_or_level=ids(q1, (W, LV)), p1_inconclusive=ids(p1, (INC,)),
-                             q1_inconclusive=ids(q1, (INC,))),
-                cells=rows, sources=status, cell_files=files, gates=gates)
+    rec = dict(claim=claim, arm=arm, encoder=enc, scope=f'{spec["data"]}, encoder {enc}', written=now(), n_cells=n,
+               most=spec['most'], level=lvl, inconclusive_above=lad['inconclusive_above'], report=lad['report'],
+               counts=c, sentence=sentence(lvl, n, c['p1_win'] if lvl else None, c['q1_win_or_level'] if lvl == 3 else None),
+               counted=dict(p1_win=ids(p1, (W,)), q1_win_or_level=ids(q1, (W, LV)), p1_inconclusive=ids(p1, (INC,)),
+                            q1_inconclusive=ids(q1, (INC,))),
+               cells=rows, sources=status, cell_files=files, gates=gates, parked_by=parking)
+    if missing_ok:
+        rec['missing_ok'] = missing_ok
+    return rec
 
 
 def ladder_path(claim, arm, encoder, records):
@@ -274,10 +368,10 @@ def ladder_path(claim, arm, encoder, records):
     return Path(records) / name
 
 
-def write_ladder(claim, arm, encoder=None, records=None):
+def write_ladder(claim, arm, encoder=None, records=None, missing_ok=None, repo=None):
     """records/<claim>_<arm>.json, once (a level is never edited: a new try needs the file moved aside by the controller)."""
     records = Path(records or records_dir())
-    rec = build_record(claim, arm, encoder, records)
+    rec = build_record(claim, arm, encoder, records, missing_ok, repo)
     path = ladder_path(claim, arm, rec['encoder'], records)
     if path.exists():
         raise FileExistsError(f'{path} exists: a ladder record is written once (constitution row 1); the controller moves it for a new try')
@@ -332,7 +426,9 @@ def f4(x):
     return f'{x:+.4f}'
 
 
-def _cell_text(c):
+def _cell_text(c, parked=None):
+    if parked:
+        return f'INCONCLUSIVE (gate {parked} parked)'
     if c is None:
         return 'not run'
     if c['outcome'] == INC:
@@ -360,12 +456,14 @@ def claim_section(claim, arm, records, k0_cache):
     enc = encoder_of_arm(arm) if arm else ('siglip1' if claim != 'SC4' else None)
     k0 = k0_cache.setdefault(enc, k0_values(enc))
     lines = []
+    parking = None
     if arm is None:
         cells = {(k, c): None for k in spec['cells'] for c in ('P1', 'Q1')}
         lines.append('New cells: not run (no cell record yet).\n')
         status = {}
     else:
         cells, status, _ = collect(claim, arm, enc, records)
+        parking = parked_by(claim_gates(claim, arm, enc, records, strict=False))     # the ladder counts a parked claim inconclusive
         lines.append(f'Arm `{arm}` (encoder {enc}); cell files: ' + ', '.join(f'{s} {v}' for s, v in status.items()) + '.\n')
     dpath = Path(records) / (f'diag_d_{claim}_{enc}_{arm}.json' if claim == 'SC4' else f'diag_d_{claim}_{arm}.json')
     diag = {c['cell']: c for c in _j(dpath)['cells']} if arm and dpath.exists() else None
@@ -374,13 +472,18 @@ def claim_section(claim, arm, records, k0_cache):
     for key in spec['cells']:
         p, q = cells[(key, 'P1')], cells[(key, 'Q1')]
         base = q or p
-        new = 'not run' if base is None or base['outcome'] == INC else f3(base['value'])
-        ptxt = _cell_text(p)
-        if p is not None and q is not None and p['outcome'] != INC and abs(p['value'] - q['value']) > 1e-12:
-            ptxt += f' (cell value {f3(p["value"])})'
+        if parking:
+            new = ptxt = qtxt = f'(gate {parking} parked)'
+            qclaim = 'inconclusive'
+        else:
+            new = 'not run' if base is None else ('inconclusive' if base['outcome'] == INC else f3(base['value']))
+            ptxt, qtxt = _cell_text(p), _cell_text(q)
+            if p is not None and q is not None and p['outcome'] != INC and abs(p['value'] - q['value']) > 1e-12:
+                ptxt += f' (cell value {f3(p["value"])})'
+            qclaim = 'not run' if q is None else ('inconclusive' if q['outcome'] == INC else (q1_claim(q['outcome']) or 'none'))
         k0v = k0.get(key)
         row = f'| {key[1] or key[0]} {key[2]} | '
-        row += f'{f3(k0v["value"]) if k0v else "n/a"} | {new} | {ptxt} | {_cell_text(q)} | {q1_claim(q["outcome"]) or "none" if q is not None and q["outcome"] != INC else "not run"} |'
+        row += f'{f3(k0v["value"]) if k0v else "n/a"} | {new} | {ptxt} | {qtxt} | {qclaim} |'
         if diag:
             dd = diag.get(cell_name(key))
             row += f' {f4(dd["d"])} [{f4(dd["lo"])}, {f4(dd["hi"])}] |' if dd else ' not run |'
@@ -526,7 +629,9 @@ def real_differs(claim, arm, encoder, records, workers=8, draws=None):
             `ns_ret.paired_ret(comp_seeds='apart')`, 10,000 draws (r14 Q1's cell type, the one beside K0's i2i value)
       t2i, i2t, t2t  r23's per-query held files at each arm's own picked read-out, `painting_interval_seeded`, 10,000 draws."""
     assert claim in ('SC3', 'SC4'), 'diagnostic (d) is built for ArtELingo cells (SC3, SC4); MMArt and photo come with tickets 11 and 13'
+    P.use_older_rounds()
     import r29_image_cells as ic       # puts the older rounds on sys.path through r29_paths
+    P.check_older_imports()
     root0 = P.K0_ROOT if encoder == 'siglip1' else P.R14_OUT / 'cstar' / encoder
     wk = ic.Wiring(P.OUT / 'cstar' / encoder, arm, encoder)
     w0 = ic.Wiring(root0, P.K0_ARM, encoder)
@@ -570,7 +675,9 @@ def real_differs(claim, arm, encoder, records, workers=8, draws=None):
 
 
 def _load_per_query(root, row, head, seed, direction, readout, aspect):
+    P.use_older_rounds()
     import tcl_paths as P23
+    P.check_older_imports()
     path = P23.score_path('art_held', P23.CAPTION, row, head, seed, direction, readout, out=root)
     with np.load(path, allow_pickle=False) as z:
         assert {'q_pid', f'ap__{aspect}'} <= set(z.files), path
@@ -580,7 +687,9 @@ def _load_per_query(root, row, head, seed, direction, readout, aspect):
 def _text_diff(key, arm, records, draws=10000):
     """K* minus K0 on one text cell: per-query held AP of both at their own picked read-outs (K*: `text_<arm>_held.json`; K0:
     r28's `text.json`), same queries and scored masks (asserted), `painting_interval_seeded`."""
+    P.use_older_rounds()
     import r29_text as T29
+    P.check_older_imports()
     a, d = key[1], key[2]
     held = _j(Path(records) / f'text_{arm}_held.json')
     assert held['arm'] == arm
@@ -612,6 +721,7 @@ def main(argv=None):
     s.add_argument('--claim', required=True, choices=sorted(CLAIMS))
     s.add_argument('--arm', required=True)
     s.add_argument('--encoder')
+    s.add_argument('--missing-ok', metavar='REASON', help='let a cell file be absent; the reason goes into the record')
     sub.add_parser('sheet', help='rewrite paper_cells.md from every cell record present').add_argument('--out', type=Path)
     d = sub.add_parser('diag-d', help='K* minus K0 per test cell, after the ladder record')
     d.add_argument('--arm', required=True)
@@ -620,7 +730,7 @@ def main(argv=None):
     args = ap.parse_args(argv)
     t0 = time.monotonic()
     if args.cmd == 'ladder':
-        path, rec = write_ladder(args.claim, args.arm, args.encoder)
+        path, rec = write_ladder(args.claim, args.arm, args.encoder, missing_ok=args.missing_ok)
         print(f'{args.claim} {args.arm}: {rec["report"]}; P1 WIN {rec["counts"]["p1_win"]}/{rec["n_cells"]}, Q1 WIN or LEVEL '
               f'{rec["counts"]["q1_win_or_level"]}/{rec["n_cells"]} -> {path}')
     elif args.cmd == 'sheet':

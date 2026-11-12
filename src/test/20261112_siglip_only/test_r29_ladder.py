@@ -55,8 +55,29 @@ def art_cells(p1, q1, arm='siglip1'):
     return img, txt
 
 
-def write_cells(records, arm, img=None, txt=None, other=None):
+ALL_GATES = ('v_image', 'v_text', 'v_mmart', 'vi', 'v_photo', 'vii_trainer', 'vii_photo', 'viii_affection',
+             'viii_siglip2', 'viii_siglip2_prefix', 'viii_clipl14', 'viii_clipl14_prefix')
+
+
+def put_gate(records, gate, status='pass', tries=1):
+    (records / 'gates').mkdir(parents=True, exist_ok=True)
+    (records / 'gates' / f'{gate}.json').write_text(json.dumps(dict(gate=gate, status=status, tries=tries)))
+
+
+def base_files(records, kstar_form='plain'):
+    """What a claim test needs besides its cells: pass_rule.json, prefix_pick.json and every gate record (written if absent)."""
     records.mkdir(parents=True, exist_ok=True)
+    if not (records / 'pass_rule.json').exists():
+        (records / 'pass_rule.json').write_text(json.dumps(dict(status='pass', level=1)))
+    if not (records / 'prefix_pick.json').exists():
+        (records / 'prefix_pick.json').write_text(json.dumps(dict(kstar='siglip1', kstar_form=kstar_form, p1_form='plain', flag=None)))
+    for g in ALL_GATES:
+        if not (records / 'gates' / f'{g}.json').exists():
+            put_gate(records, g)
+
+
+def write_cells(records, arm, img=None, txt=None, other=None, kstar_form='plain'):
+    base_files(records, kstar_form)
     if img is not None:
         (records / f'image_cells_{arm}.json').write_text(json.dumps(dict(arm=arm, encoder='siglip1', cells=img)))
     if txt is not None:
@@ -155,7 +176,7 @@ def test_sentences_fill_only_their_slots():
     s2 = L.sentence(2, n=15, w1=15, wq=None)
     assert s2 == 'With no Qwen3 pass at test time, training adds over the plain embedding in every cell.'
     s3 = L.sentence(3, n=4, w1=4, wq=3)
-    assert s3 == ('With no Qwen3 pass at test time, training adds over the plain embedding in every cell, and it is level '
+    assert s3 == ('With no Qwen3 pass at test time, training adds over the plain embedding in every cell and it is level '
                   'with or above the instructed Qwen3 in 3 of 4 cells.')
     assert L.sentence(0, n=15, w1=5, wq=None) is None
     with pytest.raises(AssertionError):
@@ -205,15 +226,30 @@ def test_a_text_direction_field_must_match_the_id(tmp_path):
         L.build_record('SC3', 'siglip1', records=tmp_path)
 
 
-def test_a_missing_cell_record_is_not_run_and_counts_as_neither(tmp_path):
+def test_a_missing_cell_file_refuses_the_ladder_unless_missing_ok_is_given(tmp_path):
     img, txt = art_cells([W] * 15, [W] * 15)
     write_cells(tmp_path, 'siglip1', img, None)                      # text cells not written
-    rec = L.build_record('SC3', 'siglip1', records=tmp_path)
-    assert rec['sources']['text'] == 'not run'
+    with pytest.raises(RuntimeError, match='not written yet.*text_cells_siglip1'):
+        L.build_record('SC3', 'siglip1', records=tmp_path)
+    with pytest.raises(RuntimeError, match='not written yet'):
+        L.write_ladder('SC3', 'siglip1', records=tmp_path)
+    assert not (tmp_path / 'SC3_siglip1.json').exists()               # nothing frozen by the refusal
+    rec = L.build_record('SC3', 'siglip1', records=tmp_path, missing_ok='text cells wait for ticket 07')
+    assert rec['missing_ok'] == 'text cells wait for ticket 07' and rec['sources']['text'] == 'not run'
     assert rec['counts']['p1_win'] == 6 and rec['counts']['p1_inconclusive'] == 9
     assert rec['level'] == 0 and rec['inconclusive_above']
     assert all(c['p1'] == 'INCONCLUSIVE (not run)' for c in rec['cells'] if c['cell'].endswith(('t2i', 'i2t', 't2t')))
     assert rec['sentence'] is None
+    path, _ = L.write_ladder('SC3', 'siglip1', records=tmp_path, missing_ok='text cells wait for ticket 07')
+    assert json.loads(path.read_text())['missing_ok'].startswith('text cells')
+
+
+def test_a_missing_cell_file_of_a_parked_claim_needs_no_missing_ok(tmp_path):
+    img, txt = art_cells([W] * 15, [W] * 15)
+    write_cells(tmp_path, 'siglip1', img, None)
+    put_gate(tmp_path, 'v_text', 'parked', 3)
+    rec = L.build_record('SC3', 'siglip1', records=tmp_path)
+    assert rec['parked_by'] == 'v_text' and 'missing_ok' not in rec and rec['level'] == 0
 
 
 def test_a_missing_single_cell_is_not_run(tmp_path):
@@ -288,10 +324,8 @@ def test_sc4_is_per_encoder_and_refuses_without_a_pass(tmp_path):
     cells = _sc4_cells('siglip2', 'siglip2', [W] * 5 + [B], [W] * 6)
     write_cells(tmp_path, 'siglip2', cells)
     (tmp_path / 'image_cells_siglip2.json').write_text(json.dumps(dict(arm='siglip2', encoder='siglip2', cells=cells)))
-    with pytest.raises(RuntimeError, match='pass_rule'):
-        L.build_record('SC4', 'siglip2', encoder='siglip2', records=tmp_path)
     (tmp_path / 'pass_rule.json').write_text(json.dumps(dict(status='fail')))
-    with pytest.raises(RuntimeError, match='pass_rule'):
+    with pytest.raises(RuntimeError, match='status pass'):
         L.build_record('SC4', 'siglip2', encoder='siglip2', records=tmp_path)
     (tmp_path / 'pass_rule.json').write_text(json.dumps(dict(status='pass')))
     rec = L.build_record('SC4', 'siglip2', encoder='siglip2', records=tmp_path)
@@ -302,15 +336,57 @@ def test_sc4_is_per_encoder_and_refuses_without_a_pass(tmp_path):
         L.build_record('SC4', 'siglip2', encoder='clip_l14', records=tmp_path)
 
 
-def test_sc3_needs_no_pass_rule_record(tmp_path):
+# --- pass_rule.json: SC3 to SC6 need it present and committed unchanged; a parked SC2 refuses (§3.5 row 1b, §6)
+def _git_repo(tmp_path):
+    import subprocess
+    repo = tmp_path / 'repo'
+    (repo / 'records').mkdir(parents=True)
+    g = lambda *a: subprocess.run(['git', '-C', str(repo), *a], check=True, capture_output=True)
+    g('init', '-q')
+    g('config', 'user.email', 'a@b')
+    g('config', 'user.name', 'a')
+    return repo, g
+
+
+@pytest.mark.parametrize('claim, arm, make', [('SC3', 'siglip1', 'sc3'), ('SC4', 'siglip2', 'sc4')])
+def test_claims_refuse_without_a_pass_rule_record(tmp_path, claim, arm, make):
+    if make == 'sc3':
+        img, txt = art_cells([W] * 15, [W] * 15)
+        write_cells(tmp_path, arm, img, txt)
+    else:
+        write_cells(tmp_path, arm, other=None)
+        (tmp_path / 'image_cells_siglip2.json').write_text(json.dumps(dict(arm=arm, encoder='siglip2', cells=_sc4_cells(arm, arm, [W] * 6, [W] * 6))))
+    (tmp_path / 'pass_rule.json').unlink()
+    with pytest.raises(RuntimeError, match='pass_rule'):
+        L.build_record(claim, arm, records=tmp_path)
+
+
+def test_sc3_needs_the_pass_rule_committed_unchanged_but_not_its_status(tmp_path):
+    repo, g = _git_repo(tmp_path)
+    records = repo / 'records'
+    img, txt = art_cells([W] * 15, [W] * 15)
+    write_cells(records, 'siglip1', img, txt)
+    (records / 'pass_rule.json').write_text(json.dumps(dict(status='fail', level=0)))      # D9: a fail still runs the cells
+    with pytest.raises(RuntimeError, match='not committed'):                              # written, not committed
+        L.build_record('SC3', 'siglip1', records=records, repo=repo)
+    g('add', 'records/pass_rule.json')
+    g('commit', '-q', '-m', 'x')
+    assert L.build_record('SC3', 'siglip1', records=records, repo=repo)['level'] == 3
+    (records / 'pass_rule.json').write_text(json.dumps(dict(status='fail', level=0, edited=True)))
+    with pytest.raises(RuntimeError, match='not committed'):                              # changed after the commit
+        L.build_record('SC3', 'siglip1', records=records, repo=repo)
+
+
+@pytest.mark.parametrize('claim', ['SC3', 'SC4'])
+def test_a_parked_sc2_refuses_with_1c_does_not_run(tmp_path, claim):
     img, txt = art_cells([W] * 15, [W] * 15)
     write_cells(tmp_path, 'siglip1', img, txt)
-    assert L.build_record('SC3', 'siglip1', records=tmp_path)['level'] == 3
+    (tmp_path / 'pass_rule.json').write_text(json.dumps(dict(status='parked')))
+    with pytest.raises(RuntimeError, match='1c does not run'):
+        L.build_record(claim, 'siglip1' if claim == 'SC3' else 'siglip2', records=tmp_path)
 
 
 def test_sc6_four_cell_ladder_with_photo_cells(tmp_path):
-    (tmp_path / 'pass_rule.json').write_text(json.dumps(dict(status='pass')))
-
     def pc(set_, measure, comp, o, aspect='emotion'):
         c = img_cell('emotion', 'ami' if measure == 'ami' else 'map', comp, o, 'siglip1', 'siglip1', set_)
         c['id'] = f'{set_}/siglip1/siglip1/{aspect}/{measure}{9 if measure == "ami" else ""}/{comp}'
@@ -324,20 +400,125 @@ def test_sc6_four_cell_ladder_with_photo_cells(tmp_path):
     assert 'in 3 of 4 cells' in rec['sentence']
 
 
-def test_gate_parked_makes_that_parts_cells_inconclusive(tmp_path):
-    img, txt = art_cells([W] * 15, [W] * 15)
-    write_cells(tmp_path, 'siglip1', img, txt)
-    (tmp_path / 'gates').mkdir()
-    (tmp_path / 'gates' / 'v_text.json').write_text(json.dumps(dict(gate='v_text', status='parked', tries=3)))
-    rec = L.build_record('SC3', 'siglip1', records=tmp_path)
-    assert rec['counts']['p1_win'] == 6 and rec['counts']['p1_inconclusive'] == 9 and rec['gates']['v_text'] == 'parked'
-    (tmp_path / 'gates' / 'v_text.json').write_text(json.dumps(dict(gate='v_text', status='fail', tries=2)))
-    with pytest.raises(RuntimeError, match='still open'):
-        L.build_record('SC3', 'siglip1', records=tmp_path)
-    (tmp_path / 'gates' / 'v_text.json').write_text(json.dumps(dict(gate='v_text', status='fail', tries=3)))
-    assert L.build_record('SC3', 'siglip1', records=tmp_path)['counts']['p1_inconclusive'] == 9
-    (tmp_path / 'gates' / 'v_text.json').write_text(json.dumps(dict(gate='v_text', status='pass', tries=1)))
-    assert L.build_record('SC3', 'siglip1', records=tmp_path)['level'] == 3
+# --- gates (§3.5): the table, absent records, statuses
+CLAIM_ARM = {'SC3': 'siglip1', 'SC4': 'siglip2', 'SC5': 'siglip1', 'SC6': 'siglip1'}
+
+
+def _claim_files(tmp_path, claim, kstar_form='plain', arm=None):
+    """A claim with all its cells WIN against both comparators, every gate passing."""
+    arm = arm or CLAIM_ARM[claim]
+    if claim == 'SC3':
+        img, txt = art_cells([W] * 15, [W] * 15)
+        write_cells(tmp_path, arm, img, txt)
+    elif claim == 'SC4':
+        write_cells(tmp_path, arm, kstar_form=kstar_form)
+        (tmp_path / f'image_cells_{arm}.json').write_text(json.dumps(dict(arm=arm, encoder='siglip2', cells=_sc4_cells(arm, 'siglip2', [W] * 6, [W] * 6))))
+    elif claim == 'SC5':
+        cells = [img_cell(a, m, c, W, set_='mmart') for a in ASP for m in ('ami', 'map') for c in ('plain', 'teacher')]
+        write_cells(tmp_path, arm, other={'mmart': cells})
+    else:
+        cells = []
+        for s_, m in (('affection', 'ami'), ('affection', 'map'), ('emoset', 'ami'), ('emoset', 'map')):
+            for c in ('plain', 'teacher'):
+                x = img_cell('emotion', m, c, W, set_=s_)
+                x['id'] = f'{s_}/siglip1/siglip1/emotion/{m}{9 if m == "ami" else ""}/{c}'
+                cells.append(x)
+        write_cells(tmp_path, arm, other={'photo': cells})
+    return arm
+
+
+# The table the code must follow (spec §3.5, build 4 ruling): gate -> claims it parks.
+EXPECTED_PARKS = {
+    'v_image': {'SC3', 'SC4', 'SC5', 'SC6'}, 'v_text': {'SC3', 'SC4', 'SC5', 'SC6'},
+    'v_mmart': {'SC5'}, 'vi': {'SC5'}, 'v_photo': {'SC6'}, 'vii_trainer': {'SC6'}, 'vii_photo': {'SC6'}, 'viii_affection': {'SC6'},
+    'viii_siglip2': {'SC4'},
+}
+
+
+@pytest.mark.parametrize('gate', list(EXPECTED_PARKS))
+@pytest.mark.parametrize('status', ['parked', 'fail'])
+def test_a_parked_or_failed_gate_parks_exactly_the_claims_of_the_table(tmp_path, gate, status):
+    for claim in ('SC3', 'SC4', 'SC5', 'SC6'):
+        d = tmp_path / claim
+        arm = _claim_files(d, claim)
+        put_gate(d, gate, status, 3)
+        rec = L.build_record(claim, arm, records=d)
+        if claim in EXPECTED_PARKS[gate]:
+            assert rec['parked_by'] == gate and rec['level'] == 0 and rec['counts']['p1_inconclusive'] == rec['n_cells'], (claim, gate)
+            assert rec['inconclusive_above'] and all(r['p1'] == f'INCONCLUSIVE (gate {gate} parked)' for r in rec['cells'])
+        else:
+            assert rec['parked_by'] is None and rec['level'] == 3, (claim, gate)
+
+
+def test_sc4_parks_only_on_the_store_gate_of_its_own_encoder_and_k_star_form(tmp_path):
+    for form, arm, store in (('plain', 'siglip2', 'siglip2'), ('prefixed', 'siglip2_prefix', 'siglip2_prefix')):
+        d = tmp_path / form
+        arm = _claim_files(d, 'SC4', form, arm)
+        for other in ('viii_siglip2', 'viii_siglip2_prefix', 'viii_clipl14', 'viii_clipl14_prefix'):
+            put_gate(d, other, 'pass')
+        for other in ('viii_clipl14', 'viii_clipl14_prefix', 'viii_siglip2' if store != 'siglip2' else 'viii_siglip2_prefix'):
+            put_gate(d, other, 'parked', 3)                              # the other stores do not park this encoder
+        assert L.build_record('SC4', arm, records=d)['parked_by'] is None
+        put_gate(d, f'viii_{store}', 'parked', 3)
+        rec = L.build_record('SC4', arm, records=d)
+        assert rec['parked_by'] == f'viii_{store}' and rec['level'] == 0 and f'viii_{store}' in rec['gates']
+
+
+def test_sc4_store_gate_follows_the_caption_source_map():
+    assert L.store_gate('siglip2', 'plain') == ('viii_siglip2', 'siglip2')
+    assert L.store_gate('siglip2', 'prefixed') == ('viii_siglip2_prefix', 'siglip2_prefix')
+    assert L.store_gate('clip_l14', 'plain') == ('viii_clipl14', 'clipl14')
+    assert L.store_gate('clip_l14', 'prefixed') == ('viii_clipl14_prefix', 'clipl14_prefix')
+    assert L.store_gate('siglip1', 'plain') is None
+
+
+def test_sc4_arm_must_be_the_k_star_store_of_its_encoder(tmp_path):
+    _claim_files(tmp_path, 'SC4', 'prefixed', 'siglip2')               # K* is prefixed, the arm is the plain store
+    with pytest.raises(AssertionError, match='siglip2_prefix'):
+        L.build_record('SC4', 'siglip2', records=tmp_path)
+
+
+@pytest.mark.parametrize('claim', ['SC3', 'SC4', 'SC5', 'SC6'])
+def test_an_absent_gate_record_the_claim_needs_raises_not_run(tmp_path, claim):
+    arm = _claim_files(tmp_path, claim)
+    needed = L.needed_gates(claim, arm, L.encoder_of_arm(arm), tmp_path)
+    assert needed
+    for g in needed:
+        path = tmp_path / 'gates' / f'{g}.json'
+        text = path.read_text()
+        path.unlink()
+        with pytest.raises(RuntimeError, match=f'gate {g} not run'):
+            L.build_record(claim, arm, records=tmp_path)
+        path.write_text(text)
+    assert L.build_record(claim, arm, records=tmp_path)['level'] == 3
+
+
+def test_a_gate_record_the_claim_does_not_need_may_be_absent(tmp_path):
+    arm = _claim_files(tmp_path, 'SC3')
+    for g in ('v_mmart', 'vi', 'v_photo', 'vii_trainer', 'vii_photo', 'viii_affection'):
+        (tmp_path / 'gates' / f'{g}.json').unlink()
+    assert L.build_record('SC3', arm, records=tmp_path)['level'] == 3
+
+
+@pytest.mark.parametrize('status', ['fallback', 'ok', 'passed', None, ''])
+def test_a_gate_status_other_than_pass_fail_parked_raises(tmp_path, status):
+    arm = _claim_files(tmp_path, 'SC3')
+    put_gate(tmp_path, 'v_image', status)
+    with pytest.raises(AssertionError, match='status'):
+        L.build_record('SC3', arm, records=tmp_path)
+
+
+def test_a_gate_record_must_name_its_own_gate(tmp_path):
+    arm = _claim_files(tmp_path, 'SC3')
+    (tmp_path / 'gates' / 'v_image.json').write_text(json.dumps(dict(gate='v_text', status='pass')))
+    with pytest.raises(AssertionError):
+        L.build_record('SC3', arm, records=tmp_path)
+
+
+def test_gate_pass_leaves_cells_counted(tmp_path):
+    arm = _claim_files(tmp_path, 'SC3')
+    rec = L.build_record('SC3', arm, records=tmp_path)
+    assert rec['level'] == 3 and rec['parked_by'] is None and rec['gates'] == {'v_image': 'pass', 'v_text': 'pass'}
 
 
 # ================================================================================================ the sheet
@@ -395,6 +576,25 @@ def test_sheet_shows_a_new_cell_beside_k0_with_both_outcomes(tmp_path):
     assert 'WIN' in row and 'above' in row and f"{L.k0_values()[('artelingo', 'emotion', 'ami')]['value']:.3f}" in row
     row = [ln for ln in text.splitlines() if ln.startswith('| genre t2t')][0]
     assert 'BELOW' in row
+
+
+def test_sheet_shows_a_parked_cell_as_parked_never_as_win_or_level(tmp_path):
+    img, txt = art_cells([W] * 15, [W] * 8 + [LV] * 7)
+    write_cells(tmp_path / 'records', 'siglip1', img, txt)
+    put_gate(tmp_path / 'records', 'v_text', 'parked', 3)
+    L.write_sheet(records=tmp_path / 'records', out=tmp_path / 'p.md')
+    rows = [ln for ln in (tmp_path / 'p.md').read_text().split('## SC4')[0].splitlines() if ln.startswith(('| emotion ', '| style ', '| genre '))]
+    assert len(rows) == 15
+    for r in rows:                      # every SC3 cell is parked by gate (v) text, WIN and LEVEL cells included
+        assert '(gate v_text parked)' in r and 'WIN' not in r and 'LEVEL' not in r and 'above' not in r and 'level with' not in r, r
+
+
+def test_sheet_q1_column_says_inconclusive_for_a_recorded_inconclusive_cell(tmp_path):
+    img, txt = art_cells([W] * 15, [W] * 14 + [I])
+    write_cells(tmp_path / 'records', 'siglip1', img, txt)
+    L.write_sheet(records=tmp_path / 'records', out=tmp_path / 'p.md')
+    row = [ln for ln in (tmp_path / 'p.md').read_text().splitlines() if ln.startswith('| genre t2t')][0]
+    assert row.rstrip().endswith('| inconclusive |') and 'not run' not in row
 
 
 def test_sheet_names_the_ladder_level_when_the_record_exists(tmp_path):
