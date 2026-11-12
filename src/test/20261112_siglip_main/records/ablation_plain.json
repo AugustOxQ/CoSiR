@@ -1,0 +1,143 @@
+{
+ "kind": "r28_ablation_plain",
+ "split": "held",
+ "list_sha256": "a0b1139c6056fd858ddbd2ee1dd4bafd1453e590818c6aa59883364c0288a876",
+ "git_head": "b523bea7aa613579a83d1756150a5a6169e3c88f",
+ "encoders": {
+  "qwen": {
+   "encoder": "qwen",
+   "cells": {
+    "emotion": {
+     "k": 9,
+     "ami": 0.06955545350026339,
+     "map": 0.24241853047418338,
+     "n_queries": 12281,
+     "dropped": 0,
+     "n_labelled": 12281
+    },
+    "style": {
+     "k": 27,
+     "ami": 0.23461712736047158,
+     "map": 0.18011763931066357,
+     "n_queries": 12281,
+     "dropped": 0,
+     "n_labelled": 12281
+    },
+    "genre": {
+     "k": 10,
+     "ami": 0.4249481876192607,
+     "map": 0.4760400656375455,
+     "n_queries": 9949,
+     "dropped": 0,
+     "n_labelled": 9949
+    }
+   },
+   "list_sha256": "a0b1139c6056fd858ddbd2ee1dd4bafd1453e590818c6aa59883364c0288a876",
+   "seconds": 70.6306049739942,
+   "store_sha256": {
+    "img.npy": "93dda807fc0f4590ce3378c03d7f075e1bb2f942ade75c15bcd844a759c03e4a",
+    "index.json": "62ce92464da63ca6aa6f14451447e4dded46b622aa489dd93aa5fbcb258f49c1"
+   },
+   "gate": {
+    "sweep_record": "/data/SSD2/cosir_r17/20261103_new_scores/outputs/stage3/sweep/artelingo__qwen.json",
+    "ami_vs_sweep": {
+     "emotion": 0.0,
+     "style": 0.0,
+     "genre": 0.0
+    },
+    "ami_vs_verdicts": {
+     "emotion": 0.0,
+     "style": 0.0,
+     "genre": 0.0
+    },
+    "ami_rounded_3": {
+     "emotion": 0.07,
+     "style": 0.235,
+     "genre": 0.425
+    },
+    "map_rounded_3": {
+     "emotion": 0.242,
+     "style": 0.18,
+     "genre": 0.476
+    },
+    "table5_rounded_ami_match": {
+     "emotion": true,
+     "style": true,
+     "genre": true
+    },
+    "table5_rounded_map_match": {
+     "emotion": true,
+     "style": true,
+     "genre": true
+    },
+    "map_vs_r20_ret_loader": {
+     "emotion": 0.0,
+     "style": 0.0,
+     "genre": 0.0
+    },
+    "map_loader_note": "max abs diff of the two loaders (float32 unit rows)",
+    "all_pass": true
+   }
+  },
+  "siglip1": {
+   "encoder": "siglip1",
+   "cells": {
+    "emotion": {
+     "k": 9,
+     "ami": 0.061246600574685284,
+     "map": 0.24422332764280724,
+     "n_queries": 12281,
+     "dropped": 0,
+     "n_labelled": 12281
+    },
+    "style": {
+     "k": 27,
+     "ami": 0.3820364524775098,
+     "map": 0.26835248492611363,
+     "n_queries": 12281,
+     "dropped": 0,
+     "n_labelled": 12281
+    },
+    "genre": {
+     "k": 10,
+     "ami": 0.4016296241640907,
+     "map": 0.4553902712656474,
+     "n_queries": 9949,
+     "dropped": 0,
+     "n_labelled": 9949
+    }
+   },
+   "list_sha256": "a0b1139c6056fd858ddbd2ee1dd4bafd1453e590818c6aa59883364c0288a876",
+   "seconds": 31.590276662725955,
+   "store_sha256": {
+    "img.npy": "1f39281a3f68cd6770ceb43f32705be357b4bc9e53a3523cc59df5b9b6403b80",
+    "index.json": "a3c43025036c9150171c5891b870493032dfbd1f24f1d964caa4a85b0ea6a81b"
+   },
+   "gate": {
+    "sweep_record": "/data/SSD2/cosir_r17/20261103_new_scores/outputs/stage3/sweep/artelingo__siglip1.json",
+    "ami_vs_sweep": {
+     "emotion": 0.0,
+     "style": 0.0,
+     "genre": 0.0
+    },
+    "ami_vs_verdicts": {
+     "emotion": 0.0,
+     "style": 0.0,
+     "genre": 0.0
+    },
+    "ami_rounded_3": {
+     "emotion": 0.061,
+     "style": 0.382,
+     "genre": 0.402
+    },
+    "map_rounded_3": {
+     "emotion": 0.244,
+     "style": 0.268,
+     "genre": 0.455
+    },
+    "all_pass": true
+   }
+  }
+ },
+ "note": "siglip1 is the Table 5 row on SigLIP 1; qwen is the replay of the paper's Qwen3 row (0.070 / 0.235 / 0.425; 0.242 / 0.180 / 0.476)"
+}

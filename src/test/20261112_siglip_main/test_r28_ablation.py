@@ -83,3 +83,15 @@ def test_deltas_are_removal_minus_cstar_and_seed_paired():
     assert d['genre']['ami']['delta'] == pytest.approx(0.05)
     z = A.deltas(ref, ref)
     assert all(z[a][m]['delta'] == 0.0 for a in A.ASPECTS for m in ('ami', 'map'))
+
+
+def test_plain_replay_target_is_the_papers_qwen_row():
+    assert A.TABLE5_QWEN_PLAIN['ami'] == dict(emotion=0.070, style=0.235, genre=0.425)
+    assert A.TABLE5_QWEN_PLAIN['map'] == dict(emotion=0.242, style=0.180, genre=0.476)
+
+
+def test_r17_plain_rows_exist_for_both_encoders():
+    for enc in ('qwen', 'siglip1'):
+        rows = A.r17_rows(enc, 'plain')
+        assert set(rows) == set(A.ASPECTS) and all(len(r['per_seed']) == 1 for r in rows.values())
+    assert [round(A.r17_rows('siglip1', 'plain')[a]['per_seed'][0], 3) for a in A.ASPECTS] == [0.061, 0.382, 0.402]

@@ -23,6 +23,7 @@ Gates (c* from r14's files): the AMI per-seed values and mean equal r17's sweep 
 
     python r28_ablation.py replay  [--out DIR] [--records DIR]      c* only (r14's held files): the gates, the replay values
     python r28_ablation.py full    [--out DIR] [--records DIR]      c* + the four removals (needs the r28 held exports)
+    python r28_ablation.py plain   [--encoders qwen siglip1] [--out DIR] [--records DIR]   Table 5 plain row (qwen = replay)
     python r28_ablation.py smoke   [--arm A] [--aspect X] [--seeds 0] [--out DIR]
 """
 import argparse
@@ -44,6 +45,7 @@ import ns_clu  # noqa: E402
 import ns_data  # noqa: E402
 import ns_metrics  # noqa: E402
 import ns_paths  # noqa: E402
+import bs_stores  # noqa: E402  (r14's store reader; on the path after the imports above)
 
 SET, SPLIT, ENC = 'artelingo', 'held', 'siglip1'
 ASPECTS = ns_paths.ASPECTS
@@ -63,7 +65,10 @@ TOL = 1e-9
 
 REF_ROOT = ns_paths.R14_OUT / 'cstar/siglip1'
 R28_ROOT = Path('/data/SSD2/cosir_r28/20261112_siglip_main/cstar/siglip1')
-R17_SWEEP = Path('/data/SSD2/cosir_r17/20261103_new_scores/outputs/stage3/sweep/artelingo__siglip1.json')
+R17_SWEEP_DIR = Path('/data/SSD2/cosir_r17/20261103_new_scores/outputs/stage3/sweep')
+R17_SWEEP = R17_SWEEP_DIR / 'artelingo__siglip1.json'
+# The paper's Table 5 "Plain embedding" row on Qwen3 (ablation.tex, rounded to 3 decimals): the replay target of `plain`.
+TABLE5_QWEN_PLAIN = dict(ami=dict(emotion=0.070, style=0.235, genre=0.425), map=dict(emotion=0.242, style=0.180, genre=0.476))
 R17_VERDICTS = TEST / '20261103_new_scores/records/verdicts.json'
 OUT = Path('/data/SSD2/cosir_r28/20261112_siglip_main/ablation')
 RECORDS = HERE / 'records'
@@ -144,6 +149,10 @@ def table_md(doc):
             d = deltas(cells, ref)
             row = [f'{d[a][m]["delta"]:+.4f}' for m in ('ami', 'map') for a in ASPECTS]
             lines.append(f'| {arm} minus c* | ' + ' | '.join(row) + ' |')
+    if 'plain' in doc:
+        c = doc['plain']['cells']
+        lines.append('| plain embedding | ' + ' | '.join(f'{c[a]["ami"]:.4f}' for a in ASPECTS) + ' | ' +
+                     ' | '.join(f'{c[a]["map"]:.4f}' for a in ASPECTS) + ' |')
     return '\n'.join(lines)
 
 
@@ -172,17 +181,18 @@ def score_arm_aspect(arm, aspect, y, names, list_sha, seeds, hashes, log, ref_ro
                 fit_seconds=secs)
 
 
-def r17_rows():
-    """r17's sweep record rows for SigLIP 1 c* at the class counts: {aspect: row}."""
-    rec = json.loads(R17_SWEEP.read_text())
-    assert rec['complete'] and rec['split'] == SPLIT and rec['set'] == SET and rec['encoder'] == ENC
+def r17_rows(enc=ENC, arm='cstar'):
+    """r17's sweep record rows for `enc`'s `arm` (`cstar` seeded, `plain` unseeded) at the class counts: {aspect: row}."""
+    rec = json.loads((R17_SWEEP_DIR / f'artelingo__{enc}.json').read_text())
+    assert rec['complete'] and rec['split'] == SPLIT and rec['set'] == SET and rec['encoder'] == enc
     assert rec['kmeans_threads'] == ns_paths.KMEANS_THREADS[SET]
     rows = {}
     for r in rec['rows']:
-        if r['arm'] == 'cstar' and r['metric'] == 'ami' and r['k'] == rec['class_count'][r['aspect']]:
+        if r['arm'] == arm and r['metric'] == 'ami' and r['k'] == rec['class_count'][r['aspect']]:
             assert r['aspect'] not in rows
             rows[r['aspect']] = r
-    assert set(rows) == set(ASPECTS) and all(len(r['per_seed']) == len(SEEDS) for r in rows.values())
+    n = len(SEEDS) if arm == 'cstar' else 1
+    assert set(rows) == set(ASPECTS) and all(len(r['per_seed']) == n for r in rows.values())
     return rows
 
 
@@ -210,6 +220,72 @@ def gates(cells):
     out['all_pass'] = bool(all(g['pass'] for g in out['sweep_record']['per_aspect'].values()) and
                            all(g['pass'] for g in out['verdicts_cell'].values()))
     return out
+
+
+# ------------------------------------------------------------------------------------------------ plain embedding row
+def score_plain(enc, log=print):
+    """The Table 5 "Plain embedding" row for `enc` (`siglip1`, or `qwen` for the replay): the frozen default ArtELingo
+    image on the held paintings, joined by painting name through the store's index (`ns_data.plain` ->
+    `bs_artret.frozen_embed`, the r17 comparator rows; C6), float32 unit rows. AMI at the class count: the same
+    `ns_metrics.partitions` call, unseeded ([3, n], one value, mean over the 3 states, `ns_clu.metric_table`); mAP: the
+    same `r20_ret.score_rows` (plain cosine, qe_k 0). Asserts against r17's plain rows and verdict cells (1e-9)."""
+    names, list_sha, y = t5.bind_labels()
+    assert names.tolist() == ns_data.keys(SET, SPLIT)
+    t0 = time.monotonic()
+    x = ns_data.plain(SET, SPLIT, enc)          # unit float32 [12281, width], rows in the held list's order
+    assert x.shape == (N_HELD, ns_paths.WIDTH[enc]), x.shape
+    cells = {}
+    for a in ASPECTS:
+        k = CLASS_COUNT[a]
+        assert ns_metrics.class_count(y[a]) == k
+        parts = ns_metrics.partitions(x, k, SET)
+        (row,) = ns_clu.metric_table(f'plain-{enc}', a, parts, y[a], k, metrics=('ami',))
+        assert len(row['per_seed']) == 1
+        res = r20_ret.score_rows(x, y[a], names, 8)
+        assert np.isfinite(res['ap']).all()
+        cells[a] = dict(k=k, ami=float(row['per_seed'][0]), map=float(res['ap'].mean()), n_queries=len(res['query_ids']),
+                        dropped=int(res['dropped']), n_labelled=int((y[a] >= 0).sum()))
+        log(f'  plain {enc} {a}: AMI {cells[a]["ami"]:.5f}  mAP {cells[a]["map"]:.5f}')
+    return dict(encoder=enc, cells=cells, list_sha256=list_sha, seconds=time.monotonic() - t0,
+                store_sha256={f: r20_ret.sha256(Path(bs_stores.folders('artelingo', ns_data.VIEW[enc])[0]) / f)
+                              for f in ('img.npy', 'index.json')},
+                gate=plain_gates(enc, cells))
+
+
+def plain_gates(enc, cells):
+    """AMI against r17's sweep `plain` rows and verdicts `comp` cells (1e-9); for qwen also the paper table's rounded
+    row (AMI and mAP, 3 decimals) and the mAP of `r20_ret`'s own plain loader (`rb_encoders.full_images`)."""
+    rows = r17_rows(enc, 'plain')
+    v = json.loads(R17_VERDICTS.read_text())
+    comp = {}
+    for c in v['cells']:
+        if (c['encoder'], c['candidate'], c['metric'], c['kind'], c['comparator'], c['set']) == \
+                (enc, 'cstar', 'ami', 'class_count', 'plain', SET):
+            comp[c['aspect']] = c['comp']
+    assert set(comp) == set(ASPECTS)
+    out = dict(sweep_record=str(R17_SWEEP_DIR / f'artelingo__{enc}.json'),
+               ami_vs_sweep={a: abs(cells[a]['ami'] - rows[a]['per_seed'][0]) for a in ASPECTS},
+               ami_vs_verdicts={a: abs(cells[a]['ami'] - comp[a]) for a in ASPECTS},
+               ami_rounded_3={a: round(cells[a]['ami'], 3) for a in ASPECTS},
+               map_rounded_3={a: round(cells[a]['map'], 3) for a in ASPECTS})
+    ok = max(list(out['ami_vs_sweep'].values()) + list(out['ami_vs_verdicts'].values())) <= TOL
+    if enc == 'qwen':
+        out['table5_rounded_ami_match'] = {a: out['ami_rounded_3'][a] == TABLE5_QWEN_PLAIN['ami'][a] for a in ASPECTS}
+        out['table5_rounded_map_match'] = {a: out['map_rounded_3'][a] == TABLE5_QWEN_PLAIN['map'][a] for a in ASPECTS}
+        names, _, y = t5.bind_labels()
+        plain = r20_ret.rb_encoders.full_images('qwen3vl_emb_2b', names)    # the Table 5 script's own plain loader
+        out['map_vs_r20_ret_loader'] = {a: abs(float(r20_ret.score_rows(plain, y[a], names, 8)['ap'].mean()) - cells[a]['map'])
+                                        for a in ASPECTS}
+        ok = ok and all(out['table5_rounded_ami_match'].values()) and all(out['table5_rounded_map_match'].values())
+        out['map_loader_note'] = 'max abs diff of the two loaders (float32 unit rows)'
+    out['all_pass'] = bool(ok)
+    return out
+
+
+def plain_record(res_by_enc):
+    return dict(kind='r28_ablation_plain', split=SPLIT, list_sha256=next(iter(res_by_enc.values()))['list_sha256'],
+                git_head=git_head(), encoders=res_by_enc,
+                note='siglip1 is the Table 5 row on SigLIP 1; qwen is the replay of the paper\'s Qwen3 row (0.070 / 0.235 / 0.425; 0.242 / 0.180 / 0.476)')
 
 
 def git_head():
@@ -252,6 +328,10 @@ def run(arms, aspects, seeds, out_dir, mode, ref_root=REF_ROOT, r28_root=R28_ROO
             log(f'gate (r17 sweep record and verdicts cell): pass={doc["gate_pass"]}')
             if mode in ('replay', 'full') and not doc['gate_pass']:
                 sys.exit('GATE FAILED: removals not run')
+    if mode == 'full':
+        doc['plain'] = score_plain(ENC, log)
+        assert doc['plain']['gate']['all_pass'], 'plain SigLIP 1 differs from r17'
+        save()
     if REF_ARM in doc['arms'] and len(doc['arms']) > 1:
         ref = doc['arms'][REF_ARM]
         doc['deltas_vs_cstar'] = {arm: deltas(c, ref) for arm, c in doc['arms'].items() if arm != REF_ARM}
@@ -284,13 +364,24 @@ def write_json(path, obj):
 
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument('cmd', choices=('replay', 'full', 'smoke'))
+    p.add_argument('cmd', choices=('replay', 'full', 'smoke', 'plain'))
+    p.add_argument('--encoders', nargs='+', default=['qwen', 'siglip1'], choices=('qwen', 'siglip1'), help='plain only')
     p.add_argument('--out', type=Path, default=OUT)
     p.add_argument('--records', type=Path, default=None, help='folder for records/ablation_ref_replay.json (replay and full)')
     p.add_argument('--arm', default=REF_ARM, choices=ARMS)
     p.add_argument('--aspect', default='emotion', choices=ASPECTS)
     p.add_argument('--seeds', type=int, nargs='+', default=[0])
     a = p.parse_args()
+    if a.cmd == 'plain':       # the Qwen3 replay first, then SigLIP 1; both gates must pass
+        res = {}
+        for e in a.encoders:
+            res[e] = score_plain(e)
+            print(f'plain {e}: gate pass={res[e]["gate"]["all_pass"]}  ({res[e]["seconds"]:.0f}s)', flush=True)
+        a.out.mkdir(parents=True, exist_ok=True)
+        write_json(a.out / 'ablation_plain.json', plain_record(res))
+        if a.records is not None and all(r['gate']['all_pass'] for r in res.values()):
+            write_json(Path(a.records) / 'ablation_plain.json', plain_record(res))
+        return
     if a.cmd == 'replay':
         doc = run((REF_ARM,), ASPECTS, SEEDS, a.out, 'replay')
     elif a.cmd == 'full':
