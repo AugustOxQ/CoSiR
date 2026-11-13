@@ -132,3 +132,4 @@ mode. Outputs `/data/SSD2/cosir_r29/20261112_siglip_only/` (stage logs in its `l
   intervals within 3.6e-15, 12 mAP bootstraps within 3.2e-16, image forward at the float16 rule. Its full replay
   (complete rankings, all intervals) queued on the CPU (45 to 90 min). Its notes say r11's docstrings ask for float64
   dot products, unlike the 1c helper's (observation only; 1c's comparison is closed).
+- 17:55 Cut to chat "r31 run 2" (context past 200k), before part a; handoff `docs/superpowers/handoffs/2026-11-13-r31-run-2-handoff.md`.
