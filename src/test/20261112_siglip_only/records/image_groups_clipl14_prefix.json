@@ -1,0 +1,87 @@
+{
+  "arm": "clipl14_prefix",
+  "encoder": "clip_l14",
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "image": {
+    "cells": {
+      "ami/emotion": [
+        0.09910124379406515,
+        0.09701746731272792,
+        0.10578284654341101,
+        0.09688984989115512,
+        0.09736597385140722
+      ],
+      "map/emotion": [
+        0.26523402424164216,
+        0.26538266884076533,
+        0.2674006509642251,
+        0.2642577860947551,
+        0.26333833945530205
+      ],
+      "ami/style": [
+        0.44656154846725943,
+        0.43879238302752505,
+        0.4458451296137664,
+        0.4380053880663591,
+        0.43531343493986746
+      ],
+      "map/style": [
+        0.3276031623490442,
+        0.3276467467542503,
+        0.32494226619264155,
+        0.32780064478045845,
+        0.32691408301726493
+      ],
+      "ami/genre": [
+        0.5228592818600394,
+        0.5385861081083547,
+        0.5169824740834494,
+        0.5431463256790173,
+        0.5264829627910904
+      ],
+      "map/genre": [
+        0.5953314617685095,
+        0.5946665795414834,
+        0.5946182416618581,
+        0.5957250066783594,
+        0.5958107881340624
+      ]
+    },
+    "per_seed": [
+      0.3761151204134266,
+      0.37701532559751777,
+      0.37592860150989194,
+      0.37763750019835074,
+      0.37420426369816573
+    ],
+    "mean": 0.37618016228347056,
+    "names_sha256": "1430d4b56e4a76dbe3e1c4d699e1db5c92967c5f2048b74b6cbcdf1589809e2e",
+    "files": {
+      "emotion/s0": "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/clip_l14/val/clipl14_prefix/emotion__s0.npz",
+      "emotion/s1": "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/clip_l14/val/clipl14_prefix/emotion__s1.npz",
+      "emotion/s2": "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/clip_l14/val/clipl14_prefix/emotion__s2.npz",
+      "emotion/s3": "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/clip_l14/val/clipl14_prefix/emotion__s3.npz",
+      "emotion/s4": "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/clip_l14/val/clipl14_prefix/emotion__s4.npz",
+      "style/s0": "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/clip_l14/val/clipl14_prefix/style__s0.npz",
+      "style/s1": "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/clip_l14/val/clipl14_prefix/style__s1.npz",
+      "style/s2": "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/clip_l14/val/clipl14_prefix/style__s2.npz",
+      "style/s3": "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/clip_l14/val/clipl14_prefix/style__s3.npz",
+      "style/s4": "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/clip_l14/val/clipl14_prefix/style__s4.npz",
+      "genre/s0": "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/clip_l14/val/clipl14_prefix/genre__s0.npz",
+      "genre/s1": "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/clip_l14/val/clipl14_prefix/genre__s1.npz",
+      "genre/s2": "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/clip_l14/val/clipl14_prefix/genre__s2.npz",
+      "genre/s3": "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/clip_l14/val/clipl14_prefix/genre__s3.npz",
+      "genre/s4": "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/clip_l14/val/clipl14_prefix/genre__s4.npz"
+    }
+  },
+  "root": "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/clip_l14",
+  "written": "2026-11-13 20:33",
+  "amendment": "A1",
+  "amendment_line": "stage 2 ran on the fail under A1"
+}
