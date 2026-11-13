@@ -2426,3 +2426,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-13-r29-run-3-handoff.md
 - New chat: tab 'r29 run 3', session 9981995e-2938-4082-a03f-13f77206bd25
 
+[brief] CoSiR: r29 run 3 -> r31 decide (2026-11-13 06:39 Amsterdam)
+- Done: r29 (SigLIP-only adapter: no Qwen3 pass for texts at test time) is reported: auto report 2027-01-18 and user-read report 2026-11-13, both checked.
+- State: the validation pass rule fails on text (0.2549 against the bound 0.2573), so the model is an extra row; on test it beats plain SigLIP 1 in 13 of 15 cells (level 1).
+- Next: show the user the results brief without our reading, get their reading, then wrap up and decide (step 2).
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-13-r31-decide-handoff.md
+- New chat: tab 'r31 decide', session 4765eb82-8d06-4c24-b9c3-1a2771aba8d9
+
