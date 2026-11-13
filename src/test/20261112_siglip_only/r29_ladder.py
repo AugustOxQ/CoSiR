@@ -587,9 +587,9 @@ def sheet_text(records):
     rule = _j(records / 'pass_rule.json') if (records / 'pass_rule.json').exists() else None
     d3 = rule is not None and rule['status'] != 'pass'          # D3: SC4 to SC7 do not run unless the pass rule passes ...
     a1 = False
-    if d3:                                                      # ... or fails under a committed A1 record (R29_AMENDMENT=A1)
+    if d3:                                                      # ... or fails under a committed A1 record (independent of the reader's environment)
         try:
-            a1 = P.stage2_gate(records) == 'A1'
+            a1 = P.stage2_record_gate(records) == 'A1'
         except RuntimeError:
             pass
         d3 = not a1

@@ -831,10 +831,13 @@ def test_a_pass_record_and_an_sc3_record_carry_no_a1_key(tmp_path, monkeypatch):
     assert 'amendment' not in L.build_record('SC3', 'siglip1', records=records, repo=repo)    # stage 1: presence and commit only (D9)
 
 
-def test_sheet_under_a1_carries_the_a1_line_instead_of_not_run_d3(tmp_path, monkeypatch):
-    repo, records = _a1_repo(tmp_path, monkeypatch)
+@pytest.mark.parametrize('flag', [None, 'A1', 'A2'])
+def test_sheet_under_a1_carries_the_a1_line_instead_of_not_run_d3(tmp_path, monkeypatch, flag):
+    repo, records = _a1_repo(tmp_path, monkeypatch, flag=flag)
     text = L.sheet_text(records)
     assert 'stage 2 ran on the fail under A1' in text and 'not run (D3)' not in text and 'Not run (D3)' not in text
-    monkeypatch.delenv('R29_AMENDMENT')
+    (records / 'amendment_A1.json').write_text('{}')
     text = L.sheet_text(records)
     assert 'SC4 to SC7: not run (D3).' in text and 'under A1' not in text
+    (records / 'amendment_A1.json').rename(records / 'amendment_A1.absent')
+    assert 'SC4 to SC7: not run (D3).' in L.sheet_text(records)
