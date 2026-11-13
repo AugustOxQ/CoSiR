@@ -2450,3 +2450,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-13-r31-build-2-handoff.md
 - New chat: tab 'r31 build 2', session 1a5e820c-13b1-4202-a05a-1a9d1b44126d
 
+[brief] CoSiR: r31 build 2 -> r31 run (2026-11-13 17:04 Amsterdam)
+- Done: the r31 build: tickets 01 to 03 merged into main (f4ea768f); final review fixes merged; scoped re-review pass.
+- State: SC9 replay gates pass (SigLIP 2 and CLIP L/14 reproduce r28's valpick.json within 1.2e-16); no stage 2 output yet.
+- Next: GPU check, then `r29_run_stage2.sh a --amendment A1` at 19:00 or later; the picks and encoder_pick.json committed and re-derived by Codex; then part b.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-13-r31-run-handoff.md
+- New chat: tab 'r31 run', session ca87e2de-e863-4ca2-8a8f-410fc25baa38
+
