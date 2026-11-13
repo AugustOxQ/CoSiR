@@ -1967,18 +1967,741 @@
      "/project/CoSiR/src/test/20261112_siglip_only/rederive/s2mp_val.json": "355b0cbb81bb2f8c3a73d6494953b75a39215bd1676c14783101371b9283deed"
     },
     "written": "2026-11-13 21:35"
+   },
+   "e2e3": {
+    "status": "pass",
+    "n_compared": 88,
+    "max_abs_diff": 0.0,
+    "mismatches": [],
+    "unpaired": [
+     {
+      "side": "ours",
+      "field": "siglip2: readouts.plain, readouts.teacher, validation_files, root",
+      "note": "comparator picks copied from older rounds; provenance"
+     },
+     {
+      "side": "codex",
+      "field": "siglip2: forward_check, replay_gates, replays, image_tables (other rows)",
+      "note": "Codex certification"
+     },
+     {
+      "side": "ours",
+      "field": "clip_l14: readouts.plain, readouts.teacher, validation_files, root",
+      "note": "comparator picks copied from older rounds; provenance"
+     },
+     {
+      "side": "codex",
+      "field": "clip_l14: forward_check, replay_gates, replays, image_tables (other rows)",
+      "note": "Codex certification"
+     }
+    ],
+    "info": [
+     {
+      "item": "siglip2/table/q1/center+k10/map/emotion",
+      "ours": 0.27490761892019955,
+      "codex": 0.27490761892019955,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "siglip2/table/q1/center+k10/map/style",
+      "ours": 0.3553934863778436,
+      "codex": 0.3553934863778436,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "siglip2/table/q1/center+k10/map/genre",
+      "ours": 0.6326454073917473,
+      "codex": 0.6326454073917473,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "siglip2/table/q1/center+k10/score",
+      "ours": 6.148377593795677,
+      "codex": 6.148377593795677,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "siglip2/table/q1/center+k10/kept",
+      "ours": true,
+      "codex": true,
+      "equal": true
+     },
+     {
+      "item": "siglip2/table/plain/center+k10/map/emotion",
+      "ours": 0.26604873103775734,
+      "codex": 0.26604873103775734,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "siglip2/table/plain/center+k10/map/style",
+      "ours": 0.2883716782348172,
+      "codex": 0.2883716782348172,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "siglip2/table/plain/center+k10/map/genre",
+      "ours": 0.5644116584981527,
+      "codex": 0.5644116584981527,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "siglip2/table/plain/center+k10/score",
+      "ours": 5.322137958059444,
+      "codex": 5.322137958059444,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "siglip2/table/plain/center+k10/kept",
+      "ours": true,
+      "codex": true,
+      "equal": true
+     },
+     {
+      "item": "clip_l14/table/q1/center+k10/map/emotion",
+      "ours": 0.2715662140608113,
+      "codex": 0.2715662140608113,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "clip_l14/table/q1/center+k10/map/style",
+      "ours": 0.34265554048007063,
+      "codex": 0.34265554048007063,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "clip_l14/table/q1/center+k10/map/genre",
+      "ours": 0.6265005553889308,
+      "codex": 0.6265005553889308,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "clip_l14/table/q1/center+k10/score",
+      "ours": 10.530890615550065,
+      "codex": 10.530890615550065,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "clip_l14/table/q1/center+k10/kept",
+      "ours": true,
+      "codex": true,
+      "equal": true
+     },
+     {
+      "item": "clip_l14/table/plain/center+k10/map/emotion",
+      "ours": 0.26396916891621275,
+      "codex": 0.26396916891621275,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "clip_l14/table/plain/center+k10/map/style",
+      "ours": 0.2804999383730631,
+      "codex": 0.28049993837306303,
+      "diff": 5.551115123125783e-17,
+      "equal": true
+     },
+     {
+      "item": "clip_l14/table/plain/center+k10/map/genre",
+      "ours": 0.558038563445114,
+      "codex": 0.558038563445114,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "clip_l14/table/plain/center+k10/score",
+      "ours": 10.335858788332791,
+      "codex": 10.335858788332784,
+      "diff": 7.105427357601002e-15,
+      "equal": true
+     },
+     {
+      "item": "clip_l14/table/plain/center+k10/kept",
+      "ours": true,
+      "codex": true,
+      "equal": true
+     }
+    ],
+    "codex_status": {
+     "complete": true,
+     "kind": "validation",
+     "replay_gates": {
+      "siglip2": true,
+      "clip_l14": true
+     },
+     "forward_check_pass": {
+      "siglip2": {
+       "emotion": true,
+       "style": true,
+       "genre": true
+      },
+      "clip_l14": {
+       "emotion": true,
+       "style": true,
+       "genre": true
+      }
+     }
+    },
+    "items": [
+     {
+      "item": "siglip2/ours_arm",
+      "ours": "siglip2_prefix",
+      "codex": "siglip2_prefix",
+      "equal": true
+     },
+     {
+      "item": "siglip2/ours_encoder",
+      "ours": "siglip2",
+      "codex": "siglip2",
+      "equal": true
+     },
+     {
+      "item": "siglip2/range/ami/emotion",
+      "ours": 0.01109507519343314,
+      "codex": 0.01109507519343314,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/range/image_map/emotion",
+      "ours": 0.002625479943521969,
+      "codex": 0.002625479943521969,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/pick/image_map_q1_side/emotion",
+      "ours": "center+k10",
+      "codex": "center+k10",
+      "equal": true
+     },
+     {
+      "item": "siglip2/pick/image_map_plain_side/emotion",
+      "ours": "center+k10",
+      "codex": "center+k10",
+      "equal": true
+     },
+     {
+      "item": "siglip2/per_seed/ami/emotion[0]",
+      "ours": 0.10529666927810068,
+      "codex": 0.10529666927810068,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/per_seed/ami/emotion[1]",
+      "ours": 0.09727578473880243,
+      "codex": 0.09727578473880243,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/per_seed/ami/emotion[2]",
+      "ours": 0.10782529859614981,
+      "codex": 0.10782529859614981,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/per_seed/ami/emotion[3]",
+      "ours": 0.10837085993223557,
+      "codex": 0.10837085993223557,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/per_seed/ami/emotion[4]",
+      "ours": 0.10116774850820782,
+      "codex": 0.10116774850820782,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/per_seed/map/emotion[0]",
+      "ours": 0.26755068905446927,
+      "codex": 0.26755068905446927,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/per_seed/map/emotion[1]",
+      "ours": 0.26604790210562634,
+      "codex": 0.26604790210562634,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/per_seed/map/emotion[2]",
+      "ours": 0.2679573050693206,
+      "codex": 0.2679573050693206,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/per_seed/map/emotion[3]",
+      "ours": 0.2686733820491483,
+      "codex": 0.2686733820491483,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/per_seed/map/emotion[4]",
+      "ours": 0.2665730860256801,
+      "codex": 0.2665730860256801,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/range/ami/style",
+      "ours": 0.01871820045976752,
+      "codex": 0.01871820045976752,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/range/image_map/style",
+      "ours": 0.0035644238277711127,
+      "codex": 0.0035644238277711127,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/pick/image_map_q1_side/style",
+      "ours": "center+k10",
+      "codex": "center+k10",
+      "equal": true
+     },
+     {
+      "item": "siglip2/pick/image_map_plain_side/style",
+      "ours": "center+k10",
+      "codex": "center+k10",
+      "equal": true
+     },
+     {
+      "item": "siglip2/per_seed/ami/style[0]",
+      "ours": 0.4613545977833016,
+      "codex": 0.4613545977833016,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/per_seed/ami/style[1]",
+      "ours": 0.454867327193194,
+      "codex": 0.454867327193194,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/per_seed/ami/style[2]",
+      "ours": 0.4558400951852574,
+      "codex": 0.4558400951852574,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/per_seed/ami/style[3]",
+      "ours": 0.4515703178627477,
+      "codex": 0.4515703178627477,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/per_seed/ami/style[4]",
+      "ours": 0.4426363973235341,
+      "codex": 0.4426363973235341,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/per_seed/map/style[0]",
+      "ours": 0.3415369242596229,
+      "codex": 0.3415369242596229,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/per_seed/map/style[1]",
+      "ours": 0.3390120028075877,
+      "codex": 0.3390120028075877,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/per_seed/map/style[2]",
+      "ours": 0.33909989901960313,
+      "codex": 0.33909989901960313,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/per_seed/map/style[3]",
+      "ours": 0.34012885490360123,
+      "codex": 0.34012885490360123,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/per_seed/map/style[4]",
+      "ours": 0.3379725004318518,
+      "codex": 0.3379725004318518,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/range/ami/genre",
+      "ours": 0.0181369510832865,
+      "codex": 0.0181369510832865,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/range/image_map/genre",
+      "ours": 0.0023802685960839787,
+      "codex": 0.0023802685960839787,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/pick/image_map_q1_side/genre",
+      "ours": "center+k10",
+      "codex": "center+k10",
+      "equal": true
+     },
+     {
+      "item": "siglip2/pick/image_map_plain_side/genre",
+      "ours": "center+k10",
+      "codex": "center+k10",
+      "equal": true
+     },
+     {
+      "item": "siglip2/per_seed/ami/genre[0]",
+      "ours": 0.5373776963393063,
+      "codex": 0.5373776963393063,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/per_seed/ami/genre[1]",
+      "ours": 0.5452786069312513,
+      "codex": 0.5452786069312513,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/per_seed/ami/genre[2]",
+      "ours": 0.5334225036840954,
+      "codex": 0.5334225036840954,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/per_seed/ami/genre[3]",
+      "ours": 0.5333686612492207,
+      "codex": 0.5333686612492207,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/per_seed/ami/genre[4]",
+      "ours": 0.5271416558479648,
+      "codex": 0.5271416558479648,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/per_seed/map/genre[0]",
+      "ours": 0.6023460421862233,
+      "codex": 0.6023460421862233,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/per_seed/map/genre[1]",
+      "ours": 0.6047263107823073,
+      "codex": 0.6047263107823073,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/per_seed/map/genre[2]",
+      "ours": 0.6028279723354208,
+      "codex": 0.6028279723354208,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/per_seed/map/genre[3]",
+      "ours": 0.6025072073736855,
+      "codex": 0.6025072073736855,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/per_seed/map/genre[4]",
+      "ours": 0.6030896882786969,
+      "codex": 0.6030896882786969,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/ours_arm",
+      "ours": "clipl14_prefix",
+      "codex": "clipl14_prefix",
+      "equal": true
+     },
+     {
+      "item": "clip_l14/ours_encoder",
+      "ours": "clip_l14",
+      "codex": "clip_l14",
+      "equal": true
+     },
+     {
+      "item": "clip_l14/range/ami/emotion",
+      "ours": 0.008892996652255888,
+      "codex": 0.008892996652255888,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/range/image_map/emotion",
+      "ours": 0.0040623115089230555,
+      "codex": 0.0040623115089230555,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/pick/image_map_q1_side/emotion",
+      "ours": "center+k10",
+      "codex": "center+k10",
+      "equal": true
+     },
+     {
+      "item": "clip_l14/pick/image_map_plain_side/emotion",
+      "ours": "center+k10",
+      "codex": "center+k10",
+      "equal": true
+     },
+     {
+      "item": "clip_l14/per_seed/ami/emotion[0]",
+      "ours": 0.09910124379406515,
+      "codex": 0.09910124379406515,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/per_seed/ami/emotion[1]",
+      "ours": 0.09701746731272792,
+      "codex": 0.09701746731272792,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/per_seed/ami/emotion[2]",
+      "ours": 0.10578284654341101,
+      "codex": 0.10578284654341101,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/per_seed/ami/emotion[3]",
+      "ours": 0.09688984989115512,
+      "codex": 0.09688984989115512,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/per_seed/ami/emotion[4]",
+      "ours": 0.09736597385140722,
+      "codex": 0.09736597385140722,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/per_seed/map/emotion[0]",
+      "ours": 0.26523402424164216,
+      "codex": 0.26523402424164216,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/per_seed/map/emotion[1]",
+      "ours": 0.26538266884076533,
+      "codex": 0.26538266884076533,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/per_seed/map/emotion[2]",
+      "ours": 0.2674006509642251,
+      "codex": 0.2674006509642251,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/per_seed/map/emotion[3]",
+      "ours": 0.2642577860947551,
+      "codex": 0.2642577860947551,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/per_seed/map/emotion[4]",
+      "ours": 0.26333833945530205,
+      "codex": 0.26333833945530205,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/range/ami/style",
+      "ours": 0.011248113527391967,
+      "codex": 0.011248113527391967,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/range/image_map/style",
+      "ours": 0.002858378587816901,
+      "codex": 0.002858378587816901,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/pick/image_map_q1_side/style",
+      "ours": "center+k10",
+      "codex": "center+k10",
+      "equal": true
+     },
+     {
+      "item": "clip_l14/pick/image_map_plain_side/style",
+      "ours": "center+k10",
+      "codex": "center+k10",
+      "equal": true
+     },
+     {
+      "item": "clip_l14/per_seed/ami/style[0]",
+      "ours": 0.44656154846725943,
+      "codex": 0.44656154846725943,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/per_seed/ami/style[1]",
+      "ours": 0.43879238302752505,
+      "codex": 0.43879238302752505,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/per_seed/ami/style[2]",
+      "ours": 0.4458451296137664,
+      "codex": 0.4458451296137664,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/per_seed/ami/style[3]",
+      "ours": 0.4380053880663591,
+      "codex": 0.4380053880663591,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/per_seed/ami/style[4]",
+      "ours": 0.43531343493986746,
+      "codex": 0.43531343493986746,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/per_seed/map/style[0]",
+      "ours": 0.3276031623490442,
+      "codex": 0.3276031623490442,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/per_seed/map/style[1]",
+      "ours": 0.3276467467542503,
+      "codex": 0.3276467467542503,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/per_seed/map/style[2]",
+      "ours": 0.32494226619264155,
+      "codex": 0.32494226619264155,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/per_seed/map/style[3]",
+      "ours": 0.32780064478045845,
+      "codex": 0.32780064478045845,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/per_seed/map/style[4]",
+      "ours": 0.32691408301726493,
+      "codex": 0.32691408301726493,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/range/ami/genre",
+      "ours": 0.02616385159556789,
+      "codex": 0.02616385159556789,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/range/image_map/genre",
+      "ours": 0.0011925464722043477,
+      "codex": 0.0011925464722043477,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/pick/image_map_q1_side/genre",
+      "ours": "center+k10",
+      "codex": "center+k10",
+      "equal": true
+     },
+     {
+      "item": "clip_l14/pick/image_map_plain_side/genre",
+      "ours": "center+k10",
+      "codex": "center+k10",
+      "equal": true
+     },
+     {
+      "item": "clip_l14/per_seed/ami/genre[0]",
+      "ours": 0.5228592818600394,
+      "codex": 0.5228592818600394,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/per_seed/ami/genre[1]",
+      "ours": 0.5385861081083547,
+      "codex": 0.5385861081083547,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/per_seed/ami/genre[2]",
+      "ours": 0.5169824740834494,
+      "codex": 0.5169824740834494,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/per_seed/ami/genre[3]",
+      "ours": 0.5431463256790173,
+      "codex": 0.5431463256790173,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/per_seed/ami/genre[4]",
+      "ours": 0.5264829627910904,
+      "codex": 0.5264829627910904,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/per_seed/map/genre[0]",
+      "ours": 0.5953314617685095,
+      "codex": 0.5953314617685095,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/per_seed/map/genre[1]",
+      "ours": 0.5946665795414834,
+      "codex": 0.5946665795414834,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/per_seed/map/genre[2]",
+      "ours": 0.5946182416618581,
+      "codex": 0.5946182416618581,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/per_seed/map/genre[3]",
+      "ours": 0.5957250066783594,
+      "codex": 0.5957250066783594,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/per_seed/map/genre[4]",
+      "ours": 0.5958107881340624,
+      "codex": 0.5958107881340624,
+      "diff": 0.0
+     }
+    ],
+    "inputs": {
+     "/project/CoSiR/src/test/20261112_siglip_only/records/image_picks_siglip2_prefix.json": "13456dda0083a5896682cd67670e4112fda8acc797ff17f9c07296a626c6375f",
+     "/project/CoSiR/src/test/20261112_siglip_only/records/image_picks_clipl14_prefix.json": "eb80cf4bb410982339f23a7ba4d4e4d368fdc58f3b68887a571988136410aac9",
+     "/project/CoSiR/src/test/20261112_siglip_only/rederive/s2e_val.json": "a0bd2a07191546c3eb8126a365dbe4bc959e28da641847ea37467341e0bd8bf7"
+    },
+    "written": "2026-11-13 21:40"
    }
   }
  },
  "mismatches": {
   "val": {
-   "mmart": []
+   "mmart": [],
+   "e2e3": []
   }
  },
  "missing": {
   "val": {}
  },
  "written": {
-  "val": "2026-11-13 21:35"
+  "val": "2026-11-13 21:40"
  }
 }

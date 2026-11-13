@@ -1,0 +1,3457 @@
+{
+  "kind": "validation",
+  "complete": true,
+  "encoders": {
+    "siglip2": {
+      "groups": {
+        "per_seed": [
+          0.385910436483504,
+          0.38453465575979484,
+          0.38449551231497453,
+          0.38410321389510643,
+          0.37976351273598924
+        ],
+        "cells": {
+          "ami/emotion": [
+            0.10529666927810068,
+            0.09727578473880243,
+            0.10782529859614981,
+            0.10837085993223557,
+            0.10116774850820782
+          ],
+          "map/emotion": [
+            0.26755068905446927,
+            0.26604790210562634,
+            0.2679573050693206,
+            0.2686733820491483,
+            0.2665730860256801
+          ],
+          "ami/style": [
+            0.4613545977833016,
+            0.454867327193194,
+            0.4558400951852574,
+            0.4515703178627477,
+            0.4426363973235341
+          ],
+          "map/style": [
+            0.3415369242596229,
+            0.3390120028075877,
+            0.33909989901960313,
+            0.34012885490360123,
+            0.3379725004318518
+          ],
+          "ami/genre": [
+            0.5373776963393063,
+            0.5452786069312513,
+            0.5334225036840954,
+            0.5333686612492207,
+            0.5271416558479648
+          ],
+          "map/genre": [
+            0.6023460421862233,
+            0.6047263107823073,
+            0.6028279723354208,
+            0.6025072073736855,
+            0.6030896882786969
+          ]
+        },
+        "mean": 0.38376146623787377
+      },
+      "picks": {
+        "image_map": {
+          "emotion": {
+            "pick_plain_side": "center+k10",
+            "pick_q1_side": "center+k10",
+            "r": 0.002625479943521969
+          },
+          "style": {
+            "pick_plain_side": "center+k10",
+            "pick_q1_side": "center+k10",
+            "r": 0.0035644238277711127
+          },
+          "genre": {
+            "pick_plain_side": "center+k10",
+            "pick_q1_side": "center+k10",
+            "r": 0.0023802685960839787
+          }
+        },
+        "ami_range": {
+          "emotion": 0.01109507519343314,
+          "style": 0.01871820045976752,
+          "genre": 0.0181369510832865
+        }
+      },
+      "image_tables": {
+        "plain": {
+          "table": {
+            "none+k0": {
+              "emotion": 0.2661715261447492,
+              "style": 0.28169521106704093,
+              "genre": 0.5307544228304751
+            },
+            "center+k0": {
+              "emotion": 0.26516419285103526,
+              "style": 0.2812973259736926,
+              "genre": 0.5371640852874936
+            },
+            "whiten1024+k0": {
+              "emotion": 0.21277170367109538,
+              "style": 0.1293006136256231,
+              "genre": 0.21034831408514765
+            },
+            "whiten256+k0": {
+              "emotion": 0.21883604201252957,
+              "style": 0.1638870465170834,
+              "genre": 0.2597896161530531
+            },
+            "whiten64+k0": {
+              "emotion": 0.23067261216386653,
+              "style": 0.21848024910246297,
+              "genre": 0.3564430982150445
+            },
+            "none+k1": {
+              "emotion": 0.2660025479691378,
+              "style": 0.2845025924836755,
+              "genre": 0.5405694430841417
+            },
+            "center+k1": {
+              "emotion": 0.26507250067410554,
+              "style": 0.28411809327752413,
+              "genre": 0.5470173109187257
+            },
+            "whiten1024+k1": {
+              "emotion": 0.21327344925042252,
+              "style": 0.13555314637564625,
+              "genre": 0.22072275505012523
+            },
+            "whiten256+k1": {
+              "emotion": 0.21954100542846802,
+              "style": 0.17298358390930862,
+              "genre": 0.27721092270373426
+            },
+            "whiten64+k1": {
+              "emotion": 0.23090101192527737,
+              "style": 0.22631960654316102,
+              "genre": 0.3751178182541798
+            },
+            "none+k3": {
+              "emotion": 0.26591559230505546,
+              "style": 0.28796629753405256,
+              "genre": 0.5493678489191302
+            },
+            "center+k3": {
+              "emotion": 0.26525252195555915,
+              "style": 0.28688702468856303,
+              "genre": 0.5553937856104373
+            },
+            "whiten1024+k3": {
+              "emotion": 0.21412840428905242,
+              "style": 0.1423240403656699,
+              "genre": 0.2331571294323816
+            },
+            "whiten256+k3": {
+              "emotion": 0.22069455753515094,
+              "style": 0.18239792394174187,
+              "genre": 0.2961734909938067
+            },
+            "whiten64+k3": {
+              "emotion": 0.23174266925089243,
+              "style": 0.23367932011104858,
+              "genre": 0.3946156217427587
+            },
+            "none+k5": {
+              "emotion": 0.2660634238524968,
+              "style": 0.28919325511672245,
+              "genre": 0.5533847878141176
+            },
+            "center+k5": {
+              "emotion": 0.2655790236596252,
+              "style": 0.2875989793681858,
+              "genre": 0.5598007195649309
+            },
+            "whiten1024+k5": {
+              "emotion": 0.21482573920206574,
+              "style": 0.145988566573776,
+              "genre": 0.24069150311361112
+            },
+            "whiten256+k5": {
+              "emotion": 0.221524962208149,
+              "style": 0.18752371178513597,
+              "genre": 0.3080003414831477
+            },
+            "whiten64+k5": {
+              "emotion": 0.23240720153119776,
+              "style": 0.23733249418996655,
+              "genre": 0.40644618514176145
+            },
+            "none+k10": {
+              "emotion": 0.2665171852261624,
+              "style": 0.2897252757891024,
+              "genre": 0.5577289994422674
+            },
+            "center+k10": {
+              "emotion": 0.26604873103775734,
+              "style": 0.2883716782348172,
+              "genre": 0.5644116584981527
+            },
+            "whiten1024+k10": {
+              "emotion": 0.21597227052721682,
+              "style": 0.15021390039882823,
+              "genre": 0.2519048166570423
+            },
+            "whiten256+k10": {
+              "emotion": 0.22297169729219127,
+              "style": 0.1936867018111385,
+              "genre": 0.3257827591149306
+            },
+            "whiten64+k10": {
+              "emotion": 0.23356712894907966,
+              "style": 0.24163416614177374,
+              "genre": 0.4217880766101711
+            }
+          },
+          "scores": {
+            "none+k0": 0.0,
+            "center+k0": 0.7325096518003026,
+            "whiten1024+k0": -65.90087914589208,
+            "whiten256+k0": -54.972763671380335,
+            "whiten64+k0": -34.82922829977739,
+            "none+k1": 1.6155811405090656,
+            "center+k1": 2.3645051874202894,
+            "whiten1024+k1": -63.79962154873919,
+            "whiten256+k1": -51.59289868621136,
+            "whiten64+k1": -31.451907357179717,
+            "none+k3": 3.160586282557224,
+            "center+k3": 3.8193456641669647,
+            "whiten1024+k3": -61.3165711720842,
+            "whiten256+k3": -47.91052197054561,
+            "whiten64+k3": -27.926316624257385,
+            "none+k5": 3.856629195869207,
+            "center+k5": 4.5445262991341355,
+            "whiten1024+k5": -59.83022697794289,
+            "whiten256+k5": -45.669511290070716,
+            "whiten64+k5": -25.843559351499973,
+            "none+k10": 4.572356342904494,
+            "center+k10": 5.322137958059444,
+            "whiten1024+k10": -57.719207950144664,
+            "whiten256+k10": -42.41923603814078,
+            "whiten64+k10": -23.145533696921856
+          },
+          "kept": {
+            "none+k0": true,
+            "center+k0": true,
+            "whiten1024+k0": false,
+            "whiten256+k0": false,
+            "whiten64+k0": false,
+            "none+k1": true,
+            "center+k1": true,
+            "whiten1024+k1": false,
+            "whiten256+k1": false,
+            "whiten64+k1": false,
+            "none+k3": true,
+            "center+k3": true,
+            "whiten1024+k3": false,
+            "whiten256+k3": false,
+            "whiten64+k3": false,
+            "none+k5": true,
+            "center+k5": true,
+            "whiten1024+k5": false,
+            "whiten256+k5": false,
+            "whiten64+k5": false,
+            "none+k10": true,
+            "center+k10": true,
+            "whiten1024+k10": false,
+            "whiten256+k10": false,
+            "whiten64+k10": false
+          },
+          "pick": "center+k10"
+        },
+        "q1": {
+          "table": {
+            "none+k0": {
+              "emotion": 0.26866262123463935,
+              "style": 0.34071863527309987,
+              "genre": 0.6042024168984129
+            },
+            "center+k0": {
+              "emotion": 0.27087356732150425,
+              "style": 0.3415176303324194,
+              "genre": 0.613799604352325
+            },
+            "whiten1024+k0": {
+              "emotion": 0.21455796867474417,
+              "style": 0.13559831562374808,
+              "genre": 0.24343656821568632
+            },
+            "whiten256+k0": {
+              "emotion": 0.21829580050680777,
+              "style": 0.16859105713560757,
+              "genre": 0.26911805517978604
+            },
+            "whiten64+k0": {
+              "emotion": 0.22944921546587124,
+              "style": 0.2301767127257138,
+              "genre": 0.3804520657297474
+            },
+            "none+k1": {
+              "emotion": 0.26910125469016466,
+              "style": 0.34625329457008724,
+              "genre": 0.6106882133100959
+            },
+            "center+k1": {
+              "emotion": 0.27209997823509885,
+              "style": 0.3471183462449579,
+              "genre": 0.6204665564220762
+            },
+            "whiten1024+k1": {
+              "emotion": 0.21495777942337665,
+              "style": 0.14315941305139507,
+              "genre": 0.2584127934864185
+            },
+            "whiten256+k1": {
+              "emotion": 0.2189172435280427,
+              "style": 0.1791860566643913,
+              "genre": 0.2860577149245529
+            },
+            "whiten64+k1": {
+              "emotion": 0.23029822928948457,
+              "style": 0.2397757903834175,
+              "genre": 0.3948884089382435
+            },
+            "none+k3": {
+              "emotion": 0.2700577441153183,
+              "style": 0.3512326713088647,
+              "genre": 0.6160005582475409
+            },
+            "center+k3": {
+              "emotion": 0.2736601015482282,
+              "style": 0.3519623955499462,
+              "genre": 0.626364710555035
+            },
+            "whiten1024+k3": {
+              "emotion": 0.21604928054181044,
+              "style": 0.15131538939924535,
+              "genre": 0.2755435287377304
+            },
+            "whiten256+k3": {
+              "emotion": 0.22005240298051554,
+              "style": 0.18920453048906724,
+              "genre": 0.3046076843533279
+            },
+            "whiten64+k3": {
+              "emotion": 0.2318727383895903,
+              "style": 0.24958346915379406,
+              "genre": 0.41035720067328246
+            },
+            "none+k5": {
+              "emotion": 0.2705292479097081,
+              "style": 0.3531923509686496,
+              "genre": 0.6185718648931893
+            },
+            "center+k5": {
+              "emotion": 0.27419664535554955,
+              "style": 0.3536447126575105,
+              "genre": 0.6292122722302974
+            },
+            "whiten1024+k5": {
+              "emotion": 0.21679821167425248,
+              "style": 0.15564850410272946,
+              "genre": 0.2865176980117466
+            },
+            "whiten256+k5": {
+              "emotion": 0.22080999137402718,
+              "style": 0.19450162292828707,
+              "genre": 0.31609782402317227
+            },
+            "whiten64+k5": {
+              "emotion": 0.23294875953806637,
+              "style": 0.253940621047129,
+              "genre": 0.4192190853284827
+            },
+            "none+k10": {
+              "emotion": 0.2711959045824165,
+              "style": 0.35496325960407804,
+              "genre": 0.6214599278831036
+            },
+            "center+k10": {
+              "emotion": 0.27490761892019955,
+              "style": 0.3553934863778436,
+              "genre": 0.6326454073917473
+            },
+            "whiten1024+k10": {
+              "emotion": 0.21807886879949537,
+              "style": 0.1609381331267214,
+              "genre": 0.30334675141247425
+            },
+            "whiten256+k10": {
+              "emotion": 0.22215874636074337,
+              "style": 0.2011052845096531,
+              "genre": 0.33321302365502997
+            },
+            "whiten64+k10": {
+              "emotion": 0.2344742332192769,
+              "style": 0.26052005619351826,
+              "genre": 0.4320282525312731
+            }
+          },
+          "scores": {
+            "none+k0": 0.0,
+            "center+k0": 1.6994153817163458,
+            "whiten1024+k0": -76.57309000324739,
+            "whiten256+k0": -69.41671644969115,
+            "whiten64+k0": -46.65013919226752,
+            "none+k1": 1.4815450003629544,
+            "center+k1": 3.312523806082049,
+            "whiten1024+k1": -73.71796655123201,
+            "whiten256+k1": -65.97477390434817,
+            "whiten64+k1": -43.6230044205785,
+            "none+k3": 2.812578847186766,
+            "center+k3": 4.789577028708545,
+            "whiten1024+k3": -70.41767626659346,
+            "whiten256+k3": -62.29601614235359,
+            "whiten64+k3": -40.339668090462744,
+            "none+k5": 3.415790616899104,
+            "center+k5": 5.41379510794867,
+            "whiten1024+k5": -68.38054742081326,
+            "whiten256+k5": -60.095383490749924,
+            "whiten64+k5": -38.55456851611099,
+            "none+k10": 4.0704845491865,
+            "center+k10": 6.148377593795677,
+            "whiten1024+k10": -65.36654079598742,
+            "whiten256+k10": -56.90977506392056,
+            "whiten64+k10": -35.95180702029328
+          },
+          "kept": {
+            "none+k0": true,
+            "center+k0": true,
+            "whiten1024+k0": false,
+            "whiten256+k0": false,
+            "whiten64+k0": false,
+            "none+k1": true,
+            "center+k1": true,
+            "whiten1024+k1": false,
+            "whiten256+k1": false,
+            "whiten64+k1": false,
+            "none+k3": true,
+            "center+k3": true,
+            "whiten1024+k3": false,
+            "whiten256+k3": false,
+            "whiten64+k3": false,
+            "none+k5": true,
+            "center+k5": true,
+            "whiten1024+k5": false,
+            "whiten256+k5": false,
+            "whiten64+k5": false,
+            "none+k10": true,
+            "center+k10": true,
+            "whiten1024+k10": false,
+            "whiten256+k10": false,
+            "whiten64+k10": false
+          },
+          "pick": "center+k10"
+        }
+      }
+    },
+    "clip_l14": {
+      "groups": {
+        "per_seed": [
+          0.3761151204134266,
+          0.37701532559751777,
+          0.37592860150989194,
+          0.37763750019835074,
+          0.37420426369816573
+        ],
+        "cells": {
+          "ami/emotion": [
+            0.09910124379406515,
+            0.09701746731272792,
+            0.10578284654341101,
+            0.09688984989115512,
+            0.09736597385140722
+          ],
+          "map/emotion": [
+            0.26523402424164216,
+            0.26538266884076533,
+            0.2674006509642251,
+            0.2642577860947551,
+            0.26333833945530205
+          ],
+          "ami/style": [
+            0.44656154846725943,
+            0.43879238302752505,
+            0.4458451296137664,
+            0.4380053880663591,
+            0.43531343493986746
+          ],
+          "map/style": [
+            0.3276031623490442,
+            0.3276467467542503,
+            0.32494226619264155,
+            0.32780064478045845,
+            0.32691408301726493
+          ],
+          "ami/genre": [
+            0.5228592818600394,
+            0.5385861081083547,
+            0.5169824740834494,
+            0.5431463256790173,
+            0.5264829627910904
+          ],
+          "map/genre": [
+            0.5953314617685095,
+            0.5946665795414834,
+            0.5946182416618581,
+            0.5957250066783594,
+            0.5958107881340624
+          ]
+        },
+        "mean": 0.37618016228347056
+      },
+      "picks": {
+        "image_map": {
+          "emotion": {
+            "pick_plain_side": "center+k10",
+            "pick_q1_side": "center+k10",
+            "r": 0.0040623115089230555
+          },
+          "style": {
+            "pick_plain_side": "center+k10",
+            "pick_q1_side": "center+k10",
+            "r": 0.002858378587816901
+          },
+          "genre": {
+            "pick_plain_side": "center+k10",
+            "pick_q1_side": "center+k10",
+            "r": 0.0011925464722043477
+          }
+        },
+        "ami_range": {
+          "emotion": 0.008892996652255888,
+          "style": 0.011248113527391967,
+          "genre": 0.02616385159556789
+        }
+      },
+      "image_tables": {
+        "plain": {
+          "table": {
+            "none+k0": {
+              "emotion": 0.2637716095178424,
+              "style": 0.2738679107094534,
+              "genre": 0.5238855375666157
+            },
+            "center+k0": {
+              "emotion": 0.26307068628125113,
+              "style": 0.2737726176174088,
+              "genre": 0.5303903462549961
+            },
+            "whiten1024+k0": {
+              "emotion": 0.21320719945261302,
+              "style": 0.1276251269862781,
+              "genre": 0.21187244501791508
+            },
+            "whiten256+k0": {
+              "emotion": 0.21923878431759847,
+              "style": 0.15992866777825562,
+              "genre": 0.25705947865459583
+            },
+            "whiten64+k0": {
+              "emotion": 0.22992724045978968,
+              "style": 0.2100609559754402,
+              "genre": 0.34984304204357053
+            },
+            "none+k1": {
+              "emotion": 0.26356614994361277,
+              "style": 0.2772933416921305,
+              "genre": 0.5334623284624236
+            },
+            "center+k1": {
+              "emotion": 0.26310659027642147,
+              "style": 0.2768600940859224,
+              "genre": 0.5394447524425993
+            },
+            "whiten1024+k1": {
+              "emotion": 0.2138626598031479,
+              "style": 0.13428643398095033,
+              "genre": 0.22283906241811824
+            },
+            "whiten256+k1": {
+              "emotion": 0.22010103947393098,
+              "style": 0.16979398206624646,
+              "genre": 0.2742695435094487
+            },
+            "whiten64+k1": {
+              "emotion": 0.23034616717146267,
+              "style": 0.21832971234326665,
+              "genre": 0.368705466863008
+            },
+            "none+k3": {
+              "emotion": 0.263955431376046,
+              "style": 0.2805030044551732,
+              "genre": 0.5433771095904607
+            },
+            "center+k3": {
+              "emotion": 0.26358307350355836,
+              "style": 0.2795047639683291,
+              "genre": 0.5497005882763215
+            },
+            "whiten1024+k3": {
+              "emotion": 0.21505192285551344,
+              "style": 0.141465563437486,
+              "genre": 0.23658381083717908
+            },
+            "whiten256+k3": {
+              "emotion": 0.22139373404120008,
+              "style": 0.17935103013937614,
+              "genre": 0.2942586016167092
+            },
+            "whiten64+k3": {
+              "emotion": 0.23118852470767118,
+              "style": 0.22529911769859257,
+              "genre": 0.3884736412125651
+            },
+            "none+k5": {
+              "emotion": 0.26407950187765505,
+              "style": 0.28129165620636054,
+              "genre": 0.5470837811497565
+            },
+            "center+k5": {
+              "emotion": 0.26383596781920976,
+              "style": 0.2802248250709838,
+              "genre": 0.5536803756333972
+            },
+            "whiten1024+k5": {
+              "emotion": 0.2158117108770437,
+              "style": 0.14552197542926104,
+              "genre": 0.2450124931812041
+            },
+            "whiten256+k5": {
+              "emotion": 0.22230797429114482,
+              "style": 0.18384552250159006,
+              "genre": 0.3058685737499964
+            },
+            "whiten64+k5": {
+              "emotion": 0.23180372011502942,
+              "style": 0.2284947706445953,
+              "genre": 0.39923586292895064
+            },
+            "none+k10": {
+              "emotion": 0.2642613388622542,
+              "style": 0.28162770684912275,
+              "genre": 0.5513573464212013
+            },
+            "center+k10": {
+              "emotion": 0.26396916891621275,
+              "style": 0.28049993837306303,
+              "genre": 0.558038563445114
+            },
+            "whiten1024+k10": {
+              "emotion": 0.21701565620052704,
+              "style": 0.15036949669978544,
+              "genre": 0.25698808750105223
+            },
+            "whiten256+k10": {
+              "emotion": 0.223818914235728,
+              "style": 0.19003738185956626,
+              "genre": 0.32259444668940096
+            },
+            "whiten64+k10": {
+              "emotion": 0.2327788816413993,
+              "style": 0.232568110732432,
+              "genre": 0.4141728915782396
+            }
+          },
+          "scores": {
+            "none+k0": 0.0,
+            "center+k0": 1.7495575033769553,
+            "whiten1024+k0": -108.41535025321252,
+            "whiten256+k0": -91.52290621136478,
+            "whiten64+k0": -58.865328508432306,
+            "none+k1": 3.0594481588128546,
+            "center+k1": 4.643385995279868,
+            "whiten1024+k1": -104.51942772608318,
+            "whiten256+k1": -85.4912454267233,
+            "whiten64+k1": -52.59437204088334,
+            "none+k3": 6.237008740840885,
+            "center+k3": 7.8575441249657905,
+            "whiten1024+k3": -99.74279118996124,
+            "whiten256+k3": -78.6834464575656,
+            "whiten64+k3": -46.18702673786762,
+            "none+k5": 7.375225229885447,
+            "center+k5": 9.07467214665821,
+            "whiten1024+k5": -96.85146924361776,
+            "whiten256+k5": -74.83914887490134,
+            "whiten64+k5": -42.755691099880806,
+            "none+k10": 8.623855799027739,
+            "center+k10": 10.335858788332784,
+            "whiten1024+k10": -92.84003449631325,
+            "whiten256+k10": -69.31798304310313,
+            "whiten64+k10": -38.02554921431403
+          },
+          "kept": {
+            "none+k0": true,
+            "center+k0": true,
+            "whiten1024+k0": false,
+            "whiten256+k0": false,
+            "whiten64+k0": false,
+            "none+k1": true,
+            "center+k1": true,
+            "whiten1024+k1": false,
+            "whiten256+k1": false,
+            "whiten64+k1": false,
+            "none+k3": true,
+            "center+k3": true,
+            "whiten1024+k3": false,
+            "whiten256+k3": false,
+            "whiten64+k3": false,
+            "none+k5": true,
+            "center+k5": true,
+            "whiten1024+k5": false,
+            "whiten256+k5": false,
+            "whiten64+k5": false,
+            "none+k10": true,
+            "center+k10": true,
+            "whiten1024+k10": false,
+            "whiten256+k10": false,
+            "whiten64+k10": false
+          },
+          "pick": "center+k10"
+        },
+        "q1": {
+          "table": {
+            "none+k0": {
+              "emotion": 0.266382755124113,
+              "style": 0.3283261175410046,
+              "genre": 0.5963248907730391
+            },
+            "center+k0": {
+              "emotion": 0.26798682261121415,
+              "style": 0.3288967017069928,
+              "genre": 0.6064726370640652
+            },
+            "whiten1024+k0": {
+              "emotion": 0.2150753968182157,
+              "style": 0.13233282055116807,
+              "genre": 0.2463262421271058
+            },
+            "whiten256+k0": {
+              "emotion": 0.2186141421824114,
+              "style": 0.16109076087291047,
+              "genre": 0.2661501617696007
+            },
+            "whiten64+k0": {
+              "emotion": 0.22903482995856103,
+              "style": 0.22019542176818258,
+              "genre": 0.37158067636230807
+            },
+            "none+k1": {
+              "emotion": 0.2669987244779897,
+              "style": 0.33367050031409784,
+              "genre": 0.6043956420912615
+            },
+            "center+k1": {
+              "emotion": 0.26927034070038164,
+              "style": 0.33454874287807584,
+              "genre": 0.6149679712652997
+            },
+            "whiten1024+k1": {
+              "emotion": 0.2159185756948247,
+              "style": 0.1410211046436864,
+              "genre": 0.2612801381263038
+            },
+            "whiten256+k1": {
+              "emotion": 0.21955504183576044,
+              "style": 0.17152492011630793,
+              "genre": 0.2827257059458877
+            },
+            "whiten64+k1": {
+              "emotion": 0.2300049437575074,
+              "style": 0.23064087387094617,
+              "genre": 0.3876398624017306
+            },
+            "none+k3": {
+              "emotion": 0.2679477623772066,
+              "style": 0.33838697978116755,
+              "genre": 0.610000218763892
+            },
+            "center+k3": {
+              "emotion": 0.2704774496986479,
+              "style": 0.3391930089714454,
+              "genre": 0.6205615873669148
+            },
+            "whiten1024+k3": {
+              "emotion": 0.21711185773976993,
+              "style": 0.14949697935814338,
+              "genre": 0.2786074193047618
+            },
+            "whiten256+k3": {
+              "emotion": 0.22081221638350268,
+              "style": 0.18095081871205274,
+              "genre": 0.3011680880613763
+            },
+            "whiten64+k3": {
+              "emotion": 0.2315865945809442,
+              "style": 0.24040938487026478,
+              "genre": 0.4029822275712968
+            },
+            "none+k5": {
+              "emotion": 0.2684004691516834,
+              "style": 0.3403806582505332,
+              "genre": 0.6124313221358261
+            },
+            "center+k5": {
+              "emotion": 0.27098703684493536,
+              "style": 0.34094317467129437,
+              "genre": 0.6231977110110162
+            },
+            "whiten1024+k5": {
+              "emotion": 0.21793020606189173,
+              "style": 0.15453841667584992,
+              "genre": 0.28951115379181735
+            },
+            "whiten256+k5": {
+              "emotion": 0.2216933715503569,
+              "style": 0.1857317223472103,
+              "genre": 0.31261980452749405
+            },
+            "whiten64+k5": {
+              "emotion": 0.2326015896316739,
+              "style": 0.24531494944122914,
+              "genre": 0.41197341298487455
+            },
+            "none+k10": {
+              "emotion": 0.26867972372576504,
+              "style": 0.3420354037056311,
+              "genre": 0.6154577125802941
+            },
+            "center+k10": {
+              "emotion": 0.2715662140608113,
+              "style": 0.34265554048007063,
+              "genre": 0.6265005553889308
+            },
+            "whiten1024+k10": {
+              "emotion": 0.2194633000514954,
+              "style": 0.1601215317312743,
+              "genre": 0.30621290706188575
+            },
+            "whiten256+k10": {
+              "emotion": 0.22314688171322858,
+              "style": 0.19200977453549659,
+              "genre": 0.3295881401444326
+            },
+            "whiten64+k10": {
+              "emotion": 0.23412570132146712,
+              "style": 0.2510482695328758,
+              "genre": 0.4249341967326387
+            }
+          },
+          "scores": {
+            "none+k0": 0.0,
+            "center+k0": 3.0345975696287684,
+            "whiten1024+k0": -124.89552170952807,
+            "whiten256+k0": -115.7104456839764,
+            "whiten64+k0": -78.4935166201937,
+            "none+k1": 2.929672486589993,
+            "center+k1": 6.173600613494435,
+            "whiten1024+k1": -119.63331764397371,
+            "whiten256+k1": -109.78335252330821,
+            "whiten64+k1": -72.70703864392908,
+            "none+k3": 5.1241210959571974,
+            "center+k3": 8.377740386446499,
+            "whiten1024+k3": -113.70376202908479,
+            "whiten256+k3": -103.42607977185777,
+            "whiten64+k3": -67.1496846693451,
+            "none+k5": 6.07329047801831,
+            "center+k5": 9.360485570420447,
+            "whiten1024+k5": -110.00095345813126,
+            "whiten256+k5": -99.59533144701827,
+            "whiten64+k5": -63.98116928020992,
+            "none+k10": 7.135093154356482,
+            "center+k10": 10.530890615550065,
+            "whiten1024+k10": -104.5557010226783,
+            "whiten256+k10": -94.0010548459511,
+            "whiten64+k10": -59.564790580484896
+          },
+          "kept": {
+            "none+k0": true,
+            "center+k0": true,
+            "whiten1024+k0": false,
+            "whiten256+k0": false,
+            "whiten64+k0": false,
+            "none+k1": true,
+            "center+k1": true,
+            "whiten1024+k1": false,
+            "whiten256+k1": false,
+            "whiten64+k1": false,
+            "none+k3": true,
+            "center+k3": true,
+            "whiten1024+k3": false,
+            "whiten256+k3": false,
+            "whiten64+k3": false,
+            "none+k5": true,
+            "center+k5": true,
+            "whiten1024+k5": false,
+            "whiten256+k5": false,
+            "whiten64+k5": false,
+            "none+k10": true,
+            "center+k10": true,
+            "whiten1024+k10": false,
+            "whiten256+k10": false,
+            "whiten64+k10": false
+          },
+          "pick": "center+k10"
+        }
+      }
+    }
+  },
+  "forward_check": {
+    "siglip2": {
+      "emotion": {
+        "elements": 12599296,
+        "equal_elements": 12580017,
+        "share_equal": 0.9984698351399951,
+        "max_abs_diff": 6.103515625e-05,
+        "rows": 6152,
+        "equal_rows": 278,
+        "max_abs_diff_before_quantisation": 5.395710468292236e-05,
+        "all_within_one_float16_step": true,
+        "pass": true
+      },
+      "style": {
+        "elements": 12599296,
+        "equal_elements": 12580003,
+        "share_equal": 0.9984687239667994,
+        "max_abs_diff": 6.103515625e-05,
+        "rows": 6152,
+        "equal_rows": 269,
+        "max_abs_diff_before_quantisation": 6.090104579925537e-05,
+        "all_within_one_float16_step": true,
+        "pass": true
+      },
+      "genre": {
+        "elements": 12599296,
+        "equal_elements": 12581009,
+        "share_equal": 0.9985485696978624,
+        "max_abs_diff": 6.103515625e-05,
+        "rows": 6152,
+        "equal_rows": 325,
+        "max_abs_diff_before_quantisation": 6.002187728881836e-05,
+        "all_within_one_float16_step": true,
+        "pass": true
+      }
+    },
+    "clip_l14": {
+      "emotion": {
+        "elements": 12599296,
+        "equal_elements": 12577209,
+        "share_equal": 0.9982469655447416,
+        "max_abs_diff": 6.103515625e-05,
+        "rows": 6152,
+        "equal_rows": 154,
+        "max_abs_diff_before_quantisation": 5.811452865600586e-05,
+        "all_within_one_float16_step": true,
+        "pass": true
+      },
+      "style": {
+        "elements": 12599296,
+        "equal_elements": 12578452,
+        "share_equal": 0.9983456218506177,
+        "max_abs_diff": 6.103515625e-05,
+        "rows": 6152,
+        "equal_rows": 218,
+        "max_abs_diff_before_quantisation": 6.099045276641846e-05,
+        "all_within_one_float16_step": true,
+        "pass": true
+      },
+      "genre": {
+        "elements": 12599296,
+        "equal_elements": 12581732,
+        "share_equal": 0.9986059538564694,
+        "max_abs_diff": 6.103515625e-05,
+        "rows": 6152,
+        "equal_rows": 373,
+        "max_abs_diff_before_quantisation": 5.899369716644287e-05,
+        "all_within_one_float16_step": true,
+        "pass": true
+      }
+    }
+  },
+  "replays": [
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/siglip2/cells/ami/emotion/per_seed/0",
+      "value": 0.10219604451311688,
+      "recorded_value": 0.10219604451311688,
+      "absolute_difference": 0.0,
+      "family": "sc9_ami",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/siglip2/cells/ami/emotion/per_seed/1",
+      "value": 0.1040290392816605,
+      "recorded_value": 0.1040290392816605,
+      "absolute_difference": 0.0,
+      "family": "sc9_ami",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/siglip2/cells/ami/emotion/per_seed/2",
+      "value": 0.10022135436458875,
+      "recorded_value": 0.10022135436458875,
+      "absolute_difference": 0.0,
+      "family": "sc9_ami",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/siglip2/cells/ami/emotion/per_seed/3",
+      "value": 0.10146412898171049,
+      "recorded_value": 0.10146412898171049,
+      "absolute_difference": 0.0,
+      "family": "sc9_ami",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/siglip2/cells/ami/emotion/per_seed/4",
+      "value": 0.10228483907243902,
+      "recorded_value": 0.10228483907243902,
+      "absolute_difference": 0.0,
+      "family": "sc9_ami",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/siglip2/cells/map/emotion/per_seed/0",
+      "value": 0.26700130062806704,
+      "recorded_value": 0.26700130062806704,
+      "absolute_difference": 0.0,
+      "family": "sc9_map",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/siglip2/cells/map/emotion/per_seed/1",
+      "value": 0.2665376063036734,
+      "recorded_value": 0.2665376063036734,
+      "absolute_difference": 0.0,
+      "family": "sc9_map",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/siglip2/cells/map/emotion/per_seed/2",
+      "value": 0.26803057217589144,
+      "recorded_value": 0.26803057217589144,
+      "absolute_difference": 0.0,
+      "family": "sc9_map",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/siglip2/cells/map/emotion/per_seed/3",
+      "value": 0.2669905741955047,
+      "recorded_value": 0.2669905741955047,
+      "absolute_difference": 0.0,
+      "family": "sc9_map",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/siglip2/cells/map/emotion/per_seed/4",
+      "value": 0.26651638650900905,
+      "recorded_value": 0.26651638650900905,
+      "absolute_difference": 0.0,
+      "family": "sc9_map",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/siglip2/cells/ami/style/per_seed/0",
+      "value": 0.46301094629562817,
+      "recorded_value": 0.46301094629562817,
+      "absolute_difference": 0.0,
+      "family": "sc9_ami",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/siglip2/cells/ami/style/per_seed/1",
+      "value": 0.45722532420355516,
+      "recorded_value": 0.45722532420355516,
+      "absolute_difference": 0.0,
+      "family": "sc9_ami",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/siglip2/cells/ami/style/per_seed/2",
+      "value": 0.4599025187001473,
+      "recorded_value": 0.4599025187001473,
+      "absolute_difference": 0.0,
+      "family": "sc9_ami",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/siglip2/cells/ami/style/per_seed/3",
+      "value": 0.45873412983666234,
+      "recorded_value": 0.45873412983666234,
+      "absolute_difference": 0.0,
+      "family": "sc9_ami",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/siglip2/cells/ami/style/per_seed/4",
+      "value": 0.4461281220032796,
+      "recorded_value": 0.4461281220032796,
+      "absolute_difference": 0.0,
+      "family": "sc9_ami",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/siglip2/cells/map/style/per_seed/0",
+      "value": 0.34204171297552755,
+      "recorded_value": 0.34204171297552755,
+      "absolute_difference": 0.0,
+      "family": "sc9_map",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/siglip2/cells/map/style/per_seed/1",
+      "value": 0.3390263695920976,
+      "recorded_value": 0.3390263695920976,
+      "absolute_difference": 0.0,
+      "family": "sc9_map",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/siglip2/cells/map/style/per_seed/2",
+      "value": 0.34000415774427606,
+      "recorded_value": 0.34000415774427606,
+      "absolute_difference": 0.0,
+      "family": "sc9_map",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/siglip2/cells/map/style/per_seed/3",
+      "value": 0.3409120386675401,
+      "recorded_value": 0.3409120386675401,
+      "absolute_difference": 0.0,
+      "family": "sc9_map",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/siglip2/cells/map/style/per_seed/4",
+      "value": 0.34211935693780526,
+      "recorded_value": 0.34211935693780526,
+      "absolute_difference": 0.0,
+      "family": "sc9_map",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/siglip2/cells/ami/genre/per_seed/0",
+      "value": 0.5196930189561503,
+      "recorded_value": 0.5196930189561503,
+      "absolute_difference": 0.0,
+      "family": "sc9_ami",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/siglip2/cells/ami/genre/per_seed/1",
+      "value": 0.541727689743794,
+      "recorded_value": 0.541727689743794,
+      "absolute_difference": 0.0,
+      "family": "sc9_ami",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/siglip2/cells/ami/genre/per_seed/2",
+      "value": 0.5535237488127901,
+      "recorded_value": 0.5535237488127901,
+      "absolute_difference": 0.0,
+      "family": "sc9_ami",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/siglip2/cells/ami/genre/per_seed/3",
+      "value": 0.5505527854060145,
+      "recorded_value": 0.5505527854060145,
+      "absolute_difference": 0.0,
+      "family": "sc9_ami",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/siglip2/cells/ami/genre/per_seed/4",
+      "value": 0.5511575201054699,
+      "recorded_value": 0.5511575201054699,
+      "absolute_difference": 0.0,
+      "family": "sc9_ami",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/siglip2/cells/map/genre/per_seed/0",
+      "value": 0.6015202032858671,
+      "recorded_value": 0.6015202032858671,
+      "absolute_difference": 0.0,
+      "family": "sc9_map",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/siglip2/cells/map/genre/per_seed/1",
+      "value": 0.603385175367105,
+      "recorded_value": 0.603385175367105,
+      "absolute_difference": 0.0,
+      "family": "sc9_map",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/siglip2/cells/map/genre/per_seed/2",
+      "value": 0.6020215503753813,
+      "recorded_value": 0.6020215503753813,
+      "absolute_difference": 0.0,
+      "family": "sc9_map",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/siglip2/cells/map/genre/per_seed/3",
+      "value": 0.605779537972742,
+      "recorded_value": 0.605779537972742,
+      "absolute_difference": 0.0,
+      "family": "sc9_map",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/siglip2/cells/map/genre/per_seed/4",
+      "value": 0.6027951347646506,
+      "recorded_value": 0.6027951347646506,
+      "absolute_difference": 0.0,
+      "family": "sc9_map",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/siglip2/score",
+      "value": 0.38555109625907147,
+      "recorded_value": 0.3855510962590716,
+      "absolute_difference": 1.1102230246251565e-16,
+      "family": "sc9_group",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/stage1_ranges.json",
+      "key": "cstar/artelingo/siglip2/emotion/ami/r",
+      "value": 0.0038076849170717575,
+      "recorded_value": 0.0038076849170717575,
+      "absolute_difference": 0.0,
+      "family": "ami_range",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261102_backbones_sweep/records/stage1_siglip2.json",
+      "key": "artret_ranges/ranges/emotion",
+      "value": 0.0015141856668823839,
+      "recorded_value": 0.0015141856668823839,
+      "absolute_difference": 0.0,
+      "family": "map_range",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/stage1_ranges.json",
+      "key": "cstar/artelingo/siglip2/style/ami/r",
+      "value": 0.016882824292348553,
+      "recorded_value": 0.016882824292348553,
+      "absolute_difference": 0.0,
+      "family": "ami_range",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261102_backbones_sweep/records/stage1_siglip2.json",
+      "key": "artret_ranges/ranges/style",
+      "value": 0.003092987345707676,
+      "recorded_value": 0.003092987345707676,
+      "absolute_difference": 0.0,
+      "family": "map_range",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/stage1_ranges.json",
+      "key": "cstar/artelingo/siglip2/genre/ami/r",
+      "value": 0.03383072985663982,
+      "recorded_value": 0.03383072985663982,
+      "absolute_difference": 0.0,
+      "family": "ami_range",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261102_backbones_sweep/records/stage1_siglip2.json",
+      "key": "artret_ranges/ranges/genre",
+      "value": 0.004259334686874894,
+      "recorded_value": 0.004259334686874894,
+      "absolute_difference": 0.0,
+      "family": "map_range",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/stage1_picks.json",
+      "key": "untold/artelingo/siglip2/pick",
+      "value": "center+k10",
+      "recorded_value": "center+k10",
+      "absolute_difference": 0.0,
+      "family": "pick_plain",
+      "tolerance": 0.0,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261102_backbones_sweep/records/stage1_siglip2.json",
+      "key": "artret_picks/cstar/pick",
+      "value": "center+k10",
+      "recorded_value": "center+k10",
+      "absolute_difference": 0.0,
+      "family": "pick_q1",
+      "tolerance": 0.0,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/clip_l14/cells/ami/emotion/per_seed/0",
+      "value": 0.10293890566108932,
+      "recorded_value": 0.10293890566108932,
+      "absolute_difference": 0.0,
+      "family": "sc9_ami",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/clip_l14/cells/ami/emotion/per_seed/1",
+      "value": 0.0994160126991408,
+      "recorded_value": 0.0994160126991408,
+      "absolute_difference": 0.0,
+      "family": "sc9_ami",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/clip_l14/cells/ami/emotion/per_seed/2",
+      "value": 0.10319447186993787,
+      "recorded_value": 0.10319447186993787,
+      "absolute_difference": 0.0,
+      "family": "sc9_ami",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/clip_l14/cells/ami/emotion/per_seed/3",
+      "value": 0.10141711748622818,
+      "recorded_value": 0.10141711748622818,
+      "absolute_difference": 0.0,
+      "family": "sc9_ami",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/clip_l14/cells/ami/emotion/per_seed/4",
+      "value": 0.10494320385402073,
+      "recorded_value": 0.10494320385402073,
+      "absolute_difference": 0.0,
+      "family": "sc9_ami",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/clip_l14/cells/map/emotion/per_seed/0",
+      "value": 0.26528545210697446,
+      "recorded_value": 0.26528545210697446,
+      "absolute_difference": 0.0,
+      "family": "sc9_map",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/clip_l14/cells/map/emotion/per_seed/1",
+      "value": 0.2649404348626639,
+      "recorded_value": 0.2649404348626639,
+      "absolute_difference": 0.0,
+      "family": "sc9_map",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/clip_l14/cells/map/emotion/per_seed/2",
+      "value": 0.26415375767808386,
+      "recorded_value": 0.26415375767808386,
+      "absolute_difference": 0.0,
+      "family": "sc9_map",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/clip_l14/cells/map/emotion/per_seed/3",
+      "value": 0.2640617424367595,
+      "recorded_value": 0.2640617424367595,
+      "absolute_difference": 0.0,
+      "family": "sc9_map",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/clip_l14/cells/map/emotion/per_seed/4",
+      "value": 0.26359617781374756,
+      "recorded_value": 0.26359617781374756,
+      "absolute_difference": 0.0,
+      "family": "sc9_map",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/clip_l14/cells/ami/style/per_seed/0",
+      "value": 0.43356343991891205,
+      "recorded_value": 0.43356343991891205,
+      "absolute_difference": 0.0,
+      "family": "sc9_ami",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/clip_l14/cells/ami/style/per_seed/1",
+      "value": 0.4334178346522129,
+      "recorded_value": 0.4334178346522129,
+      "absolute_difference": 0.0,
+      "family": "sc9_ami",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/clip_l14/cells/ami/style/per_seed/2",
+      "value": 0.44281951701930583,
+      "recorded_value": 0.44281951701930583,
+      "absolute_difference": 0.0,
+      "family": "sc9_ami",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/clip_l14/cells/ami/style/per_seed/3",
+      "value": 0.4414856181451205,
+      "recorded_value": 0.4414856181451205,
+      "absolute_difference": 0.0,
+      "family": "sc9_ami",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/clip_l14/cells/ami/style/per_seed/4",
+      "value": 0.43575437723487087,
+      "recorded_value": 0.43575437723487087,
+      "absolute_difference": 0.0,
+      "family": "sc9_ami",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/clip_l14/cells/map/style/per_seed/0",
+      "value": 0.3244705662408706,
+      "recorded_value": 0.3244705662408706,
+      "absolute_difference": 0.0,
+      "family": "sc9_map",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/clip_l14/cells/map/style/per_seed/1",
+      "value": 0.3277685978483207,
+      "recorded_value": 0.3277685978483207,
+      "absolute_difference": 0.0,
+      "family": "sc9_map",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/clip_l14/cells/map/style/per_seed/2",
+      "value": 0.3239725427831924,
+      "recorded_value": 0.3239725427831924,
+      "absolute_difference": 0.0,
+      "family": "sc9_map",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/clip_l14/cells/map/style/per_seed/3",
+      "value": 0.3273768720228119,
+      "recorded_value": 0.3273768720228119,
+      "absolute_difference": 0.0,
+      "family": "sc9_map",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/clip_l14/cells/map/style/per_seed/4",
+      "value": 0.325840043837323,
+      "recorded_value": 0.325840043837323,
+      "absolute_difference": 0.0,
+      "family": "sc9_map",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/clip_l14/cells/ami/genre/per_seed/0",
+      "value": 0.523160439903619,
+      "recorded_value": 0.523160439903619,
+      "absolute_difference": 0.0,
+      "family": "sc9_ami",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/clip_l14/cells/ami/genre/per_seed/1",
+      "value": 0.5238208500149324,
+      "recorded_value": 0.5238208500149324,
+      "absolute_difference": 0.0,
+      "family": "sc9_ami",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/clip_l14/cells/ami/genre/per_seed/2",
+      "value": 0.5277707121547248,
+      "recorded_value": 0.5277707121547248,
+      "absolute_difference": 0.0,
+      "family": "sc9_ami",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/clip_l14/cells/ami/genre/per_seed/3",
+      "value": 0.5391879585452815,
+      "recorded_value": 0.5391879585452815,
+      "absolute_difference": 0.0,
+      "family": "sc9_ami",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/clip_l14/cells/ami/genre/per_seed/4",
+      "value": 0.5268540848538981,
+      "recorded_value": 0.5268540848538981,
+      "absolute_difference": 0.0,
+      "family": "sc9_ami",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/clip_l14/cells/map/genre/per_seed/0",
+      "value": 0.5952478931013564,
+      "recorded_value": 0.5952478931013564,
+      "absolute_difference": 0.0,
+      "family": "sc9_map",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/clip_l14/cells/map/genre/per_seed/1",
+      "value": 0.5947504265983137,
+      "recorded_value": 0.5947504265983137,
+      "absolute_difference": 0.0,
+      "family": "sc9_map",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/clip_l14/cells/map/genre/per_seed/2",
+      "value": 0.5950183584086532,
+      "recorded_value": 0.5950183584086532,
+      "absolute_difference": 0.0,
+      "family": "sc9_map",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/clip_l14/cells/map/genre/per_seed/3",
+      "value": 0.5964068429837547,
+      "recorded_value": 0.5964068429837547,
+      "absolute_difference": 0.0,
+      "family": "sc9_map",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/clip_l14/cells/map/genre/per_seed/4",
+      "value": 0.5962856213787875,
+      "recorded_value": 0.5962856213787875,
+      "absolute_difference": 0.0,
+      "family": "sc9_map",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+      "key": "encoders/clip_l14/score",
+      "value": 0.3756306624704969,
+      "recorded_value": 0.37563066247049687,
+      "absolute_difference": 5.551115123125783e-17,
+      "family": "sc9_group",
+      "tolerance": 1e-06,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/stage1_ranges.json",
+      "key": "cstar/artelingo/clip_l14/emotion/ami/r",
+      "value": 0.005527191154879929,
+      "recorded_value": 0.005527191154879929,
+      "absolute_difference": 0.0,
+      "family": "ami_range",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261102_backbones_sweep/records/stage1_clip_l14.json",
+      "key": "artret_ranges/ranges/emotion",
+      "value": 0.0016892742932269056,
+      "recorded_value": 0.0016892742932269056,
+      "absolute_difference": 0.0,
+      "family": "map_range",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/stage1_ranges.json",
+      "key": "cstar/artelingo/clip_l14/style/ami/r",
+      "value": 0.009401682367092934,
+      "recorded_value": 0.009401682367092934,
+      "absolute_difference": 0.0,
+      "family": "ami_range",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261102_backbones_sweep/records/stage1_clip_l14.json",
+      "key": "artret_ranges/ranges/style",
+      "value": 0.003796055065128312,
+      "recorded_value": 0.003796055065128312,
+      "absolute_difference": 0.0,
+      "family": "map_range",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/stage1_ranges.json",
+      "key": "cstar/artelingo/clip_l14/genre/ami/r",
+      "value": 0.016027518641662408,
+      "recorded_value": 0.016027518641662408,
+      "absolute_difference": 0.0,
+      "family": "ami_range",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261102_backbones_sweep/records/stage1_clip_l14.json",
+      "key": "artret_ranges/ranges/genre",
+      "value": 0.0016564163854410063,
+      "recorded_value": 0.0016564163854410063,
+      "absolute_difference": 0.0,
+      "family": "map_range",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/stage1_picks.json",
+      "key": "untold/artelingo/clip_l14/pick",
+      "value": "center+k10",
+      "recorded_value": "center+k10",
+      "absolute_difference": 0.0,
+      "family": "pick_plain",
+      "tolerance": 0.0,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261102_backbones_sweep/records/stage1_clip_l14.json",
+      "key": "artret_picks/cstar/pick",
+      "value": "center+k10",
+      "recorded_value": "center+k10",
+      "absolute_difference": 0.0,
+      "family": "pick_q1",
+      "tolerance": 0.0,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC1/artelingo/siglip2/emotion/ami/9/plain/value",
+      "value": 0.0983267437673354,
+      "recorded_value": 0.09832674376734343,
+      "absolute_difference": 8.03523914072457e-15,
+      "family": "ami_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC1/artelingo/siglip2/emotion/ami/9/plain/comparator_value",
+      "value": 0.0538156188508996,
+      "recorded_value": 0.05381561885091041,
+      "absolute_difference": 1.0803857808383555e-14,
+      "family": "ami_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC1/artelingo/siglip2/emotion/ami/9/plain/d",
+      "value": 0.044511124916435794,
+      "recorded_value": 0.044511124916433026,
+      "absolute_difference": 2.768618667658984e-15,
+      "family": "ami_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC1/artelingo/siglip2/emotion/ami/9/plain/r",
+      "value": 0.0038076849170717575,
+      "recorded_value": 0.0038076849170717575,
+      "absolute_difference": 0.0,
+      "family": "ami_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC1/artelingo/siglip2/emotion/ami/9/plain/lo",
+      "value": 0.04059276181108196,
+      "recorded_value": 0.04059276181107837,
+      "absolute_difference": 3.587408148320037e-15,
+      "family": "ami_interval",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC1/artelingo/siglip2/emotion/ami/9/plain/hi",
+      "value": 0.048391302916533235,
+      "recorded_value": 0.048391302916530265,
+      "absolute_difference": 2.9698465908722937e-15,
+      "family": "ami_interval",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC3/artelingo/siglip2/emotion/ami/9/teacher/value",
+      "value": 0.0983267437673354,
+      "recorded_value": 0.09832674376734343,
+      "absolute_difference": 8.03523914072457e-15,
+      "family": "ami_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC3/artelingo/siglip2/emotion/ami/9/teacher/comparator_value",
+      "value": 0.08887516573446036,
+      "recorded_value": 0.08887516573447074,
+      "absolute_difference": 1.0380585280245214e-14,
+      "family": "ami_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC3/artelingo/siglip2/emotion/ami/9/teacher/d",
+      "value": 0.009451578032875038,
+      "recorded_value": 0.009451578032872693,
+      "absolute_difference": 2.345346139520643e-15,
+      "family": "ami_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC3/artelingo/siglip2/emotion/ami/9/teacher/r",
+      "value": 0.0038076849170717575,
+      "recorded_value": 0.0038076849170717575,
+      "absolute_difference": 0.0,
+      "family": "ami_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC3/artelingo/siglip2/emotion/ami/9/teacher/lo",
+      "value": 0.006195134766612937,
+      "recorded_value": 0.006195134766612558,
+      "absolute_difference": 3.7903707950093235e-16,
+      "family": "ami_interval",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC3/artelingo/siglip2/emotion/ami/9/teacher/hi",
+      "value": 0.012674889921389222,
+      "recorded_value": 0.012674889921389425,
+      "absolute_difference": 2.0296264668928643e-16,
+      "family": "ami_interval",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC7/artelingo/siglip2/emotion/map/-/plain/value",
+      "value": 0.26106089359519735,
+      "recorded_value": 0.26106089359519735,
+      "absolute_difference": 0.0,
+      "family": "map_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC7/artelingo/siglip2/emotion/map/-/plain/comparator_value",
+      "value": 0.2442894595520592,
+      "recorded_value": 0.2442894595520592,
+      "absolute_difference": 0.0,
+      "family": "map_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC7/artelingo/siglip2/emotion/map/-/plain/d",
+      "value": 0.01677143404313816,
+      "recorded_value": 0.01677143404313816,
+      "absolute_difference": 0.0,
+      "family": "map_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC7/artelingo/siglip2/emotion/map/-/plain/r",
+      "value": 0.0015141856668823839,
+      "recorded_value": 0.0015141856668823839,
+      "absolute_difference": 0.0,
+      "family": "map_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC7/artelingo/siglip2/emotion/map/-/plain/lo",
+      "value": 0.016064743591113255,
+      "recorded_value": 0.016064743591113283,
+      "absolute_difference": 2.7755575615628914e-17,
+      "family": "map_interval",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC7/artelingo/siglip2/emotion/map/-/plain/hi",
+      "value": 0.01745557189146212,
+      "recorded_value": 0.01745557189146212,
+      "absolute_difference": 0.0,
+      "family": "map_interval",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261102_backbones_sweep/records/verdicts.json",
+      "key": "SC6/siglip2/emotion/ret/value",
+      "value": 0.26921279058500314,
+      "recorded_value": 0.26921279058500325,
+      "absolute_difference": 1.1102230246251565e-16,
+      "family": "map_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261102_backbones_sweep/records/verdicts.json",
+      "key": "SC6/siglip2/emotion/ret/comparator_value",
+      "value": 0.2684206728949585,
+      "recorded_value": 0.2684206728949585,
+      "absolute_difference": 0.0,
+      "family": "map_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261102_backbones_sweep/records/verdicts.json",
+      "key": "SC6/siglip2/emotion/ret/d",
+      "value": 0.0007921176900446136,
+      "recorded_value": 0.0007921176900447247,
+      "absolute_difference": 1.1102230246251565e-16,
+      "family": "map_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261102_backbones_sweep/records/verdicts.json",
+      "key": "SC6/siglip2/emotion/ret/r",
+      "value": 0.0015141856668823839,
+      "recorded_value": 0.0015141856668823839,
+      "absolute_difference": 0.0,
+      "family": "map_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261102_backbones_sweep/records/verdicts.json",
+      "key": "SC6/siglip2/emotion/ret/lo",
+      "value": -9.314507611198063e-05,
+      "recorded_value": -9.314507611198063e-05,
+      "absolute_difference": 0.0,
+      "family": "map_interval",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261102_backbones_sweep/records/verdicts.json",
+      "key": "SC6/siglip2/emotion/ret/hi",
+      "value": 0.001683496804336742,
+      "recorded_value": 0.001683496804336631,
+      "absolute_difference": 1.1102230246251565e-16,
+      "family": "map_interval",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC1/artelingo/siglip2/style/ami/27/plain/value",
+      "value": 0.43934797358391575,
+      "recorded_value": 0.43934797358393685,
+      "absolute_difference": 2.1094237467877974e-14,
+      "family": "ami_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC1/artelingo/siglip2/style/ami/27/plain/comparator_value",
+      "value": 0.3234994207870891,
+      "recorded_value": 0.3234994207871174,
+      "absolute_difference": 2.8310687127941492e-14,
+      "family": "ami_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC1/artelingo/siglip2/style/ami/27/plain/d",
+      "value": 0.11584855279682665,
+      "recorded_value": 0.11584855279681944,
+      "absolute_difference": 7.216449660063518e-15,
+      "family": "ami_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC1/artelingo/siglip2/style/ami/27/plain/r",
+      "value": 0.016882824292348553,
+      "recorded_value": 0.016882824292348553,
+      "absolute_difference": 0.0,
+      "family": "ami_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC1/artelingo/siglip2/style/ami/27/plain/lo",
+      "value": 0.11030908207673323,
+      "recorded_value": 0.1103090820767255,
+      "absolute_difference": 7.729927808952652e-15,
+      "family": "ami_interval",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC1/artelingo/siglip2/style/ami/27/plain/hi",
+      "value": 0.1199288108338073,
+      "recorded_value": 0.11992881083379972,
+      "absolute_difference": 7.577272143066693e-15,
+      "family": "ami_interval",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC3/artelingo/siglip2/style/ami/27/teacher/value",
+      "value": 0.43934797358391575,
+      "recorded_value": 0.43934797358393685,
+      "absolute_difference": 2.1094237467877974e-14,
+      "family": "ami_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC3/artelingo/siglip2/style/ami/27/teacher/comparator_value",
+      "value": 0.4063148343411264,
+      "recorded_value": 0.40631483434115134,
+      "absolute_difference": 2.4924506902834764e-14,
+      "family": "ami_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC3/artelingo/siglip2/style/ami/27/teacher/d",
+      "value": 0.03303313924278933,
+      "recorded_value": 0.0330331392427855,
+      "absolute_difference": 3.83026943495679e-15,
+      "family": "ami_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC3/artelingo/siglip2/style/ami/27/teacher/r",
+      "value": 0.016882824292348553,
+      "recorded_value": 0.016882824292348553,
+      "absolute_difference": 0.0,
+      "family": "ami_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC3/artelingo/siglip2/style/ami/27/teacher/lo",
+      "value": 0.028576536673900352,
+      "recorded_value": 0.028576536673899727,
+      "absolute_difference": 6.245004513516506e-16,
+      "family": "ami_interval",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC3/artelingo/siglip2/style/ami/27/teacher/hi",
+      "value": 0.03676728256377376,
+      "recorded_value": 0.03676728256377131,
+      "absolute_difference": 2.4494295480792516e-15,
+      "family": "ami_interval",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC7/artelingo/siglip2/style/map/-/plain/value",
+      "value": 0.2838388196654727,
+      "recorded_value": 0.2838388196654726,
+      "absolute_difference": 1.1102230246251565e-16,
+      "family": "map_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC7/artelingo/siglip2/style/map/-/plain/comparator_value",
+      "value": 0.25762520825958124,
+      "recorded_value": 0.25762520825958124,
+      "absolute_difference": 0.0,
+      "family": "map_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC7/artelingo/siglip2/style/map/-/plain/d",
+      "value": 0.026213611405891457,
+      "recorded_value": 0.026213611405891346,
+      "absolute_difference": 1.1102230246251565e-16,
+      "family": "map_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC7/artelingo/siglip2/style/map/-/plain/r",
+      "value": 0.003092987345707676,
+      "recorded_value": 0.003092987345707676,
+      "absolute_difference": 0.0,
+      "family": "map_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC7/artelingo/siglip2/style/map/-/plain/lo",
+      "value": 0.024436936208778376,
+      "recorded_value": 0.024436936208778428,
+      "absolute_difference": 5.204170427930421e-17,
+      "family": "map_interval",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC7/artelingo/siglip2/style/map/-/plain/hi",
+      "value": 0.028077811286031523,
+      "recorded_value": 0.028077811286031523,
+      "absolute_difference": 0.0,
+      "family": "map_interval",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261102_backbones_sweep/records/verdicts.json",
+      "key": "SC6/siglip2/style/ret/value",
+      "value": 0.34838748236628914,
+      "recorded_value": 0.34838748236628914,
+      "absolute_difference": 0.0,
+      "family": "map_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261102_backbones_sweep/records/verdicts.json",
+      "key": "SC6/siglip2/style/ret/comparator_value",
+      "value": 0.32171685368804037,
+      "recorded_value": 0.32171685368804037,
+      "absolute_difference": 0.0,
+      "family": "map_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261102_backbones_sweep/records/verdicts.json",
+      "key": "SC6/siglip2/style/ret/d",
+      "value": 0.026670628678248764,
+      "recorded_value": 0.026670628678248764,
+      "absolute_difference": 0.0,
+      "family": "map_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261102_backbones_sweep/records/verdicts.json",
+      "key": "SC6/siglip2/style/ret/r",
+      "value": 0.003092987345707676,
+      "recorded_value": 0.003092987345707676,
+      "absolute_difference": 0.0,
+      "family": "map_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261102_backbones_sweep/records/verdicts.json",
+      "key": "SC6/siglip2/style/ret/lo",
+      "value": 0.024959678572236826,
+      "recorded_value": 0.02495967857223677,
+      "absolute_difference": 5.551115123125783e-17,
+      "family": "map_interval",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261102_backbones_sweep/records/verdicts.json",
+      "key": "SC6/siglip2/style/ret/hi",
+      "value": 0.02829315223942564,
+      "recorded_value": 0.028293152239425638,
+      "absolute_difference": 3.469446951953614e-18,
+      "family": "map_interval",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC1/artelingo/siglip2/genre/ami/10/plain/value",
+      "value": 0.5270301815607304,
+      "recorded_value": 0.527030181560734,
+      "absolute_difference": 3.552713678800501e-15,
+      "family": "ami_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC1/artelingo/siglip2/genre/ami/10/plain/comparator_value",
+      "value": 0.3548970273651774,
+      "recorded_value": 0.35489702736518125,
+      "absolute_difference": 3.83026943495679e-15,
+      "family": "ami_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC1/artelingo/siglip2/genre/ami/10/plain/d",
+      "value": 0.17213315419555303,
+      "recorded_value": 0.17213315419555275,
+      "absolute_difference": 2.7755575615628914e-16,
+      "family": "ami_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC1/artelingo/siglip2/genre/ami/10/plain/r",
+      "value": 0.03383072985663982,
+      "recorded_value": 0.03383072985663982,
+      "absolute_difference": 0.0,
+      "family": "ami_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC1/artelingo/siglip2/genre/ami/10/plain/lo",
+      "value": 0.16265337206542738,
+      "recorded_value": 0.16265337206542974,
+      "absolute_difference": 2.3592239273284576e-15,
+      "family": "ami_interval",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC1/artelingo/siglip2/genre/ami/10/plain/hi",
+      "value": 0.18112149006539827,
+      "recorded_value": 0.181121490065398,
+      "absolute_difference": 2.7755575615628914e-16,
+      "family": "ami_interval",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC3/artelingo/siglip2/genre/ami/10/teacher/value",
+      "value": 0.5270301815607304,
+      "recorded_value": 0.527030181560734,
+      "absolute_difference": 3.552713678800501e-15,
+      "family": "ami_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC3/artelingo/siglip2/genre/ami/10/teacher/comparator_value",
+      "value": 0.5014662806033504,
+      "recorded_value": 0.5014662806033519,
+      "absolute_difference": 1.4432899320127035e-15,
+      "family": "ami_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC3/artelingo/siglip2/genre/ami/10/teacher/d",
+      "value": 0.025563900957380037,
+      "recorded_value": 0.025563900957382146,
+      "absolute_difference": 2.1094237467877974e-15,
+      "family": "ami_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC3/artelingo/siglip2/genre/ami/10/teacher/r",
+      "value": 0.03383072985663982,
+      "recorded_value": 0.03383072985663982,
+      "absolute_difference": 0.0,
+      "family": "ami_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC3/artelingo/siglip2/genre/ami/10/teacher/lo",
+      "value": 0.017731831008029574,
+      "recorded_value": 0.017731831008029702,
+      "absolute_difference": 1.2836953722228372e-16,
+      "family": "ami_interval",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC3/artelingo/siglip2/genre/ami/10/teacher/hi",
+      "value": 0.032957311601315736,
+      "recorded_value": 0.03295731160131797,
+      "absolute_difference": 2.2343238370581275e-15,
+      "family": "ami_interval",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC7/artelingo/siglip2/genre/map/-/plain/value",
+      "value": 0.5469046095072224,
+      "recorded_value": 0.5469046095072224,
+      "absolute_difference": 0.0,
+      "family": "map_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC7/artelingo/siglip2/genre/map/-/plain/comparator_value",
+      "value": 0.4967895502942517,
+      "recorded_value": 0.4967895502942517,
+      "absolute_difference": 0.0,
+      "family": "map_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC7/artelingo/siglip2/genre/map/-/plain/d",
+      "value": 0.050115059212970714,
+      "recorded_value": 0.050115059212970714,
+      "absolute_difference": 0.0,
+      "family": "map_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC7/artelingo/siglip2/genre/map/-/plain/r",
+      "value": 0.004259334686874894,
+      "recorded_value": 0.004259334686874894,
+      "absolute_difference": 0.0,
+      "family": "map_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC7/artelingo/siglip2/genre/map/-/plain/lo",
+      "value": 0.04709260774153654,
+      "recorded_value": 0.04709260774153654,
+      "absolute_difference": 0.0,
+      "family": "map_interval",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC7/artelingo/siglip2/genre/map/-/plain/hi",
+      "value": 0.05296623511359396,
+      "recorded_value": 0.05296623511359397,
+      "absolute_difference": 6.938893903907228e-18,
+      "family": "map_interval",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261102_backbones_sweep/records/verdicts.json",
+      "key": "SC6/siglip2/genre/ret/value",
+      "value": 0.6225822838616337,
+      "recorded_value": 0.6225822838616337,
+      "absolute_difference": 0.0,
+      "family": "map_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261102_backbones_sweep/records/verdicts.json",
+      "key": "SC6/siglip2/genre/ret/comparator_value",
+      "value": 0.6124437089715543,
+      "recorded_value": 0.6124437089715543,
+      "absolute_difference": 0.0,
+      "family": "map_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261102_backbones_sweep/records/verdicts.json",
+      "key": "SC6/siglip2/genre/ret/d",
+      "value": 0.01013857489007941,
+      "recorded_value": 0.01013857489007941,
+      "absolute_difference": 0.0,
+      "family": "map_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261102_backbones_sweep/records/verdicts.json",
+      "key": "SC6/siglip2/genre/ret/r",
+      "value": 0.004259334686874894,
+      "recorded_value": 0.004259334686874894,
+      "absolute_difference": 0.0,
+      "family": "map_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261102_backbones_sweep/records/verdicts.json",
+      "key": "SC6/siglip2/genre/ret/lo",
+      "value": 0.008325386942367247,
+      "recorded_value": 0.008325386942367239,
+      "absolute_difference": 8.673617379884035e-18,
+      "family": "map_interval",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261102_backbones_sweep/records/verdicts.json",
+      "key": "SC6/siglip2/genre/ret/hi",
+      "value": 0.011983963122834692,
+      "recorded_value": 0.011983963122834696,
+      "absolute_difference": 3.469446951953614e-18,
+      "family": "map_interval",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC1/artelingo/clip_l14/emotion/ami/9/plain/value",
+      "value": 0.09811910474895572,
+      "recorded_value": 0.09811910474896496,
+      "absolute_difference": 9.242606680004428e-15,
+      "family": "ami_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC1/artelingo/clip_l14/emotion/ami/9/plain/comparator_value",
+      "value": 0.06251691071277653,
+      "recorded_value": 0.06251691071278269,
+      "absolute_difference": 6.161737786669619e-15,
+      "family": "ami_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC1/artelingo/clip_l14/emotion/ami/9/plain/d",
+      "value": 0.03560219403617919,
+      "recorded_value": 0.03560219403618227,
+      "absolute_difference": 3.0808688933348094e-15,
+      "family": "ami_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC1/artelingo/clip_l14/emotion/ami/9/plain/r",
+      "value": 0.005527191154879929,
+      "recorded_value": 0.005527191154879929,
+      "absolute_difference": 0.0,
+      "family": "ami_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC1/artelingo/clip_l14/emotion/ami/9/plain/lo",
+      "value": 0.03204368861610724,
+      "recorded_value": 0.03204368861610672,
+      "absolute_difference": 5.204170427930421e-16,
+      "family": "ami_interval",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC1/artelingo/clip_l14/emotion/ami/9/plain/hi",
+      "value": 0.03908537038521819,
+      "recorded_value": 0.03908537038522068,
+      "absolute_difference": 2.491062911502695e-15,
+      "family": "ami_interval",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC3/artelingo/clip_l14/emotion/ami/9/teacher/value",
+      "value": 0.09811910474895572,
+      "recorded_value": 0.09811910474896496,
+      "absolute_difference": 9.242606680004428e-15,
+      "family": "ami_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC3/artelingo/clip_l14/emotion/ami/9/teacher/comparator_value",
+      "value": 0.08887516573446036,
+      "recorded_value": 0.08887516573447074,
+      "absolute_difference": 1.0380585280245214e-14,
+      "family": "ami_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC3/artelingo/clip_l14/emotion/ami/9/teacher/d",
+      "value": 0.009243939014495356,
+      "recorded_value": 0.009243939014494218,
+      "absolute_difference": 1.1379786002407855e-15,
+      "family": "ami_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC3/artelingo/clip_l14/emotion/ami/9/teacher/r",
+      "value": 0.005527191154879929,
+      "recorded_value": 0.005527191154879929,
+      "absolute_difference": 0.0,
+      "family": "ami_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC3/artelingo/clip_l14/emotion/ami/9/teacher/lo",
+      "value": 0.006103030477177101,
+      "recorded_value": 0.006103030477175994,
+      "absolute_difference": 1.1076209394111913e-15,
+      "family": "ami_interval",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC3/artelingo/clip_l14/emotion/ami/9/teacher/hi",
+      "value": 0.012433590365409622,
+      "recorded_value": 0.012433590365409258,
+      "absolute_difference": 3.642919299551295e-16,
+      "family": "ami_interval",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC7/artelingo/clip_l14/emotion/map/-/plain/value",
+      "value": 0.25977246886980715,
+      "recorded_value": 0.25977246886980715,
+      "absolute_difference": 0.0,
+      "family": "map_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC7/artelingo/clip_l14/emotion/map/-/plain/comparator_value",
+      "value": 0.2478970809618243,
+      "recorded_value": 0.2478970809618243,
+      "absolute_difference": 0.0,
+      "family": "map_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC7/artelingo/clip_l14/emotion/map/-/plain/d",
+      "value": 0.011875387907982843,
+      "recorded_value": 0.011875387907982843,
+      "absolute_difference": 0.0,
+      "family": "map_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC7/artelingo/clip_l14/emotion/map/-/plain/r",
+      "value": 0.0016892742932269056,
+      "recorded_value": 0.0016892742932269056,
+      "absolute_difference": 0.0,
+      "family": "map_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC7/artelingo/clip_l14/emotion/map/-/plain/lo",
+      "value": 0.011190606761878545,
+      "recorded_value": 0.011190606761878545,
+      "absolute_difference": 0.0,
+      "family": "map_interval",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC7/artelingo/clip_l14/emotion/map/-/plain/hi",
+      "value": 0.012542668118039267,
+      "recorded_value": 0.012542668118039375,
+      "absolute_difference": 1.0755285551056204e-16,
+      "family": "map_interval",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261102_backbones_sweep/records/verdicts.json",
+      "key": "SC6/clip_l14/emotion/ret/value",
+      "value": 0.267090650053217,
+      "recorded_value": 0.2670906500532171,
+      "absolute_difference": 5.551115123125783e-17,
+      "family": "map_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261102_backbones_sweep/records/verdicts.json",
+      "key": "SC6/clip_l14/emotion/ret/comparator_value",
+      "value": 0.2684206728949585,
+      "recorded_value": 0.2684206728949585,
+      "absolute_difference": 0.0,
+      "family": "map_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261102_backbones_sweep/records/verdicts.json",
+      "key": "SC6/clip_l14/emotion/ret/d",
+      "value": -0.001330022841741496,
+      "recorded_value": -0.0013300228417414406,
+      "absolute_difference": 5.551115123125783e-17,
+      "family": "map_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261102_backbones_sweep/records/verdicts.json",
+      "key": "SC6/clip_l14/emotion/ret/r",
+      "value": 0.0016892742932269056,
+      "recorded_value": 0.0016892742932269056,
+      "absolute_difference": 0.0,
+      "family": "map_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261102_backbones_sweep/records/verdicts.json",
+      "key": "SC6/clip_l14/emotion/ret/lo",
+      "value": -0.002320424459585864,
+      "recorded_value": -0.0023204244595859194,
+      "absolute_difference": 5.551115123125783e-17,
+      "family": "map_interval",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261102_backbones_sweep/records/verdicts.json",
+      "key": "SC6/clip_l14/emotion/ret/hi",
+      "value": -0.00033614927242606364,
+      "recorded_value": -0.00033614927242606364,
+      "absolute_difference": 0.0,
+      "family": "map_interval",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC1/artelingo/clip_l14/style/ami/27/plain/value",
+      "value": 0.4222090575743683,
+      "recorded_value": 0.42220905757438976,
+      "absolute_difference": 2.148281552649678e-14,
+      "family": "ami_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC1/artelingo/clip_l14/style/ami/27/plain/comparator_value",
+      "value": 0.3626610710288407,
+      "recorded_value": 0.36266107102886536,
+      "absolute_difference": 2.4646951146678475e-14,
+      "family": "ami_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC1/artelingo/clip_l14/style/ami/27/plain/d",
+      "value": 0.059547986545527565,
+      "recorded_value": 0.0595479865455244,
+      "absolute_difference": 3.164135620181696e-15,
+      "family": "ami_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC1/artelingo/clip_l14/style/ami/27/plain/r",
+      "value": 0.009401682367092934,
+      "recorded_value": 0.009401682367092934,
+      "absolute_difference": 0.0,
+      "family": "ami_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC1/artelingo/clip_l14/style/ami/27/plain/lo",
+      "value": 0.05485826245123746,
+      "recorded_value": 0.054858262451232286,
+      "absolute_difference": 5.176414852314792e-15,
+      "family": "ami_interval",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC1/artelingo/clip_l14/style/ami/27/plain/hi",
+      "value": 0.06388470168523816,
+      "recorded_value": 0.06388470168523196,
+      "absolute_difference": 6.203371150093062e-15,
+      "family": "ami_interval",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC3/artelingo/clip_l14/style/ami/27/teacher/value",
+      "value": 0.4222090575743683,
+      "recorded_value": 0.42220905757438976,
+      "absolute_difference": 2.148281552649678e-14,
+      "family": "ami_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC3/artelingo/clip_l14/style/ami/27/teacher/comparator_value",
+      "value": 0.4063148343411264,
+      "recorded_value": 0.40631483434115134,
+      "absolute_difference": 2.4924506902834764e-14,
+      "family": "ami_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC3/artelingo/clip_l14/style/ami/27/teacher/d",
+      "value": 0.015894223233241855,
+      "recorded_value": 0.015894223233238414,
+      "absolute_difference": 3.4416913763379853e-15,
+      "family": "ami_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC3/artelingo/clip_l14/style/ami/27/teacher/r",
+      "value": 0.009401682367092934,
+      "recorded_value": 0.009401682367092934,
+      "absolute_difference": 0.0,
+      "family": "ami_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC3/artelingo/clip_l14/style/ami/27/teacher/lo",
+      "value": 0.011565679801866173,
+      "recorded_value": 0.01156567980186598,
+      "absolute_difference": 1.9255430583342559e-16,
+      "family": "ami_interval",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC3/artelingo/clip_l14/style/ami/27/teacher/hi",
+      "value": 0.020058335284939437,
+      "recorded_value": 0.0200583352849344,
+      "absolute_difference": 5.037636974236648e-15,
+      "family": "ami_interval",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC7/artelingo/clip_l14/style/map/-/plain/value",
+      "value": 0.27528814750243596,
+      "recorded_value": 0.275288147502436,
+      "absolute_difference": 5.551115123125783e-17,
+      "family": "map_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC7/artelingo/clip_l14/style/map/-/plain/comparator_value",
+      "value": 0.2732315215072776,
+      "recorded_value": 0.2732315215072776,
+      "absolute_difference": 0.0,
+      "family": "map_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC7/artelingo/clip_l14/style/map/-/plain/d",
+      "value": 0.0020566259951583787,
+      "recorded_value": 0.0020566259951584343,
+      "absolute_difference": 5.551115123125783e-17,
+      "family": "map_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC7/artelingo/clip_l14/style/map/-/plain/r",
+      "value": 0.003796055065128312,
+      "recorded_value": 0.003796055065128312,
+      "absolute_difference": 0.0,
+      "family": "map_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC7/artelingo/clip_l14/style/map/-/plain/lo",
+      "value": 0.0006854048313697611,
+      "recorded_value": 0.0006854048313697583,
+      "absolute_difference": 2.8189256484623115e-18,
+      "family": "map_interval",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC7/artelingo/clip_l14/style/map/-/plain/hi",
+      "value": 0.003381837488635933,
+      "recorded_value": 0.003381837488635876,
+      "absolute_difference": 5.681219383824043e-17,
+      "family": "map_interval",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261102_backbones_sweep/records/verdicts.json",
+      "key": "SC6/clip_l14/style/ret/value",
+      "value": 0.3349711143913246,
+      "recorded_value": 0.3349711143913246,
+      "absolute_difference": 0.0,
+      "family": "map_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261102_backbones_sweep/records/verdicts.json",
+      "key": "SC6/clip_l14/style/ret/comparator_value",
+      "value": 0.32171685368804037,
+      "recorded_value": 0.32171685368804037,
+      "absolute_difference": 0.0,
+      "family": "map_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261102_backbones_sweep/records/verdicts.json",
+      "key": "SC6/clip_l14/style/ret/d",
+      "value": 0.013254260703284226,
+      "recorded_value": 0.013254260703284226,
+      "absolute_difference": 0.0,
+      "family": "map_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261102_backbones_sweep/records/verdicts.json",
+      "key": "SC6/clip_l14/style/ret/r",
+      "value": 0.003796055065128312,
+      "recorded_value": 0.003796055065128312,
+      "absolute_difference": 0.0,
+      "family": "map_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261102_backbones_sweep/records/verdicts.json",
+      "key": "SC6/clip_l14/style/ret/lo",
+      "value": 0.01134050702705676,
+      "recorded_value": 0.011340507027056811,
+      "absolute_difference": 5.204170427930421e-17,
+      "family": "map_interval",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261102_backbones_sweep/records/verdicts.json",
+      "key": "SC6/clip_l14/style/ret/hi",
+      "value": 0.01511484931102239,
+      "recorded_value": 0.015114849311022503,
+      "absolute_difference": 1.1275702593849246e-16,
+      "family": "map_interval",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC1/artelingo/clip_l14/genre/ami/10/plain/value",
+      "value": 0.5155098058137761,
+      "recorded_value": 0.5155098058137793,
+      "absolute_difference": 3.1086244689504383e-15,
+      "family": "ami_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC1/artelingo/clip_l14/genre/ami/10/plain/comparator_value",
+      "value": 0.3967618124688716,
+      "recorded_value": 0.3967618124688774,
+      "absolute_difference": 5.773159728050814e-15,
+      "family": "ami_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC1/artelingo/clip_l14/genre/ami/10/plain/d",
+      "value": 0.11874799334490455,
+      "recorded_value": 0.11874799334490188,
+      "absolute_difference": 2.6645352591003757e-15,
+      "family": "ami_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC1/artelingo/clip_l14/genre/ami/10/plain/r",
+      "value": 0.016027518641662408,
+      "recorded_value": 0.016027518641662408,
+      "absolute_difference": 0.0,
+      "family": "ami_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC1/artelingo/clip_l14/genre/ami/10/plain/lo",
+      "value": 0.11111930906568171,
+      "recorded_value": 0.11111930906568124,
+      "absolute_difference": 4.718447854656915e-16,
+      "family": "ami_interval",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC1/artelingo/clip_l14/genre/ami/10/plain/hi",
+      "value": 0.12623579258937348,
+      "recorded_value": 0.1262357925893735,
+      "absolute_difference": 2.7755575615628914e-17,
+      "family": "ami_interval",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC3/artelingo/clip_l14/genre/ami/10/teacher/value",
+      "value": 0.5155098058137761,
+      "recorded_value": 0.5155098058137793,
+      "absolute_difference": 3.1086244689504383e-15,
+      "family": "ami_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC3/artelingo/clip_l14/genre/ami/10/teacher/comparator_value",
+      "value": 0.5014662806033504,
+      "recorded_value": 0.5014662806033519,
+      "absolute_difference": 1.4432899320127035e-15,
+      "family": "ami_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC3/artelingo/clip_l14/genre/ami/10/teacher/d",
+      "value": 0.014043525210425734,
+      "recorded_value": 0.014043525210427399,
+      "absolute_difference": 1.6653345369377348e-15,
+      "family": "ami_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC3/artelingo/clip_l14/genre/ami/10/teacher/r",
+      "value": 0.016027518641662408,
+      "recorded_value": 0.016027518641662408,
+      "absolute_difference": 0.0,
+      "family": "ami_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC3/artelingo/clip_l14/genre/ami/10/teacher/lo",
+      "value": 0.007922305054375878,
+      "recorded_value": 0.007922305054374577,
+      "absolute_difference": 1.3010426069826053e-15,
+      "family": "ami_interval",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC3/artelingo/clip_l14/genre/ami/10/teacher/hi",
+      "value": 0.020336338064804546,
+      "recorded_value": 0.020336338064802284,
+      "absolute_difference": 2.2620794126737565e-15,
+      "family": "ami_interval",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC7/artelingo/clip_l14/genre/map/-/plain/value",
+      "value": 0.5445005359016135,
+      "recorded_value": 0.5445005359016134,
+      "absolute_difference": 1.1102230246251565e-16,
+      "family": "map_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC7/artelingo/clip_l14/genre/map/-/plain/comparator_value",
+      "value": 0.4980805537137537,
+      "recorded_value": 0.4980805537137537,
+      "absolute_difference": 0.0,
+      "family": "map_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC7/artelingo/clip_l14/genre/map/-/plain/d",
+      "value": 0.04641998218785981,
+      "recorded_value": 0.0464199821878597,
+      "absolute_difference": 1.1102230246251565e-16,
+      "family": "map_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC7/artelingo/clip_l14/genre/map/-/plain/r",
+      "value": 0.0016564163854410063,
+      "recorded_value": 0.0016564163854410063,
+      "absolute_difference": 0.0,
+      "family": "map_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC7/artelingo/clip_l14/genre/map/-/plain/lo",
+      "value": 0.044140622531894456,
+      "recorded_value": 0.04414062253189435,
+      "absolute_difference": 1.0408340855860843e-16,
+      "family": "map_interval",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/outcomes.json",
+      "key": "SC7/artelingo/clip_l14/genre/map/-/plain/hi",
+      "value": 0.04887005641289022,
+      "recorded_value": 0.04887005641289022,
+      "absolute_difference": 0.0,
+      "family": "map_interval",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261102_backbones_sweep/records/verdicts.json",
+      "key": "SC6/clip_l14/genre/ret/value",
+      "value": 0.6177380783984919,
+      "recorded_value": 0.6177380783984918,
+      "absolute_difference": 1.1102230246251565e-16,
+      "family": "map_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261102_backbones_sweep/records/verdicts.json",
+      "key": "SC6/clip_l14/genre/ret/comparator_value",
+      "value": 0.6124437089715543,
+      "recorded_value": 0.6124437089715543,
+      "absolute_difference": 0.0,
+      "family": "map_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261102_backbones_sweep/records/verdicts.json",
+      "key": "SC6/clip_l14/genre/ret/d",
+      "value": 0.005294369426937617,
+      "recorded_value": 0.005294369426937506,
+      "absolute_difference": 1.1102230246251565e-16,
+      "family": "map_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261102_backbones_sweep/records/verdicts.json",
+      "key": "SC6/clip_l14/genre/ret/r",
+      "value": 0.0016564163854410063,
+      "recorded_value": 0.0016564163854410063,
+      "absolute_difference": 0.0,
+      "family": "map_point",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261102_backbones_sweep/records/verdicts.json",
+      "key": "SC6/clip_l14/genre/ret/lo",
+      "value": 0.0034821464211870325,
+      "recorded_value": 0.003482146421186924,
+      "absolute_difference": 1.0842021724855044e-16,
+      "family": "map_interval",
+      "tolerance": 1e-09,
+      "passed": true
+    },
+    {
+      "target_record": "/project/CoSiR/src/test/20261102_backbones_sweep/records/verdicts.json",
+      "key": "SC6/clip_l14/genre/ret/hi",
+      "value": 0.007064914955346463,
+      "recorded_value": 0.007064914955346138,
+      "absolute_difference": 3.2439329000766293e-16,
+      "family": "map_interval",
+      "tolerance": 1e-09,
+      "passed": true
+    }
+  ],
+  "replay_gates": {
+    "siglip2": true,
+    "clip_l14": true
+  },
+  "sc9": {
+    "kstar_per_seed": [
+      0.39002191762602184,
+      0.3892662063582939,
+      0.3861508386346626,
+      0.39054809630322646,
+      0.3850915452794123
+    ],
+    "means": {
+      "siglip1": 0.3882157208403234,
+      "siglip2": 0.38376146623787377,
+      "clip_l14": 0.37618016228347056
+    },
+    "pick": "siglip1",
+    "runner_up": "siglip2",
+    "margin": 0.0044542546024496366,
+    "seeds_ahead": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "n_seeds_ahead": 5,
+    "leader_range": 0.005456551023814149,
+    "close_call": true,
+    "qwen_info": 0.36972331848385626
+  },
+  "elapsed_seconds": 2856.2100378638133,
+  "notes": [
+    "D18 protocols: AMI uses r17 new-scores \u00a7\u00a73.3\u20133.4/ns_c13; mAP uses r11 retrieval \u00a7\u00a73.4/6 and r14 backbones-sweep/bs_c13. Older C13 code was read, never imported. Shared independent r29rd_c1_core and r29rd_sc2 are allowed earlier re-derivations.",
+    "Plain-side mAP uses r17 SC7 untold: unit-normalise three heads in emotion/style/genre order, concatenate and divide by float32 sqrt(3). Q1-side mAP uses the told aspect head as r14 SC6. Two arm-level picks are repeated per aspect; both use told-head R0 validation ranges.",
+    "AMI/SC9: float16 exports promoted to float32 without another normalization, MiniBatchKMeans K=9/27/10, n_init=3, batch_size=4096, random_state=0/1/2, eight threads. Cluster all painting rows then mask negative labels. Mean over states then seeds. AMI range is max minus min across five validation seeds.",
+    "mAP read-out menu: none, center, PCA-whiten64/256/1024 (capped at width), crossed with k=0/1/3/5/10. Covariance float64, divisor n-1, descending eigenvectors, epsilon=1e-6*largest eigenvalue, float64 W and normalization then one float32 cast; similarities float64 from float32 rows (r11 rt_readout/rt_metrics docstrings). Fit on every fit row without labels. Parity halves precede masking and their means receive equal weight. Final map fits all validation rows.",
+    "mAP pick: mean gain over three aspects in told R0 range units, guard against losing more than one range; 0.001 score tie band, R0 first, no expansion, none/center/whiten, smaller k, larger dimension. Permitted independent C13 comparison epsilon 1e-12. Zero R0 range invalidates selection. Query/gallery have labelled rows only; own painting removed; exact ties preserve sorted painting order; AP float64.",
+    "Bootstrap: fresh default_rng(0) per comparison. AMI 2000 draws: all painting rows then five candidate seeds; three fixed partitions per seed, re-score repeated rows, mask missing labels after resampling. mAP 10000 draws: labelled query rows then five seeds; gallery fixed. Unseeded plain/Q1 comparators draw no seeds. numpy linear percentiles at 2.5/97.5.",
+    "SC9 seeds_ahead is the list of matched seed IDs s for which leader group[s] > runner_up group[s] strictly; tied seeds do not count. Highest exact mean wins; an exact tie involving siglip1 goes to siglip1; otherwise stable siglip2 then clip_l14 order resolves the unspecified tie. close_call is strict margin < leader five-seed range.",
+    "K* SC9 groups are read from sc2_rederived.json, never recomputed. Qwen3 c* uses r28 recorded score as information only. Frozen targets are accessed only after deriving corresponding values; targets never choose a result.",
+    "Image forward is the img.trunk Linear/GELU then img.output Linear and L2 evaluation path of allowed r29_model.py, applied independently from checkpoint tensors. Sidecar widths/store identity checked. r29_model.py is read, not imported, because its imports include forbidden r29/r28 modules. Float16 gate: >=99.5% equal, all other elements adjacent float16 values.",
+    "Frozen --frozen-units replay locates old independent C13 per-query AP caches by their input/source identity, never by point values. It separately recomputes a bounded query sample; full bootstrap can be checked with frozen APs, but this cannot certify full scoring. No stage-2 held data in val or replay. held requires controller --picks-committed and complete validation picks; this asserts an external commitment, makes no commit. Incomplete replays do not certify held cells. Missing/failed gates or picks give INCONCLUSIVE cells, counted as neither WIN nor LEVEL; report inconclusive_above per D22.",
+    "Subset --query-limit keeps full galleries and selects evenly spaced query positions; --quick uses only none+k0, center+k0, center+k10 and cannot write final picks or certify picks. Full runs have no subset options. GPU affects only tower/ranking; AMI and bootstrap remain CPU."
+  ],
+  "inputs": {
+    "/data/PDD/artelingo/artelingo_train.json": "6a4e5b17feecc2c3b54cd166416b75f1bbffd56bec1523f4173b245edb8e894d",
+    "/data/SSD/wikiart_genre/genre_train.csv": "151e0d874eaa2cfae2ccd95d19b2eba909c5eabc2f68150b66ab516afae22d34",
+    "/data/SSD/wikiart_genre/genre_val.csv": "05b683e5be29bb09afe4bc94dc8140b238f36db6fe67121ca7a04fee4c4fcb95",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/clip_l14/val/clipl14_prefix/emotion__s0.json": "01c0b912cfd8be20a3a42faf59dc5b6f309e2317528e3f03af8d8312e3d3b8da",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/clip_l14/val/clipl14_prefix/emotion__s0.npz": "352021f095b987e8d892e2c22321d808889bbb2ae3c979d1dce783c4ec5c4c53",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/clip_l14/val/clipl14_prefix/emotion__s1.json": "a2fee18d7f1d2bd299aaabf7007631eb92b95c08e4cfcf42e44e4c45316b99ab",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/clip_l14/val/clipl14_prefix/emotion__s1.npz": "6d6c15f63ffc3772b26dc0fb9c3dbc2379b057b35e2c15318494b24238ea11d9",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/clip_l14/val/clipl14_prefix/emotion__s2.json": "d6ce18cb52778c808f8282ec41ce7cdd7e0d21b296423f9f548efb73ce42e5cf",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/clip_l14/val/clipl14_prefix/emotion__s2.npz": "03e77800ca421a6df7eb7e54f277f1f593ad5d17611e77a5006f68fb5a28e01b",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/clip_l14/val/clipl14_prefix/emotion__s3.json": "8347dc7f6ef3ad338cf495593d0fe9fd0f1c4123c40eea9048aab3826217244d",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/clip_l14/val/clipl14_prefix/emotion__s3.npz": "e82d686419ebe29078c32ac3cf34a2c45648be9afc381754af1b138352a27940",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/clip_l14/val/clipl14_prefix/emotion__s4.json": "c83abd70b0f4e4d91406db9bd352569ca501f8d70cd3150e2613d39c499ee7a4",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/clip_l14/val/clipl14_prefix/emotion__s4.npz": "48d5b42040605931bf7d6a852bc3aaf33df41c6d1edc9b6d401efbceaf9e4a4c",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/clip_l14/val/clipl14_prefix/genre__s0.json": "562c91463c34d39ab56aac43669cda4fd63b84af87ad217c65960c0657cc5734",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/clip_l14/val/clipl14_prefix/genre__s0.npz": "24fe3760974f07e783a50fa675014cbb56591f3248fe94ce80ff059ec50deb47",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/clip_l14/val/clipl14_prefix/genre__s1.json": "2ed3ce9e0f7269e862cd314d2da4a48a5a1c995248d2855f983772608fdf3b1c",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/clip_l14/val/clipl14_prefix/genre__s1.npz": "b601c485b8cf75488ace5aa80070c9f7ce13f94a57cc42587950015b5e48392b",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/clip_l14/val/clipl14_prefix/genre__s2.json": "8137a088d1f419605cbc8e86e4e1fe9a15f4e411971085fb2177aa613e457752",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/clip_l14/val/clipl14_prefix/genre__s2.npz": "90aea03e4ce5276cbec343a7a7fb75ef0c11e9043ab50837131bd4a05be3d98f",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/clip_l14/val/clipl14_prefix/genre__s3.json": "118fbc009cd87e0a53a08eab6e8f1b43c05bcdb7e8ed94effcd7b50d1d681493",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/clip_l14/val/clipl14_prefix/genre__s3.npz": "93860ca3849f365c7a2842aa5cdfb9583f8f60f1fba756f01d21847ec62a3c4b",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/clip_l14/val/clipl14_prefix/genre__s4.json": "91852b9d90cc29a26d8b800f74816167f16722b720b55611bd0ea582e3196491",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/clip_l14/val/clipl14_prefix/genre__s4.npz": "d45e01dc7a6d09db5112635c4d12bafb7c9c335b19932dc7be417cc92f95a8e5",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/clip_l14/val/clipl14_prefix/style__s0.json": "215d84ec5330210bf06a744140aad6b2cbb1dd5b26b82c6546ac4377262cae82",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/clip_l14/val/clipl14_prefix/style__s0.npz": "c6c390447dcf5536f87a93ca3dcafb0016413e74b6989a10a9424b2fa566af6a",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/clip_l14/val/clipl14_prefix/style__s1.json": "cf3edd2cd64244cc64f5a8252223df6c7d18cec4bbecb2780652f6b428962d01",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/clip_l14/val/clipl14_prefix/style__s1.npz": "3eb6098fd1b4842f5ee6bae9bde3aa354139339f22e7799c4033096c22705fcc",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/clip_l14/val/clipl14_prefix/style__s2.json": "39b17f35fb0b6868ffd0b80a8e9f279ae8e37776d8f52daee7da7aeceb6a03ea",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/clip_l14/val/clipl14_prefix/style__s2.npz": "4a10e53e59c8b14cad71d2f2728e299e65493430a61ca29fd8ae13016b61f2d2",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/clip_l14/val/clipl14_prefix/style__s3.json": "d1e391aa890d2e54b6fb93b25069b4b9ad7032eb7c7806053500a7dea3c6ee69",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/clip_l14/val/clipl14_prefix/style__s3.npz": "46a854bdf65ba08015e2f6c7202fc53922524d9babad3f741a007e921fddae79",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/clip_l14/val/clipl14_prefix/style__s4.json": "50e9c4961767b094ee45bd2d6265c5ef28cdf1677a1cd9838975b5e7a4063f03",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/clip_l14/val/clipl14_prefix/style__s4.npz": "d0915c011a744b181e2631bab97d56bacc14dd32ddce9b359fda6aec272d5a46",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/clip_l14/weights/clipl14_prefix/emotion__s0.json": "966030fdbd999c82a6d8a07b67bd172301ed88aabc632de397daf397d94ebc56",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/clip_l14/weights/clipl14_prefix/emotion__s0.pt": "aadb8868b30c1a4836bba27586ee4e5870056c646e97909d2fc78dfe3260aa74",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/clip_l14/weights/clipl14_prefix/genre__s0.json": "844896b307c494819eae322db0b263d8a757d325a432a6b934f4e3c57b8657bc",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/clip_l14/weights/clipl14_prefix/genre__s0.pt": "e6ca71a35b6d83e4db12df0a30f649df03e20662c43f4fc6f891661e42a3a981",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/clip_l14/weights/clipl14_prefix/style__s0.json": "15602a53691c4a4c9bd46522ffae2148f62a74890b4d4a549f14c87b5145d792",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/clip_l14/weights/clipl14_prefix/style__s0.pt": "1ab2019fabcafae987a0adec9fe1b0857cc231de8ec5a7bc5df04702f091668f",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip2/val/siglip2_prefix/emotion__s0.json": "103cd42b0cf3b8cf0a4c8d6a4313b24c6884059e5078f84f88b6077406eb8e60",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip2/val/siglip2_prefix/emotion__s0.npz": "b0ac317d3ab0eafa5e4b866a3b4b3c95e880d0bab571d4f643d3be1868620e4a",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip2/val/siglip2_prefix/emotion__s1.json": "9296771cf91b63ff507c1d9ec85698229651cf7aeae6b40234f0475af1d83afc",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip2/val/siglip2_prefix/emotion__s1.npz": "6c39678f85802a0b00aa39e727ec4239b3f09243d237c72002bb86026cbb7cde",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip2/val/siglip2_prefix/emotion__s2.json": "10d94dbc76fc4876e39bfd9c4b2c0300d093610630170263de64aa3b9186b3ef",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip2/val/siglip2_prefix/emotion__s2.npz": "02fed5d2c19beeef0c7afe01c512f14b3ad7083a071af1368a6018d33e1a1c8d",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip2/val/siglip2_prefix/emotion__s3.json": "b0c94f976d9a83d9908d7a1357e7d0cfc4059f400438eed0e994c5d7de3e0504",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip2/val/siglip2_prefix/emotion__s3.npz": "2c8fa239b0c291129ce5f2dfe6779e21b97e245882e2e73ed61e6f986d618a40",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip2/val/siglip2_prefix/emotion__s4.json": "ac5819c88c82c68d8e40fc98caecfeb903706ebdbbc8982a927d26425aa79e93",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip2/val/siglip2_prefix/emotion__s4.npz": "6fe82383b3260813da12320e2d7e87b0176fd9f16c5c2c13f85a988681f381a9",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip2/val/siglip2_prefix/genre__s0.json": "7383977e5ca146722af8b7c8a419017b3538a0f99c9b0f2c482026903ef9c9f8",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip2/val/siglip2_prefix/genre__s0.npz": "a115600ba14769fb4a2c585dd2aec45c3bc9ad7f80f20b7f264098c10e9d96b8",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip2/val/siglip2_prefix/genre__s1.json": "d27931cab55ceafeb4df99b1b0b3011433b11e8e8640862a8825a8ee69ffac95",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip2/val/siglip2_prefix/genre__s1.npz": "e94beb56fdaf3be4d115fb0217dcc8951efd97f3c94d3e1ab51d260835fdce40",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip2/val/siglip2_prefix/genre__s2.json": "625c62b8c58f1904a4d2960c036fa898eae0e53bcd43199069433907c43ca195",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip2/val/siglip2_prefix/genre__s2.npz": "8780ee41a81c0dc107457572266923616b8a83bbdf7b2c14d39525b5b384896a",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip2/val/siglip2_prefix/genre__s3.json": "e9cc92f4ee13b636545d6105ed13ad429a5ba88b7351d0a723967b0e50a7e87a",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip2/val/siglip2_prefix/genre__s3.npz": "8a707e9cc05e403fffb5273c257e0270bc9d301681df8a394fa0eac6e6d50b23",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip2/val/siglip2_prefix/genre__s4.json": "c4e0e37e07257ba6b98b4399b96d564ffff2a832e9a6635c49d8cc4aad638be6",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip2/val/siglip2_prefix/genre__s4.npz": "33cb7be73775217fc820c5f1619fb5e3a9c564e86d481336718e481126f2eaf9",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip2/val/siglip2_prefix/style__s0.json": "bd9c653b3e46feda8e9ed6f3fbf6491c203f800a001afcd25fa10b7369d2712f",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip2/val/siglip2_prefix/style__s0.npz": "1a237110290eaae066cbad47491908449a73162b87ecc5a1a4e6e31b1a4ce3ea",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip2/val/siglip2_prefix/style__s1.json": "e848dcae7cfe5c8447773af09f19dab228f648506a87a28b4008ceb354d17542",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip2/val/siglip2_prefix/style__s1.npz": "d9b9c1b722f01b5638ff1e70d35069cc59796f10451f56798c76344a5d988b62",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip2/val/siglip2_prefix/style__s2.json": "05fa9239b91ffb6f204d9667400e1c74e091cb78b793ea6396bc1ac052c4a16f",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip2/val/siglip2_prefix/style__s2.npz": "f0d95129ade91f81379ebb3d7a34c904509e42ecc3e61bf8448bc593d19dc30c",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip2/val/siglip2_prefix/style__s3.json": "c7021bd9ec9155f389601a2df3d77aebbf1e37cf9d9367796337da5615091356",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip2/val/siglip2_prefix/style__s3.npz": "043abcc1536763d9c2a2dd295c83a75ea5b3426d1a09680df477cff16160af7c",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip2/val/siglip2_prefix/style__s4.json": "0acd70a73fe1cbe41d7b6c7adff1baa90622ece92da72c8bca1c2ab2a56c4689",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip2/val/siglip2_prefix/style__s4.npz": "8e71ac74ea69d575f0a0d8bc8f20b28e290900a5c8eb3b1f60502b19902fbac3",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip2/weights/siglip2_prefix/emotion__s0.json": "b9debcd1d90555a6b393e6a56ff62efb7c3bf988a7c1261e9dbcd30c1fdc3559",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip2/weights/siglip2_prefix/emotion__s0.pt": "bfcc34520858375c1ada09b1533a06b8b2b363a5b843a87c24303da89613fc0f",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip2/weights/siglip2_prefix/genre__s0.json": "390b49184d10e330cf34a3fe90318472b52918ceef632eeb8135237387d7c324",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip2/weights/siglip2_prefix/genre__s0.pt": "347439e960316c01a11f636d52f62baf8b09253b749f39ae08a0c32de4951de0",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip2/weights/siglip2_prefix/style__s0.json": "e8bcb28b246a974a501dd1a14fe462c3f064ff178f145ea218fd27b3e9a1183d",
+    "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip2/weights/siglip2_prefix/style__s0.pt": "bb168d2b0b8880ec0fe66609795587e4aeea25d87c3dd06c79a06ac2b832ef7e",
+    "/data/SSD2/pre_extract/artelingo/features/metadata.json": "43963ca92f46ee638ace94f8ff72807de29ec87471aa5b68904bdc4afb7e8011",
+    "/data/SSD2/pre_extract/artelingo/features/shards/shard_00000/sample_ids.npy": "e33f6b655ac7f3c311fa3d9632e6fe329dc32db221a0fcfb26b498b1f7783f8a",
+    "/data/SSD2/pre_extract/artelingo/features/shards/shard_00001/sample_ids.npy": "bd24efe5ec29e6995ba2349f5fb42a78dedef151dee592263c0d5dc441390338",
+    "/data/SSD2/pre_extract/artelingo/features/shards/shard_00002/sample_ids.npy": "fab0c6011efaa2e8fec78aee67d18cd6bef5b7aea3c2712ff8d6f0e470471783",
+    "/data/SSD2/pre_extract/artelingo/features/shards/shard_00003/sample_ids.npy": "9f9f5c1c9e4257bde8b5f12edf4ce10556e21096388c16f126e0b3a1ed326082",
+    "/data/SSD2/pre_extract/artelingo_full/clip_l14/img.npy": "571d6368adf5f710fe654f9ac4ea8eb8c16ebfe73964b62bda0543e354d59eea",
+    "/data/SSD2/pre_extract/artelingo_full/clip_l14/index.json": "e862d03eb73fb1a805844039e066b6b45b581e37d8462409648aa2216960cc81",
+    "/data/SSD2/pre_extract/artelingo_full/clip_l14_capprefix/index.json": "80c46708446c5de35a9671c0dff015c238d9ecb286bd33b670025e8b4f9ea54a",
+    "/data/SSD2/pre_extract/artelingo_full/siglip2_so400m/img.npy": "7030927f47d40c2b166d644473b5333e712e895b530a8a920630505231d706ae",
+    "/data/SSD2/pre_extract/artelingo_full/siglip2_so400m/index.json": "2e3167f9567091001491575ff8535bf3967cd847d4ad20e3347f0ebeb8e031ec",
+    "/data/SSD2/pre_extract/artelingo_full/siglip2_so400m_capprefix/index.json": "db1012c619acc13a5d5c767337d3eface308cbdc1d8186b6855d497458bb90cb",
+    "/project/CoSiR/docs/superpowers/specs/2026-10-29-retrieval-design.md": "ee4077ee2de7fc332c42881a68dec4e541850ad7b23e0250b8eced9176741f6c",
+    "/project/CoSiR/docs/superpowers/specs/2026-11-02-backbones-sweep-design.md": "25c73961212b3dcf8bca8ce95a7cd2670e489763bb631819d70c210bac06607f",
+    "/project/CoSiR/docs/superpowers/specs/2026-11-03-new-scores-design.md": "9221873577a7841d2c223693d7d552a8fa9bff1ed4ee3a0de90c6ef31afa22cb",
+    "/project/CoSiR/docs/superpowers/specs/2026-11-12-siglip-only-adapter-design.md": "0bf9d747333cf7172a9fc60823d40511597abfa8ed2647b01afa1f6edf20b416",
+    "/project/CoSiR/src/test/20261029_retrieval/rt_data.py": "a526389dde2175b2bae0b4ea32f2f4bb20d0fbd5a5d52a4bb61e55f2905e3bee",
+    "/project/CoSiR/src/test/20261029_retrieval/rt_metrics.py": "57ba5fd78a082f01e53b13be2b1f72b88196711b227d4442d232635cd5700a86",
+    "/project/CoSiR/src/test/20261029_retrieval/rt_readout.py": "1cef549d50fb9800895cbe096ac05712d968ac42cabf1713cecb4a62c3d90344",
+    "/project/CoSiR/src/test/20261029_retrieval/rt_stats.py": "70b4c61b1e8c7a990e57d34de8974822f4226406113262d31cf86b0ebea1e538",
+    "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json": "68a3c0a4d849912ebafb22c8434c3f43599c055271b23695afdbc89013c470c3",
+    "/project/CoSiR/src/test/20261112_siglip_only/r29_model.py": "00b96f402097725c45577618486c4b31f7c7af8a9eb818d6d56b59a49d06e2ab",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_c1_core.py": "f74d217493422ce27b025673890dcbbcb7ca811c07ac7a28b78005681649dc76",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e.py": "70e312b4f79ae306106c0f34be95ec63bd0da14a185cb2f10a079fd5e70d43de",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/crossfit_told__079ea520c278801810bd6b3f00abdd0bd7f8433a0f501109858c8bcc9c83191d.npz": "61ef287158b642fc2dd2721d3eede751a0236d9e5db8b084caa589332b73ed92",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/crossfit_told__0dd696f0fa5a62a0d50d0841a04bc36c0d10f2f27fb4354678e2215e3f1dd88e.npz": "670db1a790bcd591e54f1836f008e27de8d79624fc974c3deed818d025ed8165",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/crossfit_told__1ef6e0b2792dca86322d7d4d03bcd2476da8434f4bb12ed59ededd5f6194abdd.npz": "851f76cd335722978850c949259c5d9d73908f0bfacca32cfbe97c7008e841ab",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/crossfit_told__20f76d3b7af6d9337f06e53a89c97c537662a468dfd3a8abbc783456f1446003.npz": "8c29494c570f8b1d49c99ab22f41de9ee8c5ea5bbbd05fb18f23fafafd0efe0c",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/crossfit_told__2977bca54bf22c2ed6f00028ef3ba0abcc32a6070be989740ceb8874d72cea60.npz": "1a4fe20aceeae6beb4dd9b5b814976bf607966ec92c25f101dc5bf7a068bc5b2",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/crossfit_told__29e689ba43bc1bcd725eee6c289b04ddc927cbd9cf2d66d2ada051eea8cd254b.npz": "e9d1441e01847655b9388ddea46e8eba3cac41183cd6d6725728933398d7f465",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/crossfit_told__2e8f48f211e99d640dfe99fc60572579a1768b0bea6d5b1035b724442a5adf0b.npz": "4ed96cae0359e88ca042f037e803004544218fed3a90960a15faae56b84aeb31",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/crossfit_told__37d14b9853b9aedf61b3aa033dc4947ba2e831e52a2787ce2557eeaf46397120.npz": "bdba756b45dfded3119010646188ef3eedd016e78ee299df80594c9ec66719b3",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/crossfit_told__40e77530ab7911d0850d1e4f9e023a01e83062684158c0153afc6d204a20d65a.npz": "e70822747521e1feecef2e095f1def3d093c95c6112d0772bb9259ea5e775f32",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/crossfit_told__5e4a377548bfda05712b7a079d98ba267c8287bd666b11200ce3c32254c88c60.npz": "32eed84a62d0151fb3818c93eafdd56fa64806144edcc456aab6cd84be27c6af",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/crossfit_told__66a7801acc58a09a52f0a33ba193491788a5fa36670c907222c62b5199fb9574.npz": "50a54fc665e53d5237c2e1dfdb5f406de30e573cf4068ff3d0a53226a2ef6a0e",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/crossfit_told__7055a4aa6fef5073372de59aa2ec79837d5bbb39415923f9ac015b61b844d68a.npz": "0e26bdb9a095c1d4b6e3a65bbd47b1dd4bce7c30d9036c31674f3952bd27163e",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/crossfit_told__770bf65c2866efa90e24b6727274d16601ad0114aecb439ef7a3eabb556ee172.npz": "1ddf6d3089d76d7e6d3c9ff768dc264bcb5fad2a73e3f6bbfe166c43a6916a3b",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/crossfit_told__7d5cd1e87802bff3754e4264624fef93314890911161131637bf0fb44a3ac8da.npz": "12afcda7e4bc79b3fbf5c5cb7e59ddb19852f4f7f606c787c68a5f71d873d401",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/crossfit_told__80d2840dbc5e2859da9359ab2cfd7d8b6668925b7f7b2fa702e0d39e4cb485d8.npz": "bd6aaa41318a58f2ff46b0c1170943e86f32cf8ec825b088df0f6e8072cdba65",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/crossfit_told__82265ffa15aea3190e451eddb1f154438dd9965b3d2de95ed71de49c4bddef9b.npz": "a967e75812e3a1271c6d29df44d622a24c2c70331d27a0743634ad583a5fc4f0",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/crossfit_told__85ff62884ac382391e192e8e43802a56f20c08e29dd0d51fca4300cb3eeaed5d.npz": "5184d75641ad965b0f021a384f1c3e130a92c58113b31f58e10526261df7de7b",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/crossfit_told__886911d3e9dcc115982cfcdc3370608bc00246bfa61f4ff0d15d55ef73094633.npz": "abb33e77f63e3722aef2503e56166b9f2a0a8a394397073d4a0afad0c7aa7901",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/crossfit_told__95e724df18b2c29bc28712070b2adbcdfca3cafc5c0510c72e9172717f2a1dde.npz": "ee4deba5e3a0c993ee8f090d863becd00b47ca02024619280c9270a2ed3cd3d0",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/crossfit_told__997ab0c3d2752bba423201ad8460739acccbc13238296e654dfb34e443c430cb.npz": "d26540783e73dc44f7cb07f0b23890bcb7d6fe3342f118881e564f9d1dff915a",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/crossfit_told__a693d71ea89bd091c6b2e4f5ceb9653af5ec51ee2b74ddaccc33b498429c03d0.npz": "5363bce0d0b6219a3b7896a050378035153ceac918a95ec3b1347034d3a12fb5",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/crossfit_told__a792085d9206f5d8c0147255d52ffd0afafd85c34871a8c7f619fc4e27076d93.npz": "7d27167c8c55729c7284b4bf279b5784d02960ba7de2b879c449d447a04e4dc7",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/crossfit_told__b26e05ce10eba53f28bbf68a0dfdcc8ab3e96dddd1b80b87a7da5ed54c9b575f.npz": "20c3a3cfae6f6f81e1818af9469edcd8352a1128c1aa7c72a1dc68582c37c7b0",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/crossfit_told__be0e6a05efb2b94eb94c642ca44ed326410ffb4d6007e418d87def03da96b37b.npz": "a459a1fbdf61c67f2bbb20f9c82422e1bf47c37bfc841f18c843729b18412bca",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/crossfit_told__d365ae770e91a2d3bad7b33cfe88d9b4d26e74f5ab715e7f416d786ad0625d71.npz": "4a7f0346f564fb2942ac0ee8ab1cdcd41fc8a172d18dd30f74988985c39e6a8e",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/crossfit_told__d5d185637402843fcaa2f83c741623df77a4c45c4107890d3df8b67c96242f60.npz": "8dda15435680b41190172e01a14f1e5400184cbe6669cc46711dbf153f01ffc8",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/crossfit_told__d6ac490c4445add675b3b37631357cf8cd2da2970ef680182db99bb86a4aeed6.npz": "2d6bd27d717cdad7b13369f7bcf0746d9869f24634d7b71f351cf5686e2690c8",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/crossfit_told__da2dad8936a58a300f7b541e24a2fb1fd6332e3989bd4b8b6df199a29bfd051a.npz": "677ca8528a29976f820f52bc3af9f59a9f17a65981383bce4a0f28b284814868",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/crossfit_told__e55eac37f87720ec190f34b0977e4c2b885af02c9eea05c605bcab6020b68559.npz": "491d2d1cb5e9a1e2cd57cb2c0fe2717f9e8478a90a5b204cd8b88a0b438481ba",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/crossfit_told__fd2744a6b070a4e269e61ec20332b8638d62d513e82577af0317650e3069985c.npz": "e5d1216fd5d77abdfcba2303b9881892093f6e1431934e48b4c18051bd6ce1ab",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/crossfit_untold__0bad275aa2d612a5ea173d17e4358bc6261cb4c0cc4a60168a41b42aef2a9220.npz": "29f3d4477438fd06db4238508a28aa597539112d69dd6eb65f40dda0fbe30b16",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/crossfit_untold__2e3d3c21f03a199e9d88d5487a5c4697038678c529b6abdb1f742c8876e1b8e0.npz": "1cd87f7592cce402e8997fab507ff7913dcb86968a5c586643667e4a577a2c7a",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/crossfit_untold__44474a722aadfa8ae9929ed6bfd2d14d959ab60e373300788e2da37f4d5e2e8b.npz": "4c6be75d023769428590c580bfa9b54630bd7f89d05c134f385516962459fa6a",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/crossfit_untold__5e221f827c00012141aac7099335961a60b5138617b35de907c43ba3dc6b3e85.npz": "4021dfe84fcec0414f9bbc174aff86ea6730d62647d4ea175dca0ad715ef5715",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/crossfit_untold__68a026971135b0403402be155cc72bb0f6934d64e7893d3b41e6d57c76f9c3e9.npz": "571505adc67c4cbc1f1895dca4a2429e1a4ad36be76a8f2da4ad8ac8461d96af",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/crossfit_untold__6ff92373afb6a6f9b5a7e8ececd0f60470f7e0c353b03dba28f7ceb6bd20b7ee.npz": "622877afea3e5e3ef35610c89fa79aea59d25db24a3c9383182d3b24503ac7e0",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/crossfit_untold__8895fa720096fb1b210e3494963147678e851a6311bf257d7509cfe07689f33d.npz": "5024539447c474ec059ad92ac4b64d9b34367a7149034ea6eba5d730edc331de",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/crossfit_untold__911ec02e51d6184b9b27277192da869ac384d3b6d2565e9bd89a1370d1c47c20.npz": "d908460e2d7bf7205eecb84e18af4ff38cc4b6dd8de1c163e9fc1c976559de04",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/crossfit_untold__af59ef201a605506c1efa04f1aee22212bddf7ed1d44765c08f8b8210adcca84.npz": "fe03e864ba810b93bb2c5cef333af027cf8c9f851bf160d45e9ccbd44a0a8220",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/crossfit_untold__e89601b0c9c93547c11a23de67133550c8ac0147013e94fa43aefcbc7023a32f.npz": "7ae90059526e6a2b5583591eadb9e3f23c8170b1076ec52d5d273a3d0911de5d",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/parts_emotion__053bfd36411b73bbff20785d9e367d87f00895d3c405b4efe9b75674827b1ea0.npz": "2e05db3faead31d0f14151d77b984a212cdc53228ddcdaac3a37b8e8f3133974",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/parts_emotion__2cfc87adb0348f73aa8f8edc982da5d124048f7b8c07419ad6c2409dd591e371.npz": "5c72ad1aaa909f703d66694d12098f63866bc3f81eefad1f1542adf50ab4f9e6",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/parts_emotion__3b456e70073db4ddaa04d14242bc59d6b8b6c6805e9ecc31c48185027339707c.npz": "349ceb2cc61b313a21ed578242aeb2c769e7d47a0bb5603cd7a5528d3705b7b2",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/parts_emotion__4c249cf2cffe7edbb9196a2630463ad6652db2861b7763249dba9b4dea8b6aa1.npz": "928e6d2e19e6cd823f6760a36aedd4283c714a2a7b4ac44126802e216bd17290",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/parts_emotion__a55d64aae5fe97b151b63885c564f240c14a628ee7720bfa4dc13473c5d0dc3e.npz": "669787acaef2bb0b2fecf67d64b7cb65be78e748f125dadfe1bcc543eb3ab18f",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/parts_emotion__c570a67a2086be5ff816758617e71bf872ffa519814a9ed606f937b11997a590.npz": "b13175b3a1755c99127187199b71659ab7ed64cbd66a78a943f7983906bdfa60",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/parts_emotion__e54b18a1330b25d45264abdeddcf566d096a406f3347d6ddb5df7c5bb3daf619.npz": "ac065cc766c8f7d10054887c5524f392fd74e0e214d9f78a56fd0f7c1c2e6e55",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/parts_emotion__e9ab9877f42e062e540a88bec4c2f01937e93ca64faeef0513996360c06af91e.npz": "49f96b5210acc6fe2d891e25d8d7638a401fb32a65e1509bd49d8fc2741970cb",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/parts_emotion__f6eac3b63a3825e17d8471781b99fc4541bc5bf8b6bd2e1d46ac63e8369091d2.npz": "61bde9851d4b8776a51d6b800fb54833890537b8b3da4502ead37dfa158272fd",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/parts_emotion__fb655bbe3ca089147429eeddc949ebe3eee157bfe18f0203b410dba41378b626.npz": "a3ef9f6821b9450bf7683220b7e6862f3af3e0ce9c5623480f1b81e6b062ec07",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/parts_genre__0aa572ac15368d86ee455ca6e5d2f63bca6ce737cc307f10473866c4c355b8a3.npz": "0a705eb063923e4aacb8c2a66ce7345d3bee4465c8c7441beef0cef7cf20e5a6",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/parts_genre__32e4dd8112a5d0a83f6dd7536888b8744e080d74adc8ba04327d9364810f31fc.npz": "0963035ccd1b4c916c4931941a9dad2a43d9f90c61cd70664145edf533e52160",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/parts_genre__57e177d45153ccbd1ebae5ceae72077972f6b362d5a3b664689da499377b52f0.npz": "3b68d5f7030e223da2c94bce8cf496df32503ed1e62641faf729a74b190f11a8",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/parts_genre__63e3725da0da28a3a2a91f338eb220514aeacf793f7f7d1f2263c5f4482c0acd.npz": "1553c133a3466b2551ace9cd24df3175b35220f3152d58df455fe855040f4a39",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/parts_genre__8d01ec53b0b55c44a800e190c8514a1f07811d6b72693c4c0d7310157ea71bf8.npz": "e12538155af3e227ccd8f05e1a6becc09760497fca834398eddbeab8e6ded8ee",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/parts_genre__923bc5ed701db7ce5f4ec0763aff4421d9a82c7cddfaabecb50173da7cb078cb.npz": "d1ef8144d438f6dea2845a8604257fac8d8f3bfdd3a5d17c2a93f9a8cd49cf2e",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/parts_genre__99ea2eb2817a2788a738e48ff82f32a372d5d4ec26ba809dbe6ec89b71253350.npz": "3884e7f4c2c1646db720ce5a9d182f19123752e66348bbcea6809d77cfc2863e",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/parts_genre__d9684afd0682ba6c1e56252d27be216c66db39b29dc46b6d86c20c92c631564b.npz": "fcee9f5bb74c90d7757564e89f501009dc5ed8ed6b4d3b90cc9cc5787dc45a18",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/parts_genre__daee85fff7aaa0ae9df581a13491afbd90a25eed6ba2596ba5716e13805914f2.npz": "5ef8c2ac312283d1edec5978b8465a161d4b0b94fdba68d5c11f57e08460f78a",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/parts_genre__f2ff7cfa3e95d0a775e4fe394ebecf3976ce33c98c79c505b829f24154bb9068.npz": "629af5159ec6d342cb1dca2325d17f91e6b307794c4e4ebc3e7198bd218d4905",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/parts_style__0310fbc412611ae8309cef8979b0bbe9b885f71d38f4243b4e69d6c476fcc57e.npz": "3528c9122b7ec56522749740734f58de35262fec0951261979137979f6b00d7d",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/parts_style__0cf39382fe50d11005ff99945293e39b571fb6f72270752b68eecc892414d6d8.npz": "e2f378a8c3d9c5cf434f2b0bfb5b048798bd1713a45e474296a359186fd5f497",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/parts_style__45fb847eddd62bdc41a421dd3d9aa14dc1e2afca305c98d7d1cacec0a3e335bc.npz": "4a885cc1cb979a22370913a2eb5f3308399c558300b9085ce5434fda58968361",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/parts_style__478a3af8b2aab627ee8540d84af54b4881d82bc468f4a8f7ec2cc4d00e86f2b4.npz": "de0df860974201c536d8534b1b5a8c54bc62db37abed847d79367783696d459e",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/parts_style__5f388f052a682155549585739d5184be3061906b43a7327cd96f4a1f96ff4053.npz": "652fb13da090e6ce21439fc51457007809037b3f440a39fba2198f88ca32fe9b",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/parts_style__697381ecf2c16b74b019af4d66cd897413b986e82077b31e59c0fc292307ae3f.npz": "5da961d91389922c84aea1e462c85cc49d41e275b240b7d8f574045fbad13001",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/parts_style__bea1c970f84bde8fa99c211d21b45fe0428b49c2a684aaedd7ba81ae7e135b0a.npz": "74aa82328d778c29fdb4488bd165d26d86ad2e217e5336d24fe7b97bb0ff4365",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/parts_style__c4f9133934e04a8561f070fd6eeb23053f237d9f3c3d8057b5139d637b287647.npz": "c0b32effd72c044b9890a48b73940cd91cedd9c678cbf67f7e0f0c33dec87f2e",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/parts_style__d7efadc1739fe754c598bf8adaff1826db1d55e91144eeaae0d57db94e218884.npz": "a87a7d6cfeb99e132efb6c44903ac271273f39f46b8a41b4d2d0937967b70a5f",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/parts_style__e2495e5f325d1049af791a90f9011e684507e92831a17435cc2d50d099369d0a.npz": "59e769a969bb485a208d52ec7077c786d0d5d4fee25ec1ac8527f597325c9c57",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/val_r0__0811d34091e3789072b1aa5eab6359ce7e25a1e664b2294389a6bd873e56cc69.npz": "7c31b96d40a954420653c09d8a5ec8597d96398b1ee345b8a4cb5fb858bbc499",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/val_r0__15f6f89583dc2be655f7e3dff941bbdcd93385ca9f9dd91739e5f7533242860f.npz": "34c3a173ad7b4e6b7848f085e94d24e71a6578f4ecb3afd48c07963217882b21",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/val_r0__1861c4fe830c5e397df8c8c1629294373d0f7ca9417c559dc91fd7ef84da59b9.npz": "7c10ae4cfc58f3965acaeade0a3d1bf9de689b4f49c92a058daa22a03f4918d6",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/val_r0__314999157a4af801516458e76b991b33a7ec76ad00a49dd70838115c45729ec9.npz": "ca2c6d0352bf3f9ed9523addb72428fd53c142d912de32ce037eac9170f0797a",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/val_r0__408ebca180d6eff429002674a25c9ff6f05c0efbc002fbabd98d33f59c906bd2.npz": "669d5947b143af6c8baa9e0d3ef371be2089daf326f252c27d304a26a5aeab80",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/val_r0__4416771a8bf505f36cf9ed7fa8dfa2df396214cffe631e686a1f4e9dc57522d5.npz": "2b38faf8ea537c57ca47130d1b4895a287ea7b087e7fd3f623bcb2fcf4cc418c",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/val_r0__48098c4c3149095c79d87488714cffdfbb83eb5d6114e6837e99478318439795.npz": "b518cac5442cef2c21472ca6e9dac1a6763cecd50bc30f444957c792aa2e694f",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/val_r0__4f83a76136287d099d2f9e33b1fa30c76dcbf378172ebaa4369ae214f158393d.npz": "30774f38f757b0260e109aad2597734cbd215f33c72edc6162e12dfaa35c3e2e",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/val_r0__514e0b96e05774ecaa225c0041b70b85aecac043d4f3508bbb3183bf74057072.npz": "a15d0f7e27362d23a31d1b26ab913db9c4329010bf5a4fdbde6389d98783e91b",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/val_r0__6cafdc34f96deede910dc3edbd9319ca87058e2bc9778cefa358ddb790fec48f.npz": "8d154311cbfe0f5e97c6a4592344f13989b196730823bdf416fd52233b8aaa4e",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/val_r0__6e1c1a7ee56e60ae43e06ed0c5bd562430323618a491a389f183050bba83584a.npz": "20d060b4b6f65eb4e9ca26024470ff68b7db01f8d98a46b265a3b0027b41b25d",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/val_r0__730f1cc7db961d881fd4fbe9317d39a3ff9566462dcc8653a72d77fa4ac9f15b.npz": "649da4d4630a52b9996f4e3abb888c375880842098f7515dbf72be70d87a7338",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/val_r0__7ec6473870f3b0ccc6da466ffbfb0ef7640a66a5b1b92341064b1ccc5a0b3f68.npz": "c94b4908cf3111c272a7f75eafd5dd6d7b3c82c9a9cea5e7c818e8b5aff22071",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/val_r0__82a14155afb8a83e7ef50f21d5b7febeafe024151938ed9f8001c01a648efeec.npz": "32aeb2ef9b32c93314aaafb5ac42f25e0dd126c2d404fa2206bacde7f5602eb0",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/val_r0__8565e37339f237c93fb65ff38478eae9bace1e5f706f56ed58626eafb145cdb0.npz": "c558806a8b6af3a4fbb17aabcb9d18f210eef441f07a8c712e1383c1cee8f7f4",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/val_r0__8e9fc938fe00aa4651d82a99455471ef4819546126c2bb7207c6b1d74877bd0e.npz": "0fca6dfaca38d905eb140eef1c99b4ba1305c8107d0c1557f6c67d71655e3baa",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/val_r0__95013cac5ea8b0c006db77b9a2c59e6e321873a734ea9bfb184eca1dbd285827.npz": "ec4dd1abb70b747cab4721c64a255843ab3d38250a9c2c74dea180937a3328b5",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/val_r0__98448d8c16d8c74499530295cc1173198e15853a4d4a698c1b840104bd7b94ee.npz": "9d5aceb336a4cab12678efd6c1ba433693543547491b8f0b968e3364b29706b3",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/val_r0__a1112a0f519858a848ed7d71c90c400ce7283eec1cf0e9e48eae034e05048701.npz": "ac635ca8d6029e9765efad2b9dc4ac4bd5deb04b0bea5b7ef530bfa739e5f75f",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/val_r0__a1e9eb766f6465eb0dae35a71f84ade15248fcd0f8bc17d273980b583909dedb.npz": "66634e44c1909ef04039ada5b2d47fbaec66fb869c9b942ea3d4a6fb1ce5e5b6",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/val_r0__a6a2fc5a327de01ecc010a02eb26dc551611360dd89b0153cf25dbd61683b611.npz": "88e5a04ce4c63f32045f7a93d3b1106e231c5bd1973afdd983b3db45849341a4",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/val_r0__acf115c93787f73d0ab4a9ca2121daa633b6b5ef25c035784bc8d946cccd512f.npz": "8091ee320c3071642e81069bf692e5fdecbcb58fc67f178eae079b1d5981d32c",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/val_r0__ae1cadd70248e436377fa70b7ebe161ba5f866ee936341999bd4c0a9b5a89932.npz": "d1969ba239f9676190e06e95a52446efd499122abbc8af30f075a8c9eb605397",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/val_r0__af8ce40c0a64f60a2e964adde4c22cf8514ce1a3aabf4f655099972405ac4562.npz": "ca7e71f7fdb098c2685cdde95a3b5fcbad20a22ae5d1debcf8355f7be5424491",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/val_r0__bfa4f88db94df08143d00ad0e7393e3f64ad325e48d0c0e8af9bbf2311629940.npz": "54bbb9e5a8ef3e15fcfa19d8b604b25f07a796679d607c958b6c4c228f38b066",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/val_r0__d00e07e815c93d7661da4be07fccc851790909beadf718facf0fd4cdafb9f163.npz": "835c19a0cb5b1e2992638cbe1733b09755edd229e475558bf5b9adea6efc5c6a",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/val_r0__d641b200257d8a0f3c25bcbe42c09e768f4aecff0102101961f02c3df80d1b70.npz": "d13c79ad62123bddca2505666a7f494c2b3de97588009876d957fd313b79ada7",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/val_r0__d86ef365f21fac1430eb8110fab2a1aa33e189c3e2b9aae3c31e64a45999c250.npz": "f1fa72a4ef04bd23ca21584f3e57fae8dd1a9acf81b856fd657976557e481c20",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/val_r0__d9dcd6c7d86dbb72cac19ded7a47de8c0bcd5d1c7cc2228f22b1381b8c1227bd.npz": "53510779dbbba151ee8c019bb1aac1d8fed2d13dbf0167cf5da6eebcd9c6f23a",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_cache/val_r0__dcf8eb8edf91d74f86a8b523ed2cae3b4b1690a323c849355b186797348c9adc.npz": "7363ea2dd821568a9f0c6ef5109096ec3abea41cb56447d6691da1ef7a5ee68f",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_s2e_replay.json": "70464f5fa6bffda21eacc25128d8d09b062004133ca883f48801caa9c4865106",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_sc1.py": "a6109bbb1e440c3cf7e3b3110ef78729675b08e1057b7248141382c4830e75e9",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/r29rd_sc2.py": "59d9a4492d0988908eda17c8869a90a4dd6263f67d135be54443445ae05e9748",
+    "/project/CoSiR/src/test/20261112_siglip_only/rederive/sc2_rederived.json": "d4ae0807f0a853d1b6796170ec2ac73a0548c42848c238ad409754d0c4401b55"
+  },
+  "source_sha256": "b55e75e8aaf4d972e12a96370b3d49b7b6134abf5d1bc55469fc23854cf83fc5",
+  "device": "cpu",
+  "versions": {
+    "numpy": "2.2.6",
+    "torch": "2.11.0+cu130",
+    "sklearn": "1.6.1"
+  }
+}

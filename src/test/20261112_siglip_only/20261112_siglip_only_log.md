@@ -182,3 +182,7 @@ mode. Outputs `/data/SSD2/cosir_r29/20261112_siglip_only/` (stage logs in its `l
 - 21:35 Codex `s2mp val --piece mmart` done (20.8 min, exit 0): its MMArt piece complete; forward check on 500 rows per
   aspect exact (equal fraction 1.0). C13 comparison `r29_s2_compare.py --phase val --pieces mmart`: pass, 39 fields
   compared, largest difference 2.1e-14, no mismatch (picks `none+k1` untold and `center+k10` told on both sides).
+- 21:40 Codex `s2e val` done (47.6 min, exit 0): complete; replay gates and forward checks pass for both encoders. C13
+  comparison `--phase val --pieces e2e3`: pass, 88 fields, largest difference 0, no mismatch. Codex's SC9 (to compare
+  with our `encoder_pick.json` at the end of part a): pick SigLIP 1 (0.3882) over SigLIP 2 (0.3838) and CLIP L/14
+  (0.3762), margin 0.0045, ahead in 5 of 5 seeds, leader range 0.0055, close call.
