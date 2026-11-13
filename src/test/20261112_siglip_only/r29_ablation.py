@@ -371,8 +371,10 @@ def smoke_checkpoint(root, device):
     root = T.check_root(root, smoke=True)
     aspect, seed = P.ASPECTS[0], P.SEEDS[0]
     weights = P.K0_ROOT / 'weights' / P.K0_ARM / f'{aspect}__s{seed}.pt'
-    names, _, inputs = T.held_inputs(B.backbone('siglip1'))
-    arrays = T.infer_sides(weights, dict(img=inputs['img'][:8]), device)
+    # r14's encoder registration (width, folder) as `T.export_arm` enters it: `full_images` asserts the backbone.
+    with patch.object(B, 'row_arm', lambda row: P.K0_ARM), B.training_context('siglip1', B.REF, export=True) as ctx:
+        names, _, inputs = T.held_inputs(ctx.backbone)
+        arrays = T.infer_sides(weights, dict(img=inputs['img'][:8]), device)
     assert arrays['img'].shape == (8, P.OUTPUT_WIDTH) and np.isfinite(arrays['img']).all()
     path = root / 'k0_standin' / f'{aspect}__s{seed}.npz'
     path.parent.mkdir(parents=True, exist_ok=True)
