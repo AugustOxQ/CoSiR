@@ -139,3 +139,18 @@ mode. Outputs `/data/SSD2/cosir_r29/20261112_siglip_only/` (stage logs in its `l
 - 17:55 Chat start (handoff `2026-11-13-r31-run-2-handoff.md`). Both Codex replays run on the CPU queue (s2e from 17:42,
   s2mp from 17:52). Dry run of part a under A1 unchanged (28 queued steps; SC9 replays skipped). A Sonnet `high` worker
   writes the C13 comparison script `r29_s2_compare.py` (val and held phases, tolerance 1e-6). Part a waits for 19:00.
+- 19:00 GPU check passed (driver 595.99.02; kernel module and library match). Queue: GPU idle, one Codex replay on the CPU;
+  53 GB RAM free. Codex's full E2/E3 and SC9 replay done (75.8 min, exit 0): all 11 check families pass, largest
+  difference 2.8e-14 (AMI points), mAP intervals 3.2e-16, picks and ranges exact (`rederive/r29rd_s2e_replay.json`).
+- 19:00 Part a started: `bash r29_run_stage2.sh a --amendment A1` (log `logs/stage2a_run.log`). End estimate about 01:30.
+- 19:05 Codex's full MMArt/photo replay done (73.5 min, exit 0) with one entry over its 1e-9 target: r17's MMArt SC7
+  genre image mAP cell, interval end `hi`, 1.03e-9 (point values within 2.4e-10; every other family passes). Its held
+  guard would park all six MMArt mAP cells. Codex has no room until 21:04, so a Sonnet `high` worker looks for the
+  cause (19:15), under Codex's independence rules; no tolerance changes.
+- 19:06 E2 training failed at start on both tries: r14's `bs_cstar.train` asserts `CUBLAS_WORKSPACE_CONFIG`, which
+  `r29_encoders.py train` never set (stage 1 trained through `r29_trainer.main`, which sets it). The runner wrote a crash
+  record for E2 and went on to E3's store. Runner stopped at 19:07 (E3's store extraction finished on its own: 308,723
+  captions, 0 truncated, gate ok). Fix e2641622 (both `main`s set it when unset); the false crash record moved to
+  `records/void/` (decision line 19:10). 120 tests of the two modules pass.
+- 19:09 Part a restarted (log `logs/stage2a_run.log`; first try's log `logs/stage2a_run_try1_1900.log`). E2 training
+  started 19:09.

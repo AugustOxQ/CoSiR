@@ -51,7 +51,7 @@ NOTES = [
     'AMI: MiniBatchKMeans n_init=3, batch_size=4096, states 0,1,2; fit all rows before masking missing labels. MMArt 8 threads; photos 1 thread. Adapter exports are promoted float16->float32 without renormalization for clustering; store rows normalized once.',
     'AMI intervals: fixed partitions, 2000 draws, fresh default_rng(0) per cell; draw all rows then five seed positions. Mean over states then seeds; unlabelled rows masked after sampling. Retrieval intervals: 10000 draws, queries then five seeds, fresh default_rng(0) per cell.',
     'R0 seed-range measurements use the original normalized rows directly; application of a picked none map and cross-fit none still normalize in float64 then cast float32, exactly as the other W maps. A frozen-only probe confirmed this matters at the 1e-9 gate.',
-    'Retrieval numeric convention (permitted rt_metrics/rt_readout docstrings): input float32 normalized rows; maps/normalization float64 then cast float32; cosine float64, stable descending sort with self removed; QE normalized mean of query and k neighbours. AP and all reductions float64.',
+    'Retrieval numeric convention (permitted rt_metrics/rt_readout docstrings): input float32 normalized rows; maps/normalization float64 then cast float32; cosine float64, stable descending sort with self removed; QE: query plus the float64 sum of its k neighbours, float64 normalization, no downcast to float32 (r11 written numeric convention; fixed 2026-11-13). AP and all reductions float64.',
     'Read-outs: r11/r12 menu none,center,whiten1024,whiten256,whiten64 crossed k=0,1,3,5,10. Parity-half cross-fit fit before masking unlabelled rows; mean of two half mAPs then seed means. Covariance ddof=1, epsilon=1e-6*largest eigenvalue. Guard permits no aspect below R0 minus its range; within .001 score units ties choose R0, no expansion, none<center<whiten, smaller k, larger PCA size.',
     'MMArt plain-side candidate uses r17 SC7 untold concatenation: normalize each E/S/G head then divide joined vector by sqrt(3); Q1-side candidate uses told aspect heads (r15). Separate picks are made, with told aspect-head R0 ranges as the shared per-aspect units. This inherits the paper cells under D18; r29 table itself does not explicitly say untold.',
     'EmoSet D19 prose rounds r_E to .00695. Use full precision committed r14 stage2_emoset ranges.map.r, .0069460867449697705, as r28. This unit serves F1 EmoSet read-out selection and LEVEL; its own R0 range is descriptive only.',
@@ -379,8 +379,9 @@ def aps(x, y, ks=(0,), limit=0, batch=64, device='cpu'):
             rank = ranks
             if k:
                 assert k < len(z)
-                # Frozen metric forms the average in float64, normalizes and casts once.
-                expanded = unit((q.astype(np.float64) + z[ranks[:,:k]].astype(np.float64).sum(1))/(k+1), np.float64).astype(np.float32)
+                # r11 written convention: query plus the float64 sum of its top-k neighbours (the mean's common
+                # factor cancels on normalization), float64 L2 normalization, no downcast; float64 similarities.
+                expanded = unit(q.astype(np.float64) + z[ranks[:,:k]].astype(np.float64).sum(1), np.float64)
                 rank = ranking(expanded, rank_gallery, idx, device)
             relevant = yy[rank] == yy[idx, None]
             den = relevant.sum(1)

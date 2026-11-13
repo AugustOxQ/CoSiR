@@ -112,6 +112,25 @@ class ProtocolTests(unittest.TestCase):
         expected=m.aps(z,y,(1,),batch=8)[0][1]
         np.testing.assert_array_equal(got,expected)
 
+    def test_query_expansion_stays_float64_without_downcast(self):
+        # r11 written convention: query + float64 sum of top-k neighbours, float64 normalization, no float32 cast.
+        rng=np.random.default_rng(7)
+        x=m.unit(rng.normal(size=(40,8)).astype(np.float32))
+        y=np.arange(40)%4
+        k=3
+        got=m.aps(x,y,(k,),batch=16)[0][k]
+        x64=x.astype(np.float64)
+        expected=[]
+        for i in range(40):
+            s=x64@x64[i]; s[i]=-np.inf
+            r=np.argsort(-s,kind='stable')[:-1]
+            q=x64[i]+x64[r[:k]].sum(0); q/=np.linalg.norm(q)
+            s=x64@q; s[i]=-np.inf
+            r=np.argsort(-s,kind='stable')[:-1]
+            rel=y[r]==y[i]
+            expected.append(((rel.cumsum()/np.arange(1,len(rel)+1))*rel).sum()/rel.sum())
+        np.testing.assert_allclose(got,expected,rtol=0,atol=1e-13)
+
     def test_controller_guard_before_any_data_read(self):
         result=subprocess.run([sys.executable,str(Path(m.__file__)),'held'],capture_output=True,text=True)
         self.assertNotEqual(result.returncode,0)

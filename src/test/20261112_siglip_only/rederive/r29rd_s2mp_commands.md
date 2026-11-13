@@ -115,3 +115,43 @@ paths and pending forward checks; `s2mp_held.json` is controller_pending with no
 scores. No new stage-2 held model number, GPU execution, commit, or deletion was
 made. The final 16 fixtures passed in 1.147 s. Frozen photo validation smoke (five
 seeds, 16 queries, reduced menu on both sets) completed in 7.35 s.
+
+## Fix 2026-11-13 (Claude)
+
+Symptom: the full frozen replay (`r29rd_s2mp_replay.json`, 73 min) failed one MMArt mAP entry,
+`SC7/mmart/siglip1/genre/map/-/plain.hi` (difference 1.026e-9 against 1e-9); the other entries of the six MMArt
+cells differed by 1e-10 to 7e-10. Per-query AP against the frozen r17 independent re-derivation's saved per-query APs
+(`/data/SSD2/cosir_r17/20261103_new_scores/c13/cache/picked_ap__*.npz`, a frozen output) differed on 86 to 110 of
+13,420 queries per candidate seed and 675 for the plain comparator (up to 2e-6 per query): rank swaps, not
+accumulation noise.
+
+Cause: query expansion. The code formed the expanded query in float64, normalized it, then cast it to float32
+before the similarity product. The r11 written numeric convention (`20261029_retrieval/20261029_retrieval_log.md`,
+paragraph "Numeric convention"; r17/r15 use r11's frozen retrieval) says: "QE uses the query plus the float64 sum of
+its top-k gallery neighbours (the mean's common factor cancels on normalization), then float64 L2 normalization, with
+no downcast; both initial and expanded similarities are float64 matrix products." The float32 cast moved near-tied
+scores across each other.
+
+Change (`aps`, `r29rd_s2mp.py`): `expanded = unit(q64 + sum64(top-k neighbours), float64)`, no `.astype(np.float32)`,
+no division by k+1 (it cancels on normalization). The NOTES line on the retrieval numeric convention is updated. New
+fixture `test_query_expansion_stays_float64_without_downcast`. No tolerance changed. Read-out maps and the
+store-row normalization are unchanged (they already follow the same log: float64 then one float32 cast).
+
+Check (genre cell, all 10,000 draws, both comparators, `r29rd_s2mp_replay_mm_map_genre_fix.json`, log `.log`,
+467 s CPU): every `mmart/map` entry (SC7 plain: cand, comp, d, lo, hi, outcome; SC4 q1: comparator, candidate, d,
+lo, hi; siglip_main cstar_map) within 2.2e-16; both comparator rebuilds 0.0. Before: genre plain hi 1.026e-9,
+cand 1.1e-10, comp 2.2e-10, d/lo 3.3e-10. Fixtures: 17 passed.
+
+Consequence: `replay_pass` binds each replay JSON to the sha256 of this source, so every replay JSON made before
+this edit (all datasets, all groups) is stale for `--replay-json`. Rerun them all (the old caches are also
+invalidated, they are keyed by the source sha). Also aspect-limited fragments (such as the genre check above) are
+ignored by `replay_pass` (it requires all three aspects). Replay commands for the MMArt mAP part:
+
+```bash
+./r29rd_run_s2mp.sh replay --dataset mmart --replay-group map --out r29rd_s2mp_replay_mmart_map.json > r29rd_s2mp_replay_mmart_map.log 2>&1
+./r29rd_run_s2mp.sh replay --dataset mmart --replay-group rebuild --metric map --out r29rd_s2mp_replay_mmart_rebuild_map.json > r29rd_s2mp_replay_mmart_rebuild_map.log 2>&1
+```
+
+Expected CPU: first command about 18 min (genre is cached from the check above: about 1 min; emotion and style
+about 8 min each), second command about 2 min after the first (cache hits). The other groups (mmart ami, mmart
+validation, affection, emoset) also need a rerun on the new source; the old uncached full `replay` took 73 min.
