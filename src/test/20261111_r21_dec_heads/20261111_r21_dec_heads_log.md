@@ -247,3 +247,14 @@ Spec: `docs/superpowers/specs/2026-11-11-r21-dec-heads-design.md`. Decision line
   the 18 per-painting silhouette means equal `diag.json` (test, seed 0) and `val_internal.json` (validation) exactly.
   Unlabelled rows: genre only (test 2,332, validation 1,192). The λ = 0 panels are empty until its exports exist; then
   `r21_figures.py compute` and `plot` (CPU queue).
+- 03:47: λ = 0 control done: 8 steps OK (train 5 runs 01:59 to 03:19, an r29 smoke job between runs 1 and 2; held 15 s;
+  `table --name stage2_lam0` 25.5 min; `diag` 2.5 min). Kept epochs (emotion / style / genre): s0 6/6/18, s1 8/6/9, s2 6/7/19,
+  s3 9/8/14, s4 6/7/18. Checks: the four old arms in `stage2_lam0` equal `stage2_table` (max |diff| 0, same words); SI, DBI and
+  CHI of the old sources equal the 4-arm diag (`diag_before_lam0`, max |diff| 0). `stage2_lam0` has `complete` False by
+  design (it is not the paper-facing `stage2_table`).
+- λ = 0 against c* (`scores/stage2_lam0.md`): AMI at the class count no clear change on all three aspects (emotion -0.0014,
+  style +0.0015 [-0.0016, +0.0043], genre -0.0022); mAP no clear change on style and genre, lowers on emotion (-0.0012
+  [-0.0021, -0.0004]). Internal scores (`scores/internal_join_lam0.txt`; `r21_join_internal.py` now reads `stage2_lam0` and
+  adds the λ = 0 row): the λ = 0 arm is looser than c* on all three aspects (style CHI -104, 0 of 5 seeds tighter; SI -0.009,
+  -0.020, -0.026). Reading (agent; the user's reading comes first at step 1): the later kept epoch alone moves neither AMI nor
+  mAP and makes clusters a little looser, so the style AMI and mAP gains and the genre mAP gain come from the DEC term.
