@@ -119,23 +119,51 @@ def _git(repo, *args):
     subprocess.run(['git', '-C', str(repo), '-c', 'user.email=t@t', '-c', 'user.name=t', *args], check=True, capture_output=True)
 
 
+def _commit(tmp_path, *names):
+    _git(tmp_path, 'add', '-f', *names)
+    _git(tmp_path, 'commit', '-q', '-m', 'x')
+
+
+def _gate(rec, gate, status, tries=1, units=None):
+    (rec / 'gates' / f'{gate}.json').write_text(json.dumps(dict(gate=gate, status=status, tries=tries, details=dict(units=units or {}))))
+
+
 def test_cells_refuse_without_the_picks_record_and_without_its_commit(tmp_path, monkeypatch):
     rec = _records(tmp_path, 'pass')
+    _git(tmp_path, 'init', '-q')
+    _commit(tmp_path, 'records/pass_rule.json')
     monkeypatch.setattr(PC, 'pick_readout', fake_pick())
     with pytest.raises(RuntimeError, match='photo_picks_siglip1.json'):
         PC.run_cells('siglip1', data=FakeData(), records=rec, gates=rec / 'gates', comps=COMPS)
-    _git(tmp_path, 'init', '-q')
     path = PC.run_picks('siglip1', data=FakeData(), records=rec, gates=rec / 'gates', comps=COMPS, workers=1)
     assert path == rec / 'photo_picks_siglip1.json'
     with pytest.raises(RuntimeError, match='committed'):                      # written, not committed
         PC.run_cells('siglip1', data=FakeData(), records=rec, gates=rec / 'gates', comps=COMPS)
-    _git(tmp_path, 'add', '-f', 'records/photo_picks_siglip1.json')
-    _git(tmp_path, 'commit', '-q', '-m', 'picks')
+    _commit(tmp_path, 'records/photo_picks_siglip1.json')
     with pytest.raises(RuntimeError, match='gate v_photo not run'):           # committed: the next refusal is the gate record
         PC.run_cells('siglip1', data=FakeData(), records=rec, gates=rec / 'gates', comps=COMPS)
     (rec / 'photo_picks_siglip1.json').write_text(path.read_text() + ' ')     # edited after the commit
     with pytest.raises(RuntimeError, match='committed'):
         PC.run_cells('siglip1', data=FakeData(), records=rec, gates=rec / 'gates', comps=COMPS)
+
+
+def test_cells_refuse_unless_pass_rule_is_committed_unchanged_outside_smoke(tmp_path, monkeypatch):
+    rec = _records(tmp_path, 'pass')
+    _git(tmp_path, 'init', '-q')
+    monkeypatch.setattr(PC, 'pick_readout', fake_pick())
+    PC.run_picks('siglip1', data=FakeData(), records=rec, gates=rec / 'gates', comps=COMPS, workers=1)    # picks as ticket 06: no commit needed
+    _commit(tmp_path, 'records/photo_picks_siglip1.json')
+    kw = dict(data=FakeData(forbid=('val', 'test')), records=rec, gates=rec / 'gates', comps=COMPS)
+    with pytest.raises(RuntimeError, match='pass_rule.json is not committed'):          # written, not committed
+        PC.run_cells('siglip1', **kw)
+    _commit(tmp_path, 'records/pass_rule.json')
+    with pytest.raises(RuntimeError, match='gate v_photo not run'):                      # committed: the next refusal is the gate record
+        PC.run_cells('siglip1', **kw)
+    (rec / 'pass_rule.json').write_text(json.dumps(dict(status='pass', x=1)))            # edited after the commit
+    with pytest.raises(RuntimeError, match='pass_rule.json is not committed'):
+        PC.run_cells('siglip1', **kw)
+    with pytest.raises(RuntimeError, match='gate v_photo not run'):                      # smoke (check_committed off) skips it, as ticket 06
+        PC.run_cells('siglip1', check_committed=False, **kw)
 
 
 def test_picks_record_is_written_once(tmp_path, monkeypatch):
@@ -245,21 +273,122 @@ def test_a_failed_rebuild_parks_only_the_cells_that_use_it(monkeypatch):
     assert len(cells) == 8
 
 
-def test_cells_run_reads_the_gate_record_for_parked_units(tmp_path, monkeypatch):
+def _ready(tmp_path, monkeypatch, v=('pass', 1, None), vii=('pass', 1, None)):
+    """A repo with pass_rule and the picks committed and the two gate records written as asked (status, tries, units)."""
     rec = _records(tmp_path, 'pass')
     _git(tmp_path, 'init', '-q')
     monkeypatch.setattr(PC, 'pick_readout', fake_pick())
     PC.run_picks('siglip1', data=FakeData(), records=rec, gates=rec / 'gates', comps=COMPS, workers=1)
-    _git(tmp_path, 'add', '-f', 'records/photo_picks_siglip1.json')
-    _git(tmp_path, 'commit', '-q', '-m', 'picks')
-    units = {'emoset/map/plain': dict(ok=False), 'emoset/ami/plain': dict(ok=False), 'affection/map/plain': dict(ok=True)}
-    (rec / 'gates' / 'v_photo.json').write_text(json.dumps(dict(gate='v_photo', status='fail', tries=1, details=dict(units=units))))
-    path = PC.run_cells('siglip1', data=FakeData(), records=rec, gates=rec / 'gates', comps=COMPS, draws=dict(ami=30, map=60), workers=1)
-    out = json.loads(path.read_text())
+    _commit(tmp_path, 'records/photo_picks_siglip1.json', 'records/pass_rule.json')
+    for gate, g in (('v_photo', v), ('vii_photo', vii)):
+        if g is not None:
+            _gate(rec, gate, *g)
+    return rec
+
+
+def _cells_run(rec, data=None):
+    return PC.run_cells('siglip1', data=data or FakeData(), records=rec, gates=rec / 'gates', comps=COMPS, draws=dict(ami=30, map=60),
+                        workers=1)
+
+
+UNITS = {'emoset/map/plain': dict(ok=False), 'emoset/ami/plain': dict(ok=False), 'affection/map/plain': dict(ok=True)}
+
+
+def test_cells_run_reads_the_gate_record_for_parked_units(tmp_path, monkeypatch):
+    rec = _ready(tmp_path, monkeypatch, v=('parked', 3, UNITS))
+    out = json.loads(_cells_run(rec).read_text())
     assert out['arm'] == 'siglip1' and out['encoder'] == 'siglip1' and len(out['cells']) == 8
     assert {c['id'] for c in out['cells'] if c['outcome'] == 'INCONCLUSIVE'} == {
         'emoset/siglip1/siglip1/emotion/map/plain', 'emoset/siglip1/siglip1/emotion/ami8/plain'}
     assert out['picks_sha256'] and out['test_files']['affection']['0'] == 'sha-affection-test-0'
+    assert out['v_photo'] == dict(status='parked', tries=3, parked=['emoset/ami/plain', 'emoset/map/plain'])
+    assert out['vii_photo'] == dict(status='pass', tries=1)
+
+
+@pytest.mark.parametrize('absent, v, vii', [('v_photo', None, ('pass', 1, None)), ('vii_photo', ('pass', 1, None), None)])
+def test_cells_refuse_when_a_gate_record_is_absent_before_any_candidate_number(tmp_path, monkeypatch, absent, v, vii):
+    rec = _ready(tmp_path, monkeypatch, v=v, vii=vii)
+    data = FakeData(forbid=('val', 'test'))
+    with pytest.raises(RuntimeError, match=f'gate {absent} not run'):
+        _cells_run(rec, data)
+    assert data.asked == [] and not (rec / 'photo_cells_siglip1.json').exists()
+
+
+@pytest.mark.parametrize('gate, tries', [('v_photo', 1), ('v_photo', 2), ('vii_photo', 1), ('vii_photo', 2)])
+def test_cells_refuse_while_a_gate_is_still_open(tmp_path, monkeypatch, gate, tries):
+    """A `fail` below 3 tries is open (the ladder's reader), and parks no unit: the cells are refused, not computed."""
+    rec = _ready(tmp_path, monkeypatch, v=('pass', 1, None), vii=('pass', 1, None))
+    _gate(rec, gate, 'fail', tries, UNITS)
+    data = FakeData(forbid=('val', 'test'))
+    with pytest.raises(RuntimeError, match=f'gate {gate} still open'):
+        _cells_run(rec, data)
+    assert data.asked == [] and not (rec / 'photo_cells_siglip1.json').exists()
+
+
+def test_a_passed_v_gate_parks_nothing_even_when_a_unit_says_not_ok(tmp_path, monkeypatch):
+    rec = _ready(tmp_path, monkeypatch, v=('pass', 2, UNITS))
+    out = json.loads(_cells_run(rec).read_text())
+    assert [c for c in out['cells'] if c['outcome'] == 'INCONCLUSIVE'] == [] and out['v_photo']['parked'] == []
+
+
+def test_a_parked_vii_gate_lets_cells_run_and_the_record_names_it(tmp_path, monkeypatch):
+    rec = _ready(tmp_path, monkeypatch, vii=('parked', 3, None))
+    out = json.loads(_cells_run(rec).read_text())
+    assert len(out['cells']) == 8 and out['vii_photo'] == dict(status='parked', tries=3)
+    assert [c for c in out['cells'] if c['outcome'] == 'INCONCLUSIVE'] == []         # the ladder parks SC6 on it, not `cells`
+
+
+def test_a_val_export_changed_after_the_picks_is_refused(tmp_path, monkeypatch):
+    rec = _ready(tmp_path, monkeypatch)
+
+    class Changed(FakeData):
+        def f1_sha(self, set_name, split, seed):
+            return 'sha-changed' if (set_name, split, seed) == ('emoset', 'val', 2) else super().f1_sha(set_name, split, seed)
+    with pytest.raises(AssertionError, match='validation export of seed 2 changed'):
+        _cells_run(rec, Changed())
+    assert not (rec / 'photo_cells_siglip1.json').exists()
+    assert _cells_run(rec).exists()                                                   # the unchanged exports are accepted
+
+
+def test_outcome_comes_from_the_lower_bound_in_a_mixed_fixture(monkeypatch):
+    """WIN, LEVEL and BELOW cells with every upper bound above 0: the outcome reads lo (an outcome read from hi would call all WIN)."""
+    n = dict(ami=0, map=0)
+    los = [0.01, -1e-9, -1.0, -1e-9]                       # call order: affection plain, affection teacher, emoset plain, emoset teacher
+
+    def wrap(real, kind):
+        def f(*a, **kw):
+            res = real(*a, **kw)
+            lo, hi = los[n[kind] % 4], (1.0 if los[n[kind] % 4] < -0.5 else 0.05)
+            n[kind] += 1
+            if kind == 'ami':
+                return {'ami': dict(res['ami'], lo=lo, hi=hi)}
+            return dict(res, interval=(lo, hi))
+        return f
+    monkeypatch.setattr(PC.rt_stats, 'paired', wrap(PC.rt_stats.paired, 'map'))
+    monkeypatch.setattr(PC.ns_clu, 'paired_cell', wrap(PC.ns_clu.paired_cell, 'ami'))
+    cells = {c['id']: c for c in make_cells(monkeypatch)}
+    for m, k in (('ami', ('ami9', 'ami8')), ('map', ('map', 'map'))):
+        assert cells[f'affection/siglip1/siglip1/emotion/{k[0]}/plain']['outcome'] == 'WIN'
+        assert cells[f'affection/siglip1/siglip1/emotion/{k[0]}/teacher']['outcome'] == 'LEVEL'
+        assert cells[f'emoset/siglip1/siglip1/emotion/{k[1]}/plain']['outcome'] == 'BELOW'
+        assert cells[f'emoset/siglip1/siglip1/emotion/{k[1]}/teacher']['outcome'] == 'LEVEL'
+    assert all(c['hi'] > 0 and c['r'] > 1e-6 for c in cells.values())
+    for c in cells.values():
+        L.normalize(c, 'siglip1', 'siglip1', 'SC6', 'photo')
+
+
+def test_affection_map_range_is_the_five_seed_r0_retrieval_without_query_expansion(monkeypatch):
+    data = FakeData()
+    body = picks_body(monkeypatch, data)
+    y = data.labels('affection', 'val')
+    per = body['sets']['affection']['map_range']['per_seed']
+    qe = []
+    for sd in SEEDS:
+        x = _unit(data.f1('affection', 'val', sd).astype(np.float32))
+        r0 = PC.rt_metrics.retrieval(x, y, qe_k=0, workers=1)
+        assert per[str(sd)] == float(r0['ap'].mean())
+        qe.append(float(PC.rt_metrics.retrieval(x, y, qe_k=5, workers=1)['ap'].mean()))
+    assert [per[str(sd)] for sd in SEEDS] != qe                  # the fixture can tell R0 from query expansion
 
 
 # ------------------------------------------------------------------------------------------------ gate records
@@ -367,6 +496,15 @@ def test_export_must_come_from_the_expected_checkpoint(tmp_path):
     PC.read_export(path, 'affection', 'val', 0, keys, set(keys))                  # no expectation: accepted (r14's exports, gate (vii))
     with pytest.raises(AssertionError, match='checkpoint'):
         PC.read_export(path, 'affection', 'val', 0, keys, set(keys), checkpoint=tmp_path / 'photo/siglip1/s0/emotion.pt')
+
+
+def test_export_checkpoint_paths_are_compared_resolved(tmp_path):
+    keys = ['a', 'b']
+    path = _export(tmp_path, keys, _rows16(2))                                    # sidecar: <tmp>/photo/siglip1/s0/emotion.pt
+    (tmp_path / 'photo/siglip1/s0').mkdir(parents=True)
+    (tmp_path / 'link').symlink_to(tmp_path / 'photo')
+    for spelling in (tmp_path / 'link/siglip1/s0/emotion.pt', tmp_path / 'photo/siglip1/../siglip1/s0/emotion.pt'):
+        PC.read_export(path, 'affection', 'val', 0, keys, set(keys), checkpoint=spelling)
 
 
 def test_f1_runs_must_have_been_trained_on_the_arms_caption_source(tmp_path):

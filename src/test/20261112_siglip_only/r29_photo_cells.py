@@ -16,8 +16,10 @@ Rows (F1's exports, r14's photo layout `<root>/exports/<set>/photo_siglip1/<spli
   Comparators (unseeded), rebuilt from the stores: plain = the SigLIP 1 default image, teacher = Qwen3 image in the "artwork" wording
        (`ns_photo.plain`, `ns_photo.teacher`'s views). mAP at the older round's recorded pick (`center+k10`), AMI by k-means.
 Order rule: `picks --arm K` reads validation only and writes `records/photo_picks_<K>.json` once; `cells --arm K` refuses without
-`records/pass_rule.json` saying pass, without the picks record committed unchanged in HEAD, and without `records/gates/v_photo.json`
-("gate v_photo not run"). A comparator unit that gate (v) did not rebuild parks only the cells that use it (INCONCLUSIVE).
+`records/pass_rule.json` saying pass and committed unchanged in HEAD (outside smoke), without the picks record committed unchanged
+in HEAD, and without both gate records, read through the ladder's `gate_status` before any candidate number (absent: "gate <id> not
+run"; `fail` below 3 tries: still open). Gate (v) parked: a comparator unit it did not rebuild parks only the cells that use it
+(INCONCLUSIVE); gate (vii) parked: `cells` runs, the record names it (the ladder parks all of SC6 on it).
 Gates (stage 0, no pass rule): `gate-v-photo` rebuilds the comparator values from the stores against the older records (1e-9);
 `gate-vii-photo` runs r14's photo exports through this scorer against r28 `photos.json` cell a and r20's Affection photo cells.
 Gate status: pass; fail before try 3; parked at try 3 (`r29_captions.write_gate_record` counts the tries).
@@ -53,6 +55,7 @@ import rt_stats  # noqa: E402
 import rs_vh  # noqa: E402
 import r29_image_cells as IC  # noqa: E402  (outcome rule, now, records_dir, sha_file)
 import r29_captions as C  # noqa: E402  (write_gate_record counts the tries)
+import r29_ladder as L  # noqa: E402  (gate_status: the reader the ladder uses for gate records)
 P.check_older_imports()
 
 SETS = ('affection', 'emoset')
@@ -90,8 +93,9 @@ def read_export(path, set_name, split, seed, keys, uncut_keys, checkpoint=None):
     assert side['sha256'] == rs_vh.file_sha(path), f'{path}: file differs from its sidecar'
     got = (side['arm'], side['split'], side['seed'], side['dataset'])
     assert got == (ARM_NAME, split, seed, set_name), f'{path}: sidecar says {got}, asked {(ARM_NAME, split, seed, set_name)}'
-    if checkpoint is not None:
-        assert side['checkpoint'] == str(checkpoint), f'{path}: sidecar checkpoint {side["checkpoint"]} is not {checkpoint}'
+    if checkpoint is not None:       # resolved paths: a symlink or `..` in either spelling is the same checkpoint
+        assert Path(side['checkpoint']).resolve() == Path(checkpoint).resolve(), \
+            f'{path}: sidecar checkpoint {side["checkpoint"]} is not {checkpoint}'
     with np.load(path, allow_pickle=False) as z:
         assert set(z.files) == {'keys', 'emb'}, (path, z.files)
         file_keys, emb = z['keys'].tolist(), z['emb']
@@ -364,10 +368,14 @@ def score_cells(data, picks, comps, parked=(), draws=None, workers=8, sets=SETS)
 
 
 # ================================================================================================ the commands
-def _require_pass(records):
+def _require_pass(records, check_committed=False):
+    """Stage 2 refusal: pass_rule.json says pass (D3) and, for `cells` outside smoke (`check_committed`, as ticket 06's cells), is
+    committed unchanged in HEAD before any test number (spec §3.4, §3.5 row 1b)."""
     path = Path(records) / 'pass_rule.json'
     if not path.exists() or _json(path).get('status') != 'pass':
         raise RuntimeError(f'stage 2 command refused: {path} must exist and say status pass (D3, pass_rule)')
+    if check_committed:
+        P.require_committed(path, 'commit records/pass_rule.json before the test cells (spec §3.4, §3.5 row 1b)')
 
 
 def _picks_path(records, arm):
@@ -402,11 +410,11 @@ def run_picks(arm, data=None, records=None, gates=None, comps=None, workers=8, r
 
 def run_cells(arm, data=None, records=None, gates=None, comps=None, draws=None, workers=8, check_committed=True, root=None):
     """`cells`: the eight photo cells -> `records/photo_cells_<arm>.json`. Refuses, in this order: the pass rule not pass; no picks
-    record, or (check_committed) not committed unchanged in HEAD; no gate v_photo record. Units gate (v) did not confirm park
-    their cells."""
+    record, or (check_committed) not committed unchanged in HEAD; a gate record (v_photo, vii_photo) absent or still open. Units gate (v)
+    did not confirm park their cells, only when gate (v) is parked. `check_committed` False: smoke (also skips the pass rule's commit)."""
     records = Path(records or records_dir())
     gates = Path(gates or records / 'gates')
-    _require_pass(records)
+    _require_pass(records, check_committed)
     pick_file = _picks_path(records, arm)
     why = f'run `picks --arm {arm}` and commit {pick_file.name} before any test cell (order rule, C13)'
     if check_committed:
@@ -415,9 +423,13 @@ def run_cells(arm, data=None, records=None, gates=None, comps=None, draws=None, 
         raise RuntimeError(f'no {pick_file.name} at {pick_file}: {why}')
     picks = _json(pick_file)
     assert picks['arm'] == arm and picks['encoder'] == 'siglip1', (pick_file, picks['arm'], picks['encoder'])
+    assert gates.name == 'gates', gates
+    v_status = L.gate_status(gates.parent, 'v_photo')        # absent: "gate v_photo not run"; fail below 3 tries: "still open"
+    vii_status = L.gate_status(gates.parent, 'vii_photo')    # (the ladder's reader; both before any candidate number)
     gate = read_gate(gates, 'v_photo')
-    units = gate['details']['units']
-    _, parked = judge_units(units)
+    # Units are parked only when the gate is parked (a `fail` that gate_status returns has 3 tries: the ladder's `parked_by` parks it
+    # too). Gate (vii) parked: the ladder parks all of SC6 on it; `cells` runs and the record names it.
+    parked = judge_units(gate['details']['units'])[1] if v_status in ('parked', 'fail') else []
     if data is None:
         data = RealData(export_root=None if root is None else Path(root) / 'exports', root=root)
     comps = comps or comparator_records()
@@ -431,7 +443,8 @@ def run_cells(arm, data=None, records=None, gates=None, comps=None, draws=None, 
     cells = score_cells(data, picks, comps, parked=parked, draws=draws, workers=workers)
     rec = dict(arm=arm, encoder='siglip1', picks_sha256=IC.sha_file(pick_file), f1=picks.get('f1'),
                test_files={s: {str(sd): data.f1_sha(s, 'test', sd) for sd in SEEDS} for s in SETS},
-               v_photo=dict(status=gate['status'], tries=gate['tries'], parked=parked), written=IC.now(), cells=cells)
+               v_photo=dict(status=gate['status'], tries=gate['tries'], parked=parked),
+               vii_photo=dict(status=vii_status, tries=_json(gates / 'vii_photo.json')['tries']), written=IC.now(), cells=cells)
     path = records / f'photo_cells_{arm}.json'
     path.write_text(json.dumps(rec, indent=1) + '\n')
     return path
