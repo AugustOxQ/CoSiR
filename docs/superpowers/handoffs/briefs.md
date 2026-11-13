@@ -2522,3 +2522,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-13-paper-plan-11-handoff.md
 - New chat: tab 'paper plan 11', session 3c6e5246-8b08-447a-bea2-e50e47e22b1b
 
+[brief] CoSiR: paper plan 11 -> paper plan 12 (2026-11-13 20:38 Amsterdam)
+- Done: Section 4 review complete (4.6, 4.7, all captions). A status report of what is left is written and checked.
+- State: abstract, introduction and conclusion not written. Three figures need work. About 1.7 to 2 columns must be cut.
+- Next: the user reads the status report, gives a view, then we decide where to start.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-13-paper-plan-12-handoff.md
+- New chat: tab 'paper plan 12', session 85727ffd-bff5-4a4e-b7c4-5452b083f43a
+
