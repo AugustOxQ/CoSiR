@@ -1,0 +1,1549 @@
+{
+  "gate": "vi",
+  "status": "pass",
+  "tries": 1,
+  "details": {
+    "export": {
+      "arm": "k11=40",
+      "device": "cpu",
+      "equal": true,
+      "items": {
+        "new/emotion__s0": {
+          "differing_values": 0,
+          "equal": true,
+          "keys_equal": true,
+          "max_abs_diff": 0.0,
+          "shape": [
+            16782,
+            2048
+          ],
+          "stored": "/data/SSD2/cosir_r15/20261102_mmart_test/outputs/exports/new/siglip1/cstar/emotion__s0.npz"
+        },
+        "new/emotion__s1": {
+          "differing_values": 0,
+          "equal": true,
+          "keys_equal": true,
+          "max_abs_diff": 0.0,
+          "shape": [
+            16782,
+            2048
+          ],
+          "stored": "/data/SSD2/cosir_r15/20261102_mmart_test/outputs/exports/new/siglip1/cstar/emotion__s1.npz"
+        },
+        "new/emotion__s2": {
+          "differing_values": 0,
+          "equal": true,
+          "keys_equal": true,
+          "max_abs_diff": 0.0,
+          "shape": [
+            16782,
+            2048
+          ],
+          "stored": "/data/SSD2/cosir_r15/20261102_mmart_test/outputs/exports/new/siglip1/cstar/emotion__s2.npz"
+        },
+        "new/emotion__s3": {
+          "differing_values": 0,
+          "equal": true,
+          "keys_equal": true,
+          "max_abs_diff": 0.0,
+          "shape": [
+            16782,
+            2048
+          ],
+          "stored": "/data/SSD2/cosir_r15/20261102_mmart_test/outputs/exports/new/siglip1/cstar/emotion__s3.npz"
+        },
+        "new/emotion__s4": {
+          "differing_values": 0,
+          "equal": true,
+          "keys_equal": true,
+          "max_abs_diff": 0.0,
+          "shape": [
+            16782,
+            2048
+          ],
+          "stored": "/data/SSD2/cosir_r15/20261102_mmart_test/outputs/exports/new/siglip1/cstar/emotion__s4.npz"
+        },
+        "new/genre__s0": {
+          "differing_values": 0,
+          "equal": true,
+          "keys_equal": true,
+          "max_abs_diff": 0.0,
+          "shape": [
+            16782,
+            2048
+          ],
+          "stored": "/data/SSD2/cosir_r15/20261102_mmart_test/outputs/exports/new/siglip1/cstar/genre__s0.npz"
+        },
+        "new/genre__s1": {
+          "differing_values": 0,
+          "equal": true,
+          "keys_equal": true,
+          "max_abs_diff": 0.0,
+          "shape": [
+            16782,
+            2048
+          ],
+          "stored": "/data/SSD2/cosir_r15/20261102_mmart_test/outputs/exports/new/siglip1/cstar/genre__s1.npz"
+        },
+        "new/genre__s2": {
+          "differing_values": 0,
+          "equal": true,
+          "keys_equal": true,
+          "max_abs_diff": 0.0,
+          "shape": [
+            16782,
+            2048
+          ],
+          "stored": "/data/SSD2/cosir_r15/20261102_mmart_test/outputs/exports/new/siglip1/cstar/genre__s2.npz"
+        },
+        "new/genre__s3": {
+          "differing_values": 0,
+          "equal": true,
+          "keys_equal": true,
+          "max_abs_diff": 0.0,
+          "shape": [
+            16782,
+            2048
+          ],
+          "stored": "/data/SSD2/cosir_r15/20261102_mmart_test/outputs/exports/new/siglip1/cstar/genre__s3.npz"
+        },
+        "new/genre__s4": {
+          "differing_values": 0,
+          "equal": true,
+          "keys_equal": true,
+          "max_abs_diff": 0.0,
+          "shape": [
+            16782,
+            2048
+          ],
+          "stored": "/data/SSD2/cosir_r15/20261102_mmart_test/outputs/exports/new/siglip1/cstar/genre__s4.npz"
+        },
+        "new/style__s0": {
+          "differing_values": 0,
+          "equal": true,
+          "keys_equal": true,
+          "max_abs_diff": 0.0,
+          "shape": [
+            16782,
+            2048
+          ],
+          "stored": "/data/SSD2/cosir_r15/20261102_mmart_test/outputs/exports/new/siglip1/cstar/style__s0.npz"
+        },
+        "new/style__s1": {
+          "differing_values": 0,
+          "equal": true,
+          "keys_equal": true,
+          "max_abs_diff": 0.0,
+          "shape": [
+            16782,
+            2048
+          ],
+          "stored": "/data/SSD2/cosir_r15/20261102_mmart_test/outputs/exports/new/siglip1/cstar/style__s1.npz"
+        },
+        "new/style__s2": {
+          "differing_values": 0,
+          "equal": true,
+          "keys_equal": true,
+          "max_abs_diff": 0.0,
+          "shape": [
+            16782,
+            2048
+          ],
+          "stored": "/data/SSD2/cosir_r15/20261102_mmart_test/outputs/exports/new/siglip1/cstar/style__s2.npz"
+        },
+        "new/style__s3": {
+          "differing_values": 0,
+          "equal": true,
+          "keys_equal": true,
+          "max_abs_diff": 0.0,
+          "shape": [
+            16782,
+            2048
+          ],
+          "stored": "/data/SSD2/cosir_r15/20261102_mmart_test/outputs/exports/new/siglip1/cstar/style__s3.npz"
+        },
+        "new/style__s4": {
+          "differing_values": 0,
+          "equal": true,
+          "keys_equal": true,
+          "max_abs_diff": 0.0,
+          "shape": [
+            16782,
+            2048
+          ],
+          "stored": "/data/SSD2/cosir_r15/20261102_mmart_test/outputs/exports/new/siglip1/cstar/style__s4.npz"
+        },
+        "val/emotion__s0": {
+          "differing_values": 0,
+          "equal": true,
+          "keys_equal": true,
+          "max_abs_diff": 0.0,
+          "shape": [
+            5769,
+            2048
+          ],
+          "stored": "/data/SSD2/cosir_r15/20261102_mmart_test/outputs/exports/val/siglip1/cstar/emotion__s0.npz"
+        },
+        "val/emotion__s1": {
+          "differing_values": 0,
+          "equal": true,
+          "keys_equal": true,
+          "max_abs_diff": 0.0,
+          "shape": [
+            5769,
+            2048
+          ],
+          "stored": "/data/SSD2/cosir_r15/20261102_mmart_test/outputs/exports/val/siglip1/cstar/emotion__s1.npz"
+        },
+        "val/emotion__s2": {
+          "differing_values": 0,
+          "equal": true,
+          "keys_equal": true,
+          "max_abs_diff": 0.0,
+          "shape": [
+            5769,
+            2048
+          ],
+          "stored": "/data/SSD2/cosir_r15/20261102_mmart_test/outputs/exports/val/siglip1/cstar/emotion__s2.npz"
+        },
+        "val/emotion__s3": {
+          "differing_values": 0,
+          "equal": true,
+          "keys_equal": true,
+          "max_abs_diff": 0.0,
+          "shape": [
+            5769,
+            2048
+          ],
+          "stored": "/data/SSD2/cosir_r15/20261102_mmart_test/outputs/exports/val/siglip1/cstar/emotion__s3.npz"
+        },
+        "val/emotion__s4": {
+          "differing_values": 0,
+          "equal": true,
+          "keys_equal": true,
+          "max_abs_diff": 0.0,
+          "shape": [
+            5769,
+            2048
+          ],
+          "stored": "/data/SSD2/cosir_r15/20261102_mmart_test/outputs/exports/val/siglip1/cstar/emotion__s4.npz"
+        },
+        "val/genre__s0": {
+          "differing_values": 0,
+          "equal": true,
+          "keys_equal": true,
+          "max_abs_diff": 0.0,
+          "shape": [
+            5769,
+            2048
+          ],
+          "stored": "/data/SSD2/cosir_r15/20261102_mmart_test/outputs/exports/val/siglip1/cstar/genre__s0.npz"
+        },
+        "val/genre__s1": {
+          "differing_values": 0,
+          "equal": true,
+          "keys_equal": true,
+          "max_abs_diff": 0.0,
+          "shape": [
+            5769,
+            2048
+          ],
+          "stored": "/data/SSD2/cosir_r15/20261102_mmart_test/outputs/exports/val/siglip1/cstar/genre__s1.npz"
+        },
+        "val/genre__s2": {
+          "differing_values": 0,
+          "equal": true,
+          "keys_equal": true,
+          "max_abs_diff": 0.0,
+          "shape": [
+            5769,
+            2048
+          ],
+          "stored": "/data/SSD2/cosir_r15/20261102_mmart_test/outputs/exports/val/siglip1/cstar/genre__s2.npz"
+        },
+        "val/genre__s3": {
+          "differing_values": 0,
+          "equal": true,
+          "keys_equal": true,
+          "max_abs_diff": 0.0,
+          "shape": [
+            5769,
+            2048
+          ],
+          "stored": "/data/SSD2/cosir_r15/20261102_mmart_test/outputs/exports/val/siglip1/cstar/genre__s3.npz"
+        },
+        "val/genre__s4": {
+          "differing_values": 0,
+          "equal": true,
+          "keys_equal": true,
+          "max_abs_diff": 0.0,
+          "shape": [
+            5769,
+            2048
+          ],
+          "stored": "/data/SSD2/cosir_r15/20261102_mmart_test/outputs/exports/val/siglip1/cstar/genre__s4.npz"
+        },
+        "val/style__s0": {
+          "differing_values": 0,
+          "equal": true,
+          "keys_equal": true,
+          "max_abs_diff": 0.0,
+          "shape": [
+            5769,
+            2048
+          ],
+          "stored": "/data/SSD2/cosir_r15/20261102_mmart_test/outputs/exports/val/siglip1/cstar/style__s0.npz"
+        },
+        "val/style__s1": {
+          "differing_values": 0,
+          "equal": true,
+          "keys_equal": true,
+          "max_abs_diff": 0.0,
+          "shape": [
+            5769,
+            2048
+          ],
+          "stored": "/data/SSD2/cosir_r15/20261102_mmart_test/outputs/exports/val/siglip1/cstar/style__s1.npz"
+        },
+        "val/style__s2": {
+          "differing_values": 0,
+          "equal": true,
+          "keys_equal": true,
+          "max_abs_diff": 0.0,
+          "shape": [
+            5769,
+            2048
+          ],
+          "stored": "/data/SSD2/cosir_r15/20261102_mmart_test/outputs/exports/val/siglip1/cstar/style__s2.npz"
+        },
+        "val/style__s3": {
+          "differing_values": 0,
+          "equal": true,
+          "keys_equal": true,
+          "max_abs_diff": 0.0,
+          "shape": [
+            5769,
+            2048
+          ],
+          "stored": "/data/SSD2/cosir_r15/20261102_mmart_test/outputs/exports/val/siglip1/cstar/style__s3.npz"
+        },
+        "val/style__s4": {
+          "differing_values": 0,
+          "equal": true,
+          "keys_equal": true,
+          "max_abs_diff": 0.0,
+          "shape": [
+            5769,
+            2048
+          ],
+          "stored": "/data/SSD2/cosir_r15/20261102_mmart_test/outputs/exports/val/siglip1/cstar/style__s4.npz"
+        }
+      },
+      "n_files": 30,
+      "ok": true,
+      "out_root": "/data/SSD2/cosir_r29/20261112_siglip_only/gate_vi/try1",
+      "root": "/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/siglip1",
+      "stored_root": "/data/SSD2/cosir_r15/20261102_mmart_test/outputs",
+      "try_number": 1,
+      "written": "2026-11-13 02:09"
+    },
+    "score": {
+      "aspects": [
+        "emotion",
+        "style",
+        "genre"
+      ],
+      "draws": {
+        "ami": 2000,
+        "map": 10000
+      },
+      "intervals_checked": true,
+      "tol": 1e-09,
+      "export_root": "/data/SSD2/cosir_r29/20261112_siglip_only/gate_vi/try1",
+      "picks": [
+        {
+          "name": "ami per_seed emotion s0",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "map R0 per_seed emotion s0",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "ami per_seed emotion s1",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "map R0 per_seed emotion s1",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "ami per_seed emotion s2",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "map R0 per_seed emotion s2",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "ami per_seed emotion s3",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "map R0 per_seed emotion s3",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "ami per_seed emotion s4",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "map R0 per_seed emotion s4",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "ami r emotion",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "map r emotion",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "untold crossfit map emotion",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "ami per_seed style s0",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "map R0 per_seed style s0",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "ami per_seed style s1",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "map R0 per_seed style s1",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "ami per_seed style s2",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "map R0 per_seed style s2",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "ami per_seed style s3",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "map R0 per_seed style s3",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "ami per_seed style s4",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "map R0 per_seed style s4",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "ami r style",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "map r style",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "untold crossfit map style",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "ami per_seed genre s0",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "map R0 per_seed genre s0",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "ami per_seed genre s1",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "map R0 per_seed genre s1",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "ami per_seed genre s2",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "map R0 per_seed genre s2",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "ami per_seed genre s3",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "map R0 per_seed genre s3",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "ami per_seed genre s4",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "map R0 per_seed genre s4",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "ami r genre",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "map r genre",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "untold crossfit map genre",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "untold score",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "untold kept",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table rows",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table center+k0 map emotion",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table center+k0 map style",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table center+k0 map genre",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table center+k0 score",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table center+k0 kept",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table center+k1 map emotion",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table center+k1 map style",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table center+k1 map genre",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table center+k1 score",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table center+k1 kept",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table center+k10 map emotion",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table center+k10 map style",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table center+k10 map genre",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table center+k10 score",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table center+k10 kept",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table center+k3 map emotion",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table center+k3 map style",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table center+k3 map genre",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table center+k3 score",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table center+k3 kept",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table center+k5 map emotion",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table center+k5 map style",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table center+k5 map genre",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table center+k5 score",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table center+k5 kept",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table none+k0 map emotion",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table none+k0 map style",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table none+k0 map genre",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table none+k0 score",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table none+k0 kept",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table none+k1 map emotion",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table none+k1 map style",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table none+k1 map genre",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table none+k1 score",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table none+k1 kept",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table none+k10 map emotion",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table none+k10 map style",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table none+k10 map genre",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table none+k10 score",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table none+k10 kept",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table none+k3 map emotion",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table none+k3 map style",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table none+k3 map genre",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table none+k3 score",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table none+k3 kept",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table none+k5 map emotion",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table none+k5 map style",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table none+k5 map genre",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table none+k5 score",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table none+k5 kept",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten1024+k0 map emotion",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten1024+k0 map style",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten1024+k0 map genre",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten1024+k0 score",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten1024+k0 kept",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten1024+k1 map emotion",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten1024+k1 map style",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten1024+k1 map genre",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten1024+k1 score",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten1024+k1 kept",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten1024+k10 map emotion",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten1024+k10 map style",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten1024+k10 map genre",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten1024+k10 score",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten1024+k10 kept",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten1024+k3 map emotion",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten1024+k3 map style",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten1024+k3 map genre",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten1024+k3 score",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten1024+k3 kept",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten1024+k5 map emotion",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten1024+k5 map style",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten1024+k5 map genre",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten1024+k5 score",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten1024+k5 kept",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten256+k0 map emotion",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten256+k0 map style",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten256+k0 map genre",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten256+k0 score",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten256+k0 kept",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten256+k1 map emotion",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten256+k1 map style",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten256+k1 map genre",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten256+k1 score",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten256+k1 kept",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten256+k10 map emotion",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten256+k10 map style",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten256+k10 map genre",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten256+k10 score",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten256+k10 kept",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten256+k3 map emotion",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten256+k3 map style",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten256+k3 map genre",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten256+k3 score",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten256+k3 kept",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten256+k5 map emotion",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten256+k5 map style",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten256+k5 map genre",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten256+k5 score",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten256+k5 kept",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten64+k0 map emotion",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten64+k0 map style",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten64+k0 map genre",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten64+k0 score",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten64+k0 kept",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten64+k1 map emotion",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten64+k1 map style",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten64+k1 map genre",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten64+k1 score",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten64+k1 kept",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten64+k10 map emotion",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten64+k10 map style",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten64+k10 map genre",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten64+k10 score",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten64+k10 kept",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten64+k3 map emotion",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten64+k3 map style",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten64+k3 map genre",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten64+k3 score",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten64+k3 kept",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten64+k5 map emotion",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten64+k5 map style",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten64+k5 map genre",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten64+k5 score",
+          "diff": 0.0,
+          "ok": true
+        },
+        {
+          "name": "cstar table whiten64+k5 kept",
+          "diff": 0.0,
+          "ok": true
+        }
+      ],
+      "picks_equal": {
+        "untold": true,
+        "cstar": true,
+        "plain": true,
+        "teacher": true
+      },
+      "seconds_validation": 1489,
+      "recomputed_readouts": {
+        "untold": "none+k1",
+        "cstar": "center+k10",
+        "plain": "none+k10",
+        "teacher": "center+k10"
+      },
+      "cells": [
+        {
+          "id": "mmart/siglip1/k11=40/emotion/ami9/plain",
+          "record": "r17 SC1/mmart/siglip1/emotion/ami/9/plain",
+          "max_abs_diff": 0.0,
+          "diffs": {
+            "value": 0.0,
+            "comparator_value": 0.0,
+            "d": 0.0,
+            "r": 0.0,
+            "lo": 0.0,
+            "hi": 0.0
+          },
+          "outcome": "WIN",
+          "recorded_outcome": "WIN",
+          "ok": true
+        },
+        {
+          "id": "mmart/siglip1/k11=40/emotion/ami9/teacher",
+          "record": "r17 SC3/mmart/siglip1/emotion/ami/9/teacher",
+          "max_abs_diff": 0.0,
+          "diffs": {
+            "value": 0.0,
+            "comparator_value": 0.0,
+            "d": 0.0,
+            "r": 0.0,
+            "lo": 0.0,
+            "hi": 0.0
+          },
+          "outcome": "WIN",
+          "recorded_outcome": "WIN",
+          "ok": true
+        },
+        {
+          "id": "mmart/siglip1/k11=40/style/ami20/plain",
+          "record": "r17 SC1/mmart/siglip1/style/ami/20/plain",
+          "max_abs_diff": 0.0,
+          "diffs": {
+            "value": 0.0,
+            "comparator_value": 0.0,
+            "d": 0.0,
+            "r": 0.0,
+            "lo": 0.0,
+            "hi": 0.0
+          },
+          "outcome": "WIN",
+          "recorded_outcome": "WIN",
+          "ok": true
+        },
+        {
+          "id": "mmart/siglip1/k11=40/style/ami20/teacher",
+          "record": "r17 SC3/mmart/siglip1/style/ami/20/teacher",
+          "max_abs_diff": 0.0,
+          "diffs": {
+            "value": 0.0,
+            "comparator_value": 0.0,
+            "d": 0.0,
+            "r": 0.0,
+            "lo": 0.0,
+            "hi": 0.0
+          },
+          "outcome": "WIN",
+          "recorded_outcome": "WIN",
+          "ok": true
+        },
+        {
+          "id": "mmart/siglip1/k11=40/genre/ami10/plain",
+          "record": "r17 SC1/mmart/siglip1/genre/ami/10/plain",
+          "max_abs_diff": 0.0,
+          "diffs": {
+            "value": 0.0,
+            "comparator_value": 0.0,
+            "d": 0.0,
+            "r": 0.0,
+            "lo": 0.0,
+            "hi": 0.0
+          },
+          "outcome": "WIN",
+          "recorded_outcome": "WIN",
+          "ok": true
+        },
+        {
+          "id": "mmart/siglip1/k11=40/genre/ami10/teacher",
+          "record": "r17 SC3/mmart/siglip1/genre/ami/10/teacher",
+          "max_abs_diff": 0.0,
+          "diffs": {
+            "value": 0.0,
+            "comparator_value": 0.0,
+            "d": 0.0,
+            "r": 0.0,
+            "lo": 0.0,
+            "hi": 0.0
+          },
+          "outcome": "WIN",
+          "recorded_outcome": "WIN",
+          "ok": true
+        },
+        {
+          "id": "mmart/siglip1/k11=40/emotion/map/plain",
+          "record": "r17 SC7/mmart/siglip1/emotion/map/-/plain",
+          "max_abs_diff": 0.0,
+          "diffs": {
+            "value": 0.0,
+            "comparator_value": 0.0,
+            "d": 0.0,
+            "r": 0.0,
+            "lo": 0.0,
+            "hi": 0.0
+          },
+          "outcome": "WIN",
+          "recorded_outcome": "WIN",
+          "ok": true
+        },
+        {
+          "id": "mmart/siglip1/k11=40/style/map/plain",
+          "record": "r17 SC7/mmart/siglip1/style/map/-/plain",
+          "max_abs_diff": 0.0,
+          "diffs": {
+            "value": 0.0,
+            "comparator_value": 0.0,
+            "d": 0.0,
+            "r": 0.0,
+            "lo": 0.0,
+            "hi": 0.0
+          },
+          "outcome": "WIN",
+          "recorded_outcome": "WIN",
+          "ok": true
+        },
+        {
+          "id": "mmart/siglip1/k11=40/genre/map/plain",
+          "record": "r17 SC7/mmart/siglip1/genre/map/-/plain",
+          "max_abs_diff": 0.0,
+          "diffs": {
+            "value": 0.0,
+            "comparator_value": 0.0,
+            "d": 0.0,
+            "r": 0.0,
+            "lo": 0.0,
+            "hi": 0.0
+          },
+          "outcome": "WIN",
+          "recorded_outcome": "WIN",
+          "ok": true
+        },
+        {
+          "id": "mmart/siglip1/k11=40/emotion/map/teacher",
+          "record": "r15 SC4 siglip1/emotion",
+          "max_abs_diff": 0.0,
+          "diffs": {
+            "value": 0.0,
+            "comparator_value": 0.0,
+            "d": 0.0,
+            "r": 0.0,
+            "lo": 0.0,
+            "hi": 0.0
+          },
+          "outcome": "LEVEL",
+          "recorded_outcome": "LEVEL",
+          "ok": true
+        },
+        {
+          "id": "mmart/siglip1/k11=40/style/map/teacher",
+          "record": "r15 SC4 siglip1/style",
+          "max_abs_diff": 0.0,
+          "diffs": {
+            "value": 0.0,
+            "comparator_value": 0.0,
+            "d": 0.0,
+            "r": 0.0,
+            "lo": 0.0,
+            "hi": 0.0
+          },
+          "outcome": "WIN",
+          "recorded_outcome": "WIN",
+          "ok": true
+        },
+        {
+          "id": "mmart/siglip1/k11=40/genre/map/teacher",
+          "record": "r15 SC4 siglip1/genre",
+          "max_abs_diff": 0.0,
+          "diffs": {
+            "value": 0.0,
+            "comparator_value": 0.0,
+            "d": 0.0,
+            "r": 0.0,
+            "lo": 0.0,
+            "hi": 0.0
+          },
+          "outcome": "WIN",
+          "recorded_outcome": "WIN",
+          "ok": true
+        }
+      ],
+      "r28": [
+        {
+          "id": "mmart/siglip1/k11=40/emotion/ami9/plain",
+          "field": "value",
+          "record": "r28 mmart.json siglip1/cstar_ami/values[0]",
+          "ours": 0.05293655725853845,
+          "recorded": 0.05293655725853845,
+          "abs_diff": 0.0,
+          "ok": true
+        },
+        {
+          "id": "mmart/siglip1/k11=40/emotion/ami9/plain",
+          "field": "comparator_value",
+          "record": "r28 mmart.json siglip1/plain_ami/values[0]",
+          "ours": 0.03454352778449323,
+          "recorded": 0.03454352778449323,
+          "abs_diff": 0.0,
+          "ok": true
+        },
+        {
+          "id": "mmart/siglip1/k11=40/emotion/ami9/teacher",
+          "field": "value",
+          "record": "r28 mmart.json siglip1/cstar_ami/values[0]",
+          "ours": 0.05293655725853845,
+          "recorded": 0.05293655725853845,
+          "abs_diff": 0.0,
+          "ok": true
+        },
+        {
+          "id": "mmart/siglip1/k11=40/style/ami20/plain",
+          "field": "value",
+          "record": "r28 mmart.json siglip1/cstar_ami/values[1]",
+          "ours": 0.45458177229532043,
+          "recorded": 0.45458177229532043,
+          "abs_diff": 0.0,
+          "ok": true
+        },
+        {
+          "id": "mmart/siglip1/k11=40/style/ami20/plain",
+          "field": "comparator_value",
+          "record": "r28 mmart.json siglip1/plain_ami/values[1]",
+          "ours": 0.391482784477359,
+          "recorded": 0.391482784477359,
+          "abs_diff": 0.0,
+          "ok": true
+        },
+        {
+          "id": "mmart/siglip1/k11=40/style/ami20/teacher",
+          "field": "value",
+          "record": "r28 mmart.json siglip1/cstar_ami/values[1]",
+          "ours": 0.45458177229532043,
+          "recorded": 0.45458177229532043,
+          "abs_diff": 0.0,
+          "ok": true
+        },
+        {
+          "id": "mmart/siglip1/k11=40/genre/ami10/plain",
+          "field": "value",
+          "record": "r28 mmart.json siglip1/cstar_ami/values[2]",
+          "ours": 0.5394757476597072,
+          "recorded": 0.5394757476597072,
+          "abs_diff": 0.0,
+          "ok": true
+        },
+        {
+          "id": "mmart/siglip1/k11=40/genre/ami10/plain",
+          "field": "comparator_value",
+          "record": "r28 mmart.json siglip1/plain_ami/values[2]",
+          "ours": 0.40957328984635294,
+          "recorded": 0.40957328984635294,
+          "abs_diff": 0.0,
+          "ok": true
+        },
+        {
+          "id": "mmart/siglip1/k11=40/genre/ami10/teacher",
+          "field": "value",
+          "record": "r28 mmart.json siglip1/cstar_ami/values[2]",
+          "ours": 0.5394757476597072,
+          "recorded": 0.5394757476597072,
+          "abs_diff": 0.0,
+          "ok": true
+        },
+        {
+          "id": "mmart/siglip1/k11=40/emotion/map/plain",
+          "field": "comparator_value",
+          "record": "r28 mmart.json siglip1/plain_map/values[0]",
+          "ours": 0.19125931122827552,
+          "recorded": 0.19125931122827552,
+          "abs_diff": 0.0,
+          "ok": true
+        },
+        {
+          "id": "mmart/siglip1/k11=40/style/map/plain",
+          "field": "comparator_value",
+          "record": "r28 mmart.json siglip1/plain_map/values[1]",
+          "ours": 0.30310640376756215,
+          "recorded": 0.30310640376756215,
+          "abs_diff": 0.0,
+          "ok": true
+        },
+        {
+          "id": "mmart/siglip1/k11=40/genre/map/plain",
+          "field": "comparator_value",
+          "record": "r28 mmart.json siglip1/plain_map/values[2]",
+          "ours": 0.49322669333886887,
+          "recorded": 0.49322669333886887,
+          "abs_diff": 0.0,
+          "ok": true
+        },
+        {
+          "id": "mmart/siglip1/k11=40/emotion/map/teacher",
+          "field": "value",
+          "record": "r28 mmart.json siglip1/cstar_map/values[0]",
+          "ours": 0.20205554731577058,
+          "recorded": 0.20205554731577058,
+          "abs_diff": 0.0,
+          "ok": true
+        },
+        {
+          "id": "mmart/siglip1/k11=40/style/map/teacher",
+          "field": "value",
+          "record": "r28 mmart.json siglip1/cstar_map/values[1]",
+          "ours": 0.38305361390261916,
+          "recorded": 0.38305361390261916,
+          "abs_diff": 0.0,
+          "ok": true
+        },
+        {
+          "id": "mmart/siglip1/k11=40/genre/map/teacher",
+          "field": "value",
+          "record": "r28 mmart.json siglip1/cstar_map/values[2]",
+          "ours": 0.6282194127511116,
+          "recorded": 0.6282194127511116,
+          "abs_diff": 0.0,
+          "ok": true
+        }
+      ],
+      "seconds_cells": 981,
+      "max_abs_diff": 0.0
+    }
+  },
+  "written": "2026-11-13 03:13"
+}
