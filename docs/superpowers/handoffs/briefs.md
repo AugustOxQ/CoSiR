@@ -2498,3 +2498,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-13-paper-plan-9-handoff.md
 - New chat: tab 'paper plan 9', session f18b507d-d744-472e-a1ad-c3b00063271e
 
+[brief] CoSiR: r31 run 2 -> r31 run 3 (2026-11-13 19:26 Amsterdam)
+- Done: C13 comparison script `r29_s2_compare.py`; two fixes (E2 training's CUBLAS setting; Codex's MMArt query expansion kept float64, r17 now exact); Codex's E2/E3 replay passes in full.
+- State: part a restarted 19:09 (E2 training at seed 2 by 19:25); MMArt/photo replay reruns on the CPU queue (19:24, about 75 min).
+- Next: watch part a; commit each pick record; Codex `val` scripts on the CPU; `r29_s2_compare.py --phase val`; then part b.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-13-r31-run-3-handoff.md
+- New chat: tab 'r31 run 3', session 6633fd7b-afe5-4ad7-ad48-f052dbbcce21
+
