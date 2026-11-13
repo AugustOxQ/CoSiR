@@ -173,3 +173,12 @@ mode. Outputs `/data/SSD2/cosir_r29/20261112_siglip_only/` (stage logs in its `l
   seeds, 2,000 and 10,000 draws, full queries); largest differences 1.8e-14 (MMArt validation AMI), every mAP and pick
   family within 2.2e-16. Its `complete` field is null (the replay mode does not set it); the per-family block is the
   verdict. Committed as `rederive/r29rd_s2mp_replay_v2.json`; the s2mp `held` runs take it as `--replay-json`.
+- 20:52 E3 picks done (20.8 min; all four read-outs `center+k10`; 389eaed1). Codex `s2e val` on the CPU queue (inputs
+  check ready; label `r31:c13-s2e-val`). MMArt export 0.35 min, picks 21.2 min (60cc06f6; told `center+k10`, untold
+  `none+k1`). 21:14 Codex `s2mp val --piece mmart --forward-check` on the CPU queue; part a's photo piece starts (Affection
+  store on the GPU).
+- 21:26 Affection store (12.5 min): gate (viii) pass, 4,045 of 526,749 explanations cut at 64 tokens (D14; b51198e1). F1
+  training from 21:26.
+- 21:35 Codex `s2mp val --piece mmart` done (20.8 min, exit 0): its MMArt piece complete; forward check on 500 rows per
+  aspect exact (equal fraction 1.0). C13 comparison `r29_s2_compare.py --phase val --pieces mmart`: pass, 39 fields
+  compared, largest difference 2.1e-14, no mismatch (picks `none+k1` untold and `center+k10` told on both sides).

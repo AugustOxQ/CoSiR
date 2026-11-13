@@ -1,0 +1,1984 @@
+{
+ "tolerance": 1e-06,
+ "pieces": {
+  "val": {
+   "mmart": {
+    "status": "pass",
+    "n_compared": 39,
+    "max_abs_diff": 2.0594637106796654e-14,
+    "mismatches": [],
+    "unpaired": [
+     {
+      "side": "ours",
+      "field": "readouts.plain, readouts.teacher, n_val, validation_files, root",
+      "note": "older rounds' comparator picks; provenance"
+     },
+     {
+      "side": "codex",
+      "field": "picks.*.units, ranges.*.n, ranges.*.n_labelled",
+      "note": "information"
+     }
+    ],
+    "info": [
+     {
+      "item": "mmart/table/p1/center+k0/map/emotion",
+      "ours": 0.1970903310922533,
+      "codex": 0.1970903310922533,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/center+k0/map/style",
+      "ours": 0.3089775621732789,
+      "codex": 0.3089775621732789,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/center+k0/map/genre",
+      "ours": 0.539550526095257,
+      "codex": 0.539550526095257,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/center+k0/score",
+      "ours": -0.834961043187168,
+      "codex": -0.834961043187168,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/center+k0/kept",
+      "ours": false,
+      "codex": false,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/center+k1/map/emotion",
+      "ours": 0.19661755150994492,
+      "codex": 0.19661755150994492,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/center+k1/map/style",
+      "ours": 0.3123835640782485,
+      "codex": 0.3123835640782485,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/center+k1/map/genre",
+      "ours": 0.547871670136096,
+      "codex": 0.547871670136096,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/center+k1/score",
+      "ours": -0.1602891969863891,
+      "codex": -0.1602891969863891,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/center+k1/kept",
+      "ours": false,
+      "codex": false,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/center+k10/map/emotion",
+      "ours": 0.19596766423581405,
+      "codex": 0.19596766423581405,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/center+k10/map/style",
+      "ours": 0.3185356578459329,
+      "codex": 0.3185356578459329,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/center+k10/map/genre",
+      "ours": 0.5648631149341703,
+      "codex": 0.5648631149341703,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/center+k10/score",
+      "ours": 1.384637740043497,
+      "codex": 1.384637740043497,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/center+k10/kept",
+      "ours": false,
+      "codex": false,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/center+k3/map/emotion",
+      "ours": 0.19627350771592084,
+      "codex": 0.19627350771592084,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/center+k3/map/style",
+      "ours": 0.3163447496206426,
+      "codex": 0.3163447496206426,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/center+k3/map/genre",
+      "ours": 0.5566751546186393,
+      "codex": 0.5566751546186393,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/center+k3/score",
+      "ours": 0.7008554107373067,
+      "codex": 0.7008554107373067,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/center+k3/kept",
+      "ours": false,
+      "codex": false,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/center+k5/map/emotion",
+      "ours": 0.19611386525192054,
+      "codex": 0.19611386525192054,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/center+k5/map/style",
+      "ours": 0.3173942526362806,
+      "codex": 0.3173942526362806,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/center+k5/map/genre",
+      "ours": 0.560872096275674,
+      "codex": 0.560872096275674,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/center+k5/score",
+      "ours": 1.042908210867038,
+      "codex": 1.042908210867038,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/center+k5/kept",
+      "ours": false,
+      "codex": false,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/none+k0/map/emotion",
+      "ours": 0.19880929487849636,
+      "codex": 0.19880929487849636,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/none+k0/map/style",
+      "ours": 0.3096693408452745,
+      "codex": 0.3096693408452745,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/none+k0/map/genre",
+      "ours": 0.5337951132822427,
+      "codex": 0.5337951132822427,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/none+k0/score",
+      "ours": 0.0,
+      "codex": 0.0,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/none+k0/kept",
+      "ours": true,
+      "codex": true,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/none+k1/map/emotion",
+      "ours": 0.1983908356767686,
+      "codex": 0.1983908356767686,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/none+k1/map/style",
+      "ours": 0.31334314475024916,
+      "codex": 0.31334314475024916,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/none+k1/map/genre",
+      "ours": 0.5422991536083618,
+      "codex": 0.5422991536083618,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/none+k1/score",
+      "ours": 0.7543966137813071,
+      "codex": 0.7543966137813071,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/none+k1/kept",
+      "ours": true,
+      "codex": true,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/none+k10/map/emotion",
+      "ours": 0.19790613162685206,
+      "codex": 0.19790613162685206,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/none+k10/map/style",
+      "ours": 0.3200493204286226,
+      "codex": 0.3200493204286226,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/none+k10/map/genre",
+      "ours": 0.5589368443085667,
+      "codex": 0.5589368443085667,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/none+k10/score",
+      "ours": 2.4389163561415743,
+      "codex": 2.4389163561415743,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/none+k10/kept",
+      "ours": false,
+      "codex": false,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/none+k3/map/emotion",
+      "ours": 0.19813842965234188,
+      "codex": 0.19813842965234188,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/none+k3/map/style",
+      "ours": 0.3176852194852734,
+      "codex": 0.3176852194852734,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/none+k3/map/genre",
+      "ours": 0.5508469841660302,
+      "codex": 0.5508469841660302,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/none+k3/score",
+      "ours": 1.6940089175676365,
+      "codex": 1.6940089175676365,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/none+k3/kept",
+      "ours": false,
+      "codex": false,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/none+k5/map/emotion",
+      "ours": 0.19804246651183607,
+      "codex": 0.19804246651183607,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/none+k5/map/style",
+      "ours": 0.31889002993024923,
+      "codex": 0.31889002993024923,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/none+k5/map/genre",
+      "ours": 0.5547753376896256,
+      "codex": 0.5547753376896256,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/none+k5/score",
+      "ours": 2.073181113026552,
+      "codex": 2.073181113026552,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/none+k5/kept",
+      "ours": false,
+      "codex": false,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten1024+k0/map/emotion",
+      "ours": 0.17702549620962144,
+      "codex": 0.17702549620962144,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten1024+k0/map/style",
+      "ours": 0.14439100422161802,
+      "codex": 0.14439100422161802,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten1024+k0/map/genre",
+      "ours": 0.21219912828943258,
+      "codex": 0.21219912828943258,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten1024+k0/score",
+      "ours": -58.90680269032233,
+      "codex": -58.90680269032233,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten1024+k0/kept",
+      "ours": false,
+      "codex": false,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten1024+k1/map/emotion",
+      "ours": 0.17723790511602444,
+      "codex": 0.17723790511602444,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten1024+k1/map/style",
+      "ours": 0.15176309698834484,
+      "codex": 0.15176309698834484,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten1024+k1/map/genre",
+      "ours": 0.22270813121360028,
+      "codex": 0.22270813121360028,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten1024+k1/score",
+      "ours": -57.18674710329165,
+      "codex": -57.18674710329165,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten1024+k1/kept",
+      "ours": false,
+      "codex": false,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten1024+k10/map/emotion",
+      "ours": 0.178589962791176,
+      "codex": 0.178589962791176,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten1024+k10/map/style",
+      "ours": 0.1713449729934889,
+      "codex": 0.1713449729934889,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten1024+k10/map/genre",
+      "ours": 0.25474219089006417,
+      "codex": 0.25474219089006417,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten1024+k10/score",
+      "ours": -51.663894720195266,
+      "codex": -51.663894720195266,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten1024+k10/kept",
+      "ours": false,
+      "codex": false,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten1024+k3/map/emotion",
+      "ours": 0.17771449909569287,
+      "codex": 0.17771449909569287,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten1024+k3/map/style",
+      "ours": 0.16052987734994953,
+      "codex": 0.16052987734994953,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten1024+k3/map/genre",
+      "ours": 0.23535252961460698,
+      "codex": 0.23535252961460698,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten1024+k3/score",
+      "ours": -54.96073168870884,
+      "codex": -54.96073168870884,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten1024+k3/kept",
+      "ours": false,
+      "codex": false,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten1024+k5/map/emotion",
+      "ours": 0.17802049295278574,
+      "codex": 0.17802049295278574,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten1024+k5/map/style",
+      "ours": 0.16565880992027435,
+      "codex": 0.16565880992027435,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten1024+k5/map/genre",
+      "ours": 0.24299121585335812,
+      "codex": 0.24299121585335812,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten1024+k5/score",
+      "ours": -53.61674562463105,
+      "codex": -53.61674562463105,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten1024+k5/kept",
+      "ours": false,
+      "codex": false,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten256+k0/map/emotion",
+      "ours": 0.18040262266035478,
+      "codex": 0.18040262266035478,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten256+k0/map/style",
+      "ours": 0.18377481990860747,
+      "codex": 0.18377481990860747,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten256+k0/map/genre",
+      "ours": 0.2614269831150734,
+      "codex": 0.2614269831150734,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten256+k0/score",
+      "ours": -48.65318980792315,
+      "codex": -48.65318980792315,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten256+k0/kept",
+      "ours": false,
+      "codex": false,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten256+k1/map/emotion",
+      "ours": 0.18049001895118155,
+      "codex": 0.18049001895118155,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten256+k1/map/style",
+      "ours": 0.19504225264120048,
+      "codex": 0.19504225264120048,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten256+k1/map/genre",
+      "ours": 0.2778994364370124,
+      "codex": 0.2778994364370124,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten256+k1/score",
+      "ours": -46.16533039646672,
+      "codex": -46.16533039646672,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten256+k1/kept",
+      "ours": false,
+      "codex": false,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten256+k10/map/emotion",
+      "ours": 0.18200762618147476,
+      "codex": 0.18200762618147476,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten256+k10/map/style",
+      "ours": 0.22134520818057787,
+      "codex": 0.22134520818057787,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten256+k10/map/genre",
+      "ours": 0.3253835715881522,
+      "codex": 0.3253835715881522,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten256+k10/score",
+      "ours": -38.575584155034214,
+      "codex": -38.575584155034214,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten256+k10/kept",
+      "ours": false,
+      "codex": false,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten256+k3/map/emotion",
+      "ours": 0.18096705251304307,
+      "codex": 0.18096705251304307,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten256+k3/map/style",
+      "ours": 0.20673307222146892,
+      "codex": 0.20673307222146892,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten256+k3/map/genre",
+      "ours": 0.2968483224799025,
+      "codex": 0.2968483224799025,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten256+k3/score",
+      "ours": -43.130574831141466,
+      "codex": -43.130574831141466,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten256+k3/kept",
+      "ours": false,
+      "codex": false,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten256+k5/map/emotion",
+      "ours": 0.1813407061054181,
+      "codex": 0.1813407061054181,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten256+k5/map/style",
+      "ours": 0.2132527394605896,
+      "codex": 0.2132527394605896,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten256+k5/map/genre",
+      "ours": 0.3082327670651738,
+      "codex": 0.3082327670651738,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten256+k5/score",
+      "ours": -41.28532366543203,
+      "codex": -41.28532366543203,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten256+k5/kept",
+      "ours": false,
+      "codex": false,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten64+k0/map/emotion",
+      "ours": 0.1866372522058074,
+      "codex": 0.1866372522058074,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten64+k0/map/style",
+      "ours": 0.24134361591352854,
+      "codex": 0.24134361591352854,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten64+k0/map/genre",
+      "ours": 0.3587739158115454,
+      "codex": 0.3587739158115454,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten64+k0/score",
+      "ours": -30.44597532452384,
+      "codex": -30.44597532452384,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten64+k0/kept",
+      "ours": false,
+      "codex": false,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten64+k1/map/emotion",
+      "ours": 0.18624059090579453,
+      "codex": 0.18624059090579453,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten64+k1/map/style",
+      "ours": 0.25064124314293945,
+      "codex": 0.25064124314293945,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten64+k1/map/genre",
+      "ours": 0.37661318069388605,
+      "codex": 0.37661318069388605,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten64+k1/score",
+      "ours": -28.367549012820202,
+      "codex": -28.367549012820202,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten64+k1/kept",
+      "ours": false,
+      "codex": false,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten64+k10/map/emotion",
+      "ours": 0.18683670856319862,
+      "codex": 0.18683670856319862,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten64+k10/map/style",
+      "ours": 0.2693292549832039,
+      "codex": 0.2693292549832039,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten64+k10/map/genre",
+      "ours": 0.4239413630700513,
+      "codex": 0.4239413630700513,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten64+k10/score",
+      "ours": -22.132061630779987,
+      "codex": -22.132061630779987,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten64+k10/kept",
+      "ours": false,
+      "codex": false,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten64+k3/map/emotion",
+      "ours": 0.1864840680623586,
+      "codex": 0.1864840680623586,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten64+k3/map/style",
+      "ours": 0.2601008005597565,
+      "codex": 0.2601008005597565,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten64+k3/map/genre",
+      "ours": 0.3971941583819209,
+      "codex": 0.3971941583819209,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten64+k3/score",
+      "ours": -25.55376890421933,
+      "codex": -25.55376890421933,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten64+k3/kept",
+      "ours": false,
+      "codex": false,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten64+k5/map/emotion",
+      "ours": 0.18665114770207697,
+      "codex": 0.18665114770207697,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten64+k5/map/style",
+      "ours": 0.2644151911695277,
+      "codex": 0.2644151911695277,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten64+k5/map/genre",
+      "ours": 0.4080232432759002,
+      "codex": 0.4080232432759002,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten64+k5/score",
+      "ours": -24.10080593721783,
+      "codex": -24.10080593721783,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/p1/whiten64+k5/kept",
+      "ours": false,
+      "codex": false,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/center+k0/map/emotion",
+      "ours": 0.202243965108217,
+      "codex": 0.202243965108217,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/center+k0/map/style",
+      "ours": 0.3734450071303964,
+      "codex": 0.3734450071303964,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/center+k0/map/genre",
+      "ours": 0.6188089465456775,
+      "codex": 0.6188089465456775,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/center+k0/score",
+      "ours": 2.0776039061633265,
+      "codex": 2.0776039061633265,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/center+k0/kept",
+      "ours": true,
+      "codex": true,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/center+k1/map/emotion",
+      "ours": 0.20244389088356884,
+      "codex": 0.20244389088356884,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/center+k1/map/style",
+      "ours": 0.37964171709805183,
+      "codex": 0.37964171709805183,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/center+k1/map/genre",
+      "ours": 0.6256588736055242,
+      "codex": 0.6256588736055242,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/center+k1/score",
+      "ours": 3.3637527737066395,
+      "codex": 3.3637527737066395,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/center+k1/kept",
+      "ours": true,
+      "codex": true,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/center+k10/map/emotion",
+      "ours": 0.20341526317179595,
+      "codex": 0.20341526317179595,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/center+k10/map/style",
+      "ours": 0.3897134559535661,
+      "codex": 0.3897134559535661,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/center+k10/map/genre",
+      "ours": 0.6372191275764212,
+      "codex": 0.6372191275764212,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/center+k10/score",
+      "ours": 5.975382898753007,
+      "codex": 5.975382898753007,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/center+k10/kept",
+      "ours": true,
+      "codex": true,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/center+k3/map/emotion",
+      "ours": 0.20302130771123292,
+      "codex": 0.20302130771123292,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/center+k3/map/style",
+      "ours": 0.38471376582339367,
+      "codex": 0.38471376582339367,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/center+k3/map/genre",
+      "ours": 0.6316623786201605,
+      "codex": 0.6316623786201605,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/center+k3/score",
+      "ours": 4.761041774470875,
+      "codex": 4.761041774470875,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/center+k3/kept",
+      "ours": true,
+      "codex": true,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/center+k5/map/emotion",
+      "ours": 0.2032776176239115,
+      "codex": 0.2032776176239115,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/center+k5/map/style",
+      "ours": 0.38710266756502837,
+      "codex": 0.38710266756502837,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/center+k5/map/genre",
+      "ours": 0.6344267536253307,
+      "codex": 0.6344267536253307,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/center+k5/score",
+      "ours": 5.401852671757105,
+      "codex": 5.401852671757105,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/center+k5/kept",
+      "ours": true,
+      "codex": true,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/none+k0/map/emotion",
+      "ours": 0.20061151294991295,
+      "codex": 0.20061151294991295,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/none+k0/map/style",
+      "ours": 0.37305970525867976,
+      "codex": 0.37305970525867976,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/none+k0/map/genre",
+      "ours": 0.6095056110754804,
+      "codex": 0.6095056110754804,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/none+k0/score",
+      "ours": 0.0,
+      "codex": 0.0,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/none+k0/kept",
+      "ours": true,
+      "codex": true,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/none+k1/map/emotion",
+      "ours": 0.20059750659151665,
+      "codex": 0.20059750659151665,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/none+k1/map/style",
+      "ours": 0.3792237765136834,
+      "codex": 0.3792237765136834,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/none+k1/map/genre",
+      "ours": 0.6164306617135108,
+      "codex": 0.6164306617135108,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/none+k1/score",
+      "ours": 1.1300277818380622,
+      "codex": 1.1300277818380622,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/none+k1/kept",
+      "ours": true,
+      "codex": true,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/none+k10/map/emotion",
+      "ours": 0.20108651591875595,
+      "codex": 0.20108651591875595,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/none+k10/map/style",
+      "ours": 0.389641164393695,
+      "codex": 0.389641164393695,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/none+k10/map/genre",
+      "ours": 0.6275888907993042,
+      "codex": 0.6275888907993042,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/none+k10/score",
+      "ours": 3.374901866020591,
+      "codex": 3.374901866020591,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/none+k10/kept",
+      "ours": true,
+      "codex": true,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/none+k3/map/emotion",
+      "ours": 0.20081787385340083,
+      "codex": 0.20081787385340083,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/none+k3/map/style",
+      "ours": 0.3848447671063261,
+      "codex": 0.3848447671063261,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/none+k3/map/genre",
+      "ours": 0.6221034260638066,
+      "codex": 0.6221034260638066,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/none+k3/score",
+      "ours": 2.2779735051938945,
+      "codex": 2.2779735051938945,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/none+k3/kept",
+      "ours": true,
+      "codex": true,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/none+k5/map/emotion",
+      "ours": 0.20101669810809858,
+      "codex": 0.20101669810809858,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/none+k5/map/style",
+      "ours": 0.3870656411495483,
+      "codex": 0.3870656411495483,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/none+k5/map/genre",
+      "ours": 0.6250436380236979,
+      "codex": 0.6250436380236979,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/none+k5/score",
+      "ours": 2.876994975195718,
+      "codex": 2.876994975195718,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/none+k5/kept",
+      "ours": true,
+      "codex": true,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten1024+k0/map/emotion",
+      "ours": 0.17794189514284314,
+      "codex": 0.17794189514284314,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten1024+k0/map/style",
+      "ours": 0.1514487129179028,
+      "codex": 0.1514487129179028,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten1024+k0/map/genre",
+      "ours": 0.24443821308896768,
+      "codex": 0.24443821308896768,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten1024+k0/score",
+      "ours": -68.23731918350533,
+      "codex": -68.23731918350533,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten1024+k0/kept",
+      "ours": false,
+      "codex": false,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten1024+k1/map/emotion",
+      "ours": 0.1781780385658011,
+      "codex": 0.1781780385658011,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten1024+k1/map/style",
+      "ours": 0.16144244769101065,
+      "codex": 0.16144244769101065,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten1024+k1/map/genre",
+      "ours": 0.258166506764382,
+      "codex": 0.258166506764382,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten1024+k1/score",
+      "ours": -65.99018326598389,
+      "codex": -65.99018326598389,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten1024+k1/kept",
+      "ours": false,
+      "codex": false,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten1024+k10/map/emotion",
+      "ours": 0.1797997587267129,
+      "codex": 0.1797997587267129,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten1024+k10/map/style",
+      "ours": 0.18488525375397216,
+      "codex": 0.18488525375397216,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten1024+k10/map/genre",
+      "ours": 0.3033350115008553,
+      "codex": 0.3033350115008553,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten1024+k10/score",
+      "ours": -58.772286465823505,
+      "codex": -58.772286465823505,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten1024+k10/kept",
+      "ours": false,
+      "codex": false,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten1024+k3/map/emotion",
+      "ours": 0.17875169842971989,
+      "codex": 0.17875169842971989,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten1024+k3/map/style",
+      "ours": 0.17182832147364507,
+      "codex": 0.17182832147364507,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten1024+k3/map/genre",
+      "ours": 0.27515681809822345,
+      "codex": 0.27515681809822345,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten1024+k3/score",
+      "ours": -63.168232039919054,
+      "codex": -63.168232039919054,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten1024+k3/kept",
+      "ours": false,
+      "codex": false,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten1024+k5/map/emotion",
+      "ours": 0.17911531865114724,
+      "codex": 0.17911531865114724,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten1024+k5/map/style",
+      "ours": 0.17777020249433706,
+      "codex": 0.17777020249433706,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten1024+k5/map/genre",
+      "ours": 0.28638748380127504,
+      "codex": 0.28638748380127504,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten1024+k5/score",
+      "ours": -61.393522981178855,
+      "codex": -61.393522981178855,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten1024+k5/kept",
+      "ours": false,
+      "codex": false,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten256+k0/map/emotion",
+      "ours": 0.18020658713593057,
+      "codex": 0.18020658713593057,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten256+k0/map/style",
+      "ours": 0.19158055721012673,
+      "codex": 0.19158055721012673,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten256+k0/map/genre",
+      "ours": 0.26952321835420545,
+      "codex": 0.26952321835420545,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten256+k0/score",
+      "ours": -60.88963054423511,
+      "codex": -60.88963054423511,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten256+k0/kept",
+      "ours": false,
+      "codex": false,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten256+k1/map/emotion",
+      "ours": 0.18034735871046803,
+      "codex": 0.18034735871046803,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten256+k1/map/style",
+      "ours": 0.20450444826677633,
+      "codex": 0.20450444826677633,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten256+k1/map/genre",
+      "ours": 0.2853972056630162,
+      "codex": 0.2853972056630162,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten256+k1/score",
+      "ours": -58.27316946815646,
+      "codex": -58.27316946815646,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten256+k1/kept",
+      "ours": false,
+      "codex": false,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten256+k10/map/emotion",
+      "ours": 0.1819072000950707,
+      "codex": 0.1819072000950707,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten256+k10/map/style",
+      "ours": 0.2330193937123563,
+      "codex": 0.2330193937123563,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten256+k10/map/genre",
+      "ours": 0.3332559833158303,
+      "codex": 0.3332559833158303,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten256+k10/score",
+      "ours": -50.4294605683026,
+      "codex": -50.4294605683026,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten256+k10/kept",
+      "ours": false,
+      "codex": false,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten256+k3/map/emotion",
+      "ours": 0.18083323005575597,
+      "codex": 0.18083323005575597,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten256+k3/map/style",
+      "ours": 0.21680863863846103,
+      "codex": 0.21680863863846103,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten256+k3/map/genre",
+      "ours": 0.30411281982993155,
+      "codex": 0.30411281982993155,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten256+k3/score",
+      "ours": -55.199998070535344,
+      "codex": -55.199998070535344,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten256+k3/kept",
+      "ours": false,
+      "codex": false,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten256+k5/map/emotion",
+      "ours": 0.18123258127956476,
+      "codex": 0.18123258127956476,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten256+k5/map/style",
+      "ours": 0.22349918097137939,
+      "codex": 0.22349918097137939,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten256+k5/map/genre",
+      "ours": 0.3156378432160528,
+      "codex": 0.3156378432160528,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten256+k5/score",
+      "ours": -53.308464828387116,
+      "codex": -53.308464828387116,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten256+k5/kept",
+      "ours": false,
+      "codex": false,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten64+k0/map/emotion",
+      "ours": 0.18638170369621537,
+      "codex": 0.18638170369621537,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten64+k0/map/style",
+      "ours": 0.25944427440523066,
+      "codex": 0.25944427440523066,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten64+k0/map/genre",
+      "ours": 0.3845931805388699,
+      "codex": 0.3845931805388699,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten64+k0/score",
+      "ours": -40.276854646922935,
+      "codex": -40.276854646922935,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten64+k0/kept",
+      "ours": false,
+      "codex": false,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten64+k1/map/emotion",
+      "ours": 0.18653414793310227,
+      "codex": 0.18653414793310227,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten64+k1/map/style",
+      "ours": 0.2706789804156436,
+      "codex": 0.2706789804156436,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten64+k1/map/genre",
+      "ours": 0.40034892777584846,
+      "codex": 0.40034892777584846,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten64+k1/score",
+      "ours": -37.80661964951585,
+      "codex": -37.80661964951585,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten64+k1/kept",
+      "ours": false,
+      "codex": false,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten64+k10/map/emotion",
+      "ours": 0.18843806913373926,
+      "codex": 0.18843806913373926,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten64+k10/map/style",
+      "ours": 0.29585988190533125,
+      "codex": 0.29585988190533125,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten64+k10/map/genre",
+      "ours": 0.43918686337577223,
+      "codex": 0.43918686337577223,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten64+k10/score",
+      "ours": -30.78963442963651,
+      "codex": -30.78963442963651,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten64+k10/kept",
+      "ours": false,
+      "codex": false,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten64+k3/map/emotion",
+      "ours": 0.18727722038300684,
+      "codex": 0.18727722038300684,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten64+k3/map/style",
+      "ours": 0.2822445857635622,
+      "codex": 0.2822445857635622,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten64+k3/map/genre",
+      "ours": 0.4161367767909459,
+      "codex": 0.4161367767909459,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten64+k3/score",
+      "ours": -34.86355674492043,
+      "codex": -34.86355674492043,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten64+k3/kept",
+      "ours": false,
+      "codex": false,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten64+k5/map/emotion",
+      "ours": 0.1877719618974704,
+      "codex": 0.1877719618974704,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten64+k5/map/style",
+      "ours": 0.28838787538876665,
+      "codex": 0.28838787538876665,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten64+k5/map/genre",
+      "ours": 0.42521281270531325,
+      "codex": 0.42521281270531325,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten64+k5/score",
+      "ours": -33.16437231243601,
+      "codex": -33.16437231243601,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "mmart/table/q1/whiten64+k5/kept",
+      "ours": false,
+      "codex": false,
+      "equal": true
+     }
+    ],
+    "codex_status": {
+     "complete": true,
+     "mode": "validation",
+     "file_complete": false
+    },
+    "items": [
+     {
+      "item": "mmart/ours_arm",
+      "ours": "siglip1_prefix",
+      "codex": "siglip1_prefix",
+      "equal": true
+     },
+     {
+      "item": "mmart/range/ami/emotion",
+      "ours": 0.00613857925254796,
+      "codex": 0.006138579252548036,
+      "diff": 7.632783294297951e-17
+     },
+     {
+      "item": "mmart/per_seed/ami/emotion[0]",
+      "ours": 0.04666697483334851,
+      "codex": 0.04666697483334898,
+      "diff": 4.718447854656915e-16
+     },
+     {
+      "item": "mmart/per_seed/ami/emotion[1]",
+      "ours": 0.04878500731287513,
+      "codex": 0.048785007312878666,
+      "diff": 3.5388358909926865e-15
+     },
+     {
+      "item": "mmart/per_seed/ami/emotion[2]",
+      "ours": 0.051948894383563184,
+      "codex": 0.051948894383563766,
+      "diff": 5.828670879282072e-16
+     },
+     {
+      "item": "mmart/per_seed/ami/emotion[3]",
+      "ours": 0.05280555408589647,
+      "codex": 0.052805554085897016,
+      "diff": 5.48172618408671e-16
+     },
+     {
+      "item": "mmart/per_seed/ami/emotion[4]",
+      "ours": 0.04921565653209786,
+      "codex": 0.04921565653209836,
+      "diff": 4.996003610813204e-16
+     },
+     {
+      "item": "mmart/range/map/emotion",
+      "ours": 0.0004457420055557493,
+      "codex": 0.0004457420055557493,
+      "diff": 0.0
+     },
+     {
+      "item": "mmart/per_seed/map/emotion[0]",
+      "ours": 0.19918840075594965,
+      "codex": 0.19918840075594965,
+      "diff": 0.0
+     },
+     {
+      "item": "mmart/per_seed/map/emotion[1]",
+      "ours": 0.19917973395500155,
+      "codex": 0.19917973395500155,
+      "diff": 0.0
+     },
+     {
+      "item": "mmart/per_seed/map/emotion[2]",
+      "ours": 0.19907326819779012,
+      "codex": 0.19907326819779012,
+      "diff": 0.0
+     },
+     {
+      "item": "mmart/per_seed/map/emotion[3]",
+      "ours": 0.19951901020334586,
+      "codex": 0.19951901020334586,
+      "diff": 0.0
+     },
+     {
+      "item": "mmart/per_seed/map/emotion[4]",
+      "ours": 0.19940197541617702,
+      "codex": 0.19940197541617702,
+      "diff": 0.0
+     },
+     {
+      "item": "mmart/range/ami/style",
+      "ours": 0.012728548571371068,
+      "codex": 0.012728548571367071,
+      "diff": 3.9968028886505635e-15
+     },
+     {
+      "item": "mmart/per_seed/ami/style[0]",
+      "ours": 0.4720443839940633,
+      "codex": 0.47204438399407733,
+      "diff": 1.404432126150823e-14
+     },
+     {
+      "item": "mmart/per_seed/ami/style[1]",
+      "ours": 0.4593158354226922,
+      "codex": 0.45931583542271026,
+      "diff": 1.8041124150158794e-14
+     },
+     {
+      "item": "mmart/per_seed/ami/style[2]",
+      "ours": 0.4688761649144046,
+      "codex": 0.46887616491442397,
+      "diff": 1.9373391779708982e-14
+     },
+     {
+      "item": "mmart/per_seed/ami/style[3]",
+      "ours": 0.4689981548792546,
+      "codex": 0.4689981548792752,
+      "diff": 2.0594637106796654e-14
+     },
+     {
+      "item": "mmart/per_seed/ami/style[4]",
+      "ours": 0.4626875633564198,
+      "codex": 0.46268756335643485,
+      "diff": 1.504352198367087e-14
+     },
+     {
+      "item": "mmart/range/map/style",
+      "ours": 0.0038970481654196365,
+      "codex": 0.0038970481654196365,
+      "diff": 0.0
+     },
+     {
+      "item": "mmart/per_seed/map/style[0]",
+      "ours": 0.3737712453150282,
+      "codex": 0.3737712453150282,
+      "diff": 0.0
+     },
+     {
+      "item": "mmart/per_seed/map/style[1]",
+      "ours": 0.37005414019910926,
+      "codex": 0.37005414019910926,
+      "diff": 0.0
+     },
+     {
+      "item": "mmart/per_seed/map/style[2]",
+      "ours": 0.36987419714960856,
+      "codex": 0.36987419714960856,
+      "diff": 0.0
+     },
+     {
+      "item": "mmart/per_seed/map/style[3]",
+      "ours": 0.37042893781523706,
+      "codex": 0.37042893781523706,
+      "diff": 0.0
+     },
+     {
+      "item": "mmart/per_seed/map/style[4]",
+      "ours": 0.36999922864007556,
+      "codex": 0.36999922864007556,
+      "diff": 0.0
+     },
+     {
+      "item": "mmart/range/ami/genre",
+      "ours": 0.021152107870360037,
+      "codex": 0.02115210787036048,
+      "diff": 4.440892098500626e-16
+     },
+     {
+      "item": "mmart/per_seed/ami/genre[0]",
+      "ours": 0.5447264068480994,
+      "codex": 0.5447264068480909,
+      "diff": 8.43769498715119e-15
+     },
+     {
+      "item": "mmart/per_seed/ami/genre[1]",
+      "ours": 0.5434481255479359,
+      "codex": 0.5434481255479306,
+      "diff": 5.218048215738236e-15
+     },
+     {
+      "item": "mmart/per_seed/ami/genre[2]",
+      "ours": 0.5343010429242883,
+      "codex": 0.5343010429242802,
+      "diff": 8.104628079763643e-15
+     },
+     {
+      "item": "mmart/per_seed/ami/genre[3]",
+      "ours": 0.5467878349186317,
+      "codex": 0.546787834918626,
+      "diff": 5.662137425588298e-15
+     },
+     {
+      "item": "mmart/per_seed/ami/genre[4]",
+      "ours": 0.5554531507946483,
+      "codex": 0.5554531507946406,
+      "diff": 7.66053886991358e-15
+     },
+     {
+      "item": "mmart/range/map/genre",
+      "ours": 0.00376406935114304,
+      "codex": 0.00376406935114304,
+      "diff": 0.0
+     },
+     {
+      "item": "mmart/per_seed/map/genre[0]",
+      "ours": 0.6068785557778215,
+      "codex": 0.6068785557778215,
+      "diff": 0.0
+     },
+     {
+      "item": "mmart/per_seed/map/genre[1]",
+      "ours": 0.6078213518551908,
+      "codex": 0.6078213518551908,
+      "diff": 0.0
+     },
+     {
+      "item": "mmart/per_seed/map/genre[2]",
+      "ours": 0.6096666718421254,
+      "codex": 0.6096666718421254,
+      "diff": 0.0
+     },
+     {
+      "item": "mmart/per_seed/map/genre[3]",
+      "ours": 0.6106426251289645,
+      "codex": 0.6106426251289645,
+      "diff": 0.0
+     },
+     {
+      "item": "mmart/per_seed/map/genre[4]",
+      "ours": 0.6081966366547269,
+      "codex": 0.6081966366547269,
+      "diff": 0.0
+     },
+     {
+      "item": "mmart/pick/p1_plain_side",
+      "ours": "none+k1",
+      "codex": "none+k1",
+      "equal": true
+     },
+     {
+      "item": "mmart/pick/q1_side",
+      "ours": "center+k10",
+      "codex": "center+k10",
+      "equal": true
+     }
+    ],
+    "inputs": {
+     "/project/CoSiR/src/test/20261112_siglip_only/records/mmart_picks_siglip1_prefix.json": "2b89b5e9f5c3f32fbccb4f580f6d304b5ad9d939783e0d4d1bb9a61a9c5c770e",
+     "/project/CoSiR/src/test/20261112_siglip_only/rederive/s2mp_val.json": "355b0cbb81bb2f8c3a73d6494953b75a39215bd1676c14783101371b9283deed"
+    },
+    "written": "2026-11-13 21:35"
+   }
+  }
+ },
+ "mismatches": {
+  "val": {
+   "mmart": []
+  }
+ },
+ "missing": {
+  "val": {}
+ },
+ "written": {
+  "val": "2026-11-13 21:35"
+ }
+}
