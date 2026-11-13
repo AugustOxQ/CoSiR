@@ -2384,3 +2384,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-13-r29-build-7-handoff.md
 - New chat: tab 'r29 build 7', session c77897ec-0ce7-4f29-9cc4-fcf046bfe833
 
+[brief] CoSiR: r21 run 3 -> r21 run 4 (2026-11-13 04:00 Amsterdam)
+- Done: the λ = 0 control (5 seeds, table, diagnostics), its D16 re-derivation (PASS) and the figures (UMAP, silhouette).
+- State: the λ = 0 control stays at c*'s level (style AMI +0.0015, interval covers 0); DEC forms raise style AMI +0.006 to +0.008.
+- Next: launch the auto report draft from the ready brief; claim review; user-read report and its checks.
+- Blocked: the user's answer on a direct "DEC minus λ = 0" table cell (asked 02:10); the report does not wait for it.
+- Handoff: docs/superpowers/handoffs/2026-11-13-r21-run-4-handoff.md
+- New chat: tab 'r21 run 4', session f674f2bb-d5d3-4b27-9ec8-610ea89b0fb5
+
