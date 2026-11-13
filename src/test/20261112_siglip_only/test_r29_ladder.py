@@ -841,3 +841,18 @@ def test_sheet_under_a1_carries_the_a1_line_instead_of_not_run_d3(tmp_path, monk
     assert 'SC4 to SC7: not run (D3).' in text and 'under A1' not in text
     (records / 'amendment_A1.json').rename(records / 'amendment_A1.absent')
     assert 'SC4 to SC7: not run (D3).' in L.sheet_text(records)
+
+
+@pytest.mark.parametrize('tie', [None, ['siglip1', 'siglip2']])
+def test_sc9_sheet_section_shows_recorded_a1_line_and_tied_encoders(tmp_path, tie):
+    rows = {enc: dict(score=.5, seed_range=0., per_seed=[.5]*5)
+            for enc in ('siglip1', 'siglip2', 'clip_l14', 'qwen')}
+    (tmp_path / 'encoder_pick.json').write_text(json.dumps(dict(
+        seeds=list(range(5)), encoders=rows, pick='siglip1', margin=0., seeds_ahead=[], close_call=False,
+        tie=tie, amendment='A1', amendment_line=L.P.A1_LINE)))
+    text = L.sc9_section(tmp_path)
+    assert text.index('## SC9') < text.index(L.P.A1_LINE) < text.index('| Encoder |')
+    if tie is None:
+        assert 'Tie:' not in text
+    else:
+        assert 'Tie: siglip1, siglip2' in text

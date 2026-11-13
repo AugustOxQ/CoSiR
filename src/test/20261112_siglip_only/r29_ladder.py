@@ -556,14 +556,18 @@ def sc9_section(records):
     if not path.exists():
         return '## SC9 (validation encoder pick)\n\nSC9: not run.\n'
     rec = _j(path)
-    lines = ['## SC9 (validation encoder pick)\n',
-             '| Encoder | Five-seed mean | Seed range | Per-seed groups |',
+    lines = ['## SC9 (validation encoder pick)\n']
+    if rec.get('amendment_line'):
+        lines.append(rec['amendment_line'] + '\n')
+    lines += ['| Encoder | Five-seed mean | Seed range | Per-seed groups |',
              '|---|---|---|---|']
     for encoder, label in (('siglip1', 'siglip1 (K*)'), ('siglip2', 'siglip2 (E2)'),
                            ('clip_l14', 'clip_l14 (E3)'), ('qwen', 'Qwen (information, not a candidate)')):
         row = rec['encoders'][encoder]
         groups = ', '.join(f's{seed}: {f4(value)}' for seed, value in zip(rec['seeds'], row['per_seed']))
         lines.append(f'| {label} | {f4(row["score"])} | {f4(row["seed_range"])} | {groups} |')
+    if rec.get('tie') is not None:
+        lines.append('\nTie: ' + ', '.join(rec['tie']) + '.')
     ahead = rec['seeds_ahead']
     seeds = ', '.join(f's{seed}' for seed in ahead) or 'none'
     lines.append(f'\nPick: {rec["pick"]}; margin {f4(rec["margin"])}; ahead in {len(ahead)} of 5 seeds: {seeds}; '
