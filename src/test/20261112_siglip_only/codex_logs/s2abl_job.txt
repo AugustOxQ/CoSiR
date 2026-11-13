@@ -1,0 +1,36 @@
+
+# YOUR JOB (prefix r29rd_s2abl): the ablation SC7 (R1 to R4)
+
+R1 to R4 = K* with one part removed (r28's four removals on K*'s caption input): `instructed_graphs`,
+`content_correction`, `buddy` (the graph-positive loss), `relational` (the relational term); seeds 0 to 4 each. §3.4
+"Ablation": each removal's change from K* (removal minus K*, mean over seeds) in AMI and plain-cosine mAP, with its paired
+interval, as r28's ablation table (r28's protocol: the docstring of
+/project/CoSiR/src/test/20261112_siglip_main/r28_ablation.py; its code is forbidden). SC7 has no read-out pick, no LEVEL
+unit and no outcome: it is attribution. ArtELingo test split (12,281 paintings; genre labelled on 9,949).
+Files: K*'s test exports /data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip1/held/siglip1_prefix/<aspect>__s<seed>.npz
+(exist); the removals' test exports (part b, later)
+/data/SSD2/cosir_r29/20261112_siglip_only/ablation/siglip1/siglip1_prefix/held/<row>/<aspect>__s<seed>.npz (+ .json).
+
+Per removal, aspect and measure (24 entries): K*'s seed mean, the removal's seed mean, per-seed values of both, d =
+removal minus K*, and the paired 95% percentile interval. Protocol of the cells: AMI at the class count (9 / 27 / 10),
+stored float16 rows cast to float32 (not renormalised), MiniBatchKMeans (n_init 3, batch 4,096, states 0 to 2, all rows
+clustered, labels masked after clustering), the mean over the three states per seed; mAP: unit float32 rows, plain
+cosine, no query expansion, each labelled painting a query, queries with no relevant item dropped, mean AP per seed.
+Pairing: the removal's training seed s pairs with K*'s seed s, and each draw resamples the rows (AMI) or queries (mAP)
+once for both arms and the training seeds once for both arms. AMI: 2,000 draws in r17's order (rows, then seeds;
+r17's paired AMI cell in ns_c13.py); mAP: 10,000 draws in r17's shared-seed paired retrieval form (ns_c13.py), RNG
+numpy default_rng(0). Say whether you read the rule the same way; if you see another reading, give both.
+
+Output rederive/s2abl_held.json {cells: [{id: `ablation/<row>/<aspect>/<ami|map>`, kstar_mean, removal_mean,
+kstar_per_seed, removal_per_seed, d, lo, hi, n_draws, n}], kstar_check, replays, notes, inputs}. `kstar_check`: K*'s
+per-seed test AMI against your own rederive/c1_rederived.json (the 1c cells you derived), as a consistency check.
+Script rederive/r29rd_s2abl.py with subcommands `held --rows ...` (rows present only) and `replay`, a runner
+rederive/r29rd_run_s2abl.sh, tests rederive/test_r29rd_s2abl.py (small fixtures, under 1 minute).
+
+## Replays (do these now)
+r28's SigLIP 1 ablation (K0, Qwen3 caption input): reference = r14's c* test exports
+(/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/siglip1/held/k11=40/<aspect>__s<seed>.npz), removals =
+r28's /data/SSD2/cosir_r28/20261112_siglip_main/cstar/siglip1/held/<row>/<aspect>__s<seed>.npz. Target: r28's
+/project/CoSiR/src/test/20261112_siglip_main/records/ablation_siglip1.json per-seed values, seed means and changes within
+1e-9 (r28 recorded no intervals: report yours for one row and check d lies inside them). Reading these frozen r28 and
+r14 test files is allowed; reading the stage 2 removals' test files is not, until the controller's run.

@@ -1,0 +1,45 @@
+
+# YOUR JOB (prefix r29rd_s2mp): MMArt (SC5) and the photo model F1 (SC6)
+
+## MMArt (§3.4 row "MMArt AMI (9 / 20 / 10), image mAP"; §6 SC5)
+K*'s heads run on MMArt's default images (CPU export, as r15's stored exports were made). Files (written tonight):
+/data/SSD2/cosir_r29/20261112_siglip_only/mmart/siglip1_prefix/exports/<keyset>/siglip1/cstar/<aspect>__s<seed>.npz
+(keys `keys`, `emb` float16 [n, 2048], with r15's sidecar), keyset `val` (5,769 MMArt validation paintings, r17) and
+`new` (16,782 rows; the test rows are r15's 16,384, a subset).
+A. Validation part: K*'s MMArt read-out picks (r15's rule on MMArt validation, as r17 did; both the plain-side and the
+   Q1-side image mAP read-outs) and its five-seed ranges on MMArt validation (AMI at 9 / 20 / 10; mAP at R0).
+B. Held part: 12 cells (AMI and image mAP x 3 aspects, against P1 = plain SigLIP 1 on MMArt, r17 SC1 / SC7, and against
+   Q1: AMI r17 SC3 MMArt teacher, image mAP r15 `stage1/picks_teacher.json` pick), each with value, comparator value, d,
+   lo, hi, r, outcome, n; SC5: level 1 if WIN over P1 in >= 5 of 6; level 2 all 6; level 3 if level 2 and WIN or LEVEL
+   over Q1 in >= 5 of 6. Cell ids `mmart/<ami|map>/<aspect>/<p1|q1>`.
+Replays now, on r14's frozen SigLIP 1 c* (K0) MMArt exports stored by r15: r28's MMArt c* cells
+(/project/CoSiR/src/test/20261112_siglip_main/records/mmart.json), r17's MMArt SigLIP 1 SC1, SC3, SC7 cells and r15's
+recorded picks and ranges. Forward check on seed 0: your own pass of K*'s heads over 500 MMArt validation images against
+the stored rows (float16 resolution), once the exports exist.
+
+## Photo model F1 (§3.4 rows "Affection AMI (k = 9), mAP" and "EmoSet AMI (k = 8), mAP"; §6 SC6; D16, D19)
+F1: seed s fine-tuned from K*'s seed-s emotion checkpoint on Affection's training photos, training seed 100 + s, r14's
+photo protocol. Files (written tonight): weights /data/SSD2/cosir_r29/20261112_siglip_only/photo/siglip1/s<s>/emotion.pt
+(+ run.json); exports /data/SSD2/cosir_r29/20261112_siglip_only/exports/<affection|emoset>/photo_siglip1/<split>__s<s>.npz
+(+ sidecar), split `val` tonight, `test` in part b.
+A. Validation part: F1's read-out picks (Affection mAP: r12's rule; EmoSet mAP: r14 part c step 2) and ranges (Affection:
+   F1's five-seed range of validation mAP at R0 and of validation AMI at k = 9; EmoSet: AMI range at k = 8 on EmoSet
+   validation; EmoSet mAP: r14's committed r_E = 0.00695, D19).
+B. Held part: 8 cells (Affection AMI, Affection mAP, EmoSet AMI, EmoSet mAP; each against P1 and Q1 as §3.4's table:
+   AMI P1 r17 SC4 SigLIP 1 plain, Q1 r17 SC4 teacher; mAP P1 Affection r14 SC5 SigLIP 1 comparator, EmoSet r28
+   `photos.json` cell c; Q1 Affection r13 stage 3 `teacher_artwork`, EmoSet r14 SC10 comparator). Where a comparator has
+   no stored per-query file, rebuild its per-unit values from the stores at its recorded pick; the rebuilt point value
+   must equal the record within 1e-9 (§3.4 rebuild paragraph; the values are listed in §3.5 gate (v)). SC6: level 1 if
+   WIN over P1 in >= 3 of 4; level 2 all 4; level 3 if level 2 and WIN or LEVEL over Q1 in >= 3 of 4. Cell ids
+   `<affection|emoset>/<ami|map>/<p1|q1>`.
+Replays now, on r14's frozen photo model (the Qwen3-caption c* photo model on SigLIP 1; find its exports under
+/data/SSD2/cosir_r14/): r28 photos.json cell a, r14's SC5 and SC10 cells, r17's SC4 AMI cells, and the five comparator
+rebuilds of gate (v). Forward check: optional; if the model code allows it (r14's photo model code may be read for the
+model, not for scoring), F1 seed 0 on 500 Affection validation photos against the stored rows.
+
+## Output
+rederive/s2mp_val.json {mmart: {picks, ranges}, photo: {picks, ranges}, forward_check, replays, notes, inputs} and
+rederive/s2mp_held.json {mmart: {cells, sc5}, photo: {cells, sc6}, replays, notes, inputs}; the held part reads the
+picks from your own s2mp_val.json. Script rederive/r29rd_s2mp.py with subcommands `val`, `held`, `replay` (and
+`--piece mmart|photo` so each piece runs alone when the other is missing), a runner rederive/r29rd_run_s2mp.sh with a
+device option, tests rederive/test_r29rd_s2mp.py (small fixtures, under 1 minute).

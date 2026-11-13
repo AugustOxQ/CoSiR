@@ -1,0 +1,56 @@
+
+# YOUR JOB (prefix r29rd_s2e): E2 and E3 (SC4, Table 6) and the encoder pick SC9
+
+E2 = SigLIP 2 (bs_paths key `siglip2`), E3 = CLIP L/14 (`clip_l14`): the same adapter as K*, but the image tower reads
+that encoder's image features and the caption tower reads that encoder's own text embeddings of the prefixed caption
+("Represent the caption: " + caption; stores /data/SSD2/pre_extract/artelingo_full/siglip2_so400m_capprefix/ and
+clip_l14_capprefix/, extracted tonight). Arm names: `siglip2_prefix`, `clipl14_prefix`. Files (written tonight):
+- weights /data/SSD2/cosir_r29/20261112_siglip_only/cstar/<E>/weights/<arm>/<aspect>__s<seed>.pt
+- validation exports /data/SSD2/cosir_r29/20261112_siglip_only/cstar/<E>/val/<arm>/<aspect>__s<seed>.npz (+ .json)
+- test exports (part b, later) /data/SSD2/cosir_r29/20261112_siglip_only/cstar/<E>/held/<arm>/<aspect>__s<seed>.npz
+with <E> in {siglip2, clip_l14}. They have the same layout as K*'s under cstar/siglip1/{val,held}/siglip1_prefix/.
+
+## A. Validation part (runs once E2's and E3's validation exports exist, before any test number)
+1. Per encoder, the read-out picks and seed ranges of the six Table 6 cells (§3.4 rows "E2, E3 (Table 6)", "ArtELingo
+   AMI", "ArtELingo image mAP"): AMI at the class counts 9 / 27 / 10 (no pick; r = the encoder's five-seed range of
+   validation AMI at the class count, r17's protocol), and image mAP (read-out by r11's rule as r14 used it for c*, r =
+   the encoder's own five-seed range of validation mAP at R0; both the plain-side read-out and the Q1-side read-out, as
+   your 1c script derived them for K*). This is your 1c validation part with the encoder's own files.
+2. SC9 (§6 row SC9, A2): per encoder and seed, the image group = the mean of the six validation cells of SC2's image group
+   (r28's `valpick` protocol, exactly as your SC2 script's image group: MiniBatchKMeans at 9 / 27 / 10, n_init 3, states 0
+   to 2, and plain-cosine label mAP). K*'s per-seed image groups are its SC2 values: take them from your
+   rederive/sc2_rederived.json (not recomputed). Then: each candidate's five-seed mean; the pick = the highest mean
+   (an exact tie involving SigLIP 1 goes to SigLIP 1); the margin = leader minus runner-up; the seeds where the leader is
+   ahead of the runner-up; the leader's seed range (max minus min of its five per-seed groups); close call = margin below
+   that range. Qwen3 c* is an information row only: r28's recorded value
+   (/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json), never a candidate. Say how you defined "seeds
+   ahead".
+3. A forward check per encoder on seed 0: your own image-tower forward pass reproduces the stored validation rows at
+   float16 resolution (share equal, largest difference), with r29_model.py and the encoder's image store.
+Output rederive/s2e_val.json: {encoders: {siglip2: {picks: {image_map: {aspect: {pick_plain_side, pick_q1_side, r}},
+ami_range: {aspect: r}}, groups: {per_seed: [5], cells: {cell: [5]}, mean}}, clip_l14: {...}}, sc9: {kstar_per_seed:
+[5], means: {siglip1, siglip2, clip_l14}, pick, runner_up, margin, seeds_ahead, leader_range, close_call, qwen_info},
+forward_check, replays, notes, inputs}.
+
+## B. Held part (the controller runs it after our picks are committed and part b wrote the test exports)
+Per encoder, 12 test cells (§3.4, §6 SC4): AMI and image mAP for three aspects, each against that encoder's plain
+embedding (r17 SC1 AMI and r17 SC7 image mAP, the plain side for SigLIP 2 or CLIP L/14) and against Q1, the instructed
+Qwen3 (r17 SC3 teacher AMI; r11 stage 5 `instructed` per-query files at r11's pick for image mAP), each with value,
+comparator value, d, lo, hi, r, outcome, n; then SC4 per encoder: level 1 if WIN over plain in >= 5 of 6; level 2 if WIN
+over plain in all 6; level 3 if level 2 and WIN or LEVEL over Q1 in >= 5 of 6; else 0. Cell ids
+`<encoder>/<ami|map>/<aspect>/<plain|q1>`.
+Output rederive/s2e_held.json: {encoders: {E: {cells: [...], sc4: {wins_plain, wins_or_level_q1, level}}}, replays,
+notes, inputs}. The held part reads the validation picks from your own s2e_val.json, never from our records.
+
+## Replays (do these now; the models of tonight do not exist yet)
+On r14's frozen c* models on the same encoders (k11=40; training-time validation files
+/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/<E>/train/k11=40/R6-5/<aspect>__<graph>__s<seed>.npz, test
+exports .../cstar/<E>/held/k11=40/<aspect>__s<seed>.npz; check the exact paths):
+- SC9's image groups: r28's valpick.json per-seed cells and `score` for siglip2 and clip_l14 (target within 1e-6).
+- Validation picks and ranges and test cells: r17's recorded SigLIP 2 and CLIP L/14 c* cells of SC1 (AMI against plain),
+  SC3 (AMI against the teacher), SC7 (image mAP against plain), and r14's SC6 cells (image mAP against the teacher), from
+  their records (find them in r17's /project/CoSiR/src/test/20261103_new_scores/records/ and r14's records). Target
+  within 1e-9 for intervals (as the older rounds' gates), report what you reach.
+
+Script rederive/r29rd_s2e.py with subcommands `val` and `held` (and `replay`), a runner rederive/r29rd_run_s2e.sh taking
+a device option, and tests rederive/test_r29rd_s2e.py (small fixtures, under 1 minute).

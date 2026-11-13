@@ -113,3 +113,22 @@ mode. Outputs `/data/SSD2/cosir_r29/20261112_siglip_only/` (stage logs in its `l
 - Correction to 06:23 above: diagnostic (b) is not "as K0's" for emotion. Genre equals K0's per seed (14 to 18), style
   is 1 to 3 for both; emotion K* 6 to 18 against K0 10 to 18 (seed 0: 6 against 12; seed 2: 6 against 17;
   `records/diagnostics_val.json`, key `b`).
+
+## Stage 2 run (chat "r31 run"): part a, C13, part b, ladders, reports
+
+- 17:04 Chat start. Run mode night. GPU check passed (driver 595.99.02; kernel module and library match; container
+  started 2026-11-10 17:08). Queue idle, no process on the GPU, 54 GB RAM free. Part a waits for 19:00 (D7).
+- 17:05 Dry run of part a under A1: replays skipped (both pass), then E2 and E3 (prefixed store extraction, gate (viii),
+  training, validation export, image groups, picks), MMArt, photo, ablation training, encoder pick last.
+- 17:08 Three Codex jobs (gpt-6.1-sol, high; fresh sessions, as the r29 1c job advised) build the C13 re-derivation of
+  stage 2 in `rederive/`, tested on frozen older models before the new models exist: E2, E3 and SC9 (`r29rd_s2e`,
+  brief `codex_logs/s2e_brief.txt`), MMArt and the photo model (`r29rd_s2mp`), the ablation (`r29rd_s2abl`).
+- 17:28 Codex ablation job done (`rederive/r29rd_s2abl.py`, 17 tests). 17:42 its full replay on the CPU queue (8.0 min):
+  all 24 r28 SigLIP 1 ablation cells (K0 and four removals, per seed, means, changes) reproduced, AMI difference 0,
+  mAP 1.1e-16; intervals for the instructed-graphs row contain their changes. Pairing: shared row and seed draws (as
+  our 00:41 decision line); r17's apart-seed reading listed in its notes.
+- 17:42 Codex E2/E3 and SC9 job done (`rederive/r29rd_s2e.py`, 14 tests). Bounded replays on r14's c* SigLIP 2 and
+  CLIP L/14: r28's valpick per-seed cells exact (scores within 1.1e-16), r17/r14 validation ranges exact, emotion AMI
+  intervals within 3.6e-15, 12 mAP bootstraps within 3.2e-16, image forward at the float16 rule. Its full replay
+  (complete rankings, all intervals) queued on the CPU (45 to 90 min). Its notes say r11's docstrings ask for float64
+  dot products, unlike the 1c helper's (observation only; 1c's comparison is closed).

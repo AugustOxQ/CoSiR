@@ -1,0 +1,106 @@
+# CoSiR r29 stage 2: C13 re-derivation in separate code (common part of three parallel jobs)
+
+You build an independent re-derivation of part of r29's stage 2 (constitution C13): from the written rule and the saved
+model outputs, never from our numbers. Two other Codex jobs work beside you on the other parts, in the same folder, with
+other file prefixes; do not touch their files.
+
+## Work rules
+- Work only in /project/CoSiR/src/test/20261112_siglip_only/rederive/, in files with YOUR prefix (below). Delete nothing
+  (list what you would remove); no commits; no .ccg task records.
+- No single command over about 4 minutes; 8 threads (OMP_NUM_THREADS=8 MKL_NUM_THREADS=8); keep command output short
+  (long output to a file, then its tail). Do not use the GPU yourself; scripts take a `--device` option so the
+  controller can run heavy parts on the GPU through its queue. Python: /root/miniconda3/envs/CoSiR/bin/python with
+  PYTHONDONTWRITEBYTECODE=1.
+- If a full run takes over 4 minutes, test on a subset and end with the full command; the controller runs it under the
+  CPU or GPU queue (`res-queue`).
+
+## IMPORTANT: no new test numbers
+Develop and test on VALIDATION data and on the older rounds' FROZEN files only. Do not compute any test (held) number of
+a stage 2 model (E2, E3, K* on MMArt, the photo model F1, the ablation removals): the rule needs our picks committed
+before any test number of a piece exists, and most stage 2 models are not trained yet (training runs tonight from 19:00).
+Your script's held part runs only in the controller's full run, after our picks are committed. Test the held code paths
+by replays on the older rounds' frozen models and records (named per job).
+
+## Forbidden (ours; do not read)
+- /project/CoSiR/src/test/20261112_siglip_only/records/** (all of it), /project/CoSiR/src/test/20261112_siglip_only/
+  decisions.md and *_log.md, and every r29_*.py of that folder except r29_model.py and r29_captions.py (allowed).
+- /data/SSD2/cosir_r29/20261112_siglip_only/{text,image_cells,image_picks,diag_d,gate_*}/** (our scorer outputs).
+- The older rounds' scoring modules that our code imports (docstrings only): ns_clu, ns_clu_cells, ns_ret, ns_picks,
+  ns_metrics, ns_data, ns_photo, rt_metrics, rt_stats, rt_readout, rt_run, rt_data, bs_artret, bs_emoset_score, bs_stores,
+  pf_stage2, ac_data, mt_ret, mt_data, mt_export, tcl_score, tcl_stage1, tcl_metrics, r28_*.py (r28's records are
+  allowed), r20_ret.py.
+## Allowed
+- Your own earlier re-derivation code in rederive/ (r29rd_sc1.py, r29rd_sc2.py, r29rd_c1.py, r29rd_c1_core.py and their
+  outputs sc1_rederived.json, sc2_rederived.json, c1_rederived.json, r29rd_c1_picks.json): copy or import from it.
+- The older rounds' independent C13 modules, written for the same cell types (read, copy functions into your files; do
+  not import them from their rounds): r17 /project/CoSiR/src/test/20261103_new_scores/ns_c13.py, r14
+  /project/CoSiR/src/test/20261102_backbones_sweep/bs_c13.py and bs_c13_partb.py, r15
+  /project/CoSiR/src/test/20261102_mmart_test/mt_c13.py, r23 /project/CoSiR/src/test/20261106_text_claim/tcl_c13.py.
+- The older rounds' specs (/project/CoSiR/docs/superpowers/specs/), frozen records and output folders (r11 to r28), the
+  feature stores under /data/SSD2/pre_extract/, /project/CoSiR/src/data/, r29_model.py, r29_captions.py.
+- Stage 2 model outputs (the rule's inputs) under /data/SSD2/cosir_r29/20261112_siglip_only/ as named per job.
+
+## The rule
+Spec /project/CoSiR/docs/superpowers/specs/2026-11-12-siglip-only-adapter-design.md, from §1 (skip the brief): §3.2,
+§3.3, §3.4 (the cells table and its rebuild paragraph; "Cells per claim test"; "Order and C13"), §3.5 row 2a and 2b, §6
+(the rows of your job and the "Inconclusive" bullet), D17 to D19, D22 to D24, amendments A1 and A2. Outcome of a test
+cell: WIN when the paired 95% lower bound of candidate minus comparator is > 0; LEVEL when not WIN and the lower bound is
+> -r; BELOW otherwise. Each cell type keeps the protocol (read-out rule, draws, RNG order) of the older round that made
+its paper cell (D18): find it in that round's spec and C13 module and say which you used. Where the rule leaves a choice
+open, take the older round's choice and list it in `notes`.
+
+K* = siglip1_prefix: the SigLIP 1 adapter whose caption tower reads the prefixed SigLIP 1 caption store
+(/data/SSD2/pre_extract/artelingo_full/siglip_so400m_capprefix/), seeds 0 to 4, weights
+/data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip1/weights/siglip1_prefix/<aspect>__s<seed>.pt; aspects emotion,
+style, genre. Model outputs are stored float16 rows (key `img` or `emb`, with a sidecar .json naming the rows' order).
+
+## Output form
+Full precision floats in JSON. Every record carries `notes` (each open choice and what you took), `replays` (each replay:
+the target record and key, your value, the recorded value, the absolute difference) and `inputs` (each file read with
+its sha256). Final message: what passed in the replays (largest difference per cell type), the expected run time of each
+command on CPU and on the GPU, the exact commands, and any rule point you found unclear.
+
+# YOUR JOB (prefix r29rd_s2mp): MMArt (SC5) and the photo model F1 (SC6)
+
+## MMArt (§3.4 row "MMArt AMI (9 / 20 / 10), image mAP"; §6 SC5)
+K*'s heads run on MMArt's default images (CPU export, as r15's stored exports were made). Files (written tonight):
+/data/SSD2/cosir_r29/20261112_siglip_only/mmart/siglip1_prefix/exports/<keyset>/siglip1/cstar/<aspect>__s<seed>.npz
+(keys `keys`, `emb` float16 [n, 2048], with r15's sidecar), keyset `val` (5,769 MMArt validation paintings, r17) and
+`new` (16,782 rows; the test rows are r15's 16,384, a subset).
+A. Validation part: K*'s MMArt read-out picks (r15's rule on MMArt validation, as r17 did; both the plain-side and the
+   Q1-side image mAP read-outs) and its five-seed ranges on MMArt validation (AMI at 9 / 20 / 10; mAP at R0).
+B. Held part: 12 cells (AMI and image mAP x 3 aspects, against P1 = plain SigLIP 1 on MMArt, r17 SC1 / SC7, and against
+   Q1: AMI r17 SC3 MMArt teacher, image mAP r15 `stage1/picks_teacher.json` pick), each with value, comparator value, d,
+   lo, hi, r, outcome, n; SC5: level 1 if WIN over P1 in >= 5 of 6; level 2 all 6; level 3 if level 2 and WIN or LEVEL
+   over Q1 in >= 5 of 6. Cell ids `mmart/<ami|map>/<aspect>/<p1|q1>`.
+Replays now, on r14's frozen SigLIP 1 c* (K0) MMArt exports stored by r15: r28's MMArt c* cells
+(/project/CoSiR/src/test/20261112_siglip_main/records/mmart.json), r17's MMArt SigLIP 1 SC1, SC3, SC7 cells and r15's
+recorded picks and ranges. Forward check on seed 0: your own pass of K*'s heads over 500 MMArt validation images against
+the stored rows (float16 resolution), once the exports exist.
+
+## Photo model F1 (§3.4 rows "Affection AMI (k = 9), mAP" and "EmoSet AMI (k = 8), mAP"; §6 SC6; D16, D19)
+F1: seed s fine-tuned from K*'s seed-s emotion checkpoint on Affection's training photos, training seed 100 + s, r14's
+photo protocol. Files (written tonight): weights /data/SSD2/cosir_r29/20261112_siglip_only/photo/siglip1/s<s>/emotion.pt
+(+ run.json); exports /data/SSD2/cosir_r29/20261112_siglip_only/exports/<affection|emoset>/photo_siglip1/<split>__s<s>.npz
+(+ sidecar), split `val` tonight, `test` in part b.
+A. Validation part: F1's read-out picks (Affection mAP: r12's rule; EmoSet mAP: r14 part c step 2) and ranges (Affection:
+   F1's five-seed range of validation mAP at R0 and of validation AMI at k = 9; EmoSet: AMI range at k = 8 on EmoSet
+   validation; EmoSet mAP: r14's committed r_E = 0.00695, D19).
+B. Held part: 8 cells (Affection AMI, Affection mAP, EmoSet AMI, EmoSet mAP; each against P1 and Q1 as §3.4's table:
+   AMI P1 r17 SC4 SigLIP 1 plain, Q1 r17 SC4 teacher; mAP P1 Affection r14 SC5 SigLIP 1 comparator, EmoSet r28
+   `photos.json` cell c; Q1 Affection r13 stage 3 `teacher_artwork`, EmoSet r14 SC10 comparator). Where a comparator has
+   no stored per-query file, rebuild its per-unit values from the stores at its recorded pick; the rebuilt point value
+   must equal the record within 1e-9 (§3.4 rebuild paragraph; the values are listed in §3.5 gate (v)). SC6: level 1 if
+   WIN over P1 in >= 3 of 4; level 2 all 4; level 3 if level 2 and WIN or LEVEL over Q1 in >= 3 of 4. Cell ids
+   `<affection|emoset>/<ami|map>/<p1|q1>`.
+Replays now, on r14's frozen photo model (the Qwen3-caption c* photo model on SigLIP 1; find its exports under
+/data/SSD2/cosir_r14/): r28 photos.json cell a, r14's SC5 and SC10 cells, r17's SC4 AMI cells, and the five comparator
+rebuilds of gate (v). Forward check: optional; if the model code allows it (r14's photo model code may be read for the
+model, not for scoring), F1 seed 0 on 500 Affection validation photos against the stored rows.
+
+## Output
+rederive/s2mp_val.json {mmart: {picks, ranges}, photo: {picks, ranges}, forward_check, replays, notes, inputs} and
+rederive/s2mp_held.json {mmart: {cells, sc5}, photo: {cells, sc6}, replays, notes, inputs}; the held part reads the
+picks from your own s2mp_val.json. Script rederive/r29rd_s2mp.py with subcommands `val`, `held`, `replay` (and
+`--piece mmart|photo` so each piece runs alone when the other is missing), a runner rederive/r29rd_run_s2mp.sh with a
+device option, tests rederive/test_r29rd_s2mp.py (small fixtures, under 1 minute).

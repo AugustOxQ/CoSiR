@@ -1,0 +1,117 @@
+# CoSiR r29 stage 2: C13 re-derivation in separate code (common part of three parallel jobs)
+
+You build an independent re-derivation of part of r29's stage 2 (constitution C13): from the written rule and the saved
+model outputs, never from our numbers. Two other Codex jobs work beside you on the other parts, in the same folder, with
+other file prefixes; do not touch their files.
+
+## Work rules
+- Work only in /project/CoSiR/src/test/20261112_siglip_only/rederive/, in files with YOUR prefix (below). Delete nothing
+  (list what you would remove); no commits; no .ccg task records.
+- No single command over about 4 minutes; 8 threads (OMP_NUM_THREADS=8 MKL_NUM_THREADS=8); keep command output short
+  (long output to a file, then its tail). Do not use the GPU yourself; scripts take a `--device` option so the
+  controller can run heavy parts on the GPU through its queue. Python: /root/miniconda3/envs/CoSiR/bin/python with
+  PYTHONDONTWRITEBYTECODE=1.
+- If a full run takes over 4 minutes, test on a subset and end with the full command; the controller runs it under the
+  CPU or GPU queue (`res-queue`).
+
+## IMPORTANT: no new test numbers
+Develop and test on VALIDATION data and on the older rounds' FROZEN files only. Do not compute any test (held) number of
+a stage 2 model (E2, E3, K* on MMArt, the photo model F1, the ablation removals): the rule needs our picks committed
+before any test number of a piece exists, and most stage 2 models are not trained yet (training runs tonight from 19:00).
+Your script's held part runs only in the controller's full run, after our picks are committed. Test the held code paths
+by replays on the older rounds' frozen models and records (named per job).
+
+## Forbidden (ours; do not read)
+- /project/CoSiR/src/test/20261112_siglip_only/records/** (all of it), /project/CoSiR/src/test/20261112_siglip_only/
+  decisions.md and *_log.md, and every r29_*.py of that folder except r29_model.py and r29_captions.py (allowed).
+- /data/SSD2/cosir_r29/20261112_siglip_only/{text,image_cells,image_picks,diag_d,gate_*}/** (our scorer outputs).
+- The older rounds' scoring modules that our code imports (docstrings only): ns_clu, ns_clu_cells, ns_ret, ns_picks,
+  ns_metrics, ns_data, ns_photo, rt_metrics, rt_stats, rt_readout, rt_run, rt_data, bs_artret, bs_emoset_score, bs_stores,
+  pf_stage2, ac_data, mt_ret, mt_data, mt_export, tcl_score, tcl_stage1, tcl_metrics, r28_*.py (r28's records are
+  allowed), r20_ret.py.
+## Allowed
+- Your own earlier re-derivation code in rederive/ (r29rd_sc1.py, r29rd_sc2.py, r29rd_c1.py, r29rd_c1_core.py and their
+  outputs sc1_rederived.json, sc2_rederived.json, c1_rederived.json, r29rd_c1_picks.json): copy or import from it.
+- The older rounds' independent C13 modules, written for the same cell types (read, copy functions into your files; do
+  not import them from their rounds): r17 /project/CoSiR/src/test/20261103_new_scores/ns_c13.py, r14
+  /project/CoSiR/src/test/20261102_backbones_sweep/bs_c13.py and bs_c13_partb.py, r15
+  /project/CoSiR/src/test/20261102_mmart_test/mt_c13.py, r23 /project/CoSiR/src/test/20261106_text_claim/tcl_c13.py.
+- The older rounds' specs (/project/CoSiR/docs/superpowers/specs/), frozen records and output folders (r11 to r28), the
+  feature stores under /data/SSD2/pre_extract/, /project/CoSiR/src/data/, r29_model.py, r29_captions.py.
+- Stage 2 model outputs (the rule's inputs) under /data/SSD2/cosir_r29/20261112_siglip_only/ as named per job.
+
+## The rule
+Spec /project/CoSiR/docs/superpowers/specs/2026-11-12-siglip-only-adapter-design.md, from §1 (skip the brief): §3.2,
+§3.3, §3.4 (the cells table and its rebuild paragraph; "Cells per claim test"; "Order and C13"), §3.5 row 2a and 2b, §6
+(the rows of your job and the "Inconclusive" bullet), D17 to D19, D22 to D24, amendments A1 and A2. Outcome of a test
+cell: WIN when the paired 95% lower bound of candidate minus comparator is > 0; LEVEL when not WIN and the lower bound is
+> -r; BELOW otherwise. Each cell type keeps the protocol (read-out rule, draws, RNG order) of the older round that made
+its paper cell (D18): find it in that round's spec and C13 module and say which you used. Where the rule leaves a choice
+open, take the older round's choice and list it in `notes`.
+
+K* = siglip1_prefix: the SigLIP 1 adapter whose caption tower reads the prefixed SigLIP 1 caption store
+(/data/SSD2/pre_extract/artelingo_full/siglip_so400m_capprefix/), seeds 0 to 4, weights
+/data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip1/weights/siglip1_prefix/<aspect>__s<seed>.pt; aspects emotion,
+style, genre. Model outputs are stored float16 rows (key `img` or `emb`, with a sidecar .json naming the rows' order).
+
+## Output form
+Full precision floats in JSON. Every record carries `notes` (each open choice and what you took), `replays` (each replay:
+the target record and key, your value, the recorded value, the absolute difference) and `inputs` (each file read with
+its sha256). Final message: what passed in the replays (largest difference per cell type), the expected run time of each
+command on CPU and on the GPU, the exact commands, and any rule point you found unclear.
+
+# YOUR JOB (prefix r29rd_s2e): E2 and E3 (SC4, Table 6) and the encoder pick SC9
+
+E2 = SigLIP 2 (bs_paths key `siglip2`), E3 = CLIP L/14 (`clip_l14`): the same adapter as K*, but the image tower reads
+that encoder's image features and the caption tower reads that encoder's own text embeddings of the prefixed caption
+("Represent the caption: " + caption; stores /data/SSD2/pre_extract/artelingo_full/siglip2_so400m_capprefix/ and
+clip_l14_capprefix/, extracted tonight). Arm names: `siglip2_prefix`, `clipl14_prefix`. Files (written tonight):
+- weights /data/SSD2/cosir_r29/20261112_siglip_only/cstar/<E>/weights/<arm>/<aspect>__s<seed>.pt
+- validation exports /data/SSD2/cosir_r29/20261112_siglip_only/cstar/<E>/val/<arm>/<aspect>__s<seed>.npz (+ .json)
+- test exports (part b, later) /data/SSD2/cosir_r29/20261112_siglip_only/cstar/<E>/held/<arm>/<aspect>__s<seed>.npz
+with <E> in {siglip2, clip_l14}. They have the same layout as K*'s under cstar/siglip1/{val,held}/siglip1_prefix/.
+
+## A. Validation part (runs once E2's and E3's validation exports exist, before any test number)
+1. Per encoder, the read-out picks and seed ranges of the six Table 6 cells (§3.4 rows "E2, E3 (Table 6)", "ArtELingo
+   AMI", "ArtELingo image mAP"): AMI at the class counts 9 / 27 / 10 (no pick; r = the encoder's five-seed range of
+   validation AMI at the class count, r17's protocol), and image mAP (read-out by r11's rule as r14 used it for c*, r =
+   the encoder's own five-seed range of validation mAP at R0; both the plain-side read-out and the Q1-side read-out, as
+   your 1c script derived them for K*). This is your 1c validation part with the encoder's own files.
+2. SC9 (§6 row SC9, A2): per encoder and seed, the image group = the mean of the six validation cells of SC2's image group
+   (r28's `valpick` protocol, exactly as your SC2 script's image group: MiniBatchKMeans at 9 / 27 / 10, n_init 3, states 0
+   to 2, and plain-cosine label mAP). K*'s per-seed image groups are its SC2 values: take them from your
+   rederive/sc2_rederived.json (not recomputed). Then: each candidate's five-seed mean; the pick = the highest mean
+   (an exact tie involving SigLIP 1 goes to SigLIP 1); the margin = leader minus runner-up; the seeds where the leader is
+   ahead of the runner-up; the leader's seed range (max minus min of its five per-seed groups); close call = margin below
+   that range. Qwen3 c* is an information row only: r28's recorded value
+   (/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json), never a candidate. Say how you defined "seeds
+   ahead".
+3. A forward check per encoder on seed 0: your own image-tower forward pass reproduces the stored validation rows at
+   float16 resolution (share equal, largest difference), with r29_model.py and the encoder's image store.
+Output rederive/s2e_val.json: {encoders: {siglip2: {picks: {image_map: {aspect: {pick_plain_side, pick_q1_side, r}},
+ami_range: {aspect: r}}, groups: {per_seed: [5], cells: {cell: [5]}, mean}}, clip_l14: {...}}, sc9: {kstar_per_seed:
+[5], means: {siglip1, siglip2, clip_l14}, pick, runner_up, margin, seeds_ahead, leader_range, close_call, qwen_info},
+forward_check, replays, notes, inputs}.
+
+## B. Held part (the controller runs it after our picks are committed and part b wrote the test exports)
+Per encoder, 12 test cells (§3.4, §6 SC4): AMI and image mAP for three aspects, each against that encoder's plain
+embedding (r17 SC1 AMI and r17 SC7 image mAP, the plain side for SigLIP 2 or CLIP L/14) and against Q1, the instructed
+Qwen3 (r17 SC3 teacher AMI; r11 stage 5 `instructed` per-query files at r11's pick for image mAP), each with value,
+comparator value, d, lo, hi, r, outcome, n; then SC4 per encoder: level 1 if WIN over plain in >= 5 of 6; level 2 if WIN
+over plain in all 6; level 3 if level 2 and WIN or LEVEL over Q1 in >= 5 of 6; else 0. Cell ids
+`<encoder>/<ami|map>/<aspect>/<plain|q1>`.
+Output rederive/s2e_held.json: {encoders: {E: {cells: [...], sc4: {wins_plain, wins_or_level_q1, level}}}, replays,
+notes, inputs}. The held part reads the validation picks from your own s2e_val.json, never from our records.
+
+## Replays (do these now; the models of tonight do not exist yet)
+On r14's frozen c* models on the same encoders (k11=40; training-time validation files
+/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/<E>/train/k11=40/R6-5/<aspect>__<graph>__s<seed>.npz, test
+exports .../cstar/<E>/held/k11=40/<aspect>__s<seed>.npz; check the exact paths):
+- SC9's image groups: r28's valpick.json per-seed cells and `score` for siglip2 and clip_l14 (target within 1e-6).
+- Validation picks and ranges and test cells: r17's recorded SigLIP 2 and CLIP L/14 c* cells of SC1 (AMI against plain),
+  SC3 (AMI against the teacher), SC7 (image mAP against plain), and r14's SC6 cells (image mAP against the teacher), from
+  their records (find them in r17's /project/CoSiR/src/test/20261103_new_scores/records/ and r14's records). Target
+  within 1e-9 for intervals (as the older rounds' gates), report what you reach.
+
+Script rederive/r29rd_s2e.py with subcommands `val` and `held` (and `replay`), a runner rederive/r29rd_run_s2e.sh taking
+a device option, and tests rederive/test_r29rd_s2e.py (small fixtures, under 1 minute).

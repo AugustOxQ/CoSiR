@@ -1,0 +1,61 @@
+# CoSiR r29 stage 2: C13 re-derivation in separate code (common part of three parallel jobs)
+
+You build an independent re-derivation of part of r29's stage 2 (constitution C13): from the written rule and the saved
+model outputs, never from our numbers. Two other Codex jobs work beside you on the other parts, in the same folder, with
+other file prefixes; do not touch their files.
+
+## Work rules
+- Work only in /project/CoSiR/src/test/20261112_siglip_only/rederive/, in files with YOUR prefix (below). Delete nothing
+  (list what you would remove); no commits; no .ccg task records.
+- No single command over about 4 minutes; 8 threads (OMP_NUM_THREADS=8 MKL_NUM_THREADS=8); keep command output short
+  (long output to a file, then its tail). Do not use the GPU yourself; scripts take a `--device` option so the
+  controller can run heavy parts on the GPU through its queue. Python: /root/miniconda3/envs/CoSiR/bin/python with
+  PYTHONDONTWRITEBYTECODE=1.
+- If a full run takes over 4 minutes, test on a subset and end with the full command; the controller runs it under the
+  CPU or GPU queue (`res-queue`).
+
+## IMPORTANT: no new test numbers
+Develop and test on VALIDATION data and on the older rounds' FROZEN files only. Do not compute any test (held) number of
+a stage 2 model (E2, E3, K* on MMArt, the photo model F1, the ablation removals): the rule needs our picks committed
+before any test number of a piece exists, and most stage 2 models are not trained yet (training runs tonight from 19:00).
+Your script's held part runs only in the controller's full run, after our picks are committed. Test the held code paths
+by replays on the older rounds' frozen models and records (named per job).
+
+## Forbidden (ours; do not read)
+- /project/CoSiR/src/test/20261112_siglip_only/records/** (all of it), /project/CoSiR/src/test/20261112_siglip_only/
+  decisions.md and *_log.md, and every r29_*.py of that folder except r29_model.py and r29_captions.py (allowed).
+- /data/SSD2/cosir_r29/20261112_siglip_only/{text,image_cells,image_picks,diag_d,gate_*}/** (our scorer outputs).
+- The older rounds' scoring modules that our code imports (docstrings only): ns_clu, ns_clu_cells, ns_ret, ns_picks,
+  ns_metrics, ns_data, ns_photo, rt_metrics, rt_stats, rt_readout, rt_run, rt_data, bs_artret, bs_emoset_score, bs_stores,
+  pf_stage2, ac_data, mt_ret, mt_data, mt_export, tcl_score, tcl_stage1, tcl_metrics, r28_*.py (r28's records are
+  allowed), r20_ret.py.
+## Allowed
+- Your own earlier re-derivation code in rederive/ (r29rd_sc1.py, r29rd_sc2.py, r29rd_c1.py, r29rd_c1_core.py and their
+  outputs sc1_rederived.json, sc2_rederived.json, c1_rederived.json, r29rd_c1_picks.json): copy or import from it.
+- The older rounds' independent C13 modules, written for the same cell types (read, copy functions into your files; do
+  not import them from their rounds): r17 /project/CoSiR/src/test/20261103_new_scores/ns_c13.py, r14
+  /project/CoSiR/src/test/20261102_backbones_sweep/bs_c13.py and bs_c13_partb.py, r15
+  /project/CoSiR/src/test/20261102_mmart_test/mt_c13.py, r23 /project/CoSiR/src/test/20261106_text_claim/tcl_c13.py.
+- The older rounds' specs (/project/CoSiR/docs/superpowers/specs/), frozen records and output folders (r11 to r28), the
+  feature stores under /data/SSD2/pre_extract/, /project/CoSiR/src/data/, r29_model.py, r29_captions.py.
+- Stage 2 model outputs (the rule's inputs) under /data/SSD2/cosir_r29/20261112_siglip_only/ as named per job.
+
+## The rule
+Spec /project/CoSiR/docs/superpowers/specs/2026-11-12-siglip-only-adapter-design.md, from §1 (skip the brief): §3.2,
+§3.3, §3.4 (the cells table and its rebuild paragraph; "Cells per claim test"; "Order and C13"), §3.5 row 2a and 2b, §6
+(the rows of your job and the "Inconclusive" bullet), D17 to D19, D22 to D24, amendments A1 and A2. Outcome of a test
+cell: WIN when the paired 95% lower bound of candidate minus comparator is > 0; LEVEL when not WIN and the lower bound is
+> -r; BELOW otherwise. Each cell type keeps the protocol (read-out rule, draws, RNG order) of the older round that made
+its paper cell (D18): find it in that round's spec and C13 module and say which you used. Where the rule leaves a choice
+open, take the older round's choice and list it in `notes`.
+
+K* = siglip1_prefix: the SigLIP 1 adapter whose caption tower reads the prefixed SigLIP 1 caption store
+(/data/SSD2/pre_extract/artelingo_full/siglip_so400m_capprefix/), seeds 0 to 4, weights
+/data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip1/weights/siglip1_prefix/<aspect>__s<seed>.pt; aspects emotion,
+style, genre. Model outputs are stored float16 rows (key `img` or `emb`, with a sidecar .json naming the rows' order).
+
+## Output form
+Full precision floats in JSON. Every record carries `notes` (each open choice and what you took), `replays` (each replay:
+the target record and key, your value, the recorded value, the absolute difference) and `inputs` (each file read with
+its sha256). Final message: what passed in the replays (largest difference per cell type), the expected run time of each
+command on CPU and on the GPU, the exact commands, and any rule point you found unclear.
