@@ -307,7 +307,8 @@ def is_committed(path, repo=None):
 def check_pass_rule(records, stage2, repo=None):
     """SC3 to SC6 refuse unless records/pass_rule.json is present and committed unchanged in HEAD (§3.5 row 1b: SC2 before any test
     number; presence and commit, not status, as ticket 07's `cells`, D9). A parked SC2 refuses: 1c and stage 2 do not run (§6).
-    Stage 2 claims (SC4 to SC6) also need status pass (D3)."""
+    Stage 2 claims (SC4 to SC6) also need status pass (D3), or fail under a committed A1 record with R29_AMENDMENT=A1 (`P.stage2_gate`).
+    Returns "pass" or "A1" for a stage 2 claim, None for SC3."""
     path = Path(records) / 'pass_rule.json'
     if not path.exists():
         raise RuntimeError(f'no {path}: pass_rule.json is written and committed before any test number (spec §3.5 row 1b)')
@@ -316,8 +317,12 @@ def check_pass_rule(records, stage2, repo=None):
     status = json.loads(path.read_text()).get('status')
     if status == 'parked':
         raise RuntimeError(f'{path}: SC2 is parked, so stage 1 is inconclusive: 1c does not run (spec §6)')
-    if stage2 and status != 'pass':
-        raise RuntimeError(f'{path}: stage 2 (SC4 to SC6) needs records/pass_rule.json with status pass (D3)')
+    if not stage2:
+        return None
+    try:
+        return P.stage2_gate(records)
+    except RuntimeError as exc:
+        raise RuntimeError(f'{path}: stage 2 (SC4 to SC6) needs records/pass_rule.json with status pass, or fail under A1 (D3): {exc}') from exc
 
 
 def build_record(claim, arm, encoder=None, records=None, missing_ok=None, repo=None):
@@ -331,7 +336,7 @@ def build_record(claim, arm, encoder=None, records=None, missing_ok=None, repo=N
         assert enc == 'siglip1', f'SC3 is K*, on SigLIP 1; arm {arm!r} is on {enc!r}'
     if claim in ('SC5', 'SC6'):
         assert enc == 'siglip1', f'{claim} is K* / F1 on SigLIP 1; arm {arm!r} is on {enc!r}'
-    check_pass_rule(records, spec['stage2'], repo)
+    gate = check_pass_rule(records, spec['stage2'], repo)
     gates = claim_gates(claim, arm, enc, records)
     parking = parked_by(gates)
     cells, status, files = collect(claim, arm, enc, records)
@@ -374,6 +379,7 @@ def build_record(claim, arm, encoder=None, records=None, missing_ok=None, repo=N
                cells=rows, sources=status, cell_files=files, gates=gates, parked_by=parking)
     if missing_ok:
         rec['missing_ok'] = missing_ok
+    rec.update(P.a1_marks(gate))
     return rec
 
 
@@ -559,9 +565,16 @@ def sheet_text(records):
            'are the ladder records\'.\n',
            '"Level" lines come from `records/<claim>_<arm>.json`; "K* - K0" is diagnostic (d), measured after the levels.\n']
     rule = _j(records / 'pass_rule.json') if (records / 'pass_rule.json').exists() else None
-    d3 = rule is not None and rule['status'] != 'pass'          # D3: SC4 to SC7 do not run unless the pass rule passes
+    d3 = rule is not None and rule['status'] != 'pass'          # D3: SC4 to SC7 do not run unless the pass rule passes ...
+    a1 = False
+    if d3:                                                      # ... or fails under a committed A1 record (R29_AMENDMENT=A1)
+        try:
+            a1 = P.stage2_gate(records) == 'A1'
+        except RuntimeError:
+            pass
+        d3 = not a1
     out.append('Pass rule (SC2): ' + ('not run.' if rule is None else f'status `{rule["status"]}`, level {rule.get("level")}.'
-               + (' SC4 to SC7: not run (D3).' if d3 else '')) + '\n')
+               + (' SC4 to SC7: not run (D3).' if d3 else f' {P.A1_LINE}.' if a1 else '')) + '\n')
     titles = {'SC3': 'SC3 (ArtELingo test, 15 cells; Tables 2 and 3): K* against P1 (plain embedding) and Q1 (instructed Qwen3)',
               'SC4': 'SC4 (Table 6, ArtELingo test, 6 cells per encoder; K0 on that encoder shown beside, descriptive)',
               'SC5': 'SC5 (Table 4, MMArt test, 6 cells)',

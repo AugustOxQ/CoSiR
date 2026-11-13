@@ -132,12 +132,11 @@ def check_kstar(arm, records):
 
 
 def require_stage2(records):
-    """D3: MMArt is stage 2. `pass_rule.json` committed unchanged in HEAD (`P.require_committed`) and its status is pass."""
+    """D3 as amended by A1: MMArt is stage 2. `pass_rule.json` committed unchanged in HEAD (`P.require_committed`) and its status
+    is pass, or fail under a committed A1 record (`P.stage2_gate`). Returns the gate's answer, "pass" or "A1"."""
     path = Path(records) / 'pass_rule.json'
     P.require_committed(path, 'commit records/pass_rule.json before any MMArt export, pick or test cell (spec §3.4, §3.5 row 1b)')
-    status = json.loads(path.read_text()).get('status')
-    if status != 'pass':
-        raise RuntimeError(f'{path}: stage 2 (MMArt) needs status pass (D3), it says {status!r}')
+    return P.stage2_gate(records)
 
 
 def arm_root(arm):

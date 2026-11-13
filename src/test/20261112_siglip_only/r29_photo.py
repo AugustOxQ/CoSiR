@@ -113,10 +113,13 @@ def read_prefix_pick(path=None):
 
 
 def require_pass(path=None):
-    """D3: F1 is stage 2: only after `records/pass_rule.json` says pass."""
+    """D3 as amended by A1: F1 is stage 2: only after `records/pass_rule.json` says pass, or on its fail under a committed A1 record
+    (`P.stage2_gate`). Returns the gate's answer, "pass" or "A1"."""
     path = Path(PASS_RULE if path is None else path)
-    assert path.is_file() and _json(path).get('status') == 'pass', \
-        f'F1 is a stage 2 piece: needs {path} with status "pass" (D3)'
+    try:
+        return P.stage2_gate(path.parent)
+    except RuntimeError as exc:
+        raise AssertionError(f'F1 is a stage 2 piece: needs {path} with status "pass", or "fail" under A1 (D3): {exc}') from exc
 
 
 # ----------------------------------------------------------------------------------- the store and gate (viii)
