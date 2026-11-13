@@ -551,6 +551,26 @@ def _t5_star_rows(doc, d3=False):
     return {**out, 'notes': (['\nInconclusive removals (D21: not scored; the others are):'] + notes + ['']) if notes else []}
 
 
+def sc9_section(records):
+    path = Path(records) / 'encoder_pick.json'
+    if not path.exists():
+        return '## SC9 (validation encoder pick)\n\nSC9: not run.\n'
+    rec = _j(path)
+    lines = ['## SC9 (validation encoder pick)\n',
+             '| Encoder | Five-seed mean | Seed range | Per-seed groups |',
+             '|---|---|---|---|']
+    for encoder, label in (('siglip1', 'siglip1 (K*)'), ('siglip2', 'siglip2 (E2)'),
+                           ('clip_l14', 'clip_l14 (E3)'), ('qwen', 'Qwen (information, not a candidate)')):
+        row = rec['encoders'][encoder]
+        groups = ', '.join(f's{seed}: {f4(value)}' for seed, value in zip(rec['seeds'], row['per_seed']))
+        lines.append(f'| {label} | {f4(row["score"])} | {f4(row["seed_range"])} | {groups} |')
+    ahead = rec['seeds_ahead']
+    seeds = ', '.join(f's{seed}' for seed in ahead) or 'none'
+    lines.append(f'\nPick: {rec["pick"]}; margin {f4(rec["margin"])}; ahead in {len(ahead)} of 5 seeds: {seeds}; '
+                 f'close call: {rec["close_call"]}.\n')
+    return '\n'.join(lines)
+
+
 def sheet_text(records):
     records = Path(records)
     arms = discover_arms(records)
@@ -580,6 +600,8 @@ def sheet_text(records):
               'SC5': 'SC5 (Table 4, MMArt test, 6 cells)',
               'SC6': 'SC6 (Table 7, photo model F1, 4 cells: Affection and EmoSet test)'}
     for claim in ('SC3', 'SC4', 'SC5', 'SC6'):
+        if claim == 'SC4':
+            out.append(sc9_section(records))
         out.append(f'## {titles[claim]}\n')
         if d3 and claim != 'SC3':
             out.append('Not run (D3): the pass rule did not pass.\n')
