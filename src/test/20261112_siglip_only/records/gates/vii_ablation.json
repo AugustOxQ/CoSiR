@@ -1,30 +1,30 @@
 {
   "gate": "vii_ablation",
   "status": "pass",
-  "tries": 2,
+  "tries": 3,
   "details": {
     "code_sha256": {
       "r29_trainer.py": "0e61deda49c649f79c2a556682cf4d5491f465a21c8b3b87e198e509b6f4b372",
       "r29_model.py": "00b96f402097725c45577618486c4b31f7c7af8a9eb818d6d56b59a49d06e2ab",
-      "r29_captions.py": "51b2d86eba6f9f0252d1b267dac2dd0cbac6a4e5649bba033c1e367654178db2",
+      "r29_captions.py": "7f81bbe7daf2e48da4920961445f99c248d270679071a894d38d480c8a2c4260",
       "r28_trainer.py": "722bed8d1d506d6be4d569e8bf19a467ea9cea5d98256775aabd26158e286292",
       "r28_trainer_loss.py": "01132e756fc34bbcce0a3fa0b368bc156e346975c3c199fde73711197b4ed2ff",
-      "r29_ablation.py": "d560994f228f32cab9c2da38e6570399d1f144f8289fe465d9266febb378a9f7"
+      "r29_ablation.py": "bef326b9570a03aee39fbb7e56d1c799db7136c35f1d23edb9bdfe7a3fd6cbcd"
     },
-    "trainer_test_sha256": "9b16693fdd239d84df0ec5fbf82cdccc0f143e5f13d953b98a0667ae78c9a81c",
+    "trainer_test_sha256": "a671d57e41a50625d3b3e59723f6cc0f7c46b82cb1624f82159b95f405da2183",
     "trainer": {
       "command": [
         "/root/miniconda3/envs/CoSiR/bin/python",
         "-m",
         "pytest",
         "-q",
-        "/project/CoSiR-r29-t14/src/test/20261112_siglip_only/test_r29_ablation.py",
+        "/project/CoSiR-r29/src/test/20261112_siglip_only/test_r29_ablation.py",
         "-k",
         "qwen_equals_r28_state_loss_and_gradients_on_fixed_batch"
       ],
       "pass": true,
       "returncode": 0,
-      "output": "....                                                                     [100%]\n4 passed, 26 deselected in 5.94s\n"
+      "output": "....                                                                     [100%]\n4 passed, 31 deselected in 4.61s\n"
     },
     "replay": {
       "checks": {
@@ -167,5 +167,5 @@
       }
     }
   },
-  "written": "2026-11-13 00:42"
+  "written": "2026-11-13 04:04"
 }
