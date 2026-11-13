@@ -1,0 +1,47 @@
+Next job in the same round (CoSiR r29): re-derive SC2, the pass rule, in separate code. Same work rules and the same
+forbidden list as your SC1 brief (no reading of /project/CoSiR/src/test/20261112_siglip_only/records/**, of
+/data/SSD2/cosir_r29/20261112_siglip_only/text/**, of r29_text.py, r29_decide.py, r28_text.py, tcl_score.py,
+tcl_stage1.py, tcl_metrics.py, of any round log). Also forbidden now: r29_image_cells.py, r28_valpick.py's code below its
+docstring, and the modules it imports for scoring (ns_data, ns_metrics, ns_clu, rt_metrics, rt_data, bs_artret); you may
+read r28_valpick.py's module docstring (its first 20 lines) for the protocol. Work only in
+/project/CoSiR/src/test/20261112_siglip_only/rederive/. Delete nothing; no commits; no .ccg records. CPU only, 8 threads;
+no single command over about 4 minutes; if the full run takes longer, test on a subset and end with the full command.
+
+## The rule
+Spec /project/CoSiR/docs/superpowers/specs/2026-11-12-siglip-only-adapter-design.md: §3.4 bullet "Pass rule (SC2)", §6
+row SC2 and its sentences, D4, D11, D17. In short:
+1. Candidate: K* = the arm your SC1 derivation picked (rederive/sc1_rederived.json), seeds 0 to 4, ArtELingo validation.
+   Weights: /data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip1/weights/<K*>/<aspect>__s<seed>.pt.
+2. Text group per seed: the mean of the nine r0 cells exactly as in SC1 (your r29rd_sc1.py logic), for each seed 0 to 4.
+   Text group mean = the mean of the five per-seed values.
+3. Image group per seed: the mean of six cells, AMI and plain-cosine label mAP for emotion, style, genre, read from
+   K*'s stored validation exports /data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip1/val/<K*>/<aspect>__s<seed>.npz
+   (key `img`, float16 image-tower rows; the sidecar .json gives the painting-names hash; rows are in sorted painting-name
+   order: check it against your own validation names). The protocol is r28's encoder pick (`valpick`, docstring of
+   /project/CoSiR/src/test/20261112_siglip_main/r28_valpick.py), as r17 defined the AMI cell
+   (/project/CoSiR/docs/superpowers/specs/ : find r17's spec) and r14 the mAP cell:
+   - AMI at the class count (emotion 9, style 27, genre 10): stored float16 rows cast to float32, no further
+     normalisation; sklearn MiniBatchKMeans(n_clusters = class count, n_init=3, batch_size=4096, random_state = 0, 1, 2);
+     AMI against the painting labels; the seed's value is the mean over the three states. Which rows enter (labelled
+     only, or all rows clustered and unlabelled ones dropped at scoring) is set by r17's rule: find it and say which.
+   - Plain-cosine label mAP: L2-normalised rows, each labelled painting a query against all other paintings, AP by the
+     shared label, labelled rows only, mean over queries.
+   Image group mean = the mean of the five per-seed values.
+   Also check that your own image-tower forward pass reproduces the stored `img` rows at float16 resolution (report the
+   share equal and the largest difference); the cells use the stored rows.
+4. K0 baseline (frozen, read it, do not recompute): r28's records
+   /project/CoSiR/src/test/20261112_siglip_main/records/valpick.json (encoder siglip1: its six cells' per-seed values
+   and its `score`) and .../records/text.json (`ours_siglip1` picks: the nine cells' per_seed r0 values and means r0).
+   m = K0's group mean (image: the recorded `score`; text: the mean of the nine cells' r0 means); per-seed group values
+   as the mean of the cells per seed; r = max minus min of K0's five per-seed group values; best = the max. Unrounded.
+   They must round (10 decimals) to the spec's m_I 0.3862917081, r_I 0.0029788602, m_T 0.2593512884, r_T 0.0020107136.
+5. Level (§6 SC2): level 3 if image mean > image best AND text mean > text best; else level 2 if image mean >= m_I - r_I
+   and text mean >= m_T - r_T and text mean >= m_T; else level 1 if both >= m - r; else 0 (fail). Status pass iff
+   level >= 1.
+
+## Output
+rederive/sc2_rederived.json: {kstar, per_seed: {image: [5], text: [5]}, mean: {image, text}, cells: {image: {cell:
+[5 per seed]}, text: {cell: [5]}}, k0: {image: {m, r, best, lower}, text: {...}}, level, status, forward_check: {...},
+ami_rows: "<which rows enter AMI and why>", notes: [every choice the rule left open]}. Full precision. Script
+rederive/r29rd_sc2.py (it may import your own r29rd_sc1.py). Final message: the two means, the level, the status, the
+per-seed values, the AMI row choice, the forward check, the run time or the full command.

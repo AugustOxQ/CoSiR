@@ -1,0 +1,30 @@
+{
+  "gate": "iv_hash",
+  "status": "pass",
+  "tries": 1,
+  "details": {
+    "arms": {
+      "siglip1": {
+        "scorer_record": "a3c43025036c9150171c5891b870493032dfbd1f24f1d964caa4a85b0ea6a81b",
+        "store_now": "a3c43025036c9150171c5891b870493032dfbd1f24f1d964caa4a85b0ea6a81b",
+        "n_run_records": 1,
+        "n_sidecars": 3,
+        "trainer_hashes": [
+          "a3c43025036c9150171c5891b870493032dfbd1f24f1d964caa4a85b0ea6a81b"
+        ],
+        "equal": true
+      },
+      "siglip1_prefix": {
+        "scorer_record": "1c97e1150eef8acd1e1af5f439f58cbcee833fdbcdf3366c93e4c155bd62eaac",
+        "store_now": "1c97e1150eef8acd1e1af5f439f58cbcee833fdbcdf3366c93e4c155bd62eaac",
+        "n_run_records": 1,
+        "n_sidecars": 3,
+        "trainer_hashes": [
+          "1c97e1150eef8acd1e1af5f439f58cbcee833fdbcdf3366c93e4c155bd62eaac"
+        ],
+        "equal": true
+      }
+    }
+  },
+  "written": "2026-11-13 04:21"
+}

@@ -1,0 +1,37 @@
+{
+  "complete": true,
+  "query_limit": 0,
+  "painting_count": 6152,
+  "caption_count": 30872,
+  "expected_counts_per_arm": {
+    "emotion/t2i": 30872,
+    "emotion/i2t": 6152,
+    "emotion/t2t": 30872,
+    "style/t2i": 30872,
+    "style/i2t": 6152,
+    "style/t2t": 30872,
+    "genre/t2i": 24886,
+    "genre/i2t": 4960,
+    "genre/t2t": 24886
+  },
+  "validation_names_sha256": "1430d4b56e4a76dbe3e1c4d699e1db5c92967c5f2048b74b6cbcdf1589809e2e",
+  "plurality_ties": 1577,
+  "elapsed_seconds": 924.472237741109,
+  "arm_seconds": {
+    "siglip1": 334.8372359648347,
+    "siglip1_prefix": 335.1278000380844,
+    "p1_siglip1": 125.61094448994845,
+    "p1_siglip1_prefix": 126.0017543467693
+  },
+  "script_sha256": "a6109bbb1e440c3cf7e3b3110ef78729675b08e1057b7248141382c4830e75e9",
+  "annotation_sha256": "6a4e5b17feecc2c3b54cd166416b75f1bbffd56bec1523f4173b245edb8e894d",
+  "store_index_sha256": {
+    "siglip1": "a3c43025036c9150171c5891b870493032dfbd1f24f1d964caa4a85b0ea6a81b",
+    "siglip1_prefix": "1c97e1150eef8acd1e1af5f439f58cbcee833fdbcdf3366c93e4c155bd62eaac"
+  },
+  "numpy": "2.2.6",
+  "torch": "2.11.0+cu130",
+  "device": "cpu",
+  "threads": 8,
+  "batch_size": 128
+}

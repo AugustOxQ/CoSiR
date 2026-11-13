@@ -1,0 +1,63 @@
+You are re-deriving one decision of a research round (CoSiR r29) in separate code, from the rule and the data. This is
+the project's C13 check: your numbers are compared with ours afterwards, so you never see or read ours.
+
+## Work rules
+- Work only in /project/CoSiR/src/test/20261112_siglip_only/rederive/ (write your code and outputs there). Read anything
+  else you need, except the files forbidden below. Do not create .ccg task records. Do not commit. Delete nothing; list
+  what you would remove in your final message.
+- Keep command output short (quiet tests, long output to a file, then its tail or a grep). No single command waits over
+  about 4 minutes. CPU only, with OMP_NUM_THREADS=8 MKL_NUM_THREADS=8; do not use the GPU (another job holds it).
+- Python: /root/miniconda3/envs/CoSiR/bin/python with PYTHONDONTWRITEBYTECODE=1. HF offline (HF_HUB_OFFLINE=1).
+- If the full computation takes longer than about 4 minutes, do not run it in full: test the script on a small subset
+  (a few hundred queries), then end with the exact command for the full run; the controller runs it under the CPU queue.
+
+## Forbidden (our numbers and our scoring code)
+- Do not read or import: /project/CoSiR/src/test/20261112_siglip_only/records/** (any JSON there),
+  /data/SSD2/cosir_r29/20261112_siglip_only/text/** (our scores and means), r29_text.py, r29_decide.py, r28_text.py,
+  tcl_score.py, tcl_stage1.py, tcl_metrics.py, the r23 records folder, or any log of this round.
+- You may read the specs, the data stores, the weights, src/data/, r29_model.py and r29_captions.py (to learn how the
+  checkpoints are built and how captions join to paintings) and r23's own independent re-derivation module
+  /project/CoSiR/src/test/20261106_text_claim/tcl_c13.py (separate code written for r23's check; you may copy and adapt
+  its functions into your folder, but do not import the round's scoring modules).
+
+## The rule (what to compute)
+Spec: /project/CoSiR/docs/superpowers/specs/2026-11-12-siglip-only-adapter-design.md, §3.2 (arms K1, K2, P1), §3.4 first
+two bullets and "P1's caption form (D20)", §6 row SC1, §4 rows D5, D11, D20. The text cells follow r23's protocol:
+/project/CoSiR/docs/superpowers/specs/2026-11-06-text-claim-design.md §3.3 (labels) and §3.4 ("Cells", "Read-out menu"),
+which cite r22's label mAP metric (find r22's spec under /project/CoSiR/docs/superpowers/specs/ if needed).
+
+In short:
+1. Arms. K1 = caption tower reads SigLIP 1 caption text rows from /data/SSD2/pre_extract/artelingo_full/siglip_so400m/
+   (text side). K2 = the same from /data/SSD2/pre_extract/artelingo_full/siglip_so400m_capprefix/ (prefixed captions).
+   Both: image tower reads the SigLIP 1 image rows (siglip_so400m, image side). Weights, seed 0, one checkpoint per
+   aspect head: /data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip1/weights/siglip1/<aspect>__s0.pt (K1) and
+   .../weights/siglip1_prefix/<aspect>__s0.pt (K2), aspects emotion, style, genre. A text query is one caption's stored
+   row, L2-normalised, through that aspect's caption tower; an image is its stored row through that aspect's image tower.
+   Joins by sample ID, with the painting checked (the project's rule: never range(n) or a dataset's own image_id).
+2. Set: ArtELingo validation of the painting-grouped split (6,152 paintings, 30,872 captions).
+3. Read-out r0 only: raw cosine between the L2-normalised tower outputs (no centering, no expansion).
+4. Nine cells per arm: aspect (emotion, style, genre) x direction (t2i, i2t, t2t). Each cell is the label mAP of r22 /
+   r23: per-query AP with relevance by the aspect label (a caption's own emotion; a painting's plurality emotion; style
+   and genre of the painting; unlabelled rows leave query and gallery, masked only at AP), a query's own row leaves the
+   gallery; the cell value is the mean AP over queries with a finite AP (float64 mean).
+5. Text group of an arm = the mean of its nine cells. SC1: the arm with the higher text group is K*; an exact tie goes
+   to K1 (siglip1).
+6. P1 (plain SigLIP 1, no training): the same nine cells and group at r0, with the stored SigLIP 1 rows themselves as
+   the vectors (L2-normalised): text rows from the plain store (form "plain") and from the prefixed store (form
+   "prefixed"), image rows from the SigLIP 1 image store. P1's form = the form with the higher P1 text group; an exact
+   tie goes to plain. (The rule uses P1's form only when K2 wins; compute both anyway.)
+
+## Output
+Write /project/CoSiR/src/test/20261112_siglip_only/rederive/sc1_rederived.json:
+{ "arms": { "siglip1": {"cells": {"emotion/t2i": v, ...nine...}, "group": g}, "siglip1_prefix": {...},
+            "p1_siglip1": {...}, "p1_siglip1_prefix": {...} },
+  "kstar": "siglip1" | "siglip1_prefix", "kstar_form": "plain" | "prefixed", "p1_form": "plain" | "prefixed",
+  "counts": {per arm and cell: number of scored queries}, "notes": [any choice you had to make that the rule did not fix] }
+Full float precision (no rounding). Name the script rederive/r29rd_sc1.py (module prefix r29rd_). In your final message
+give: the four group values, the pick, P1's form, the number of scored queries per cell, every choice the rule left open
+and how you settled it, and the run time.
+
+## Timing note
+The two arms are still training while you start: K1's weights appear first, K2's about 20 to 30 minutes later. Build
+and test the script on what exists (P1 needs no weights); do not wait for K2. If K2's weights are missing when you
+finish, end with the full command; the controller runs it under the CPU queue once both arms exist.

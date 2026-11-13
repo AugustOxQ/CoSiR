@@ -1,0 +1,118 @@
+{
+  "arms": {
+    "siglip1": {
+      "cells": {
+        "emotion/t2i": 0.2592637078751436,
+        "emotion/i2t": 0.2586994461715549,
+        "emotion/t2t": 0.3071504495094977,
+        "style/t2i": 0.16216464223651483,
+        "style/i2t": 0.13180489025932016,
+        "style/t2t": 0.10115553211611719,
+        "genre/t2i": 0.41589025307788585,
+        "genre/i2t": 0.38535485278625387,
+        "genre/t2t": 0.2759104541628929
+      },
+      "group": 0.2552660253550201
+    },
+    "siglip1_prefix": {
+      "cells": {
+        "emotion/t2i": 0.2597171851296228,
+        "emotion/i2t": 0.25833072003267044,
+        "emotion/t2t": 0.30810164185856453,
+        "style/t2i": 0.16087011262968523,
+        "style/i2t": 0.1320999467981277,
+        "style/t2t": 0.10115830579148337,
+        "genre/t2i": 0.4156168530330695,
+        "genre/i2t": 0.38479834703340643,
+        "genre/t2t": 0.27685092545910484
+      },
+      "group": 0.2552826708628595
+    },
+    "p1_siglip1": {
+      "cells": {
+        "emotion/t2i": 0.201851568295173,
+        "emotion/i2t": 0.20040201814485972,
+        "emotion/t2t": 0.19323625808488115,
+        "style/t2i": 0.10753416956218832,
+        "style/i2t": 0.09307126183556008,
+        "style/t2t": 0.08309116967615175,
+        "genre/t2i": 0.2960124720406862,
+        "genre/i2t": 0.23529772313387054,
+        "genre/t2t": 0.21049845629939248
+      },
+      "group": 0.18011056634141814
+    },
+    "p1_siglip1_prefix": {
+      "cells": {
+        "emotion/t2i": 0.1989609640995644,
+        "emotion/i2t": 0.202469425105776,
+        "emotion/t2t": 0.19017770021189875,
+        "style/t2i": 0.10396379754712798,
+        "style/i2t": 0.09445642038929979,
+        "style/t2t": 0.08284392447696355,
+        "genre/t2i": 0.28086566548906056,
+        "genre/i2t": 0.24346469845372923,
+        "genre/t2t": 0.2175277721634303
+      },
+      "group": 0.17941448532631676
+    }
+  },
+  "kstar": "siglip1_prefix",
+  "kstar_form": "prefixed",
+  "p1_form": "plain",
+  "counts": {
+    "siglip1": {
+      "emotion/t2i": 30872,
+      "emotion/i2t": 6152,
+      "emotion/t2t": 30872,
+      "style/t2i": 30872,
+      "style/i2t": 6152,
+      "style/t2t": 30872,
+      "genre/t2i": 24886,
+      "genre/i2t": 4960,
+      "genre/t2t": 24886
+    },
+    "siglip1_prefix": {
+      "emotion/t2i": 30872,
+      "emotion/i2t": 6152,
+      "emotion/t2t": 30872,
+      "style/t2i": 30872,
+      "style/i2t": 6152,
+      "style/t2t": 30872,
+      "genre/t2i": 24886,
+      "genre/i2t": 4960,
+      "genre/t2t": 24886
+    },
+    "p1_siglip1": {
+      "emotion/t2i": 30872,
+      "emotion/i2t": 6152,
+      "emotion/t2t": 30872,
+      "style/t2i": 30872,
+      "style/i2t": 6152,
+      "style/t2t": 30872,
+      "genre/t2i": 24886,
+      "genre/i2t": 4960,
+      "genre/t2t": 24886
+    },
+    "p1_siglip1_prefix": {
+      "emotion/t2i": 30872,
+      "emotion/i2t": 6152,
+      "emotion/t2t": 30872,
+      "style/t2i": 30872,
+      "style/i2t": 6152,
+      "style/t2t": 30872,
+      "genre/t2i": 24886,
+      "genre/i2t": 4960,
+      "genre/t2t": 24886
+    }
+  },
+  "notes": [
+    "Gallery order for exact cosine ties: painting names ascending for images; sample IDs ascending for captions (r22/r23 convention).",
+    "Painting-emotion plurality ties use the alphabetically earliest emotion, as the frozen label convention; all nine emotions, including something else, are retained.",
+    "Float16 stored rows are promoted to float32 and L2-normalised once before towers; towers, exact GELU, output L2 and cosine use float32 CPU. AP arithmetic, cell means and nine-cell group means use float64; no intermediate float32 AP storage.",
+    "A query with no relevant labelled gallery row after own-row removal has nonfinite AP and is excluded; counts report finite APs only.",
+    "Own-row exclusion applies to the identical caption sample ID in t2t only; paired paintings/captions remain in cross-modal galleries.",
+    "The requested prefixed store records prefix \"represent the caption: \" (lowercase) in index.json, while the specification writes \"Represent the caption: \". The specified stored vectors are used as supplied, without re-encoding.",
+    "p1_form reports the independently stronger P1 form even if K1 wins; its use as the comparator form is conditional on K2 winning, per D20."
+  ]
+}
