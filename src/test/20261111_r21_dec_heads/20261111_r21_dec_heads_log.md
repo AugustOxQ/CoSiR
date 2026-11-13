@@ -266,3 +266,5 @@ Spec: `docs/superpowers/specs/2026-11-11-r21-dec-heads-design.md`. Decision line
   high-silhouette group (mean 0.160 against 0.235); the DEC forms keep more of it.
 - 04:00: step 9 started: auto report draft by Codex `gpt-6.1-sol` medium (brief `.scratch/r21-dec-heads/report/task.txt`).
   The direct contrast "DEC arm minus λ = 0" is still the user's open question (asked 02:10); the report lists it as option a.
+- 04:02: cut by the context meter (200k). Step 9 moves to "r21 run 4" (handoff
+  `docs/superpowers/handoffs/2026-11-13-r21-run-4-handoff.md`); the direct-contrast question goes with it.
