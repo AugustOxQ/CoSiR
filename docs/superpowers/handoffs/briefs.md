@@ -2506,3 +2506,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-13-r31-run-3-handoff.md
 - New chat: tab 'r31 run 3', session 6633fd7b-afe5-4ad7-ad48-f052dbbcce21
 
+[brief] CoSiR: paper plan 9 -> paper plan 10 (2026-11-13 19:27 Amsterdam)
+- Done: 4.5 checked by the user, 4.7 written, the Figure 3 and 4 captions, the selection rule in the supplementary, the open intro list closed. Cold read and facts check of Section 4 done (REPO `a2dd3ed`).
+- State: no wrong number. One error: the ablation's "without instructed graphs" arm uses a graph on plain Qwen3, not SigLIP 1 (4.5 text and Table 5 caption).
+- Next: launch the polish subagent with both reports as input, then show the user all findings.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-13-paper-plan-10-handoff.md
+- New chat: tab 'paper plan 10', session 65d5740f-8bbc-468c-8b60-98ff2cfeebc7
+
