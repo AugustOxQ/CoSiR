@@ -2400,3 +2400,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-13-r29-run-handoff.md
 - New chat: tab 'r29 run', session c36e6513-888c-407e-ac75-eb4e5756fa7a
 
+[brief] CoSiR: r21 run 4 -> r30 decide (2026-11-13 04:16 Amsterdam)
+- Done: r21 (a DEC loss on c*'s heads) is reported: auto report 2027-01-17 and user-read report 2026-11-13, both checked.
+- State: all three DEC forms raise style AMI (+0.006 to +0.008 on 0.411); the λ = 0 control shows no clear change.
+- Next: show the user the results brief without our reading, get their reading, then wrap up and decide (step 2).
+- Blocked: the user's answer on the direct contrast "DEC form minus control" (option a, asked 2026-11-13 02:10).
+- Handoff: docs/superpowers/handoffs/2026-11-13-r30-decide-handoff.md
+- New chat: tab 'r30 decide', session 3342c361-e970-4b68-9d8d-39be9b6cd28b
+
