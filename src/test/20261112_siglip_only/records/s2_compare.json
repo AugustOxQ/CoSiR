@@ -3209,6 +3209,586 @@
      "/project/CoSiR/src/test/20261112_siglip_only/rederive/s2mp_val.json": "81bfab9e77b47bb97e86a8cc1832af01ae565ac74a95d5f0ad4287930a0c5318"
     },
     "written": "2026-11-13 21:51"
+   },
+   "sc9": {
+    "status": "pass",
+    "n_compared": 86,
+    "max_abs_diff": 1.5773044370614997e-08,
+    "mismatches": [],
+    "unpaired": [
+     {
+      "side": "ours",
+      "field": "encoder_pick: ranking, tie, sources, role, written",
+      "note": "ranking[1] is read as runner_up"
+     },
+     {
+      "side": "codex",
+      "field": "sc9.n_seeds_ahead; forward_check, replays",
+      "note": "information"
+     }
+    ],
+    "info": [
+     {
+      "item": "sc9/qwen_info",
+      "ours": 0.36972331848385626,
+      "codex": 0.36972331848385626,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "sc9/n_seeds_ahead",
+      "ours": 5,
+      "codex": 5,
+      "diff": 0,
+      "equal": true
+     }
+    ],
+    "codex_status": {
+     "complete": true,
+     "kind": "validation",
+     "definition_notes": [
+      "AMI/SC9: float16 exports promoted to float32 without another normalization, MiniBatchKMeans K=9/27/10, n_init=3, batch_size=4096, random_state=0/1/2, eight threads. Cluster all painting rows then mask negative labels. Mean over states then seeds. AMI range is max minus min across five validation seeds.",
+      "Bootstrap: fresh default_rng(0) per comparison. AMI 2000 draws: all painting rows then five candidate seeds; three fixed partitions per seed, re-score repeated rows, mask missing labels after resampling. mAP 10000 draws: labelled query rows then five seeds; gallery fixed. Unseeded plain/Q1 comparators draw no seeds. numpy linear percentiles at 2.5/97.5.",
+      "SC9 seeds_ahead is the list of matched seed IDs s for which leader group[s] > runner_up group[s] strictly; tied seeds do not count. Highest exact mean wins; an exact tie involving siglip1 goes to siglip1; otherwise stable siglip2 then clip_l14 order resolves the unspecified tie. close_call is strict margin < leader five-seed range."
+     ]
+    },
+    "items": [
+     {
+      "item": "siglip2/group/cell/ami/emotion[0]",
+      "ours": 0.10529666927810068,
+      "codex": 0.10529666927810068,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/group/cell/ami/emotion[1]",
+      "ours": 0.09727578473880243,
+      "codex": 0.09727578473880243,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/group/cell/ami/emotion[2]",
+      "ours": 0.10782529859614981,
+      "codex": 0.10782529859614981,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/group/cell/ami/emotion[3]",
+      "ours": 0.10837085993223557,
+      "codex": 0.10837085993223557,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/group/cell/ami/emotion[4]",
+      "ours": 0.10116774850820782,
+      "codex": 0.10116774850820782,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/group/cell/map/emotion[0]",
+      "ours": 0.26755068905446927,
+      "codex": 0.26755068905446927,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/group/cell/map/emotion[1]",
+      "ours": 0.26604790210562634,
+      "codex": 0.26604790210562634,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/group/cell/map/emotion[2]",
+      "ours": 0.2679573050693206,
+      "codex": 0.2679573050693206,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/group/cell/map/emotion[3]",
+      "ours": 0.2686733820491483,
+      "codex": 0.2686733820491483,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/group/cell/map/emotion[4]",
+      "ours": 0.2665730860256801,
+      "codex": 0.2665730860256801,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/group/cell/ami/style[0]",
+      "ours": 0.4613545977833016,
+      "codex": 0.4613545977833016,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/group/cell/ami/style[1]",
+      "ours": 0.454867327193194,
+      "codex": 0.454867327193194,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/group/cell/ami/style[2]",
+      "ours": 0.4558400951852574,
+      "codex": 0.4558400951852574,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/group/cell/ami/style[3]",
+      "ours": 0.4515703178627477,
+      "codex": 0.4515703178627477,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/group/cell/ami/style[4]",
+      "ours": 0.4426363973235341,
+      "codex": 0.4426363973235341,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/group/cell/map/style[0]",
+      "ours": 0.3415369242596229,
+      "codex": 0.3415369242596229,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/group/cell/map/style[1]",
+      "ours": 0.3390120028075877,
+      "codex": 0.3390120028075877,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/group/cell/map/style[2]",
+      "ours": 0.33909989901960313,
+      "codex": 0.33909989901960313,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/group/cell/map/style[3]",
+      "ours": 0.34012885490360123,
+      "codex": 0.34012885490360123,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/group/cell/map/style[4]",
+      "ours": 0.3379725004318518,
+      "codex": 0.3379725004318518,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/group/cell/ami/genre[0]",
+      "ours": 0.5373776963393063,
+      "codex": 0.5373776963393063,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/group/cell/ami/genre[1]",
+      "ours": 0.5452786069312513,
+      "codex": 0.5452786069312513,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/group/cell/ami/genre[2]",
+      "ours": 0.5334225036840954,
+      "codex": 0.5334225036840954,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/group/cell/ami/genre[3]",
+      "ours": 0.5333686612492207,
+      "codex": 0.5333686612492207,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/group/cell/ami/genre[4]",
+      "ours": 0.5271416558479648,
+      "codex": 0.5271416558479648,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/group/cell/map/genre[0]",
+      "ours": 0.6023460421862233,
+      "codex": 0.6023460421862233,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/group/cell/map/genre[1]",
+      "ours": 0.6047263107823073,
+      "codex": 0.6047263107823073,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/group/cell/map/genre[2]",
+      "ours": 0.6028279723354208,
+      "codex": 0.6028279723354208,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/group/cell/map/genre[3]",
+      "ours": 0.6025072073736855,
+      "codex": 0.6025072073736855,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/group/cell/map/genre[4]",
+      "ours": 0.6030896882786969,
+      "codex": 0.6030896882786969,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/group/per_seed[0]",
+      "ours": 0.385910436483504,
+      "codex": 0.385910436483504,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/group/per_seed[1]",
+      "ours": 0.38453465575979484,
+      "codex": 0.38453465575979484,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/group/per_seed[2]",
+      "ours": 0.38449551231497453,
+      "codex": 0.38449551231497453,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/group/per_seed[3]",
+      "ours": 0.38410321389510643,
+      "codex": 0.38410321389510643,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/group/per_seed[4]",
+      "ours": 0.37976351273598924,
+      "codex": 0.37976351273598924,
+      "diff": 0.0
+     },
+     {
+      "item": "siglip2/group/mean",
+      "ours": 0.38376146623787377,
+      "codex": 0.38376146623787377,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/group/cell/ami/emotion[0]",
+      "ours": 0.09910124379406515,
+      "codex": 0.09910124379406515,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/group/cell/ami/emotion[1]",
+      "ours": 0.09701746731272792,
+      "codex": 0.09701746731272792,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/group/cell/ami/emotion[2]",
+      "ours": 0.10578284654341101,
+      "codex": 0.10578284654341101,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/group/cell/ami/emotion[3]",
+      "ours": 0.09688984989115512,
+      "codex": 0.09688984989115512,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/group/cell/ami/emotion[4]",
+      "ours": 0.09736597385140722,
+      "codex": 0.09736597385140722,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/group/cell/map/emotion[0]",
+      "ours": 0.26523402424164216,
+      "codex": 0.26523402424164216,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/group/cell/map/emotion[1]",
+      "ours": 0.26538266884076533,
+      "codex": 0.26538266884076533,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/group/cell/map/emotion[2]",
+      "ours": 0.2674006509642251,
+      "codex": 0.2674006509642251,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/group/cell/map/emotion[3]",
+      "ours": 0.2642577860947551,
+      "codex": 0.2642577860947551,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/group/cell/map/emotion[4]",
+      "ours": 0.26333833945530205,
+      "codex": 0.26333833945530205,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/group/cell/ami/style[0]",
+      "ours": 0.44656154846725943,
+      "codex": 0.44656154846725943,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/group/cell/ami/style[1]",
+      "ours": 0.43879238302752505,
+      "codex": 0.43879238302752505,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/group/cell/ami/style[2]",
+      "ours": 0.4458451296137664,
+      "codex": 0.4458451296137664,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/group/cell/ami/style[3]",
+      "ours": 0.4380053880663591,
+      "codex": 0.4380053880663591,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/group/cell/ami/style[4]",
+      "ours": 0.43531343493986746,
+      "codex": 0.43531343493986746,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/group/cell/map/style[0]",
+      "ours": 0.3276031623490442,
+      "codex": 0.3276031623490442,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/group/cell/map/style[1]",
+      "ours": 0.3276467467542503,
+      "codex": 0.3276467467542503,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/group/cell/map/style[2]",
+      "ours": 0.32494226619264155,
+      "codex": 0.32494226619264155,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/group/cell/map/style[3]",
+      "ours": 0.32780064478045845,
+      "codex": 0.32780064478045845,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/group/cell/map/style[4]",
+      "ours": 0.32691408301726493,
+      "codex": 0.32691408301726493,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/group/cell/ami/genre[0]",
+      "ours": 0.5228592818600394,
+      "codex": 0.5228592818600394,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/group/cell/ami/genre[1]",
+      "ours": 0.5385861081083547,
+      "codex": 0.5385861081083547,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/group/cell/ami/genre[2]",
+      "ours": 0.5169824740834494,
+      "codex": 0.5169824740834494,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/group/cell/ami/genre[3]",
+      "ours": 0.5431463256790173,
+      "codex": 0.5431463256790173,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/group/cell/ami/genre[4]",
+      "ours": 0.5264829627910904,
+      "codex": 0.5264829627910904,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/group/cell/map/genre[0]",
+      "ours": 0.5953314617685095,
+      "codex": 0.5953314617685095,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/group/cell/map/genre[1]",
+      "ours": 0.5946665795414834,
+      "codex": 0.5946665795414834,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/group/cell/map/genre[2]",
+      "ours": 0.5946182416618581,
+      "codex": 0.5946182416618581,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/group/cell/map/genre[3]",
+      "ours": 0.5957250066783594,
+      "codex": 0.5957250066783594,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/group/cell/map/genre[4]",
+      "ours": 0.5958107881340624,
+      "codex": 0.5958107881340624,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/group/per_seed[0]",
+      "ours": 0.3761151204134266,
+      "codex": 0.3761151204134266,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/group/per_seed[1]",
+      "ours": 0.37701532559751777,
+      "codex": 0.37701532559751777,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/group/per_seed[2]",
+      "ours": 0.37592860150989194,
+      "codex": 0.37592860150989194,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/group/per_seed[3]",
+      "ours": 0.37763750019835074,
+      "codex": 0.37763750019835074,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/group/per_seed[4]",
+      "ours": 0.37420426369816573,
+      "codex": 0.37420426369816573,
+      "diff": 0.0
+     },
+     {
+      "item": "clip_l14/group/mean",
+      "ours": 0.37618016228347056,
+      "codex": 0.37618016228347056,
+      "diff": 0.0
+     },
+     {
+      "item": "sc9/kstar_per_seed[0]",
+      "ours": 0.39002190942696724,
+      "codex": 0.39002191762602184,
+      "diff": 8.199054601920608e-09
+     },
+     {
+      "item": "sc9/kstar_per_seed[1]",
+      "ours": 0.3892662029109865,
+      "codex": 0.3892662063582939,
+      "diff": 3.4473073839969004e-09
+     },
+     {
+      "item": "sc9/kstar_per_seed[2]",
+      "ours": 0.3861508228616182,
+      "codex": 0.3861508386346626,
+      "diff": 1.5773044370614997e-08
+     },
+     {
+      "item": "sc9/kstar_per_seed[3]",
+      "ours": 0.3905480933223751,
+      "codex": 0.39054809630322646,
+      "diff": 2.9808513435369832e-09
+     },
+     {
+      "item": "sc9/kstar_per_seed[4]",
+      "ours": 0.38509155193322325,
+      "codex": 0.3850915452794123,
+      "diff": 6.653810946666283e-09
+     },
+     {
+      "item": "sc9/mean/siglip1",
+      "ours": 0.38821571609103406,
+      "codex": 0.3882157208403234,
+      "diff": 4.749289350680641e-09
+     },
+     {
+      "item": "sc9/mean/siglip2",
+      "ours": 0.38376146623787377,
+      "codex": 0.38376146623787377,
+      "diff": 0.0
+     },
+     {
+      "item": "sc9/mean/clip_l14",
+      "ours": 0.37618016228347056,
+      "codex": 0.37618016228347056,
+      "diff": 0.0
+     },
+     {
+      "item": "sc9/pick",
+      "ours": "siglip1",
+      "codex": "siglip1",
+      "equal": true
+     },
+     {
+      "item": "sc9/runner_up",
+      "ours": "siglip2",
+      "codex": "siglip2",
+      "equal": true
+     },
+     {
+      "item": "sc9/margin",
+      "ours": 0.004454249853160286,
+      "codex": 0.0044542546024496366,
+      "diff": 4.749289350680641e-09
+     },
+     {
+      "item": "sc9/seeds_ahead",
+      "ours": [
+       0,
+       1,
+       2,
+       3,
+       4
+      ],
+      "codex": [
+       0,
+       1,
+       2,
+       3,
+       4
+      ],
+      "equal": true
+     },
+     {
+      "item": "sc9/leader_range",
+      "ours": 0.005456541389151859,
+      "codex": 0.005456551023814149,
+      "diff": 9.634662290203266e-09
+     },
+     {
+      "item": "sc9/close_call",
+      "ours": true,
+      "codex": true,
+      "equal": true
+     }
+    ],
+    "inputs": {
+     "/project/CoSiR/src/test/20261112_siglip_only/records/image_groups_siglip2_prefix.json": "34259e97871877f2620cc27e2d28fbd20c2e7ad7d58f2b6472870f97db1d72c9",
+     "/project/CoSiR/src/test/20261112_siglip_only/records/image_groups_clipl14_prefix.json": "b2299988c9775fcc8350da9990ee099a1043c1eb09115d45cbfd39e9440b1fd3",
+     "/project/CoSiR/src/test/20261112_siglip_only/records/encoder_pick.json": "bbbbb4e0508051139a7e4cbc313c2778b834d0e50520b88c99f0893b8f7dac34",
+     "/project/CoSiR/src/test/20261112_siglip_only/rederive/s2e_val.json": "a0bd2a07191546c3eb8126a365dbe4bc959e28da641847ea37467341e0bd8bf7"
+    },
+    "written": "2026-11-14 00:23"
    }
   }
  },
@@ -3216,13 +3796,14 @@
   "val": {
    "mmart": [],
    "e2e3": [],
-   "photo": []
+   "photo": [],
+   "sc9": []
   }
  },
  "missing": {
   "val": {}
  },
  "written": {
-  "val": "2026-11-13 21:51"
+  "val": "2026-11-14 00:23"
  }
 }

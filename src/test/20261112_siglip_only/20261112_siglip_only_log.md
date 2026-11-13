@@ -189,3 +189,10 @@ mode. Outputs `/data/SSD2/cosir_r29/20261112_siglip_only/` (stage logs in its `l
 - 21:46 F1 training 15.7 min; photo exports; photo picks 4.3 min (35c18106; Affection and EmoSet `center+k10`). Ablation
   training starts (instructed graphs first). Codex `s2mp val --piece photo` (4.6 min, exit 0): `s2mp_val.json` complete
   (both pieces). C13 comparison `--phase val --pieces photo`: pass, 23 fields, largest difference 8.3e-15, no mismatch.
+- 21:46 to 00:22 Ablation training, four removals (instructed graphs 40.8 min, content correction 40.8, buddy 50.6,
+  relational 22.6), each with its validation export. 00:22 `encoder-pick`: SigLIP 1 (0.38822) over SigLIP 2 (0.38376)
+  and CLIP L/14 (0.37618), margin 0.00445, ahead in 5 of 5 seeds, close call (margin below SigLIP 1's seed range
+  0.00546). Part a done 00:22, no failed step (4c8d7579).
+- 00:24 C13 comparison `--phase val --pieces sc9`: pass, 86 fields, no mismatch. Largest differences are K*'s per-seed
+  group values (1.6e-8; leader range 9.6e-9, SigLIP 1 mean 4.7e-9), within D23's 1e-6; E2's and E3's SC9 numbers are
+  exact. Every val piece (e2e3, sc9, mmart, photo) now passes, so part b may start (SC9 bullet).
