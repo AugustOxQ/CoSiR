@@ -35,9 +35,10 @@ def _unit(x):
 
 
 class FakeData:
-    """Class-structured rows: F1's noise per quality, plain very noisy, teacher in between. `forbid`: splits it must not serve."""
+    """Class-structured rows: F1 noisy enough that its mAP is below 1 and varies by seed (a range of 0 would stop the picks), plain
+    much noisier, teacher in between. `forbid`: splits it must not serve."""
 
-    def __init__(self, f1_noise=0.4, plain_noise=2.0, teacher_noise=1.0, forbid=()):
+    def __init__(self, f1_noise=3.5, plain_noise=12.0, teacher_noise=7.0, forbid=()):
         self.f1_noise, self.plain_noise, self.teacher_noise, self.forbid = f1_noise, plain_noise, teacher_noise, forbid
         rng = np.random.default_rng(7)
         self.centers = {s: _unit(rng.normal(size=(k, W))) for s, k in KS.items()}
@@ -197,7 +198,9 @@ def test_eight_cells_in_ticket_06_shape_and_readable_by_the_ladder(monkeypatch):
     for c in cells:
         key, comp, cell = L.normalize(c, 'siglip1', 'siglip1', 'SC6', 'photo')     # ticket 08 accepts every cell
         assert key[0] == c['set'] and comp == ('P1' if c['comparator'] == 'plain' else 'Q1') and cell['outcome'] == c['outcome']
-        assert c['lo'] <= c['d'] <= c['hi'] and c['d'] == pytest.approx(c['value'] - c['comparator_value'], abs=1e-12)
+        assert c['lo'] <= c['hi'] and c['d'] == pytest.approx(c['value'] - c['comparator_value'], abs=1e-12)
+        if c['metric'] == 'map':       # mAP is linear in the resampled queries; AMI of resampled rows is biased at n = 80 or 90 (duplicates)
+            assert c['lo'] <= c['d'] <= c['hi']
         assert c['encoder'] == 'siglip1' and c['arm'] == 'siglip1' and c['aspect'] == 'emotion'
     assert {c['k'] for c in cells if c['metric'] == 'ami'} == {8, 9}
 
