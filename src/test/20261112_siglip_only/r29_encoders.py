@@ -87,18 +87,15 @@ def default_root(encoder):
 
 # ------------------------------------------------------------------------------------------------ D3 and D13
 def require_pass():
-    """D3: stage 2 only after `records/pass_rule.json` says pass."""
-    path = records_dir() / 'pass_rule.json'
-    if not path.is_file():
-        raise RuntimeError(f'no {path}: stage 2 (E2, E3) runs only after a pass of SC2 (D3)')
-    status = json.loads(path.read_text()).get('status')
-    if status != 'pass':
-        raise RuntimeError(f'{path}: status {status!r}, not "pass": stage 2 (E2, E3) does not run (D3)')
+    """D3 as amended by A1: stage 2 only after `records/pass_rule.json` says pass, or on its fail under a committed A1 record
+    (`P.stage2_gate`). Returns the gate's answer, "pass" or "A1"."""
+    return P.stage2_gate(records_dir())
 
 
-def read_prefix_pick():
-    """`records/prefix_pick.json`, its four keys asserted (the index's Shared interfaces); the form must agree with kstar."""
-    path = records_dir() / 'prefix_pick.json'
+def read_prefix_pick(records=None):
+    """`records/prefix_pick.json`, its four keys asserted (the index's Shared interfaces); the form must agree with kstar.
+    `records` overrides the usual records directory for callers such as r29_decide's CLI and temporary-folder tests."""
+    path = Path(records) / 'prefix_pick.json' if records is not None else records_dir() / 'prefix_pick.json'
     if not path.is_file():
         raise RuntimeError(f'no {path}: ticket 05 writes it; E2 and E3 take K*\'s caption form from it (D13)')
     doc = json.loads(path.read_text())
@@ -120,10 +117,10 @@ def arm_source(encoder, form):
     return source
 
 
-def kstar_source(encoder):
+def kstar_source(encoder, records=None):
     """D13: E2's and E3's caption source is the store of K*'s form, no own check."""
     assert encoder in ENCODERS, f'encoder {encoder!r}: not one of {ENCODERS}'
-    return arm_source(encoder, read_prefix_pick()['kstar_form'])
+    return arm_source(encoder, read_prefix_pick(records)['kstar_form'])
 
 
 def arm_encoder(source):

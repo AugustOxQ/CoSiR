@@ -784,3 +784,75 @@ def test_table8_reads_the_new_record_with_k_stars_caption_form(tmp_path):
                                                            siglip1_text_pass=ms(1.234), caption_tower_three_aspects=ms(0.056))))
     text = sheet_of(tmp_path)
     assert '| SigLIP 1 text pass (K* caption form: prefixed) | n/a | 1.234 |' in text and '| 0.056 |' in text
+
+
+# --- A1: stage 2 on the fail, only with R29_AMENDMENT=A1 and a committed A1 record (D3 as amended)
+def _a1_repo(tmp_path, monkeypatch, flag='A1'):
+    """records/ inside a git repo: pass_rule (fail), the A1 record, SC4 cells and every gate record, all committed."""
+    repo, g = _git_repo(tmp_path)
+    records = repo / 'records'
+    write_cells(records, 'siglip2', other=None)
+    (records / 'image_cells_siglip2.json').write_text(json.dumps(
+        dict(arm='siglip2', encoder='siglip2', cells=_sc4_cells('siglip2', 'siglip2', [W] * 5 + [B], [W] * 6))))
+    (records / 'pass_rule.json').write_text(json.dumps(dict(status='fail', level=0, arm='siglip1_prefix')))
+    (records / 'amendment_A1.json').write_text(json.dumps(dict(
+        amendment='A1', applies_to=dict(pass_rule_status='fail', pass_rule_level=0, arm='siglip1_prefix'), note=L.P.A1_LINE)))
+    g('add', '-f', 'records/pass_rule.json', 'records/amendment_A1.json')
+    g('commit', '-q', '-m', 'x')
+    if flag is None:
+        monkeypatch.delenv('R29_AMENDMENT', raising=False)
+    else:
+        monkeypatch.setenv('R29_AMENDMENT', flag)
+    return repo, records
+
+
+def test_sc4_on_the_fail_refuses_without_the_flag_and_carries_the_a1_key_with_it(tmp_path, monkeypatch):
+    repo, records = _a1_repo(tmp_path, monkeypatch, flag=None)
+    with pytest.raises(RuntimeError, match='--amendment A1'):
+        L.build_record('SC4', 'siglip2', encoder='siglip2', records=records, repo=repo)
+    monkeypatch.setenv('R29_AMENDMENT', 'A1')
+    rec = L.build_record('SC4', 'siglip2', encoder='siglip2', records=records, repo=repo)
+    assert rec['amendment'] == 'A1' and rec['amendment_line'] == 'stage 2 ran on the fail under A1'
+    assert rec['level'] == 1 and rec['n_cells'] == 6                     # the level is what it was: A1 changes no number
+    path, _ = L.write_ladder('SC4', 'siglip2', encoder='siglip2', records=records, repo=repo)
+    assert json.loads(path.read_text())['amendment'] == 'A1'
+    (records / 'amendment_A1.json').write_text('{}')                     # an edited A1 record: refused again
+    with pytest.raises(RuntimeError, match='not committed'):
+        L.build_record('SC4', 'siglip2', encoder='siglip2', records=records, repo=repo)
+
+
+def test_a_pass_record_and_an_sc3_record_carry_no_a1_key(tmp_path, monkeypatch):
+    img, txt = art_cells([W] * 15, [W] * 15)
+    write_cells(tmp_path, 'siglip1', img, txt)
+    monkeypatch.setenv('R29_AMENDMENT', 'A1')                           # a pass: the gate answers "pass", whatever the flag
+    assert 'amendment' not in L.build_record('SC3', 'siglip1', records=tmp_path)
+    repo, records = _a1_repo(tmp_path / 'r2', monkeypatch)
+    write_cells(records, 'siglip1', img, txt)
+    assert 'amendment' not in L.build_record('SC3', 'siglip1', records=records, repo=repo)    # stage 1: presence and commit only (D9)
+
+
+@pytest.mark.parametrize('flag', [None, 'A1', 'A2'])
+def test_sheet_under_a1_carries_the_a1_line_instead_of_not_run_d3(tmp_path, monkeypatch, flag):
+    repo, records = _a1_repo(tmp_path, monkeypatch, flag=flag)
+    text = L.sheet_text(records)
+    assert 'stage 2 ran on the fail under A1' in text and 'not run (D3)' not in text and 'Not run (D3)' not in text
+    (records / 'amendment_A1.json').write_text('{}')
+    text = L.sheet_text(records)
+    assert 'SC4 to SC7: not run (D3).' in text and 'under A1' not in text
+    (records / 'amendment_A1.json').rename(records / 'amendment_A1.absent')
+    assert 'SC4 to SC7: not run (D3).' in L.sheet_text(records)
+
+
+@pytest.mark.parametrize('tie', [None, ['siglip1', 'siglip2']])
+def test_sc9_sheet_section_shows_recorded_a1_line_and_tied_encoders(tmp_path, tie):
+    rows = {enc: dict(score=.5, seed_range=0., per_seed=[.5]*5)
+            for enc in ('siglip1', 'siglip2', 'clip_l14', 'qwen')}
+    (tmp_path / 'encoder_pick.json').write_text(json.dumps(dict(
+        seeds=list(range(5)), encoders=rows, pick='siglip1', margin=0., seeds_ahead=[], close_call=False,
+        tie=tie, amendment='A1', amendment_line=L.P.A1_LINE)))
+    text = L.sc9_section(tmp_path)
+    assert text.index('## SC9') < text.index(L.P.A1_LINE) < text.index('| Encoder |')
+    if tie is None:
+        assert 'Tie:' not in text
+    else:
+        assert 'Tie: siglip1, siglip2' in text

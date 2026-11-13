@@ -83,11 +83,14 @@ def check_root(root, smoke=False):
 
 
 def require_pass(enc):
-    """D3: E2 and E3 (stage 2) only after `records/pass_rule.json` says pass."""
+    """D3 as amended by A1: E2 and E3 (stage 2) only after `records/pass_rule.json` says pass, or on its fail under a committed A1
+    record (`P.stage2_gate`)."""
     if enc in STAGE2_ENCODERS:
-        path = P.RECORDS / 'pass_rule.json'
-        assert path.is_file() and json.loads(path.read_text()).get('status') == 'pass', \
-            f'{enc} is a stage 2 encoder: needs {path} with status "pass" (D3)'
+        try:
+            P.stage2_gate(P.RECORDS)
+        except RuntimeError as exc:
+            raise AssertionError(f'{enc} is a stage 2 encoder: needs {P.RECORDS / "pass_rule.json"} with status "pass", '
+                                 f'or "fail" under A1 (D3): {exc}') from exc
 
 
 def check_args(enc, source):

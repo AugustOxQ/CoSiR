@@ -372,10 +372,13 @@ def _require_pass(records, check_committed=False):
     """Stage 2 refusal: pass_rule.json says pass (D3) and, for `cells` outside smoke (`check_committed`, as ticket 06's cells), is
     committed unchanged in HEAD before any test number (spec §3.4, §3.5 row 1b)."""
     path = Path(records) / 'pass_rule.json'
-    if not path.exists() or _json(path).get('status') != 'pass':
-        raise RuntimeError(f'stage 2 command refused: {path} must exist and say status pass (D3, pass_rule)')
+    try:
+        gate = P.stage2_gate(records)                    # D3 as amended by A1: "pass", or "A1"
+    except RuntimeError as exc:
+        raise RuntimeError(f'stage 2 command refused: {path} must exist and say status pass, or fail under A1 (D3, pass_rule): {exc}') from exc
     if check_committed:
         P.require_committed(path, 'commit records/pass_rule.json before the test cells (spec §3.4, §3.5 row 1b)')
+    return gate
 
 
 def _picks_path(records, arm):

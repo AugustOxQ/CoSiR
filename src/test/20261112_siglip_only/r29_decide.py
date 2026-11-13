@@ -1,6 +1,8 @@
-"""r29 ticket 05: validation-only decisions (spec §§3.4–3.6, §6; D17, D20, D23, D25).
+"""r29 validation-only decisions (spec §§3.4–3.6, §6; D17, D20, D23, D25; SC9/A2).
 
 No held row is read. Frozen K0 bounds come from r28 records, never from exports.
+SC9: `sc9-replay --encoder siglip2|clip_l14` precedes `image-groups --encoder E [--root DIR]`;
+`encoder-pick` reuses K*'s SC2 groups and the saved E2/E3 groups, with r28's Qwen as information only.
 """
 import argparse
 from datetime import datetime
@@ -19,6 +21,8 @@ SEEDS = list(P.SEEDS)
 IMAGE_CELLS = tuple(f'{m}/{a}' for m in ('ami', 'map') for a in ASPECTS)
 TEXT_CELLS = tuple(f'{a}/{d}' for a in ASPECTS for d in ('t2i', 'i2t', 't2t'))
 CANDIDATES = ('siglip1', 'siglip1_prefix')
+SC9_ENCODERS = ('siglip1', 'siglip2', 'clip_l14')
+SC9_NEW_ENCODERS = SC9_ENCODERS[1:]
 
 
 def read_json(path):
@@ -272,6 +276,39 @@ def sc2(records=P.RECORDS, force=None):
                       k0=baseline, readout='r0', written=now()), force)
 
 
+def encoder_pick_verdict(per_seed):
+    """SC9 (A2): mean of five seed groups, exact SigLIP 1 tie, matched-seed report."""
+    assert set(per_seed) == set(SC9_ENCODERS), per_seed.keys()
+    encoders = {}
+    for enc in SC9_ENCODERS:
+        values = numbers(per_seed[enc], 5)
+        encoders[enc] = dict(score=float(np.mean(values)), per_seed=values,
+                             seed_range=max(values)-min(values), role='candidate')
+    # Stable order also fixes the runner-up when the two lower scores tie.
+    ranking = sorted(SC9_ENCODERS, key=lambda enc: -encoders[enc]['score'])
+    leader, runner = ranking[:2]
+    tied = [enc for enc in ranking if encoders[enc]['score'] == encoders[leader]['score']]
+    assert len(tied) == 1 or 'siglip1' in tied, f'SC9 top tie without SigLIP 1: {tied}'
+    margin = encoders[leader]['score'] - encoders[runner]['score']
+    ahead = [s for s in SEEDS if per_seed[leader][s] > per_seed[runner][s]]
+    return dict(pick=leader, ranking=ranking, tie=tied if len(tied) > 1 else None,
+                margin=margin, seeds_ahead=ahead, close_call=margin < encoders[leader]['seed_range'], encoders=encoders)
+
+
+def sc9_replay_verdict(image, frozen):
+    """D23 validation replay: every cell/seed and r28's recorded encoder score, inclusive 1e-6."""
+    assert set(image['cells']) == set(frozen['cells']) == set(IMAGE_CELLS)
+    expected = {c: numbers(frozen['cells'][c]['per_seed'], 5) for c in IMAGE_CELLS}
+    diffs = {c: [abs(v-e) for v, e in zip(numbers(image['cells'][c], 5), expected[c])] for c in IMAGE_CELLS}
+    score = numbers([image['mean']], 1)[0]
+    expected_score = numbers([frozen['score']], 1)[0]
+    score_diff = abs(score - expected_score)
+    maximum = max(score_diff, *(d for values in diffs.values() for d in values))
+    return dict(status='pass' if maximum <= 1e-6 else 'fail',
+                details=dict(tolerance=1e-6, abs_diff=diffs, score_abs_diff=score_diff, max_abs_diff=maximum,
+                             cells=image['cells'], expected_cells=expected, score=score, expected_score=expected_score))
+
+
 def arm_location(arm):
     assert arm in (*CANDIDATES, 'qwen', 'gate_i_a_new'), arm
     if arm == 'qwen':
@@ -281,21 +318,25 @@ def arm_location(arm):
     return P.OUT / 'cstar/siglip1', arm
 
 
-def image_groups(root, arm, seeds):
+def image_groups(root, arm, seeds, encoder='siglip1'):
     """Import r28's scorer unchanged; ticket 06's checked loader supplies validation exports.
 
     Only its five-seed-only summary and historical gate are adapted for a requested seed subset.
     Clustering, retrieval, labels, and joining are r28's original computation.
     """
     assert seeds and seeds == sorted(set(seeds)) and all(type(s) is int and s in SEEDS for s in seeds)
-    assert arm in (*CANDIDATES, P.K0_ARM, 'qwen'), arm
+    assert encoder in SC9_ENCODERS, encoder
+    if encoder == 'siglip1':
+        assert arm in (*CANDIDATES, P.K0_ARM, 'qwen'), arm
+    else:
+        assert arm in (*P.ENCODER_CAPTION_SOURCES[encoder][1:], P.K0_ARM, 'qwen'), (encoder, arm)
     P.use_older_rounds()
     import r28_valpick as V
     from r29_image_cells import Wiring
-    w = Wiring(root, arm, 'siglip1', splits=('val',))
+    w = Wiring(root, arm, encoder, splits=('val',))
 
     def sidecar(enc, aspect, seed, ns_data, rt_data):
-        assert enc == 'siglip1'
+        assert enc == encoder
         path = w.path('val', aspect, seed)
         arm_read, a, s, digest = w._identity(read_json(path.with_suffix('.json')))
         assert (arm_read, a, s) == (arm, aspect, seed), path
@@ -304,9 +345,9 @@ def image_groups(root, arm, seeds):
     with w, mock.patch.object(V, 'SEEDS', tuple(seeds)), \
             mock.patch.object(V, 'sidecar_dev_sha', sidecar), \
             mock.patch.object(V, 'gates', lambda enc, cells: {}):
-        result = V.score_encoder('siglip1', seeds=seeds, log=lambda *args: None)
+        result = V.score_encoder(encoder, seeds=seeds, log=lambda *args: None)
     P.check_older_imports()
-    assert result['encoder'] == 'siglip1'
+    assert result['encoder'] == encoder
     out = group_cells({c: v['per_seed'] for c, v in result['cells'].items()}, IMAGE_CELLS, seeds)
     out['names_sha256'] = result['names_sha256']
     out['files'] = {f'{a}/s{s}': str(w.path('val', a, s)) for a in ASPECTS for s in seeds}
@@ -324,6 +365,104 @@ def groups(arm, seeds, root=None, records=P.RECORDS):
     image = image_groups(root or default_root, folder, seeds)
     return write_json(Path(records) / f'groups_{arm}.json', dict(arm=arm, seeds=seeds, image=image,
                       text=selected, root=str(root or default_root), readout='r0', written=now()))
+
+
+def frozen_image_encoder(encoder, r28_records):
+    """r28's validation-only source for replay and Qwen's information row."""
+    doc = read_json(Path(r28_records) / 'valpick.json')
+    assert doc['kind'] == 'r28_valpick' and doc['seeds'] == SEEDS
+    assert doc['arm'] == P.K0_ARM + ' (c*)' and doc['n_val'] == 6152
+    row = doc['encoders'][encoder]
+    assert row['encoder'] == encoder and row['n_val'] == 6152
+    return row
+
+
+def sc9_replay(encoder, records=P.RECORDS, r28_records=P.R28_RECORDS):
+    """Replay r14's c* on E2/E3 before any new image group; no candidate or test export is read."""
+    assert encoder in SC9_NEW_ENCODERS, encoder
+    records = Path(records)
+    part = f'sc9_replay_{encoder}'
+    path = records / f'gates/{part}.json'
+    if path.exists():
+        prior = read_json(path)
+        assert prior['gate'] == part
+        assert prior['tries'] < 3, f'gate {part}: a fourth recorded try (§3.5 allows three)'
+    frozen = frozen_image_encoder(encoder, r28_records)
+    root = P.R14_OUT / 'cstar' / encoder
+    image = image_groups(root, P.K0_ARM, SEEDS, encoder=encoder)
+    verdict = sc9_replay_verdict(image, frozen)
+    verdict['details'].update(encoder=encoder, arm=P.K0_ARM, seeds=SEEDS, root=str(root),
+                              source=str(Path(r28_records) / 'valpick.json'), image=image)
+    return write_gate(records, part, verdict)
+
+
+def require_sc9_replay(records, encoder):
+    assert encoder in SC9_NEW_ENCODERS, encoder
+    part = f'sc9_replay_{encoder}'
+    doc = read_json(Path(records) / f'gates/{part}.json')
+    assert set(doc) == {'gate', 'status', 'tries', 'details', 'written'}, part
+    assert doc['gate'] == part and doc['status'] == 'pass', f'{part} must pass before SC9'
+    assert type(doc['tries']) is int and 1 <= doc['tries'] <= 3, part
+    details = doc['details']
+    assert (details['encoder'], details['arm'], details['seeds'], details['tolerance']) == \
+           (encoder, P.K0_ARM, SEEDS, 1e-6), f'{part}: replay identity or tolerance'
+    return doc
+
+
+def encoder_image_groups(encoder, root=None, records=P.RECORDS, force=None):
+    """SC9 E2/E3 group: validation only, five seeds, K*'s caption form (D13)."""
+    gate = P.stage2_gate(records)
+    require_sc9_replay(records, encoder)  # regression before the first new number
+    import r29_encoders as E
+    arm = E.kstar_source(encoder, records=records)
+    root = Path(root) if root is not None else P.OUT / 'cstar' / encoder
+    image = image_groups(root, arm, SEEDS, encoder=encoder)
+    return write_once(Path(records) / f'image_groups_{arm}.json', dict(arm=arm, encoder=encoder,
+                      seeds=SEEDS, image=image, root=str(root), written=now(), **P.a1_marks(gate)), force)
+
+
+def encoder_pick(records=P.RECORDS, force=None, r28_records=P.R28_RECORDS, expected_roots=None):
+    """SC9: reuse SC2's K* seed groups; E2/E3's saved groups; Qwen is information only (A2).
+    expected_roots can supply temporary training roots for tests; production uses image-groups' defaults."""
+    gate = P.stage2_gate(records)
+    records = Path(records)
+    if expected_roots is None:
+        expected_roots = {enc: P.OUT / 'cstar' / enc for enc in SC9_NEW_ENCODERS}
+    for enc in SC9_NEW_ENCODERS:
+        require_sc9_replay(records, enc)
+    pick = read_pick(records)
+    arm = pick['kstar']
+    kstar = read_json(records / f'groups_{arm}.json')
+    rule = read_json(records / 'pass_rule.json')
+    assert kstar['arm'] == rule['arm'] == arm and kstar['seeds'] == rule['seeds'] == SEEDS
+    values = {'siglip1': numbers(kstar['image']['per_seed'], 5)}
+    assert values['siglip1'] == numbers(rule['per_seed']['image'], 5), 'K* image groups differ from SC2'
+    group_paths = {'siglip1': str(records / f'groups_{arm}.json')}
+    import r29_encoders as E
+    for enc in SC9_NEW_ENCODERS:
+        source = E.kstar_source(enc, records=records)
+        path = records / f'image_groups_{source}.json'
+        doc = read_json(path)
+        assert (doc['arm'], doc['encoder'], doc['seeds']) == (source, enc, SEEDS), path
+        assert Path(doc['root']) == Path(expected_roots[enc]), f'{path}: unexpected encoder root {doc["root"]}'
+        image = doc['image']
+        checked = group_cells(image['cells'], IMAGE_CELLS, SEEDS)
+        assert image['per_seed'] == checked['per_seed'] and image['mean'] == checked['mean'], path
+        values[enc] = numbers(image['per_seed'], 5)
+        group_paths[enc] = str(path)
+    verdict = encoder_pick_verdict(values)
+    qwen = frozen_image_encoder('qwen', r28_records)
+    info = group_cells({c: v['per_seed'] for c, v in qwen['cells'].items()}, IMAGE_CELLS, SEEDS)
+    verdict['encoders']['qwen'] = dict(score=numbers([qwen['score']], 1)[0], per_seed=info['per_seed'],
+                                      seed_range=max(info['per_seed'])-min(info['per_seed']), role='information')
+    verdict.update(kind='r29_encoder_pick', split='artelingo validation', seeds=SEEDS, kstar=arm,
+                   pick_candidates=list(SC9_ENCODERS), information_rows=['qwen'], written=now(),
+                   sources=dict(prefix_pick=str(records / 'prefix_pick.json'),
+                                pass_rule=str(records / 'pass_rule.json'), groups=group_paths,
+                                replay_gates={e: str(records / f'gates/sc9_replay_{e}.json') for e in SC9_NEW_ENCODERS},
+                                valpick=str(Path(r28_records) / 'valpick.json')))
+    verdict.update(P.a1_marks(gate))
+    return write_once(records / 'encoder_pick.json', verdict, force)
 
 
 def gate_i_a_verdict(weights, k0_cells, new_cells=None):
@@ -503,17 +642,22 @@ def diagnostics(records=P.RECORDS):
 def cli_parser():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest='command', required=True)
-    for command in ('groups', 'sc1', 'sc2', 'gate-i-a', 'gate-i-c-valpick', 'gates', 'diagnostics'):
+    for command in ('groups', 'sc1', 'sc2', 'gate-i-a', 'gate-i-c-valpick', 'gates', 'diagnostics',
+                    'sc9-replay', 'image-groups', 'encoder-pick'):
         p = sub.add_parser(command)
         p.add_argument('--records', type=Path, default=P.RECORDS)
-        if command in ('sc1', 'sc2'):
-            p.add_argument('--force', metavar='REASON', help='replace an existing record; the reason is kept in the file')
+        if command in ('sc1', 'sc2', 'encoder-pick', 'image-groups'):
+            p.add_argument('--force', metavar='REASON', help='replace an existing record; the reason is kept in a side file')
         if command == 'groups':
             p.add_argument('--arm', choices=(*CANDIDATES, 'qwen', 'gate_i_a_new'), required=True)
             p.add_argument('--seeds', type=int, nargs='+', choices=SEEDS, required=True)
             p.add_argument('--root', type=Path)
         elif command == 'gate-i-c-valpick':
             p.add_argument('--root', type=Path, help='new export root; default: gates/i_c.json details.out_root')
+        elif command in ('sc9-replay', 'image-groups'):
+            p.add_argument('--encoder', choices=SC9_NEW_ENCODERS, required=True)
+            if command == 'image-groups':
+                p.add_argument('--root', type=Path, help='default: OUT/cstar/<encoder>')
     return parser
 
 
@@ -523,6 +667,12 @@ def main(argv=None):
         result = groups(args.arm, args.seeds, args.root, args.records)
     elif args.command == 'gate-i-c-valpick':
         result = gate_i_c_valpick(args.root, args.records)
+    elif args.command == 'sc9-replay':
+        result = sc9_replay(args.encoder, args.records)
+    elif args.command == 'image-groups':
+        result = encoder_image_groups(args.encoder, args.root, args.records, args.force)
+    elif args.command == 'encoder-pick':
+        result = encoder_pick(args.records, args.force)
     elif args.command in ('sc1', 'sc2'):
         result = {'sc1': sc1, 'sc2': sc2}[args.command](args.records, args.force)
     else:

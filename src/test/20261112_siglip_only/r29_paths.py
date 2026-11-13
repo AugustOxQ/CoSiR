@@ -3,6 +3,7 @@
 Controller-owned: tickets import from here and never edit it. A ticket's own constants live in its own module. Ask
 the controller (in the hand-back note) for an addition here.
 """
+import json
 import os
 import subprocess
 import sys
@@ -110,3 +111,55 @@ def require_committed(path, why):
     unchanged = subprocess.run(git + ['diff', '--quiet', 'HEAD', '--', path.name], capture_output=True)
     if tracked.returncode != 0 or unchanged.returncode != 0:
         raise RuntimeError(f'{path} is not committed unchanged in HEAD: {why}')
+
+
+# ------------------------------------------------------------------------------------------------ the stage 2 gate (D3, A1)
+A1_LINE = 'stage 2 ran on the fail under A1'     # carried by every record and sheet that says what stage 2 is, when the gate said "A1"
+A1_ENV = 'R29_AMENDMENT'                         # the runner's `--amendment A1` sets it for every Python step it runs
+A1_RECORD = 'amendment_A1.json'                  # in the records folder, committed (written by the controller)
+
+
+def stage2_record_gate(records):
+    """Read D3/A1 from records only, for readers such as the sheet. A fail needs the committed,
+    unchanged pass rule and matching A1 record; no environment flag is consulted."""
+    records = Path(records)
+    path = records / 'pass_rule.json'
+    if not path.is_file():
+        raise RuntimeError(f'no {path}: stage 2 runs only after a pass of SC2 (D3)')
+    rule = json.loads(path.read_text())
+    status = rule.get('status')
+    if status == 'pass':
+        return 'pass'
+    if status != 'fail':
+        raise RuntimeError(f'{path}: status {status!r}, not "pass" (D3): stage 2 does not run (A1 covers only a fail)')
+    a1 = records / A1_RECORD
+    require_committed(path, 'A1 names the committed pass rule it applies to')
+    require_committed(a1, 'stage 2 runs on the fail only under a committed record of A1')
+    doc = json.loads(a1.read_text())
+    if doc.get('amendment') != 'A1' or doc.get('note') != A1_LINE:
+        raise RuntimeError(f'{a1}: not the record of A1 (amendment {doc.get("amendment")!r}, note {doc.get("note")!r})')
+    want = dict(pass_rule_status=status, pass_rule_level=rule.get('level'), arm=rule.get('arm'))
+    if doc.get('applies_to') != want:
+        raise RuntimeError(f'{a1}: applies_to {doc.get("applies_to")} does not match {path} ({want})')
+    return 'A1'
+
+
+def stage2_gate(records):
+    """Writer gate: a pass needs no flag; a fail needs R29_AMENDMENT=A1 plus valid A1 records.
+    Check the flag first on a fail, preserving the caller's refusal before inspecting A1."""
+    path = Path(records) / 'pass_rule.json'
+    if path.is_file() and json.loads(path.read_text()).get('status') == 'fail':
+        flag = os.environ.get(A1_ENV)
+        if flag is None:
+            raise RuntimeError(f'{path}: status "fail", not "pass": stage 2 does not run (D3); it runs on a fail only with the runner '
+                               f'flag --amendment A1 ({A1_ENV}=A1) and a committed {A1_RECORD}')
+        if flag != 'A1':
+            raise RuntimeError(f'{A1_ENV}={flag!r}: only "A1" is an amendment this code knows')
+    return stage2_record_gate(records)
+
+
+def a1_marks(gate):
+    """The key a record carries when `stage2_gate` answered "A1" (nothing otherwise: a record written on a pass is unchanged):
+    `amendment` "A1" and `amendment_line` = A1_LINE."""
+    assert gate in ('pass', 'A1', None), gate
+    return dict(amendment='A1', amendment_line=A1_LINE) if gate == 'A1' else {}
