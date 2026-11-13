@@ -48,9 +48,7 @@ def _sha(path):
     return extractor._sha256(path)
 
 
-def _keys(index):
-    assert isinstance(index['texts'], list)
-    assert index['n_texts'] == len(index['texts']) > 0, 'text row count'
+def _artelingo_keys(index):
     by_id = {}
     for row in index['texts']:
         sid, painting = row['sample_id'], row['painting']
@@ -60,7 +58,32 @@ def _keys(index):
     return by_id
 
 
-def _read(folder, *, allow_smoke=False):
+def _affection_keys(index):
+    """Affection (ticket 12): a text row's ID is its `csv_row`, its owner the photo key `<source>/<image_name>` that
+    its `img` link names in `images` (r13's `pf_data` keys). Labels (`emotion`, `workerid`) are never read."""
+    images = index['images']
+    assert isinstance(images, list) and len(images) == index['n_images'], 'image row count'
+    photos = [f"{r['source']}/{r['image_name']}" for r in images]
+    assert len(set(photos)) == len(photos), 'duplicate photo key'
+    by_id = {}
+    for row in index['texts']:
+        csv_row, img = row['csv_row'], row['img']
+        assert type(csv_row) is int and type(img) is int and 0 <= img < len(photos), (csv_row, img)
+        assert csv_row not in by_id, f'duplicate csv_row: {csv_row}'
+        by_id[csv_row] = photos[img]
+    return by_id
+
+
+KEY_FUNCTIONS = {'artelingo': _artelingo_keys, 'affection': _affection_keys}   # scheme -> index -> {text ID: owner}
+
+
+def _keys(index, scheme='artelingo'):
+    assert isinstance(index['texts'], list)
+    assert index['n_texts'] == len(index['texts']) > 0, 'text row count'
+    return KEY_FUNCTIONS[scheme](index)
+
+
+def _read(folder, *, allow_smoke=False, scheme='artelingo'):
     """Cheap seal checks before exposing a caption array, including legacy stores."""
     folder = Path(folder)
     index, progress = _json(folder / 'index.json'), _json(folder / 'progress.json')
@@ -68,7 +91,7 @@ def _read(folder, *, allow_smoke=False):
     assert allow_smoke or index['smoke'] is False, 'smoke store'
     assert index['backbone'] in ENCODERS
     assert type(index['dim']) is int and index['dim'] > 0
-    _keys(index)
+    _keys(index, scheme)
     assert progress['txt_done'] == index['n_texts'], 'incomplete text store'
     assert progress['gate']['ok'] is True, 'failed extraction gate'
     assert progress['index_sha256'] == _sha(folder / 'index.json'), 'index hash'
@@ -78,7 +101,7 @@ def _read(folder, *, allow_smoke=False):
     return index, progress, rows
 
 
-def check_store(folder, reference_index, *, expected_prefix=None, allow_smoke=False):
+def check_store(folder, reference_index, *, expected_prefix=None, allow_smoke=False, scheme='artelingo'):
     """Gate viii. Exact key coverage; reference order may differ (C6).
 
     reference_index is an index dict or an index.json path. For a smoke check,
@@ -86,11 +109,11 @@ def check_store(folder, reference_index, *, expected_prefix=None, allow_smoke=Fa
     the raw prefix, or None for a plain store (legacy plain manifests omit it).
     """
     reference = reference_index if isinstance(reference_index, dict) else _json(reference_index)
-    expected = _keys(reference)
-    index, progress, rows = _read(folder, allow_smoke=allow_smoke)
+    expected = _keys(reference, scheme)
+    index, progress, rows = _read(folder, allow_smoke=allow_smoke, scheme=scheme)
     prefix = stored_prefix(index['backbone'], '' if expected_prefix is None else expected_prefix)
     assert index.get('prefix', '') == prefix, 'stored prefix'
-    actual = _keys(index)
+    actual = _keys(index, scheme)
     assert actual.keys() == expected.keys(), 'sample_id coverage'
     for sid, painting in actual.items():
         assert painting == expected[sid], f'painting mismatch for sample_id {sid}'
@@ -131,13 +154,14 @@ def _encode_chunk(enc, captions, prefix, batch_size):
     return features.astype(np.float16), count, time.time() - start
 
 
-def extract_store(reference, texts, enc, out, *, prefix=paths.PREFIX, smoke=False, batch_size=None):
+def extract_store(reference, texts, enc, out, *, prefix=paths.PREFIX, smoke=False, batch_size=None,
+                  scheme='artelingo'):
     """Write a new text store. `texts` must be raw captions, never pre-prefixed.
 
     Keep image metadata and text `img` links unchanged; no image array is written.
     The encoder owns normalisation, token cutting, pooling and L2 normalisation.
     """
-    _keys(reference)
+    _keys(reference, scheme)
     assert len(texts) == reference['n_texts'] and all(isinstance(t, str) for t in texts)
     assert enc.name in ENCODERS
     stored_prefix(enc.name, prefix)
@@ -173,7 +197,7 @@ def extract_store(reference, texts, enc, out, *, prefix=paths.PREFIX, smoke=Fals
     _write(out / 'index.json', index)
     progress['index_sha256'] = _sha(out / 'index.json')
     _write(out / 'progress.json', progress)
-    return check_store(out, reference, expected_prefix=prefix, allow_smoke=smoke)
+    return check_store(out, reference, expected_prefix=prefix, allow_smoke=smoke, scheme=scheme)
 
 
 def _first(index, n):
