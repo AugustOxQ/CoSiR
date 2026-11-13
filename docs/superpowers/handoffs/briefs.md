@@ -2442,3 +2442,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-13-r31-build-handoff.md
 - New chat: tab 'r31 build', session 18e3421b-3904-4dce-af4e-f16c83942d3a
 
+[brief] CoSiR: r31 build -> r31 build 2 (2026-11-13 16:16 Amsterdam)
+- Done: tickets written (3); ticket 01 (the A1 flag) merged into r31-stage2; ticket 02 (SC9 encoder pick) built by Codex, 174 tests pass, not yet reviewed.
+- State: integration branch r31-stage2 pushed; nothing running; GPU check passed 16:16.
+- Next: Opus review of ticket 02, merge, SC9 replays on the CPU, ticket 03, final review, fixes, merge to main; open "r31 run" (stage 2 from 19:00).
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-13-r31-build-2-handoff.md
+- New chat: tab 'r31 build 2', session 1a5e820c-13b1-4202-a05a-1a9d1b44126d
+
