@@ -1,0 +1,103 @@
+{
+  "pick": "siglip1",
+  "ranking": [
+    "siglip1",
+    "siglip2",
+    "clip_l14"
+  ],
+  "tie": null,
+  "margin": 0.004454249853160286,
+  "seeds_ahead": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "close_call": true,
+  "encoders": {
+    "siglip1": {
+      "score": 0.38821571609103406,
+      "per_seed": [
+        0.39002190942696724,
+        0.3892662029109865,
+        0.3861508228616182,
+        0.3905480933223751,
+        0.38509155193322325
+      ],
+      "seed_range": 0.005456541389151859,
+      "role": "candidate"
+    },
+    "siglip2": {
+      "score": 0.38376146623787377,
+      "per_seed": [
+        0.385910436483504,
+        0.38453465575979484,
+        0.38449551231497453,
+        0.38410321389510643,
+        0.37976351273598924
+      ],
+      "seed_range": 0.006146923747514743,
+      "role": "candidate"
+    },
+    "clip_l14": {
+      "score": 0.37618016228347056,
+      "per_seed": [
+        0.3761151204134266,
+        0.37701532559751777,
+        0.37592860150989194,
+        0.37763750019835074,
+        0.37420426369816573
+      ],
+      "seed_range": 0.0034332365001850107,
+      "role": "candidate"
+    },
+    "qwen": {
+      "score": 0.36972331848385626,
+      "per_seed": [
+        0.3705567745119056,
+        0.36771735489310914,
+        0.3704703312371751,
+        0.37029757786364725,
+        0.36957455391344407
+      ],
+      "seed_range": 0.002839419618796468,
+      "role": "information"
+    }
+  },
+  "kind": "r29_encoder_pick",
+  "split": "artelingo validation",
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "kstar": "siglip1_prefix",
+  "pick_candidates": [
+    "siglip1",
+    "siglip2",
+    "clip_l14"
+  ],
+  "information_rows": [
+    "qwen"
+  ],
+  "written": "2026-11-14 00:22",
+  "sources": {
+    "prefix_pick": "/project/CoSiR/src/test/20261112_siglip_only/records/prefix_pick.json",
+    "pass_rule": "/project/CoSiR/src/test/20261112_siglip_only/records/pass_rule.json",
+    "groups": {
+      "siglip1": "/project/CoSiR/src/test/20261112_siglip_only/records/groups_siglip1_prefix.json",
+      "siglip2": "/project/CoSiR/src/test/20261112_siglip_only/records/image_groups_siglip2_prefix.json",
+      "clip_l14": "/project/CoSiR/src/test/20261112_siglip_only/records/image_groups_clipl14_prefix.json"
+    },
+    "replay_gates": {
+      "siglip2": "/project/CoSiR/src/test/20261112_siglip_only/records/gates/sc9_replay_siglip2.json",
+      "clip_l14": "/project/CoSiR/src/test/20261112_siglip_only/records/gates/sc9_replay_clip_l14.json"
+    },
+    "valpick": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json"
+  },
+  "amendment": "A1",
+  "amendment_line": "stage 2 ran on the fail under A1"
+}
