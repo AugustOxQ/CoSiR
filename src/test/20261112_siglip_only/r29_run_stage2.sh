@@ -1,6 +1,9 @@
 #!/bin/bash
-# r29 stage 2 (spec §3.5, D3, D24): usage  r29_run_stage2.sh {a|b} [--dry-run]
-# Refuses unless records/pass_rule.json says "status": "pass" (D3). Order inside each part (D24): E2 and E3, MMArt, the photo
+# r29 stage 2 (spec §3.5, D3, D24, A1): usage  r29_run_stage2.sh {a|b} [--dry-run] [--amendment A1]
+# Refuses unless records/pass_rule.json says "status": "pass" (D3), or says "fail" and the runner is called with --amendment A1 and
+# the committed records/amendment_A1.json checks out (r29_paths.stage2_gate; spec §4 A1). Under A1 every Python step runs with
+# R29_AMENDMENT=A1 in its environment (visible in every command line) and the records say "stage 2 ran on the fail under A1".
+# Run the ladders and the sheet (`r29_ladder.py`) by hand with R29_AMENDMENT=A1 in the environment too. Order inside each part (D24): E2 and E3, MMArt, the photo
 # model, the ablation. A piece that fails goes on the failure list and the others go on (§3.5).
 #   a  2a sweep (development only): stores, training, validation exports, picks and ranges on validation.
 #      The run chat commits the pick records before part b (the test commands of each piece refuse without them).
@@ -20,7 +23,7 @@
 #       (logs/gate_v_image.log). MMArt export and picks and cells, photo picks and cells: no source, same 45m bound; 20m export.
 source "$(dirname "${BASH_SOURCE[0]}")/r29_run_common.sh"
 PART=${ARGS[0]:-}
-[[ $PART == a || $PART == b ]] || { echo "usage: $0 {a|b} [--dry-run]"; exit 2; }
+[[ $PART == a || $PART == b ]] || { echo "usage: $0 {a|b} [--dry-run] [--amendment A1]"; exit 2; }
 require_pass
 require_committed records/prefix_pick.json
 if [[ $PART == a ]]; then

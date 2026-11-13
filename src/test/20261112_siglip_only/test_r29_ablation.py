@@ -588,3 +588,29 @@ def test_score_draw_counts_reach_both_bootstraps_and_the_cells(tmp_path, monkeyp
     assert {c['n_draws'] for c in doc['cells'] if c['measure'] == 'ami'} == {2000}
     assert {c['n_draws'] for c in doc['cells'] if c['measure'] == 'map'} == {10000}
     assert doc['protocol']['ami_draws'] == 2000 and doc['protocol']['map_draws'] == 10000
+
+
+def test_require_pass_on_the_fail_needs_the_flag_and_a_committed_a1_record(tmp_path, monkeypatch):
+    """D3 as amended by A1: `require_pass` answers "A1" on a committed fail with R29_AMENDMENT=A1, refuses (AssertionError, as
+    before) without the flag, and the answer is what `score` writes into the record (`a1_marks`)."""
+    import subprocess
+    repo = tmp_path / 'repo'
+    rec = repo / 'records'
+    rec.mkdir(parents=True)
+    git = lambda *a: subprocess.run(['git', '-C', str(repo), '-c', 'user.name=t', '-c', 'user.email=t@t', *a], check=True, capture_output=True)
+    git('init', '-q')
+    (rec / 'pass_rule.json').write_text(json.dumps(dict(status='fail', level=0, arm='siglip1_prefix')))
+    (rec / 'amendment_A1.json').write_text(json.dumps(dict(
+        amendment='A1', applies_to=dict(pass_rule_status='fail', pass_rule_level=0, arm='siglip1_prefix'), note=A.P.A1_LINE)))
+    git('add', '-f', 'records/pass_rule.json', 'records/amendment_A1.json')
+    git('commit', '-q', '-m', 'x')
+    monkeypatch.setattr(A.P, 'RECORDS', rec)
+    monkeypatch.delenv('R29_AMENDMENT', raising=False)
+    with pytest.raises(AssertionError, match='pass_rule'):
+        A.require_pass()
+    monkeypatch.setenv('R29_AMENDMENT', 'A1')
+    assert A.require_pass() == 'A1' and A.require_pass(smoke=True, source='qwen') is None
+    assert A.P.a1_marks(A.require_pass()) == dict(amendment='A1', amendment_line='stage 2 ran on the fail under A1')
+    (rec / 'amendment_A1.json').write_text('{}')
+    with pytest.raises(AssertionError, match='pass_rule'):
+        A.require_pass()

@@ -40,10 +40,11 @@ def require_pass(smoke=False, source=None):
     """D3. Exempt: a smoke with the Qwen stand-in source. It writes only under SMOKE_OUT, reads no candidate record
     (no K*, only K0's frozen weights) and reports no number, so it may run before stage 1 (ruling of build 4)."""
     if smoke and source == 'qwen':
-        return
-    path = P.RECORDS / 'pass_rule.json'
-    assert path.is_file() and json.loads(path.read_text()).get('status') == 'pass', \
-        f'ablation needs {path} with status "pass" (D3)'
+        return None
+    try:
+        return P.stage2_gate(P.RECORDS)                  # "pass", or "A1" (D3 as amended)
+    except RuntimeError as exc:
+        raise AssertionError(f'ablation needs {P.RECORDS / "pass_rule.json"} with status "pass", or "fail" under A1 (D3): {exc}') from exc
 
 
 def kstar():
@@ -291,7 +292,7 @@ def score(root=None):
     This readout is fixed by §3.4, so there is no validation readout selection
     or LEVEL range for SC7. SC1/SC2 records must already be committed.
     """
-    require_pass()
+    gate = require_pass()                                # "pass", or "A1" (stage 2 on the fail): A1 is marked on the record
     source = kstar()
     for name in ('prefix_pick.json', 'pass_rule.json'):
         require_committed(name)
@@ -299,6 +300,7 @@ def score(root=None):
         document = dict(kind='r29_ablation', claim='SC7', complete=False, status='inconclusive', set='artelingo',
                         split='held', encoder='siglip1', kstar=source, cause='gate vii_ablation is parked (a fail at try 3 parks)',
                         code_sha256=code_hashes())
+        document.update(P.a1_marks(gate))
         write_json(P.RECORDS / 'ablation.json', document)
         return document
     root = T.check_root(root or default_root(source))
@@ -316,6 +318,7 @@ def score(root=None):
         document = dict(kind='r29_ablation', claim='SC7', complete=False, status='inconclusive', set='artelingo',
                         split='held', encoder='siglip1', kstar=source, cause='no removal is scorable (D21)',
                         inconclusive_removals=inconclusive, code_sha256=code_hashes())
+        document.update(P.a1_marks(gate))
         write_json(P.RECORDS / 'ablation.json', document)
         return document
     names, list_sha, labels = F.t5.bind_labels()
@@ -356,6 +359,7 @@ def score(root=None):
                     protocol=dict(readout='aspect head, plain cosine, qe_k=0', ami_draws=drawn['ami'].pop(), map_draws=drawn['map'].pop(),
                                   interval='paired percentile 95%', seed_coupling='shared', rng_seed=0),
                     code_sha256=code_hashes(), input_sha256=hashes)
+    document.update(P.a1_marks(gate))
     write_json(P.RECORDS / 'ablation.json', document)
     return document
 
