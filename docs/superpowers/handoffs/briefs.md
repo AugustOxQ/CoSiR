@@ -2434,3 +2434,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-13-r31-decide-handoff.md
 - New chat: tab 'r31 decide', session 4765eb82-8d06-4c24-b9c3-1a2771aba8d9
 
+[brief] CoSiR: r31 decide -> r31 build (2026-11-13 16:00 Amsterdam)
+- Done: r29 read (user: promising; it keeps the current model's pattern against the instructed Qwen3); r29 spec amended (A1, A2); r29 storage cleaned.
+- State: the SigLIP-only model is an ablation or supplementary row, not the main model (user with co-authors). Stage 2 still runs.
+- Next: build the A1 flag and the SC9 encoder pick, final review, merge; open "r31 run" so stage 2 starts at 19:00 or later.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-13-r31-build-handoff.md
+- New chat: tab 'r31 build', session 18e3421b-3904-4dce-af4e-f16c83942d3a
+
