@@ -2417,3 +2417,12 @@
 - Handoff: docs/superpowers/handoffs/2026-11-13-r29-run-2-handoff.md
 - New chat: tab 'r29 run 2', session 7f5070e3-83f0-4184-a768-35a978d343e2
 
+[brief] CoSiR: r29 run 2 -> r29 run 3 (2026-11-13 06:29 Amsterdam)
+- Done: stage 1c, Codex's held re-derivation (30 cells; outcomes all agree), SC3 ladder, diagnostics, numbers sheet.
+- State: SC3 level 1: training adds over plain SigLIP 1 in 13 of 15 test cells (style image mAP BELOW, as K0's; one
+  cell inconclusive by C13); 12 of 15 at or above instructed Qwen3 (the 3 emotion text cells BELOW).
+- Next: the auto report and the user-read report (step 9), their checks, then `loop-next` for "r31 decide".
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-13-r29-run-3-handoff.md
+- New chat: tab 'r29 run 3', session 9981995e-2938-4082-a03f-13f77206bd25
+
