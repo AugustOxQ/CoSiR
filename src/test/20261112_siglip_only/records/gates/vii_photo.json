@@ -1,0 +1,343 @@
+{
+  "gate": "vii_photo",
+  "status": "pass",
+  "tries": 1,
+  "details": {
+    "units": {
+      "affection/photo/pick": {
+        "cell": "affection/photo/pick",
+        "rebuilt": 1.0,
+        "recorded": 1.0,
+        "diff": 0.0,
+        "ok": true,
+        "required": true,
+        "pick": "center+k10",
+        "recorded_pick": "center+k10"
+      },
+      "affection/photo/ami/mean": {
+        "cell": "affection/photo/ami/mean",
+        "rebuilt": 0.18157465183698934,
+        "recorded": 0.18157465183698934,
+        "diff": 0.0,
+        "ok": true,
+        "required": true
+      },
+      "affection/photo/map/mean": {
+        "cell": "affection/photo/map/mean",
+        "rebuilt": 0.3233544665178746,
+        "recorded": 0.3233544665178746,
+        "diff": 0.0,
+        "ok": true,
+        "required": true
+      },
+      "emoset/photo/pick": {
+        "cell": "emoset/photo/pick",
+        "rebuilt": 1.0,
+        "recorded": 1.0,
+        "diff": 0.0,
+        "ok": true,
+        "required": true,
+        "pick": "center+k10",
+        "recorded_pick": "center+k10"
+      },
+      "emoset/photo/ami/mean": {
+        "cell": "emoset/photo/ami/mean",
+        "rebuilt": 0.43175892679521466,
+        "recorded": 0.43175892679521466,
+        "diff": 0.0,
+        "ok": true,
+        "required": true
+      },
+      "emoset/photo/map/mean": {
+        "cell": "emoset/photo/map/mean",
+        "rebuilt": 0.48293776326874605,
+        "recorded": 0.48293776326874605,
+        "diff": 0.0,
+        "ok": true,
+        "required": true
+      },
+      "emoset/photo/ami/s0": {
+        "cell": "emoset/photo/ami/s0",
+        "rebuilt": 0.4404391723304089,
+        "recorded": 0.4404391723304089,
+        "diff": 0.0,
+        "ok": true,
+        "required": true
+      },
+      "emoset/photo/map/s0": {
+        "cell": "emoset/photo/map/s0",
+        "rebuilt": 0.4860429900754625,
+        "recorded": 0.4860429900754625,
+        "diff": 0.0,
+        "ok": true,
+        "required": true
+      },
+      "emoset/photo/ami/s1": {
+        "cell": "emoset/photo/ami/s1",
+        "rebuilt": 0.41667940430347156,
+        "recorded": 0.41667940430347156,
+        "diff": 0.0,
+        "ok": true,
+        "required": true
+      },
+      "emoset/photo/map/s1": {
+        "cell": "emoset/photo/map/s1",
+        "rebuilt": 0.4845998083949176,
+        "recorded": 0.4845998083949176,
+        "diff": 0.0,
+        "ok": true,
+        "required": true
+      },
+      "emoset/photo/ami/s2": {
+        "cell": "emoset/photo/ami/s2",
+        "rebuilt": 0.43380974316124005,
+        "recorded": 0.43380974316124005,
+        "diff": 0.0,
+        "ok": true,
+        "required": true
+      },
+      "emoset/photo/map/s2": {
+        "cell": "emoset/photo/map/s2",
+        "rebuilt": 0.48141320593694065,
+        "recorded": 0.48141320593694065,
+        "diff": 0.0,
+        "ok": true,
+        "required": true
+      },
+      "emoset/photo/ami/s3": {
+        "cell": "emoset/photo/ami/s3",
+        "rebuilt": 0.4232999397386888,
+        "recorded": 0.4232999397386888,
+        "diff": 0.0,
+        "ok": true,
+        "required": true
+      },
+      "emoset/photo/map/s3": {
+        "cell": "emoset/photo/map/s3",
+        "rebuilt": 0.4850827610571015,
+        "recorded": 0.4850827610571015,
+        "diff": 0.0,
+        "ok": true,
+        "required": true
+      },
+      "emoset/photo/ami/s4": {
+        "cell": "emoset/photo/ami/s4",
+        "rebuilt": 0.44456637444226427,
+        "recorded": 0.44456637444226427,
+        "diff": 0.0,
+        "ok": true,
+        "required": true
+      },
+      "emoset/photo/map/s4": {
+        "cell": "emoset/photo/map/s4",
+        "rebuilt": 0.4775500508793078,
+        "recorded": 0.4775500508793078,
+        "diff": 0.0,
+        "ok": true,
+        "required": true
+      },
+      "affection/photo/ami_range/r": {
+        "cell": "affection/photo/ami_range/r",
+        "rebuilt": 0.003323296132198811,
+        "recorded": 0.003323296132198811,
+        "diff": 0.0,
+        "ok": true,
+        "required": false
+      },
+      "affection/photo/ami_range/s0": {
+        "cell": "affection/photo/ami_range/s0",
+        "rebuilt": 0.1870462077700782,
+        "recorded": 0.1870462077700782,
+        "diff": 0.0,
+        "ok": true,
+        "required": false
+      },
+      "affection/photo/ami_range/s1": {
+        "cell": "affection/photo/ami_range/s1",
+        "rebuilt": 0.18996876469974353,
+        "recorded": 0.18996876469974353,
+        "diff": 0.0,
+        "ok": true,
+        "required": false
+      },
+      "affection/photo/ami_range/s2": {
+        "cell": "affection/photo/ami_range/s2",
+        "rebuilt": 0.1879833717570679,
+        "recorded": 0.1879833717570679,
+        "diff": 0.0,
+        "ok": true,
+        "required": false
+      },
+      "affection/photo/ami_range/s3": {
+        "cell": "affection/photo/ami_range/s3",
+        "rebuilt": 0.18845491640239898,
+        "recorded": 0.18845491640239898,
+        "diff": 0.0,
+        "ok": true,
+        "required": false
+      },
+      "affection/photo/ami_range/s4": {
+        "cell": "affection/photo/ami_range/s4",
+        "rebuilt": 0.18664546856754471,
+        "recorded": 0.18664546856754471,
+        "diff": 0.0,
+        "ok": true,
+        "required": false
+      },
+      "affection/SC4/ami9/plain/value": {
+        "cell": "affection/SC4/ami9/plain/value",
+        "rebuilt": 0.18157465183698934,
+        "recorded": 0.18157465183698934,
+        "diff": 0.0,
+        "ok": true,
+        "required": false
+      },
+      "affection/SC4/ami9/plain/comparator_value": {
+        "cell": "affection/SC4/ami9/plain/comparator_value",
+        "rebuilt": 0.0987800596578365,
+        "recorded": 0.0987800596578365,
+        "diff": 0.0,
+        "ok": true,
+        "required": false
+      },
+      "affection/SC4/ami9/plain/d": {
+        "cell": "affection/SC4/ami9/plain/d",
+        "rebuilt": 0.08279459217915285,
+        "recorded": 0.08279459217915285,
+        "diff": 0.0,
+        "ok": true,
+        "required": false
+      },
+      "affection/SC4/ami9/plain/lo": {
+        "cell": "affection/SC4/ami9/plain/lo",
+        "rebuilt": 0.07621537829203344,
+        "recorded": 0.07621537829203344,
+        "diff": 0.0,
+        "ok": true,
+        "required": false
+      },
+      "affection/SC4/ami9/plain/hi": {
+        "cell": "affection/SC4/ami9/plain/hi",
+        "rebuilt": 0.08939022127154443,
+        "recorded": 0.08939022127154443,
+        "diff": 0.0,
+        "ok": true,
+        "required": false
+      },
+      "affection/SC4/ami9/plain/r": {
+        "cell": "affection/SC4/ami9/plain/r",
+        "rebuilt": 0.003323296132198811,
+        "recorded": 0.003323296132198811,
+        "diff": 0.0,
+        "ok": true,
+        "required": false
+      },
+      "affection/SC4/ami9/teacher/value": {
+        "cell": "affection/SC4/ami9/teacher/value",
+        "rebuilt": 0.18157465183698934,
+        "recorded": 0.18157465183698934,
+        "diff": 0.0,
+        "ok": true,
+        "required": false
+      },
+      "affection/SC4/ami9/teacher/comparator_value": {
+        "cell": "affection/SC4/ami9/teacher/comparator_value",
+        "rebuilt": 0.15541834623867254,
+        "recorded": 0.15541834623867254,
+        "diff": 0.0,
+        "ok": true,
+        "required": false
+      },
+      "affection/SC4/ami9/teacher/d": {
+        "cell": "affection/SC4/ami9/teacher/d",
+        "rebuilt": 0.026156305598316804,
+        "recorded": 0.026156305598316804,
+        "diff": 0.0,
+        "ok": true,
+        "required": false
+      },
+      "affection/SC4/ami9/teacher/lo": {
+        "cell": "affection/SC4/ami9/teacher/lo",
+        "rebuilt": 0.019715372260748827,
+        "recorded": 0.019715372260748827,
+        "diff": 0.0,
+        "ok": true,
+        "required": false
+      },
+      "affection/SC4/ami9/teacher/hi": {
+        "cell": "affection/SC4/ami9/teacher/hi",
+        "rebuilt": 0.03263545781687796,
+        "recorded": 0.03263545781687796,
+        "diff": 0.0,
+        "ok": true,
+        "required": false
+      },
+      "affection/SC4/ami9/teacher/r": {
+        "cell": "affection/SC4/ami9/teacher/r",
+        "rebuilt": 0.003323296132198811,
+        "recorded": 0.003323296132198811,
+        "diff": 0.0,
+        "ok": true,
+        "required": false
+      },
+      "affection/SC5/map/plain/value": {
+        "cell": "affection/SC5/map/plain/value",
+        "rebuilt": 0.3233544665178746,
+        "recorded": 0.3233544665178746,
+        "diff": 0.0,
+        "ok": true,
+        "required": false
+      },
+      "affection/SC5/map/plain/comparator_value": {
+        "cell": "affection/SC5/map/plain/comparator_value",
+        "rebuilt": 0.2545391741618377,
+        "recorded": 0.2545391741618377,
+        "diff": 0.0,
+        "ok": true,
+        "required": false
+      },
+      "affection/SC5/map/plain/d": {
+        "cell": "affection/SC5/map/plain/d",
+        "rebuilt": 0.0688152923560369,
+        "recorded": 0.0688152923560369,
+        "diff": 0.0,
+        "ok": true,
+        "required": false
+      },
+      "affection/SC5/map/plain/lo": {
+        "cell": "affection/SC5/map/plain/lo",
+        "rebuilt": 0.06521457804199102,
+        "recorded": 0.06521457804199102,
+        "diff": 0.0,
+        "ok": true,
+        "required": false
+      },
+      "affection/SC5/map/plain/hi": {
+        "cell": "affection/SC5/map/plain/hi",
+        "rebuilt": 0.07220472127696317,
+        "recorded": 0.07220472127696317,
+        "diff": 0.0,
+        "ok": true,
+        "required": false
+      }
+    },
+    "parked": [],
+    "required_ok": true,
+    "tol": 1e-09,
+    "picks": {
+      "affection": {
+        "pick": "center+k10",
+        "r_map": 0.008086700312556483,
+        "ami_r": 0.003323296132198811
+      },
+      "emoset": {
+        "pick": "center+k10",
+        "r_map": 0.0069460867449697705,
+        "ami_r": 0.01423775980816272
+      }
+    },
+    "seconds": 574,
+    "code_sha256": "d9e3e676d2c726ebf6ca12879c5b81280a57d41fd66befd6d6626c5ffcc53e99"
+  },
+  "written": "2026-11-13 03:17"
+}
