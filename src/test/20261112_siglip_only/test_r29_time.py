@@ -10,7 +10,7 @@ import pytest
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-import r29_time as T
+import r29_time_inputs as T
 import r29_extract as X
 
 CAPTIONS = ['A calm lake at dusk.', 'THE Sky is Red', 'sad', 'Two figures; one is crying!']
