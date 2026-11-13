@@ -247,6 +247,15 @@ def test_write_gate_record(tmp_path):
     assert json.loads((tmp_path / 'iii.json').read_text())['tries'] == 2
 
 
+def test_write_gate_record_allows_three_tries_and_a_fourth_raises(tmp_path):
+    for n in (1, 2, 3):
+        assert C.write_gate_record(tmp_path, dict(status='fail', details={}), gate='i_a')['tries'] == n
+    with pytest.raises(AssertionError):
+        C.write_gate_record(tmp_path, dict(status='pass', details={}), gate='i_a')
+    rec = json.loads((tmp_path / 'i_a.json').read_text())
+    assert rec['tries'] == 3 and rec['status'] == 'fail'   # the refused fourth try wrote nothing
+
+
 def test_gate_iii_does_not_write_a_record_unless_asked():
     import inspect
     assert inspect.signature(C.gate_iii).parameters['write'].default is False

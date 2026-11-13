@@ -196,12 +196,14 @@ def gate_iii_checks(*, sig_ids, sig_names, qwen_ids, qwen_names, roles):
 
 
 def write_gate_record(folder, result, gate='iii'):
-    """`<folder>/<gate>.json` = {gate, status, tries, details, written}; tries counts the file's earlier runs."""
+    """`<folder>/<gate>.json` = {gate, status, tries, details, written}; tries counts the file's earlier runs.
+    At most three recorded tries (§3.5: "at most three tries per gate"); a fourth raises and writes nothing."""
     from datetime import datetime
     from zoneinfo import ZoneInfo
     assert result['status'] in ('pass', 'fail', 'fallback', 'parked')
     path = Path(folder) / f'{gate}.json'
     tries = json.loads(path.read_text())['tries'] + 1 if path.exists() else 1
+    assert tries <= 3, f'gate {gate}: a fourth recorded try (§3.5 allows three)'
     record = dict(gate=gate, status=result['status'], tries=tries, details=result['details'],
                   written=datetime.now(ZoneInfo('Europe/Amsterdam')).strftime('%Y-%m-%d %H:%M'))
     Path(folder).mkdir(parents=True, exist_ok=True)
