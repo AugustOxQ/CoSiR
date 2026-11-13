@@ -2392,3 +2392,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-13-r21-run-4-handoff.md
 - New chat: tab 'r21 run 4', session f674f2bb-d5d3-4b27-9ec8-610ea89b0fb5
 
+[brief] CoSiR: r29 build 7 -> r29 run (2026-11-13 04:05 Amsterdam)
+- Done: the r29 build: 15 tickets merged into main (007fb786), round suite 731 passed, final review pass after two fix waves and a scoped re-review.
+- State: every stage 0 gate passes (gate (vii) ablation passes at try 3); gate (iv) hash part waits for stage 1a.
+- Next: hold r21's next GPU job, then stage 1a (K1 and K2 seed 0), SC1, stage 1b, Table 8 (part `t8`), SC2.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-13-r29-run-handoff.md
+- New chat: tab 'r29 run', session c36e6513-888c-407e-ac75-eb4e5756fa7a
+
