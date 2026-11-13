@@ -158,3 +158,5 @@ mode. Outputs `/data/SSD2/cosir_r29/20261112_siglip_only/` (stage logs in its `l
   against r11's written convention (no downcast); r17's frozen per-query APs (`/data/SSD2/cosir_r17/.../c13/cache/`)
   now match exactly, and the genre cell's 12 entries are within 2.2e-16 (was 1.03e-9). Commit 3d081848, decision line
   19:24. The full s2mp replay reruns on the new source (`rederive/r29rd_s2mp_replay_v2.json`, CPU queue, about 75 min).
+- 19:27 Cut to chat "r31 run 3" (context past 200k), part a running (E2 training); handoff
+  `docs/superpowers/handoffs/2026-11-13-r31-run-3-handoff.md`.
