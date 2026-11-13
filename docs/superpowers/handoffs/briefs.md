@@ -2514,3 +2514,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-13-paper-plan-10-handoff.md
 - New chat: tab 'paper plan 10', session 65d5740f-8bbc-468c-8b60-98ff2cfeebc7
 
+[brief] CoSiR: paper plan 10 -> paper plan 11 (2026-11-13 20:07 Amsterdam)
+- Done: Section 4 review applied for 4.1 to 4.5 with the user (E1 fixed, read-out defined, supplementary seed table, Tables 3 and 7 captions). Page 1 now holds only the abstract and the introduction.
+- State: no wrong number left. The body runs about 0.45 of a column onto page 9, before the conclusion is written.
+- Next: show the user the 4.6 items (photos, Table 8 TODO), then 4.7, then the last three caption points.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-13-paper-plan-11-handoff.md
+- New chat: tab 'paper plan 11', session 3c6e5246-8b08-447a-bea2-e50e47e22b1b
+
