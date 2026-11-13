@@ -268,3 +268,19 @@ Spec: `docs/superpowers/specs/2026-11-11-r21-dec-heads-design.md`. Decision line
   The direct contrast "DEC arm minus λ = 0" is still the user's open question (asked 02:10); the report lists it as option a.
 - 04:02: cut by the context meter (200k). Step 9 moves to "r21 run 4" (handoff
   `docs/superpowers/handoffs/2026-11-13-r21-run-4-handoff.md`); the direct-contrast question goes with it.
+
+## Run chat 4, 2026-11-13 (from 04:00)
+
+- 04:01: auto report draft launched: Codex `gpt-6.1-sol` medium, brief `.scratch/r21-dec-heads/report/task.txt` (room 72% of
+  the five-hour limit; the job needs 14%). The sequence date 2027-01-17 was free.
+- 04:03: user-read report figure: `r21_userread_fig.py` draws the style AMI change with intervals from `scores/stage2_lam0.json`
+  (`docs/user_read/assets/2026-11-13_dec_heads/style_ami_change.png`; palette colours of our network and the neutral grey).
+- 04:10: Codex draft done (exit 0; 15.4 KB, its index check OK, six figure copies). Codex noted two places where the brief was
+  loose: on style AMI only the start and teacher intervals overlap the control's (plain clears it); long DEC loosens style SI
+  and DBI while CHI rises.
+- 04:11: claim review (Claude), written into the report's "Claim review": the 24 brief words, c*'s style AMI and the four
+  style AMI changes equal `stage2_lam0.json` (recomputed from per-seed AMI); the stage 1 rows and gradient ratios equal
+  their sources; both re-derivations PASS; no interval end touches zero (closest +0.0001), so the strict word rule changes
+  nothing. Fixed: "plain DEC clusters collapse" (too strong for the scored state: the empty clusters are DEC's own training
+  assignments at the last DEC epoch; scored largest share 0.18 at most), the emotion UMAP caption, the teacher pull
+  described at first use. Report 17.2 KB with the claim review.
