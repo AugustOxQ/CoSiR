@@ -1,0 +1,20 @@
+{
+  "gate": "viii_affection",
+  "status": "pass",
+  "tries": 1,
+  "details": {
+    "form": "prefixed",
+    "store": "/data/SSD2/pre_extract/affection_local/siglip_so400m_txt",
+    "prefix": "represent the caption: ",
+    "n_texts": 526749,
+    "n_texts_reference": 526749,
+    "photo_counts_equal": true,
+    "n_photos": 85007,
+    "n_truncated": 4045,
+    "truncation_limit": 64,
+    "index_sha256": "ee0cb34dcf666c22fedf445f08c833ba2b6b6cc53c8dd919a84b47ced752f68e",
+    "max_norm_dev": 0.000265657901763916,
+    "truncation_flag": "4045 of 526749 explanations are over 64 tokens: cut, counted, kept (D14)"
+  },
+  "written": "2026-11-13 21:26"
+}
