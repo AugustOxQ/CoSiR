@@ -238,3 +238,12 @@ Spec: `docs/superpowers/specs/2026-11-11-r21-dec-heads-design.md`. Decision line
   `r21_queue_lam0.sh` (8 steps: train `dec-plain_l0_w5_S2` seeds 0 to 4, held exports, `table --name stage2_lam0` on the five
   arms, `diag` on the same five; the 4-arm diag is copied to `scores/diag_before_lam0.*` first). Log:
   `/data/SSD2/cosir_r21/20261111_dec_heads/logs/queue_lam0.log`.
+- 02:08: `umap-learn` 0.6.0 (with `pynndescent` 0.7.0) installed into the CoSiR env (pip dry run: no other package changed).
+  Figure job started: Codex `gpt-6.1-terra` medium writes `r21_figures.py` and draws on the arms that exist, the λ = 0 panels
+  empty until its exports exist (brief `.scratch/r21-dec-heads/figs/task.txt`; outputs
+  `/data/SSD2/cosir_r21/20261111_dec_heads/figures/`). Choices in `decisions.md` (02:08).
+- 02:11: figures done for the arms that exist (`r21_figures.py`; Codex first pass 02:02 to 02:08, one fix round after Claude's
+  look review: tab20 light/dark pairs replaced, histogram range clipped the 50-epoch emotion tail, legend words). Fidelity:
+  the 18 per-painting silhouette means equal `diag.json` (test, seed 0) and `val_internal.json` (validation) exactly.
+  Unlabelled rows: genre only (test 2,332, validation 1,192). The λ = 0 panels are empty until its exports exist; then
+  `r21_figures.py compute` and `plot` (CPU queue).
