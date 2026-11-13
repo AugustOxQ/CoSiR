@@ -85,7 +85,9 @@ S1_STYLE = {
     S1_PLAIN:     STYLE["Plain embedding"],
     S1_TURTLE:    STYLE["Plain + TURTLE"],
     S1_PLAIN_Q:   dict(color="#B4B4B4", ls=(0, (3.0, 1.2)), marker="s", lw=1.0, ms=3.0, z=7, mfc="white"),
-    **{k: STYLE[k] for k in (PERCEPT_CLIP, "TPIPS", "CLAY", "CRL", "VLM2Vec", "BERTopic")},
+    **{k: STYLE[k] for k in (PERCEPT_CLIP, "TPIPS", "CRL", "VLM2Vec", "BERTopic")},
+    # CLAY is drawn over ours: in the style panel it runs within 0.004 of ours from 10 to 27 clusters (user, 2026-11-13).
+    "CLAY":       {**STYLE["CLAY"], "z": 21},
 }
 
 

@@ -332,3 +332,9 @@ VLM2Vec, PercepT on CLIP L/14 unchanged). Ours exactly: `records/per_seed.json` 
 r17 SigLIP 1 sweep's cstar mean = 0.0 for all three aspects. The sheet maps the plain row "Qwen3 -> SigLIP 1"; the figure
 also keeps a plain Qwen3 line (0.070 / 0.235 / 0.425, the current .tex L9), as the r28 handoff says plain Qwen3 stays in
 Table 2. Remove that line if the filled Table 2 drops the row.
+
+### CLAY drawn over ours; checked against the filled Table 2 (2026-11-13)
+Check: at each aspect's class count, the 12 lines equal the filled `Tables/main_clustering.tex` (REPO `de7731c`) in
+36 of 36 cells (script compare at three decimals; legend names map to the table rows). `kr_figure.py`: in profile
+siglip1 only, CLAY gets z 21 (over ours, z 20), so its markers show where it meets ours in the style panel (user,
+option b). `values.md` unchanged by the redraw. Figure copied to REPO `Figures/fig_supp_cluster_counts.pdf` (`a7d2ef9`).
