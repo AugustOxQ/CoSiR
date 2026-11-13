@@ -1,0 +1,199 @@
+{
+  "gate": "i_a_weights",
+  "status": "pass",
+  "tries": 1,
+  "details": {
+    "seed": 0,
+    "encoder": "siglip1",
+    "comparisons": {
+      "new_vs_r14": {
+        "equal": true,
+        "heads": {
+          "emotion": {
+            "sha256": [
+              "cde9eb566650d87783a850a1349c70ec2a0ac8bc3844435eee66af5693b3884e",
+              "cde9eb566650d87783a850a1349c70ec2a0ac8bc3844435eee66af5693b3884e"
+            ],
+            "bytes_equal": true,
+            "tensors_equal": true,
+            "best_epoch": [
+              12,
+              12
+            ],
+            "best_dev_loss": [
+              6.246208131466828,
+              6.246208131466828
+            ],
+            "recorded_sha_ok": [
+              true,
+              true
+            ]
+          },
+          "style": {
+            "sha256": [
+              "99a44afe0a3b68995d9f162ae590ca567542946bbf2d1d8ac3addc4797b40ac3",
+              "99a44afe0a3b68995d9f162ae590ca567542946bbf2d1d8ac3addc4797b40ac3"
+            ],
+            "bytes_equal": true,
+            "tensors_equal": true,
+            "best_epoch": [
+              1,
+              1
+            ],
+            "best_dev_loss": [
+              6.615903340571214,
+              6.615903340571214
+            ],
+            "recorded_sha_ok": [
+              true,
+              true
+            ]
+          },
+          "genre": {
+            "sha256": [
+              "2efb9f5dae4d7f541f9f3363339558b4ec16d356ab31771e77250db7aa0f66ef",
+              "2efb9f5dae4d7f541f9f3363339558b4ec16d356ab31771e77250db7aa0f66ef"
+            ],
+            "bytes_equal": true,
+            "tensors_equal": true,
+            "best_epoch": [
+              15,
+              15
+            ],
+            "best_dev_loss": [
+              8.220256616155774,
+              8.220256616155774
+            ],
+            "recorded_sha_ok": [
+              true,
+              true
+            ]
+          }
+        },
+        "runs": [
+          "new",
+          "r14"
+        ]
+      },
+      "r14_vs_r14_b": {
+        "equal": true,
+        "heads": {
+          "emotion": {
+            "sha256": [
+              "cde9eb566650d87783a850a1349c70ec2a0ac8bc3844435eee66af5693b3884e",
+              "cde9eb566650d87783a850a1349c70ec2a0ac8bc3844435eee66af5693b3884e"
+            ],
+            "bytes_equal": true,
+            "tensors_equal": true,
+            "best_epoch": [
+              12,
+              12
+            ],
+            "best_dev_loss": [
+              6.246208131466828,
+              6.246208131466828
+            ],
+            "recorded_sha_ok": [
+              true,
+              true
+            ]
+          },
+          "style": {
+            "sha256": [
+              "99a44afe0a3b68995d9f162ae590ca567542946bbf2d1d8ac3addc4797b40ac3",
+              "99a44afe0a3b68995d9f162ae590ca567542946bbf2d1d8ac3addc4797b40ac3"
+            ],
+            "bytes_equal": true,
+            "tensors_equal": true,
+            "best_epoch": [
+              1,
+              1
+            ],
+            "best_dev_loss": [
+              6.615903340571214,
+              6.615903340571214
+            ],
+            "recorded_sha_ok": [
+              true,
+              true
+            ]
+          },
+          "genre": {
+            "sha256": [
+              "2efb9f5dae4d7f541f9f3363339558b4ec16d356ab31771e77250db7aa0f66ef",
+              "2efb9f5dae4d7f541f9f3363339558b4ec16d356ab31771e77250db7aa0f66ef"
+            ],
+            "bytes_equal": true,
+            "tensors_equal": true,
+            "best_epoch": [
+              15,
+              15
+            ],
+            "best_dev_loss": [
+              8.220256616155774,
+              8.220256616155774
+            ],
+            "recorded_sha_ok": [
+              true,
+              true
+            ]
+          }
+        },
+        "runs": [
+          "r14",
+          "r14_b"
+        ]
+      }
+    },
+    "run_records": {
+      "r14": {
+        "device": "cuda",
+        "host": "cbd437f8ce92",
+        "seconds": 373.94088269909844,
+        "best_epoch": {
+          "emotion": 12,
+          "style": 1,
+          "genre": 15
+        },
+        "code_commit": "bdabdd28972f79438f3abceab241b05d346fb6a3",
+        "code_dirty": false,
+        "r29_code_sha256": null,
+        "cap_source": null
+      },
+      "r14_b": {
+        "device": "cuda",
+        "host": "cbd437f8ce92",
+        "seconds": 329.83939874591306,
+        "best_epoch": {
+          "emotion": 12,
+          "style": 1,
+          "genre": 15
+        },
+        "code_commit": "bdabdd28972f79438f3abceab241b05d346fb6a3",
+        "code_dirty": false,
+        "r29_code_sha256": null,
+        "cap_source": null
+      },
+      "new": {
+        "device": "cuda",
+        "host": "cbd437f8ce92",
+        "seconds": 418.61981100030243,
+        "best_epoch": {
+          "emotion": 12,
+          "style": 1,
+          "genre": 15
+        },
+        "code_commit": "bdabdd28972f79438f3abceab241b05d346fb6a3",
+        "code_dirty": false,
+        "r29_code_sha256": {
+          "r29_trainer.py": "0e61deda49c649f79c2a556682cf4d5491f465a21c8b3b87e198e509b6f4b372",
+          "r29_model.py": "00b96f402097725c45577618486c4b31f7c7af8a9eb818d6d56b59a49d06e2ab",
+          "r29_captions.py": "51b2d86eba6f9f0252d1b267dac2dd0cbac6a4e5649bba033c1e367654178db2"
+        },
+        "cap_source": "qwen"
+      }
+    },
+    "note": "status is weights equality only; the CUDA fallback verdict is ticket 05's"
+  },
+  "written": "2026-11-13 00:20"
+}

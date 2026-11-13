@@ -44,3 +44,43 @@ def test_mixed_import_fails_for_any_checkout(monkeypatch):
     fake(monkeypatch, 'zz_fake_other', Path('/somewhere/else/src/test/20261021_d2_ablation/zz_fake_other.py'))
     with pytest.raises(AssertionError, match='zz_fake_other'):
         P.check_older_imports()
+
+
+# ------------------------------------------------------------------------------------------------ require_committed
+def _repo(tmp_path):
+    import subprocess
+    repo = tmp_path / 'repo'
+    (repo / 'records').mkdir(parents=True)
+
+    def run(*a):
+        subprocess.run(['git', '-C', str(repo), '-c', 'user.name=t', '-c', 'user.email=t@t', *a], check=True, capture_output=True)
+    run('init', '-q')
+    (repo / 'README').write_text('x')           # a first commit, so HEAD exists
+    run('add', 'README')
+    run('commit', '-q', '-m', 'first')
+    return repo, run
+
+
+def test_require_committed_refuses_absent_untracked_staged_and_modified_and_accepts_committed(tmp_path):
+    repo, run = _repo(tmp_path)
+    f = repo / 'records' / 'pass_rule.json'
+    with pytest.raises(RuntimeError, match='no pass_rule.json.*because'):
+        P.require_committed(f, 'because')
+    f.write_text('{"status": "fail"}\n')
+    with pytest.raises(RuntimeError, match='not committed unchanged.*because'):
+        P.require_committed(f, 'because')                         # untracked
+    run('add', 'records')
+    with pytest.raises(RuntimeError, match='not committed unchanged'):
+        P.require_committed(f, 'because')                         # staged only
+    run('commit', '-q', '-m', 'rule')
+    P.require_committed(f, 'because')                             # committed unchanged (a "fail" status is fine: D9)
+    f.write_text('{"status": "pass"}\n')
+    with pytest.raises(RuntimeError, match='not committed unchanged'):
+        P.require_committed(f, 'because')                         # modified after the commit
+
+
+def test_require_committed_refuses_a_file_outside_any_repository(tmp_path):
+    f = tmp_path / 'pass_rule.json'
+    f.write_text('{}')
+    with pytest.raises(RuntimeError, match='not committed'):
+        P.require_committed(f, 'because')

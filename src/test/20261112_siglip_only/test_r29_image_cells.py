@@ -242,6 +242,52 @@ def test_picks_record_must_be_committed_unchanged(tmp_path):
         ic.read_picks('siglip1', records=path.parent, require_committed=True, repo=tmp_path)
 
 
+def _repo_with(tmp_path):
+    def git(*a):
+        subprocess.run(['git', '-C', str(tmp_path), '-c', 'user.name=t', '-c', 'user.email=t@t', *a], check=True, capture_output=True)
+    git('init', '-q')
+    (tmp_path / 'records').mkdir()
+    (tmp_path / 'README').write_text('x')
+    git('add', 'README')
+    git('commit', '-q', '-m', 'first')
+    return git
+
+
+class Reached(Exception):
+    """Raised by a stub placed after the checks: the command got past the pass-rule refusal."""
+
+
+def test_cells_refuse_without_a_committed_pass_rule(tmp_path, monkeypatch):
+    """`cells`: no pass_rule.json, an uncommitted one, a modified one are refusals before the model is even wired; a
+    committed one (pass or fail: D9) lets the command through to the wiring (stubbed to stop there)."""
+    git = _repo_with(tmp_path)
+    monkeypatch.setattr(ic, 'records_dir', lambda: tmp_path / 'records')
+    monkeypatch.setattr(ic, '_wiring', mock.Mock(side_effect=Reached))
+    rule = tmp_path / 'records' / 'pass_rule.json'
+    argv = ['cells', '--arm', 'siglip1']
+    with pytest.raises(RuntimeError, match='no pass_rule.json'):
+        ic.main(argv)                                                 # absent
+    rule.write_text('{"status": "fail"}\n')
+    with pytest.raises(RuntimeError, match='pass_rule.json is not committed'):
+        ic.main(argv)                                                 # present, not committed
+    git('add', 'records')
+    git('commit', '-q', '-m', 'rule')
+    with pytest.raises(Reached):
+        ic.main(argv)                                                 # committed unchanged, status fail: through
+    rule.write_text('{"status": "pass"}\n')
+    with pytest.raises(RuntimeError, match='pass_rule.json is not committed'):
+        ic.main(argv)                                                 # modified since the commit
+
+
+def test_gate_v_image_runs_without_a_pass_rule(tmp_path, monkeypatch):
+    """Gate (v) image is a replay on K0 and frozen records, not a candidate test number: no pass_rule.json needed."""
+    monkeypatch.setattr(ic, 'records_dir', lambda: tmp_path / 'records')       # empty: no pass_rule.json
+    monkeypatch.setattr(ic.P, 'require_committed', mock.Mock(side_effect=AssertionError('asked for a committed record')))
+    monkeypatch.setattr(ic, 'gate_v_image', mock.Mock(return_value=(True, dict(max_abs_diff=0.0))))
+    monkeypatch.setattr(ic, 'write_gate', mock.Mock(return_value=(tmp_path / 'g.json', dict(status='pass'))))
+    assert ic.main(['gate-v-image']) == 0
+
+
 def test_encoder_of_arm():
     assert ic.encoder_of_arm('siglip1') == 'siglip1' and ic.encoder_of_arm('siglip1_prefix') == 'siglip1'
     assert ic.encoder_of_arm('siglip2') == 'siglip2' and ic.encoder_of_arm('clipl14_prefix') == 'clip_l14'
