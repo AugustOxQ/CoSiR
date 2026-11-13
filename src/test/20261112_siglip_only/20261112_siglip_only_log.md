@@ -29,3 +29,13 @@ mode. Outputs `/data/SSD2/cosir_r29/20261112_siglip_only/` (stage logs in its `l
   r28's recorded cells (AMI difference 0, mAP within 5.0e-8). The full SC2 run waits for 1b's exports.
 - 04:48 Codex (same session) builds the 1c re-derivation (`codex_logs/c1_rederive_brief.txt`): validation only until
   our picks are committed; its held part runs in the controller's queue after the SC2 commit.
+- 05:27 Stage 1b done, no failed step (`logs/run_stage1b.log`). K* seeds 1 to 4 trained 5.9 to 7.0 min each; image
+  picks took 21.9 min on the CPU queue.
+- 05:28 `r29_decide.py sc2`: level 0, fail. Five-seed means on validation: image 0.3882157161 (bound 0.3833128479,
+  K0's best seed 0.3878696916: above it), text 0.2548565868 (bound m_T - r_T = 0.2573405749; K0's mean 0.2593512884).
+  Per-seed text 0.2540 to 0.2558, all five below the bound. By D3 and §6, K* is an extra row; stage 2 does not run; 1c
+  runs (D9) and Table 8 runs.
+- 05:29 Codex's SC2 script runs on the CPU queue (`rederive/r29rd_run_sc2.sh`).
+- 05:28 Table 8 (`r29_run_stage1.sh t8`, `logs/run_stage1t8.log`, 0.41 min GPU): SigLIP 1 text pass on K*'s caption
+  form (prefixed) 1.138 ms per caption (repeats 1.132 to 1.145) against the Qwen3 pass 3.616 ms (r28); the three caption
+  towers 0.017 ms. One CPU job (Codex's SC2 run, 8 threads) ran beside it.
