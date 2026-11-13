@@ -2368,3 +2368,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-13-r29-build-5-handoff.md
 - New chat: tab 'r29 build 5', session 42746d62-a7b3-40e9-a35e-d775fb5457b1
 
+[brief] CoSiR: r29 build 5 -> r29 build 6 (2026-11-13 02:41 Amsterdam)
+- Done: 10, 12, 14, 15 merged (12 and 14 GPU smokes pass); 11 and 13 built; gates v_mmart and v_photo pass.
+- State: integration branch 0a6678dd (pushed); 11 and 13 on their branches; gate (vi) score runs on CPU until about 04:30.
+- Next: 11 review fixes and merge; 13 gate (vii) photo, review, merge; final review, fix wave, gate (vii) ablation try 3, merge into main, run chat.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-13-r29-build-6-handoff.md
+- New chat: tab 'r29 build 6', session 6cccc33b-92b2-4a17-9546-c0172afc18a6
+
