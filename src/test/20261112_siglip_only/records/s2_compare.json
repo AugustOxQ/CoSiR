@@ -2689,19 +2689,540 @@
      "/project/CoSiR/src/test/20261112_siglip_only/rederive/s2e_val.json": "a0bd2a07191546c3eb8126a365dbe4bc959e28da641847ea37467341e0bd8bf7"
     },
     "written": "2026-11-13 21:40"
+   },
+   "photo": {
+    "status": "pass",
+    "n_compared": 23,
+    "max_abs_diff": 8.326672684688674e-15,
+    "mismatches": [],
+    "unpaired": [
+     {
+      "side": "codex",
+      "field": "ranges.emoset.map.own_r0_range, .per_seed, .r_source",
+      "note": "F1's own R0 range, not the LEVEL unit (D19)"
+     },
+     {
+      "side": "ours",
+      "field": "comparator_picks, f1, val_files, code_sha256",
+      "note": "older rounds' comparator picks; provenance"
+     }
+    ],
+    "info": [
+     {
+      "item": "photo/affection/table/none+k0/map/emotion",
+      "ours": 0.32289462630442556,
+      "codex": 0.32289462630442556,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "photo/affection/table/center+k0/map/emotion",
+      "ours": 0.32676476082963085,
+      "codex": 0.32676476082963085,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "photo/affection/table/whiten1024+k0/map/emotion",
+      "ours": 0.21595306696873934,
+      "codex": 0.21595306696873934,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "photo/affection/table/whiten256+k0/map/emotion",
+      "ours": 0.22405099756759075,
+      "codex": 0.22405099756759075,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "photo/affection/table/whiten64+k0/map/emotion",
+      "ours": 0.2512965304751792,
+      "codex": 0.2512965304751792,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "photo/affection/table/none+k1/map/emotion",
+      "ours": 0.3250462098993418,
+      "codex": 0.3250462098993418,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "photo/affection/table/none+k3/map/emotion",
+      "ours": 0.32826005924216245,
+      "codex": 0.32826005924216245,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "photo/affection/table/none+k5/map/emotion",
+      "ours": 0.3293046834524257,
+      "codex": 0.3293046834524257,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "photo/affection/table/none+k10/map/emotion",
+      "ours": 0.3306366780652322,
+      "codex": 0.3306366780652322,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "photo/affection/table/center+k1/map/emotion",
+      "ours": 0.32993617467841646,
+      "codex": 0.32993617467841646,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "photo/affection/table/center+k3/map/emotion",
+      "ours": 0.33331386189198214,
+      "codex": 0.33331386189198214,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "photo/affection/table/center+k5/map/emotion",
+      "ours": 0.3349725725217191,
+      "codex": 0.3349725725217191,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "photo/affection/table/center+k10/map/emotion",
+      "ours": 0.33670165615512293,
+      "codex": 0.33670165615512293,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "photo/affection/table/whiten1024+k1/map/emotion",
+      "ours": 0.21772451280382796,
+      "codex": 0.21772451280382796,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "photo/affection/table/whiten256+k1/map/emotion",
+      "ours": 0.22643184438412867,
+      "codex": 0.22643184438412867,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "photo/affection/table/whiten64+k1/map/emotion",
+      "ours": 0.25553733811310864,
+      "codex": 0.25553733811310864,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "photo/affection/table/whiten1024+k3/map/emotion",
+      "ours": 0.21991490638394148,
+      "codex": 0.21991490638394148,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "photo/affection/table/whiten256+k3/map/emotion",
+      "ours": 0.2290789163156935,
+      "codex": 0.2290789163156935,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "photo/affection/table/whiten64+k3/map/emotion",
+      "ours": 0.26017184656170084,
+      "codex": 0.26017184656170084,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "photo/affection/table/whiten1024+k5/map/emotion",
+      "ours": 0.22139722701597883,
+      "codex": 0.22139722701597883,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "photo/affection/table/whiten256+k5/map/emotion",
+      "ours": 0.23075892105784082,
+      "codex": 0.23075892105784082,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "photo/affection/table/whiten64+k5/map/emotion",
+      "ours": 0.2626040942967568,
+      "codex": 0.2626040942967568,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "photo/affection/table/whiten1024+k10/map/emotion",
+      "ours": 0.2233075483421981,
+      "codex": 0.2233075483421981,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "photo/affection/table/whiten256+k10/map/emotion",
+      "ours": 0.23320074068582336,
+      "codex": 0.23320074068582336,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "photo/affection/table/whiten64+k10/map/emotion",
+      "ours": 0.266160436145525,
+      "codex": 0.266160436145525,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "photo/emoset/table/none+k0/map/emotion",
+      "ours": 0.463020475668141,
+      "codex": 0.463020475668141,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "photo/emoset/table/center+k0/map/emotion",
+      "ours": 0.46870348734992007,
+      "codex": 0.46870348734992007,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "photo/emoset/table/whiten1024+k0/map/emotion",
+      "ours": 0.1903722252725434,
+      "codex": 0.1903722252725434,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "photo/emoset/table/whiten256+k0/map/emotion",
+      "ours": 0.2117136721377153,
+      "codex": 0.2117136721377153,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "photo/emoset/table/whiten64+k0/map/emotion",
+      "ours": 0.28123930628159666,
+      "codex": 0.28123930628159666,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "photo/emoset/table/none+k1/map/emotion",
+      "ours": 0.4739436709609793,
+      "codex": 0.4739436709609793,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "photo/emoset/table/none+k3/map/emotion",
+      "ours": 0.48268331447166135,
+      "codex": 0.48268331447166135,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "photo/emoset/table/none+k5/map/emotion",
+      "ours": 0.48642257889736157,
+      "codex": 0.48642257889736157,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "photo/emoset/table/none+k10/map/emotion",
+      "ours": 0.490451992477551,
+      "codex": 0.490451992477551,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "photo/emoset/table/center+k1/map/emotion",
+      "ours": 0.48003400546217306,
+      "codex": 0.48003400546217306,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "photo/emoset/table/center+k3/map/emotion",
+      "ours": 0.48862424177824837,
+      "codex": 0.48862424177824837,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "photo/emoset/table/center+k5/map/emotion",
+      "ours": 0.4923856138700735,
+      "codex": 0.4923856138700735,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "photo/emoset/table/center+k10/map/emotion",
+      "ours": 0.49659010243280327,
+      "codex": 0.49659010243280327,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "photo/emoset/table/whiten1024+k1/map/emotion",
+      "ours": 0.1988692009597593,
+      "codex": 0.1988692009597593,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "photo/emoset/table/whiten256+k1/map/emotion",
+      "ours": 0.22355870290317598,
+      "codex": 0.22355870290317598,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "photo/emoset/table/whiten64+k1/map/emotion",
+      "ours": 0.2967737467763305,
+      "codex": 0.2967737467763305,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "photo/emoset/table/whiten1024+k3/map/emotion",
+      "ours": 0.2090826325068979,
+      "codex": 0.2090826325068979,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "photo/emoset/table/whiten256+k3/map/emotion",
+      "ours": 0.23663733676577658,
+      "codex": 0.23663733676577658,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "photo/emoset/table/whiten64+k3/map/emotion",
+      "ours": 0.3115223934552506,
+      "codex": 0.3115223934552506,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "photo/emoset/table/whiten1024+k5/map/emotion",
+      "ours": 0.21586933967359703,
+      "codex": 0.21586933967359703,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "photo/emoset/table/whiten256+k5/map/emotion",
+      "ours": 0.24435837658877949,
+      "codex": 0.24435837658877949,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "photo/emoset/table/whiten64+k5/map/emotion",
+      "ours": 0.3191190141481289,
+      "codex": 0.3191190141481289,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "photo/emoset/table/whiten1024+k10/map/emotion",
+      "ours": 0.22519202426886845,
+      "codex": 0.22519202426886845,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "photo/emoset/table/whiten256+k10/map/emotion",
+      "ours": 0.25514387243543535,
+      "codex": 0.25514387243543535,
+      "diff": 0.0,
+      "equal": true
+     },
+     {
+      "item": "photo/emoset/table/whiten64+k10/map/emotion",
+      "ours": 0.3295248611054486,
+      "codex": 0.3295248611054486,
+      "diff": 0.0,
+      "equal": true
+     }
+    ],
+    "codex_status": {
+     "complete": true,
+     "mode": "validation",
+     "file_complete": true
+    },
+    "items": [
+     {
+      "item": "photo/ours_arm",
+      "ours": "siglip1_prefix",
+      "codex": "siglip1_prefix",
+      "equal": true
+     },
+     {
+      "item": "photo/affection/range/ami",
+      "ours": 0.007592828480245339,
+      "codex": 0.007592828480243563,
+      "diff": 1.7763568394002505e-15
+     },
+     {
+      "item": "photo/affection/per_seed/ami[0]",
+      "ours": 0.1889491372671179,
+      "codex": 0.1889491372671123,
+      "diff": 5.6066262743570405e-15
+     },
+     {
+      "item": "photo/affection/per_seed/ami[1]",
+      "ours": 0.18442348659262262,
+      "codex": 0.1844234865926143,
+      "diff": 8.326672684688674e-15
+     },
+     {
+      "item": "photo/affection/per_seed/ami[2]",
+      "ours": 0.19163400000545003,
+      "codex": 0.19163400000544326,
+      "diff": 6.772360450213455e-15
+     },
+     {
+      "item": "photo/affection/per_seed/ami[3]",
+      "ours": 0.188510711002426,
+      "codex": 0.18851071100241812,
+      "diff": 7.882583474838611e-15
+     },
+     {
+      "item": "photo/affection/per_seed/ami[4]",
+      "ours": 0.1840411715252047,
+      "codex": 0.1840411715251997,
+      "diff": 4.9960036108132044e-15
+     },
+     {
+      "item": "photo/affection/range/map",
+      "ours": 0.005820671511239828,
+      "codex": 0.005820671511239828,
+      "diff": 0.0
+     },
+     {
+      "item": "photo/affection/per_seed/map[0]",
+      "ours": 0.32092966921410193,
+      "codex": 0.32092966921410193,
+      "diff": 0.0
+     },
+     {
+      "item": "photo/affection/per_seed/map[1]",
+      "ours": 0.32062854827033405,
+      "codex": 0.32062854827033405,
+      "diff": 0.0
+     },
+     {
+      "item": "photo/affection/per_seed/map[2]",
+      "ours": 0.32313324677934163,
+      "codex": 0.32313324677934163,
+      "diff": 0.0
+     },
+     {
+      "item": "photo/affection/per_seed/map[3]",
+      "ours": 0.32284555697305817,
+      "codex": 0.32284555697305817,
+      "diff": 0.0
+     },
+     {
+      "item": "photo/affection/per_seed/map[4]",
+      "ours": 0.3173125752681018,
+      "codex": 0.3173125752681018,
+      "diff": 0.0
+     },
+     {
+      "item": "photo/affection/pick/image_map",
+      "ours": "center+k10",
+      "codex": "center+k10",
+      "equal": true
+     },
+     {
+      "item": "photo/emoset/range/ami",
+      "ours": 0.03093818353882133,
+      "codex": 0.030938183538821717,
+      "diff": 3.885780586188048e-16
+     },
+     {
+      "item": "photo/emoset/per_seed/ami[0]",
+      "ours": 0.4427338328934196,
+      "codex": 0.4427338328934209,
+      "diff": 1.27675647831893e-15
+     },
+     {
+      "item": "photo/emoset/per_seed/ami[1]",
+      "ours": 0.45002285477327647,
+      "codex": 0.4500228547732777,
+      "diff": 1.2212453270876722e-15
+     },
+     {
+      "item": "photo/emoset/per_seed/ami[2]",
+      "ours": 0.4253512927203222,
+      "codex": 0.4253512927203222,
+      "diff": 0.0
+     },
+     {
+      "item": "photo/emoset/per_seed/ami[3]",
+      "ours": 0.41908467123445514,
+      "codex": 0.419084671234456,
+      "diff": 8.326672684688674e-16
+     },
+     {
+      "item": "photo/emoset/per_seed/ami[4]",
+      "ours": 0.4362234985285454,
+      "codex": 0.4362234985285442,
+      "diff": 1.2212453270876722e-15
+     },
+     {
+      "item": "photo/emoset/range/map",
+      "ours": 0.0069460867449697705,
+      "codex": 0.0069460867449697705,
+      "diff": 0.0
+     },
+     {
+      "item": "photo/emoset/r_E",
+      "ours": 0.0069460867449697705,
+      "codex": 0.0069460867449697705,
+      "diff": 0.0
+     },
+     {
+      "item": "photo/emoset/pick/image_map",
+      "ours": "center+k10",
+      "codex": "center+k10",
+      "equal": true
+     }
+    ],
+    "inputs": {
+     "/project/CoSiR/src/test/20261112_siglip_only/records/photo_picks_siglip1_prefix.json": "77f68bc66d12afd5353d7b218d5f2f3701d740d8b001b46191d2d6c87b42f6e6",
+     "/project/CoSiR/src/test/20261112_siglip_only/rederive/s2mp_val.json": "81bfab9e77b47bb97e86a8cc1832af01ae565ac74a95d5f0ad4287930a0c5318"
+    },
+    "written": "2026-11-13 21:51"
    }
   }
  },
  "mismatches": {
   "val": {
    "mmart": [],
-   "e2e3": []
+   "e2e3": [],
+   "photo": []
   }
  },
  "missing": {
   "val": {}
  },
  "written": {
-  "val": "2026-11-13 21:40"
+  "val": "2026-11-13 21:51"
  }
 }

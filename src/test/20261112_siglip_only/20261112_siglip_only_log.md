@@ -186,3 +186,6 @@ mode. Outputs `/data/SSD2/cosir_r29/20261112_siglip_only/` (stage logs in its `l
   comparison `--phase val --pieces e2e3`: pass, 88 fields, largest difference 0, no mismatch. Codex's SC9 (to compare
   with our `encoder_pick.json` at the end of part a): pick SigLIP 1 (0.3882) over SigLIP 2 (0.3838) and CLIP L/14
   (0.3762), margin 0.0045, ahead in 5 of 5 seeds, leader range 0.0055, close call.
+- 21:46 F1 training 15.7 min; photo exports; photo picks 4.3 min (35c18106; Affection and EmoSet `center+k10`). Ablation
+  training starts (instructed graphs first). Codex `s2mp val --piece photo` (4.6 min, exit 0): `s2mp_val.json` complete
+  (both pieces). C13 comparison `--phase val --pieces photo`: pass, 23 fields, largest difference 8.3e-15, no mismatch.
