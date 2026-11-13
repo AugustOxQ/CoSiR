@@ -284,3 +284,11 @@ Spec: `docs/superpowers/specs/2026-11-11-r21-dec-heads-design.md`. Decision line
   nothing. Fixed: "plain DEC clusters collapse" (too strong for the scored state: the empty clusters are DEC's own training
   assignments at the last DEC epoch; scored largest share 0.18 at most), the emotion UMAP caption, the teacher pull
   described at first use. Report 17.2 KB with the claim review.
+- 04:13: user-read report checks, in parallel on Codex (room): cold read `gpt-6-luna` medium, fidelity check `gpt-6.1-terra`
+  medium (findings in `.scratch/r21-dec-heads/userread/`). Fidelity: no number wrong; two tightness claims too general;
+  three caveats missing (the long run mixes DEC with longer training, no correction across cells, one control for all
+  forms); c*'s description not in the full report. Cold read: no sentence over 25 words; terms undefined (aspect, start
+  pull, PercepT, the two tightness indexes, the control's purpose), three dense paragraphs.
+- 04:15: one fix wave: the user-read report rewritten on all points (tightness per aspect as a list, the control explained,
+  caveats added, glossary extended), humanizer pass; the full report's "What ran" now describes c* (the one fact the
+  fidelity check found missing there). No re-check (reference: one fix wave).
