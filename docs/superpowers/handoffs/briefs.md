@@ -2482,3 +2482,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-13-r31-run-2-handoff.md
 - New chat: tab 'r31 run 2', session 860f785a-fbcc-4299-8acd-da7a016a2571
 
+[brief] CoSiR: paper plan 7 -> paper plan 8 (2026-11-13 18:10 Amsterdam)
+- Done: supplementary cluster-count figure (CLAY on top, caption) and all of 4.1's advance cuts (Datasets, Compared methods reordered, Metrics, Implementation details to the supplementary) (REPO `5fc3f01`).
+- State: 4.1 is final for now. 4.2 to 4.4 not yet gone through. The Section 4 opening is the user's to write.
+- Next: ask the user's view on 4.2 first, then compare with the agent's table in `notes/section4_cuts.md`.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-13-paper-plan-8-handoff.md
+- New chat: tab 'paper plan 8', session aabac664-f442-432b-a151-6bebed462376
+
