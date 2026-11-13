@@ -2360,3 +2360,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-13-r29-build-4-handoff.md
 - New chat: tab 'r29 build 4', session 15fea542-d562-41b1-91e2-67568c234426
 
+[brief] CoSiR: r29 build 4 -> r29 build 5 (2026-11-13 01:45 Amsterdam)
+- Done: 05, 07, 08 fixed, re-reviewed and merged; integration fix (pass rule before test numbers) merged; 12 and 14 reviewed; 10 built; stage 0 gates (i) to (iii), (v) image and text pass.
+- State: integration branch 591b459d, 360 tests pass; gate (iv) waits for its hash part (stage 1).
+- Next: fixer for 12, smoke fix and re-review of 14, finish 11, reviews of 10 and 11, then 13 and 15.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-13-r29-build-5-handoff.md
+- New chat: tab 'r29 build 5', session 42746d62-a7b3-40e9-a35e-d775fb5457b1
+
