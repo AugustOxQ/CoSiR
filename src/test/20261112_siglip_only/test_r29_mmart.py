@@ -63,7 +63,7 @@ def world():
     return dict(
         y=y,
         # the candidate heads: strong class signal; the plain image: weak; the teacher: very strong (its aspect view)
-        head={(s, a, seed): _rows(y[(s, a)], np.random.default_rng(100 + seed), 0.09, 2048)
+        head={(s, a, seed): _rows(y[(s, a)], np.random.default_rng(100 + seed), 0.22, 2048)
               for s in ('val', 'test') for a in mm.ASPECTS for seed in range(5)},
         plain={s: _rows(y[(s, 'style')], np.random.default_rng(7), 0.0, W_IN) for s in ('val', 'test')},
         teacher={(s, a): _rows(y[(s, a)], np.random.default_rng(8), 1.2, 32) for s in ('val', 'test') for a in mm.ASPECTS})
@@ -222,9 +222,9 @@ def test_directions_follow_the_planted_data(cells):
     does not (a swapped comparator would flip the signs)."""
     for c in cells:
         if c['comparator'] == 'plain':
-            assert c['d'] > 0 and c['outcome'] == 'WIN', c['id']
+            assert c['d'] > 0 and c['outcome'] == 'WIN', (c['id'], c['value'], c['comparator_value'], c['lo'], c['hi'], c['r'])
         else:
-            assert c['d'] < 0 and c['outcome'] in ('LEVEL', 'BELOW'), c['id']
+            assert c['d'] < 0 and c['outcome'] in ('LEVEL', 'BELOW'), (c['id'], c['value'], c['comparator_value'], c['lo'], c['hi'], c['r'])
 
 
 def test_cells_score_the_test_rows_not_the_validation_rows(cells):
@@ -370,8 +370,11 @@ def test_validation_files_must_be_the_ones_the_picks_read(exported, world, small
 def test_picks_read_validation_rows_only_and_record_ranges_and_readouts(world, exported, small_mmart):
     root, export_root = exported
     w = _wiring(root, export_root, splits=('val',))
+    rt_readout = mm.IC.ns_picks.ac_select.rt_readout
+    menu = rt_readout.menu
     with mock.patch.object(mm, 'teacher_pick', lambda: 'center+k10'), \
-            mock.patch.object(mm.IC.ns_ret, 'reused_pick', lambda arm, s, e: 'none+k1'):
+            mock.patch.object(mm.IC.ns_ret, 'reused_pick', lambda arm, s, e: 'none+k1'), \
+            mock.patch.object(rt_readout, 'menu', lambda width: [r for r in menu(width) if r.w != 'whiten'][:4]):   # R0 first; whitening's eigendecompositions take minutes
         body = mm.compute_picks(w, workers=2)
     assert body['n_val'] == N_VAL
     for a in mm.ASPECTS:
@@ -438,10 +441,70 @@ def test_cell_comparison_names_the_record_values_and_the_tolerance():
     assert not mm.compare_cell(dict(cell, outcome='LEVEL'), 'r17 SC1', rec, check_interval=True)['ok']
 
 
-def test_gate_record_stops_after_three_tries(tmp_path):
-    for _ in range(3):
-        mm.write_gate(tmp_path, 'vi', 'fail', dict(x=1))
-    with pytest.raises(RuntimeError, match='three tries'):
-        mm.write_gate(tmp_path, 'vi', 'fail', dict(x=1))
+def test_gate_status_rule_pass_then_fail_fail_parked_and_a_fourth_try_raises(tmp_path):
+    """`pass`; a failure is `fail` before try 3 and `parked` at try 3; one try per write (the count is the record's, not ours)."""
+    got = [mm.write_gate(tmp_path, 'vi', False, dict(x=1)) for _ in range(3)]
+    assert [(r['status'], r['tries']) for r in got] == [('fail', 1), ('fail', 2), ('parked', 3)]
+    with pytest.raises(AssertionError, match='fourth'):
+        mm.write_gate(tmp_path, 'vi', False, dict(x=1))
     rec = json.loads((tmp_path / 'vi.json').read_text())
-    assert rec['gate'] == 'vi' and rec['tries'] == 3 and rec['status'] == 'fail'
+    assert rec['gate'] == 'vi' and rec['tries'] == 3 and rec['status'] == 'parked'
+
+
+def test_gate_status_a_pass_at_the_second_try_is_pass(tmp_path):
+    assert mm.write_gate(tmp_path, 'v_mmart', False, dict(x=1))['status'] == 'fail'
+    rec = mm.write_gate(tmp_path, 'v_mmart', True, dict(x=1))
+    assert (rec['status'], rec['tries']) == ('pass', 2)
+
+
+def test_gate_v_mmart_command_writes_the_status_rule_and_the_ladder_reads_it(tmp_path):
+    """Absent record: the ladder's reader raises "gate v_mmart not run"; fail, fail, parked on three failures; pass on a pass."""
+    with pytest.raises(RuntimeError, match='gate v_mmart not run'):
+        LD.gate_status(tmp_path, 'v_mmart')
+    details = dict(failed_comparators=['plain'], max_abs_diff=0.5)
+    with mock.patch.object(mm, 'records_dir', lambda: tmp_path), mock.patch.object(mm, 'gate_v_mmart', lambda **kw: (False, details)):
+        assert mm.main(['gate-v-mmart']) == 1
+        assert LD.gate_status(tmp_path, 'v_mmart', open_ok=True) == 'open'                 # fail below try 3 is still open
+        mm.main(['gate-v-mmart'])
+        mm.main(['gate-v-mmart'])
+    assert LD.gate_status(tmp_path, 'v_mmart') == 'parked'
+    other = tmp_path / 'other'
+    with mock.patch.object(mm, 'records_dir', lambda: other), \
+            mock.patch.object(mm, 'gate_v_mmart', lambda **kw: (True, dict(failed_comparators=[], max_abs_diff=0.0))):
+        assert mm.main(['gate-v-mmart']) == 0
+    assert LD.gate_status(other, 'v_mmart') == 'pass'
+
+
+def test_gate_vi_score_command_writes_the_status_rule_and_a_reduced_check_writes_no_record(tmp_path):
+    n_files = len(mm.KEYSETS) * len(mm.ASPECTS) * len(mm.SEEDS)
+    out = tmp_path / 'out' / 'gate_vi' / 'try1'
+    out.mkdir(parents=True)
+    (out / 'export_result.json').write_text(json.dumps(dict(ok=True, n_files=n_files)))
+    score = lambda ok: (lambda *a, **kw: (ok, dict(intervals_checked=True, picks=[], max_abs_diff=0.0)))    # noqa: E731
+    rec = tmp_path / 'rec'
+    with mock.patch.object(mm, 'records_dir', lambda: rec), mock.patch.object(mm.P, 'OUT', tmp_path / 'out'):
+        with pytest.raises(RuntimeError, match='gate vi not run'):
+            LD.gate_status(rec, 'vi')
+        with mock.patch.object(mm, 'gate_vi_score', score(False)):
+            assert mm.main(['gate-vi', 'score', '--try', '1']) == 1
+            assert LD.gate_status(rec, 'vi', open_ok=True) == 'open'
+            mm.main(['gate-vi', 'score', '--try', '1'])
+            mm.main(['gate-vi', 'score', '--try', '1'])
+        assert LD.gate_status(rec, 'vi') == 'parked'
+        assert json.loads((rec / 'gates' / 'vi.json').read_text())['tries'] == 3
+        with mock.patch.object(mm, 'gate_vi_score', score(True)):                 # a reduced check: one aspect, no record
+            assert mm.main(['gate-vi', 'score', '--try', '1', '--aspects', 'emotion']) == 0
+        assert json.loads((rec / 'gates' / 'vi.json').read_text())['tries'] == 3
+    assert (out / 'score_partial.json').exists()
+
+
+def test_gate_vi_score_passes_into_a_pass_record(tmp_path):
+    n_files = len(mm.KEYSETS) * len(mm.ASPECTS) * len(mm.SEEDS)
+    out = tmp_path / 'out' / 'gate_vi' / 'try1'
+    out.mkdir(parents=True)
+    (out / 'export_result.json').write_text(json.dumps(dict(ok=True, n_files=n_files)))
+    rec = tmp_path / 'rec'
+    with mock.patch.object(mm, 'records_dir', lambda: rec), mock.patch.object(mm.P, 'OUT', tmp_path / 'out'), \
+            mock.patch.object(mm, 'gate_vi_score', lambda *a, **kw: (True, dict(intervals_checked=True, picks=[], max_abs_diff=0.0))):
+        assert mm.main(['gate-vi', 'score', '--try', '1']) == 0
+    assert LD.gate_status(rec, 'vi') == 'pass'

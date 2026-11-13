@@ -82,7 +82,6 @@ CSTAR_WIDTH = ns_paths.CSTAR_WIDTH
 R15 = P.OLDER / '20261102_mmart_test/records'
 R15_TEACHER_RECORD = R15 / 'stage1_teacher.json'
 N_VAL = 5769
-MAX_GATE_TRIES = 3
 
 
 # ================================================================================================ small helpers
@@ -483,11 +482,13 @@ def compare_cell(cell, record_id, rec, check_interval):
                 recorded_outcome=rec['outcome'], ok=bool(worst <= TOL and (not check_interval or cell['outcome'] == rec['outcome'])))
 
 
-def write_gate(folder, gate, status, details):
-    """`<folder>/<gate>.json` through `r29_captions.write_gate_record`, at most three times (§3.5: three tries per gate)."""
+def write_gate(folder, gate, passed, details):
+    """`<folder>/<gate>.json` through `r29_captions.write_gate_record`, which counts the tries (one per call) and raises on a fourth
+    (§3.5: three tries per gate). Status rule shared with tickets 05, 08, 14: `pass`; a failure is `fail` before try 3 and `parked` at
+    try 3 (the gate then parks what it serves)."""
     path = Path(folder) / f'{gate}.json'
-    if path.exists() and int(json.loads(path.read_text()).get('tries', 0)) >= MAX_GATE_TRIES:
-        raise RuntimeError(f'{path}: gate {gate} has used its three tries; it parks what it serves (§3.5)')
+    prior = int(json.loads(path.read_text())['tries']) if path.exists() else 0
+    status = 'pass' if passed else ('parked' if prior == 2 else 'fail')
     return C.write_gate_record(folder, dict(status=status, details=jsonable(details)), gate=gate)
 
 
@@ -687,7 +688,7 @@ def main(argv=None):
         print(f'cells {args.arm} -> {path} ({time.monotonic() - t0:.0f}s)')
     elif args.cmd == 'gate-v-mmart':
         ok, details = gate_v_mmart(workers=args.workers, perquery_dir=P.OUT / 'gate_v_mmart' / 'perquery')
-        rec = write_gate(rec_dir / 'gates', 'v_mmart', 'pass' if ok else 'fail', details)
+        rec = write_gate(rec_dir / 'gates', 'v_mmart', ok, details)
         print(f'gate v_mmart: {rec["status"]} tries {rec["tries"]} max_abs_diff {details["max_abs_diff"]:.3g} '
               f'failed {details["failed_comparators"]} ({time.monotonic() - t0:.0f}s)')
         return 0 if ok else 1
@@ -708,7 +709,7 @@ def main(argv=None):
         both = ok and exp['ok']
         details = dict(export=exp, score=details)
         if full:
-            rec = write_gate(rec_dir / 'gates', 'vi', 'pass' if both else 'fail', details)
+            rec = write_gate(rec_dir / 'gates', 'vi', both, details)
             print(f'gate vi: {rec["status"]} tries {rec["tries"]} ({time.monotonic() - t0:.0f}s)')
         else:
             write_json(out / 'score_partial.json', dict(ok=both, **details))
