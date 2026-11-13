@@ -96,9 +96,10 @@ def require_pass():
         raise RuntimeError(f'{path}: status {status!r}, not "pass": stage 2 (E2, E3) does not run (D3)')
 
 
-def read_prefix_pick():
-    """`records/prefix_pick.json`, its four keys asserted (the index's Shared interfaces); the form must agree with kstar."""
-    path = records_dir() / 'prefix_pick.json'
+def read_prefix_pick(records=None):
+    """`records/prefix_pick.json`, its four keys asserted (the index's Shared interfaces); the form must agree with kstar.
+    `records` overrides the usual records directory for callers such as r29_decide's CLI and temporary-folder tests."""
+    path = Path(records) / 'prefix_pick.json' if records is not None else records_dir() / 'prefix_pick.json'
     if not path.is_file():
         raise RuntimeError(f'no {path}: ticket 05 writes it; E2 and E3 take K*\'s caption form from it (D13)')
     doc = json.loads(path.read_text())
@@ -120,10 +121,10 @@ def arm_source(encoder, form):
     return source
 
 
-def kstar_source(encoder):
+def kstar_source(encoder, records=None):
     """D13: E2's and E3's caption source is the store of K*'s form, no own check."""
     assert encoder in ENCODERS, f'encoder {encoder!r}: not one of {ENCODERS}'
-    return arm_source(encoder, read_prefix_pick()['kstar_form'])
+    return arm_source(encoder, read_prefix_pick(records)['kstar_form'])
 
 
 def arm_encoder(source):
