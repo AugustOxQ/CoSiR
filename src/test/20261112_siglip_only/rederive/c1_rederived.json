@@ -1,0 +1,1909 @@
+{
+  "picks": {
+    "text": {
+      "emotion/t2i": {
+        "pick": "center_k10",
+        "means": {
+          "r0": 0.2588937829493384,
+          "center": 0.25967697785685434,
+          "center_k10": 0.2637824958106698
+        },
+        "range": 0.002316432419820935,
+        "per_seed": {
+          "r0": [
+            0.2597171557884932,
+            0.25959125925104654,
+            0.25852030860548525,
+            0.25730919683957026,
+            0.2593309942620967
+          ],
+          "center": [
+            0.26010304976173976,
+            0.2603157987267208,
+            0.25887258792590845,
+            0.2588104524660359,
+            0.26028300040386676
+          ],
+          "center_k10": [
+            0.26452044333628977,
+            0.2646475581212542,
+            0.26233112570143324,
+            0.2629796738014309,
+            0.2644336780929411
+          ]
+        }
+      },
+      "emotion/i2t": {
+        "pick": "center_k10",
+        "means": {
+          "r0": 0.25814547846348096,
+          "center": 0.2638020802746128,
+          "center_k10": 0.28328440666522087
+        },
+        "range": 0.002891535533595724,
+        "per_seed": {
+          "r0": [
+            0.2583307216114392,
+            0.257183681776104,
+            0.25738060243472566,
+            0.25943214559875505,
+            0.2584002408963811
+          ],
+          "center": [
+            0.26503737352867773,
+            0.2639433217026906,
+            0.26316658727917336,
+            0.2622986281719374,
+            0.26456449069058513
+          ],
+          "center_k10": [
+            0.2837693651295503,
+            0.2846114596820367,
+            0.281719924148441,
+            0.28195428552399104,
+            0.2843669988420854
+          ]
+        }
+      },
+      "emotion/t2t": {
+        "pick": "center_k10",
+        "means": {
+          "r0": 0.309094658536453,
+          "center": 0.31186024649950805,
+          "center_k10": 0.3284010138448381
+        },
+        "range": 0.003962394279699577,
+        "per_seed": {
+          "r0": [
+            0.30810163454760214,
+            0.3116258528522134,
+            0.30754597901493835,
+            0.31010862802972605,
+            0.30809119823778514
+          ],
+          "center": [
+            0.31063989322345,
+            0.31367946869598246,
+            0.31054279520187816,
+            0.3131675608866711,
+            0.3112715144895585
+          ],
+          "center_k10": [
+            0.3267926759672457,
+            0.33064675432924073,
+            0.32668436004954116,
+            0.3298437250898446,
+            0.32803755378831845
+          ]
+        }
+      },
+      "style/t2i": {
+        "pick": "center_k10",
+        "means": {
+          "r0": 0.1607367347707193,
+          "center": 0.1611841144160643,
+          "center_k10": 0.17734462981626148
+        },
+        "range": 0.0036959642039223473,
+        "per_seed": {
+          "r0": [
+            0.1608701066946145,
+            0.16310141505209744,
+            0.16020679039571667,
+            0.15864571029382452,
+            0.16085965141734326
+          ],
+          "center": [
+            0.16193020705907887,
+            0.16371054469374494,
+            0.16168528498884016,
+            0.15840716522958326,
+            0.16018737010907436
+          ],
+          "center_k10": [
+            0.17693538384063223,
+            0.17912334937281987,
+            0.17687049647633288,
+            0.17542738516889753,
+            0.17836653422262483
+          ]
+        }
+      },
+      "style/i2t": {
+        "pick": "center_k10",
+        "means": {
+          "r0": 0.1324952136815186,
+          "center": 0.1325849210836026,
+          "center_k10": 0.13631461366584313
+        },
+        "range": 0.002261933002570077,
+        "per_seed": {
+          "r0": [
+            0.13209993857228056,
+            0.13312859944588207,
+            0.13401246952075846,
+            0.13129673105910855,
+            0.1319383298095633
+          ],
+          "center": [
+            0.1326571052093319,
+            0.1332178451827066,
+            0.13375947951024758,
+            0.13106620407359607,
+            0.13222397144213083
+          ],
+          "center_k10": [
+            0.13601270747129254,
+            0.13725025443135705,
+            0.13721414432891643,
+            0.13498832142878697,
+            0.13610764066886274
+          ]
+        }
+      },
+      "style/t2t": {
+        "pick": "center_k10",
+        "means": {
+          "r0": 0.10111649400263216,
+          "center": 0.1019707804788661,
+          "center_k10": 0.10468878486528436
+        },
+        "range": 0.0017366456380729367,
+        "per_seed": {
+          "r0": [
+            0.10115831292566793,
+            0.10223364097501336,
+            0.10195220675193131,
+            0.10047840254426656,
+            0.09975990681628163
+          ],
+          "center": [
+            0.10204698933559127,
+            0.10315257188308055,
+            0.1030669548609956,
+            0.10112994684700746,
+            0.10045743946765562
+          ],
+          "center_k10": [
+            0.10436259471965373,
+            0.10555634824343717,
+            0.10556588517826965,
+            0.1041298566448646,
+            0.10382923954019671
+          ]
+        }
+      },
+      "genre/t2i": {
+        "pick": "center_k10",
+        "means": {
+          "r0": 0.4162407413631454,
+          "center": 0.43010528222396155,
+          "center_k10": 0.4893506085323482
+        },
+        "range": 0.003755487218100373,
+        "per_seed": {
+          "r0": [
+            0.4156168799333614,
+            0.4150029615068184,
+            0.4199404341933564,
+            0.41440686844024344,
+            0.41623656274194715
+          ],
+          "center": [
+            0.43066667165052747,
+            0.428579837809085,
+            0.4330393950401225,
+            0.42855096517790436,
+            0.4296895414421681
+          ],
+          "center_k10": [
+            0.48852819792067365,
+            0.4879436800712939,
+            0.4916991672893943,
+            0.48892527033249217,
+            0.48965672704788693
+          ]
+        }
+      },
+      "genre/i2t": {
+        "pick": "center",
+        "means": {
+          "r0": 0.3824801843711025,
+          "center": 0.4034280172709165,
+          "center_k10": 0.3994069493395246
+        },
+        "range": 0.0032086055601886487,
+        "per_seed": {
+          "r0": [
+            0.38479834521685036,
+            0.3805661936388201,
+            0.3842602174571385,
+            0.38238631346518354,
+            0.38038985207751996
+          ],
+          "center": [
+            0.4049640649644237,
+            0.4028534375424046,
+            0.4048857443962216,
+            0.40268138004729764,
+            0.40175545940423507
+          ],
+          "center_k10": [
+            0.40134814789090606,
+            0.39951134358059553,
+            0.4020336101165852,
+            0.3973688733887919,
+            0.39677277172074443
+          ]
+        }
+      },
+      "genre/t2t": {
+        "pick": "center_k10",
+        "means": {
+          "r0": 0.2745059957902483,
+          "center": 0.28926540656473493,
+          "center_k10": 0.3149767063732346
+        },
+        "range": 0.006423899129674948,
+        "per_seed": {
+          "r0": [
+            0.2768509171793557,
+            0.27252732494620396,
+            0.27805781127130674,
+            0.2713032028268306,
+            0.27379072272754446
+          ],
+          "center": [
+            0.2912207877243667,
+            0.28794241984525487,
+            0.2925523911404974,
+            0.2860649500699657,
+            0.2885464840435898
+          ],
+          "center_k10": [
+            0.3168677335666699,
+            0.31390062294788745,
+            0.31808449069057043,
+            0.3116605915608955,
+            0.3143700931001496
+          ]
+        }
+      }
+    },
+    "image_map": {
+      "emotion": {
+        "pick": "center+k10",
+        "p1_pick": "center+k10",
+        "range": 0.0014969329136146348
+      },
+      "style": {
+        "pick": "center+k10",
+        "p1_pick": "center+k10",
+        "range": 0.0038051657076788037
+      },
+      "genre": {
+        "pick": "center+k10",
+        "p1_pick": "center+k10",
+        "range": 0.0036959650471728445
+      }
+    },
+    "ami_range": {
+      "emotion": 0.010977150174825784,
+      "style": 0.007994029236452316,
+      "genre": 0.026141711966902292
+    }
+  },
+  "cells": [
+    {
+      "id": "ami/emotion/p1",
+      "value": 0.10179985944236611,
+      "comparator_value": 0.06124660057467476,
+      "d": 0.04055325886769135,
+      "lo": 0.036314974895927804,
+      "hi": 0.044583461592050615,
+      "r": 0.010977150174825784,
+      "n_rows": 12281,
+      "n_labelled": 12281,
+      "outcome": "WIN"
+    },
+    {
+      "id": "image_map/emotion/p1",
+      "value": 0.260966995099301,
+      "comparator_value": 0.24523517829806704,
+      "d": 0.01573181680123395,
+      "lo": 0.015095425508451124,
+      "hi": 0.016373903358785,
+      "n_queries": 12281,
+      "n_units": 12281,
+      "r": 0.0014969329136146348,
+      "candidate_embedding": "untold",
+      "outcome": "INCONCLUSIVE"
+    },
+    {
+      "id": "text/emotion/t2i/p1",
+      "value": 0.2617891870890837,
+      "comparator_value": 0.21095791779139716,
+      "d": 0.050831269297686554,
+      "lo": 0.04974850030339126,
+      "hi": 0.051846300592145955,
+      "n_queries": 61744,
+      "n_units": 12281,
+      "r": 0.002316432419820935,
+      "outcome": "INCONCLUSIVE"
+    },
+    {
+      "id": "text/emotion/i2t/p1",
+      "value": 0.2805849032320477,
+      "comparator_value": 0.2202560332258782,
+      "d": 0.060328870006169516,
+      "lo": 0.05827561500326043,
+      "hi": 0.06238204833576404,
+      "n_queries": 12281,
+      "n_units": 12281,
+      "r": 0.002891535533595724,
+      "outcome": "INCONCLUSIVE"
+    },
+    {
+      "id": "text/emotion/t2t/p1",
+      "value": 0.3271756938984642,
+      "comparator_value": 0.20610378417989492,
+      "d": 0.12107190971856926,
+      "lo": 0.11925645484126839,
+      "hi": 0.12301301266949426,
+      "n_queries": 61744,
+      "n_units": 12281,
+      "r": 0.003962394279699577,
+      "outcome": "INCONCLUSIVE"
+    },
+    {
+      "id": "ami/emotion/q1",
+      "value": 0.10179985944236611,
+      "comparator_value": 0.08887516573446036,
+      "d": 0.012924693707905749,
+      "lo": 0.009266682843698209,
+      "hi": 0.016513217924706437,
+      "r": 0.010977150174825784,
+      "n_rows": 12281,
+      "n_labelled": 12281,
+      "outcome": "WIN"
+    },
+    {
+      "id": "image_map/emotion/q1",
+      "value": 0.2696081747379893,
+      "comparator_value": 0.2684206728949585,
+      "d": 0.0011875018430307915,
+      "lo": 0.00011604228466389616,
+      "hi": 0.0022395710819778573,
+      "n_queries": 12281,
+      "n_units": 12281,
+      "r": 0.0014969329136146348,
+      "candidate_embedding": "told",
+      "outcome": "INCONCLUSIVE"
+    },
+    {
+      "id": "text/emotion/t2i/q1",
+      "value": 0.2617891870890837,
+      "comparator_value": 0.26781473115043597,
+      "d": -0.00602554406135225,
+      "lo": -0.006981943517947507,
+      "hi": -0.005122567495891271,
+      "n_queries": 61744,
+      "n_units": 12281,
+      "r": 0.002316432419820935,
+      "outcome": "INCONCLUSIVE"
+    },
+    {
+      "id": "text/emotion/i2t/q1",
+      "value": 0.2805849032320477,
+      "comparator_value": 0.30353254291514314,
+      "d": -0.022947639683095433,
+      "lo": -0.025276006764667514,
+      "hi": -0.0206587181049297,
+      "n_queries": 12281,
+      "n_units": 12281,
+      "r": 0.002891535533595724,
+      "outcome": "INCONCLUSIVE"
+    },
+    {
+      "id": "text/emotion/t2t/q1",
+      "value": 0.3271756938984642,
+      "comparator_value": 0.37650961574297276,
+      "d": -0.04933392184450858,
+      "lo": -0.05091324544871995,
+      "hi": -0.04771028129225673,
+      "n_queries": 61744,
+      "n_units": 12281,
+      "r": 0.003962394279699577,
+      "outcome": "INCONCLUSIVE"
+    },
+    {
+      "id": "ami/style/p1",
+      "value": 0.44644646139254573,
+      "comparator_value": 0.38203645247749024,
+      "d": 0.0644100089150555,
+      "lo": 0.05939297996474816,
+      "hi": 0.06917974195680247,
+      "r": 0.007994029236452316,
+      "n_rows": 12281,
+      "n_labelled": 12281,
+      "outcome": "WIN"
+    },
+    {
+      "id": "image_map/style/p1",
+      "value": 0.2871806669050372,
+      "comparator_value": 0.29621971701644,
+      "d": -0.009039050111402824,
+      "lo": -0.010651601285510308,
+      "hi": -0.007391358854525386,
+      "n_queries": 12281,
+      "n_units": 12281,
+      "r": 0.0038051657076788037,
+      "candidate_embedding": "untold",
+      "outcome": "INCONCLUSIVE"
+    },
+    {
+      "id": "text/style/t2i/p1",
+      "value": 0.17548224485293815,
+      "comparator_value": 0.15173477960063678,
+      "d": 0.02374746525230137,
+      "lo": 0.02222697599666477,
+      "hi": 0.025307061545233222,
+      "n_queries": 61744,
+      "n_units": 12281,
+      "r": 0.0036959642039223473,
+      "outcome": "INCONCLUSIVE"
+    },
+    {
+      "id": "text/style/i2t/p1",
+      "value": 0.1369157258329423,
+      "comparator_value": 0.10743748450364694,
+      "d": 0.029478241329295343,
+      "lo": 0.02841152942858202,
+      "hi": 0.030472778883544983,
+      "n_queries": 12281,
+      "n_units": 12281,
+      "r": 0.002261933002570077,
+      "outcome": "INCONCLUSIVE"
+    },
+    {
+      "id": "text/style/t2t/p1",
+      "value": 0.10657445184146634,
+      "comparator_value": 0.09184162105072782,
+      "d": 0.014732830790738519,
+      "lo": 0.013936830987061475,
+      "hi": 0.015560072272870202,
+      "n_queries": 61744,
+      "n_units": 12281,
+      "r": 0.0017366456380729367,
+      "outcome": "INCONCLUSIVE"
+    },
+    {
+      "id": "ami/style/q1",
+      "value": 0.44644646139254573,
+      "comparator_value": 0.4063148343411264,
+      "d": 0.040131627051419316,
+      "lo": 0.035602859862849376,
+      "hi": 0.04411466046107518,
+      "r": 0.007994029236452316,
+      "n_rows": 12281,
+      "n_labelled": 12281,
+      "outcome": "WIN"
+    },
+    {
+      "id": "image_map/style/q1",
+      "value": 0.3550016451809321,
+      "comparator_value": 0.32171685368804037,
+      "d": 0.03328479149289171,
+      "lo": 0.03148835801132302,
+      "hi": 0.035321200572994885,
+      "n_queries": 12281,
+      "n_units": 12281,
+      "r": 0.0038051657076788037,
+      "candidate_embedding": "told",
+      "outcome": "INCONCLUSIVE"
+    },
+    {
+      "id": "text/style/t2i/q1",
+      "value": 0.17548224485293815,
+      "comparator_value": 0.15661686445884393,
+      "d": 0.018865380394094217,
+      "lo": 0.01723304839603306,
+      "hi": 0.020492815878733396,
+      "n_queries": 61744,
+      "n_units": 12281,
+      "r": 0.0036959642039223473,
+      "outcome": "INCONCLUSIVE"
+    },
+    {
+      "id": "text/style/i2t/q1",
+      "value": 0.1369157258329423,
+      "comparator_value": 0.12425183085193871,
+      "d": 0.012663894981003579,
+      "lo": 0.011722554521322162,
+      "hi": 0.01354609471305098,
+      "n_queries": 12281,
+      "n_units": 12281,
+      "r": 0.002261933002570077,
+      "outcome": "INCONCLUSIVE"
+    },
+    {
+      "id": "text/style/t2t/q1",
+      "value": 0.10657445184146634,
+      "comparator_value": 0.09768376728545926,
+      "d": 0.008890684556007084,
+      "lo": 0.008095271945926723,
+      "hi": 0.009725743366065744,
+      "n_queries": 61744,
+      "n_units": 12281,
+      "r": 0.0017366456380729367,
+      "outcome": "INCONCLUSIVE"
+    },
+    {
+      "id": "ami/genre/p1",
+      "value": 0.5171772062814352,
+      "comparator_value": 0.4016296241640888,
+      "d": 0.11554758211734634,
+      "lo": 0.10458404465514218,
+      "hi": 0.12614677772962898,
+      "r": 0.026141711966902292,
+      "n_rows": 12281,
+      "n_labelled": 9949,
+      "outcome": "WIN"
+    },
+    {
+      "id": "image_map/genre/p1",
+      "value": 0.5492440935414968,
+      "comparator_value": 0.5035387008354133,
+      "d": 0.045705392706083536,
+      "lo": 0.043143099171409884,
+      "hi": 0.04823535343961003,
+      "n_queries": 9949,
+      "n_units": 9949,
+      "r": 0.0036959650471728445,
+      "candidate_embedding": "untold",
+      "outcome": "INCONCLUSIVE"
+    },
+    {
+      "id": "text/genre/t2i/p1",
+      "value": 0.4850415096155909,
+      "comparator_value": 0.4188480776008872,
+      "d": 0.06619343201470368,
+      "lo": 0.06413977168381639,
+      "hi": 0.0682652749056199,
+      "n_queries": 49986,
+      "n_units": 9949,
+      "r": 0.003755487218100373,
+      "outcome": "INCONCLUSIVE"
+    },
+    {
+      "id": "text/genre/i2t/p1",
+      "value": 0.40434065547949893,
+      "comparator_value": 0.3541266688183422,
+      "d": 0.05021398666115673,
+      "lo": 0.04828501623692001,
+      "hi": 0.05210482009492294,
+      "n_queries": 9949,
+      "n_units": 9949,
+      "r": 0.0032086055601886487,
+      "outcome": "INCONCLUSIVE"
+    },
+    {
+      "id": "text/genre/t2t/p1",
+      "value": 0.3174130867664822,
+      "comparator_value": 0.25293334788643457,
+      "d": 0.06447973888004765,
+      "lo": 0.06220808287847292,
+      "hi": 0.0666874849554618,
+      "n_queries": 49986,
+      "n_units": 9949,
+      "r": 0.006423899129674948,
+      "outcome": "INCONCLUSIVE"
+    },
+    {
+      "id": "ami/genre/q1",
+      "value": 0.5171772062814352,
+      "comparator_value": 0.5014662806033504,
+      "d": 0.01571092567808474,
+      "lo": 0.006091236124043211,
+      "hi": 0.025512465984672005,
+      "r": 0.026141711966902292,
+      "n_rows": 12281,
+      "n_labelled": 9949,
+      "outcome": "WIN"
+    },
+    {
+      "id": "image_map/genre/q1",
+      "value": 0.6229059593232295,
+      "comparator_value": 0.6124437089715543,
+      "d": 0.01046225035167514,
+      "lo": 0.008644874228901108,
+      "hi": 0.012231785579350233,
+      "n_queries": 9949,
+      "n_units": 9949,
+      "r": 0.0036959650471728445,
+      "candidate_embedding": "told",
+      "outcome": "INCONCLUSIVE"
+    },
+    {
+      "id": "text/genre/t2i/q1",
+      "value": 0.4850415096155909,
+      "comparator_value": 0.4433542520944869,
+      "d": 0.04168725752110397,
+      "lo": 0.039259482199250205,
+      "hi": 0.044176500275023074,
+      "n_queries": 49986,
+      "n_units": 9949,
+      "r": 0.003755487218100373,
+      "outcome": "INCONCLUSIVE"
+    },
+    {
+      "id": "text/genre/i2t/q1",
+      "value": 0.40434065547949893,
+      "comparator_value": 0.39662282904244023,
+      "d": 0.007717826437058706,
+      "lo": 0.0062298293422861865,
+      "hi": 0.009220341831830967,
+      "n_queries": 9949,
+      "n_units": 9949,
+      "r": 0.0032086055601886487,
+      "outcome": "INCONCLUSIVE"
+    },
+    {
+      "id": "text/genre/t2t/q1",
+      "value": 0.3174130867664822,
+      "comparator_value": 0.29900682471269696,
+      "d": 0.01840626205378526,
+      "lo": 0.016221868717655366,
+      "hi": 0.020585893699016512,
+      "n_queries": 49986,
+      "n_units": 9949,
+      "r": 0.006423899129674948,
+      "outcome": "INCONCLUSIVE"
+    }
+  ],
+  "sc3": {
+    "wins_p1": 3,
+    "wins_or_level_q1": 3,
+    "level": 0,
+    "inconclusive_above": true
+  },
+  "forward_check": {
+    "cells": {
+      "held/emotion/s0": {
+        "elements": 25151488,
+        "equal_elements": 25115318,
+        "share_equal": 0.9985619141102109,
+        "max_abs_diff": 6.103515625e-05,
+        "rows": 12281,
+        "equal_rows": 679,
+        "max_abs_diff_before_quantisation": 5.748867988586426e-05
+      },
+      "val/emotion/s0": {
+        "elements": 12599296,
+        "equal_elements": 12581515,
+        "share_equal": 0.998588730671936,
+        "max_abs_diff": 6.103515625e-05,
+        "rows": 6152,
+        "equal_rows": 349,
+        "max_abs_diff_before_quantisation": 5.5536627769470215e-05
+      },
+      "held/style/s0": {
+        "elements": 25151488,
+        "equal_elements": 25114326,
+        "share_equal": 0.9985224731037782,
+        "max_abs_diff": 6.103515625e-05,
+        "rows": 12281,
+        "equal_rows": 624,
+        "max_abs_diff_before_quantisation": 6.097555160522461e-05
+      },
+      "val/style/s0": {
+        "elements": 12599296,
+        "equal_elements": 12580792,
+        "share_equal": 0.998531346513329,
+        "max_abs_diff": 6.103515625e-05,
+        "rows": 6152,
+        "equal_rows": 317,
+        "max_abs_diff_before_quantisation": 6.07222318649292e-05
+      },
+      "held/genre/s0": {
+        "elements": 25151488,
+        "equal_elements": 25123859,
+        "share_equal": 0.998901496404507,
+        "max_abs_diff": 6.103515625e-05,
+        "rows": 12281,
+        "equal_rows": 1299,
+        "max_abs_diff_before_quantisation": 6.0230493545532227e-05
+      },
+      "val/genre/s0": {
+        "elements": 12599296,
+        "equal_elements": 12585505,
+        "share_equal": 0.9989054150327129,
+        "max_abs_diff": 6.103515625e-05,
+        "rows": 6152,
+        "equal_rows": 655,
+        "max_abs_diff_before_quantisation": 5.4255127906799316e-05
+      },
+      "held/emotion/s1": {
+        "elements": 25151488,
+        "equal_elements": 25108688,
+        "share_equal": 0.9982983114160084,
+        "max_abs_diff": 6.103515625e-05,
+        "rows": 12281,
+        "equal_rows": 405,
+        "max_abs_diff_before_quantisation": 5.996227264404297e-05
+      },
+      "val/emotion/s1": {
+        "elements": 12599296,
+        "equal_elements": 12577744,
+        "share_equal": 0.9982894282347204,
+        "max_abs_diff": 6.103515625e-05,
+        "rows": 6152,
+        "equal_rows": 201,
+        "max_abs_diff_before_quantisation": 6.014108657836914e-05
+      },
+      "held/style/s1": {
+        "elements": 25151488,
+        "equal_elements": 25114397,
+        "share_equal": 0.9985252959983918,
+        "max_abs_diff": 6.103515625e-05,
+        "rows": 12281,
+        "equal_rows": 629,
+        "max_abs_diff_before_quantisation": 6.0185790061950684e-05
+      },
+      "val/style/s1": {
+        "elements": 12599296,
+        "equal_elements": 12580978,
+        "share_equal": 0.9985461092429291,
+        "max_abs_diff": 6.103515625e-05,
+        "rows": 6152,
+        "equal_rows": 342,
+        "max_abs_diff_before_quantisation": 6.079673767089844e-05
+      },
+      "held/genre/s1": {
+        "elements": 25151488,
+        "equal_elements": 25123794,
+        "share_equal": 0.9988989120643678,
+        "max_abs_diff": 6.103515625e-05,
+        "rows": 12281,
+        "equal_rows": 1272,
+        "max_abs_diff_before_quantisation": 6.0617923736572266e-05
+      },
+      "val/genre/s1": {
+        "elements": 12599296,
+        "equal_elements": 12585475,
+        "share_equal": 0.9989030339472935,
+        "max_abs_diff": 6.103515625e-05,
+        "rows": 6152,
+        "equal_rows": 672,
+        "max_abs_diff_before_quantisation": 5.926191806793213e-05
+      },
+      "held/emotion/s2": {
+        "elements": 25151488,
+        "equal_elements": 25115087,
+        "share_equal": 0.9985527297629468,
+        "max_abs_diff": 6.103515625e-05,
+        "rows": 12281,
+        "equal_rows": 697,
+        "max_abs_diff_before_quantisation": 6.091594696044922e-05
+      },
+      "val/emotion/s2": {
+        "elements": 12599296,
+        "equal_elements": 12581038,
+        "share_equal": 0.9985508714137679,
+        "max_abs_diff": 6.103515625e-05,
+        "rows": 6152,
+        "equal_rows": 350,
+        "max_abs_diff_before_quantisation": 5.9232115745544434e-05
+      },
+      "held/style/s2": {
+        "elements": 25151488,
+        "equal_elements": 25114684,
+        "share_equal": 0.9985367068540836,
+        "max_abs_diff": 6.103515625e-05,
+        "rows": 12281,
+        "equal_rows": 671,
+        "max_abs_diff_before_quantisation": 6.102025508880615e-05
+      },
+      "val/style/s2": {
+        "elements": 12599296,
+        "equal_elements": 12580634,
+        "share_equal": 0.9985188061301203,
+        "max_abs_diff": 6.103515625e-05,
+        "rows": 6152,
+        "equal_rows": 315,
+        "max_abs_diff_before_quantisation": 6.0752034187316895e-05
+      },
+      "held/genre/s2": {
+        "elements": 25151488,
+        "equal_elements": 25124663,
+        "share_equal": 0.9989334627040753,
+        "max_abs_diff": 6.103515625e-05,
+        "rows": 12281,
+        "equal_rows": 1386,
+        "max_abs_diff_before_quantisation": 6.020069122314453e-05
+      },
+      "val/genre/s2": {
+        "elements": 12599296,
+        "equal_elements": 12585780,
+        "share_equal": 0.9989272416490572,
+        "max_abs_diff": 6.103515625e-05,
+        "rows": 6152,
+        "equal_rows": 688,
+        "max_abs_diff_before_quantisation": 4.582107067108154e-05
+      },
+      "held/emotion/s3": {
+        "elements": 25151488,
+        "equal_elements": 25108026,
+        "share_equal": 0.9982719909056673,
+        "max_abs_diff": 6.103515625e-05,
+        "rows": 12281,
+        "equal_rows": 401,
+        "max_abs_diff_before_quantisation": 6.0439109802246094e-05
+      },
+      "val/emotion/s3": {
+        "elements": 12599296,
+        "equal_elements": 12577527,
+        "share_equal": 0.9982722050501869,
+        "max_abs_diff": 6.103515625e-05,
+        "rows": 6152,
+        "equal_rows": 197,
+        "max_abs_diff_before_quantisation": 6.07222318649292e-05
+      },
+      "held/style/s3": {
+        "elements": 25151488,
+        "equal_elements": 25116487,
+        "share_equal": 0.9986083924736382,
+        "max_abs_diff": 6.103515625e-05,
+        "rows": 12281,
+        "equal_rows": 709,
+        "max_abs_diff_before_quantisation": 6.099045276641846e-05
+      },
+      "val/style/s3": {
+        "elements": 12599296,
+        "equal_elements": 12581810,
+        "share_equal": 0.9986121446785599,
+        "max_abs_diff": 6.103515625e-05,
+        "rows": 6152,
+        "equal_rows": 364,
+        "max_abs_diff_before_quantisation": 6.0558319091796875e-05
+      },
+      "held/genre/s3": {
+        "elements": 25151488,
+        "equal_elements": 25123657,
+        "share_equal": 0.9988934650705358,
+        "max_abs_diff": 6.103515625e-05,
+        "rows": 12281,
+        "equal_rows": 1297,
+        "max_abs_diff_before_quantisation": 6.073713302612305e-05
+      },
+      "val/genre/s3": {
+        "elements": 12599296,
+        "equal_elements": 12585641,
+        "share_equal": 0.9989162092866141,
+        "max_abs_diff": 6.103515625e-05,
+        "rows": 6152,
+        "equal_rows": 681,
+        "max_abs_diff_before_quantisation": 6.0871243476867676e-05
+      },
+      "held/emotion/s4": {
+        "elements": 25151488,
+        "equal_elements": 25108407,
+        "share_equal": 0.9982871391147912,
+        "max_abs_diff": 6.103515625e-05,
+        "rows": 12281,
+        "equal_rows": 366,
+        "max_abs_diff_before_quantisation": 6.099045276641846e-05
+      },
+      "val/emotion/s4": {
+        "elements": 12599296,
+        "equal_elements": 12577644,
+        "share_equal": 0.9982814912833224,
+        "max_abs_diff": 6.103515625e-05,
+        "rows": 6152,
+        "equal_rows": 198,
+        "max_abs_diff_before_quantisation": 6.029009819030762e-05
+      },
+      "held/style/s4": {
+        "elements": 25151488,
+        "equal_elements": 25116464,
+        "share_equal": 0.9986074780148196,
+        "max_abs_diff": 6.103515625e-05,
+        "rows": 12281,
+        "equal_rows": 750,
+        "max_abs_diff_before_quantisation": 6.034970283508301e-05
+      },
+      "val/style/s4": {
+        "elements": 12599296,
+        "equal_elements": 12581829,
+        "share_equal": 0.9986136526993254,
+        "max_abs_diff": 6.103515625e-05,
+        "rows": 6152,
+        "equal_rows": 385,
+        "max_abs_diff_before_quantisation": 6.102025508880615e-05
+      },
+      "held/genre/s4": {
+        "elements": 25151488,
+        "equal_elements": 25121954,
+        "share_equal": 0.9988257553588877,
+        "max_abs_diff": 6.103515625e-05,
+        "rows": 12281,
+        "equal_rows": 1109,
+        "max_abs_diff_before_quantisation": 5.9977173805236816e-05
+      },
+      "val/genre/s4": {
+        "elements": 12599296,
+        "equal_elements": 12584601,
+        "share_equal": 0.9988336649920757,
+        "max_abs_diff": 6.103515625e-05,
+        "rows": 6152,
+        "equal_rows": 572,
+        "max_abs_diff_before_quantisation": 5.930662155151367e-05
+      }
+    },
+    "elements": 566261760,
+    "equal_elements": 565478324,
+    "share_equal": 0.9986164772984141,
+    "max_abs_diff": 6.103515625e-05,
+    "max_abs_diff_before_quantisation": 6.102025508880615e-05
+  },
+  "replays": [
+    {
+      "replays": {
+        "ami": {
+          "rows": [
+            {
+              "id": "ami/emotion/p1",
+              "stats": {
+                "value": 0.098542378900288,
+                "comparator_value": 0.06124660057467476,
+                "d": 0.03729577832561324,
+                "lo": 0.03329563315435693,
+                "hi": 0.04103304030164552
+              },
+              "abs_diff": {
+                "value": 8.881784197001252e-15,
+                "comparator_value": 1.0526302052227265e-14,
+                "d": 1.6445178552260131e-15,
+                "lo": 8.673617379884035e-16,
+                "hi": 6.4878658001532585e-15
+              },
+              "max_abs_diff": 1.0526302052227265e-14,
+              "full_interval": true
+            },
+            {
+              "id": "ami/emotion/q1",
+              "stats": {
+                "value": 0.098542378900288,
+                "comparator_value": 0.08887516573446036,
+                "d": 0.009667213165827637,
+                "lo": 0.00627795778157629,
+                "hi": 0.012901599307336527
+              },
+              "abs_diff": {
+                "value": 8.881784197001252e-15,
+                "comparator_value": 1.0380585280245214e-14,
+                "d": 1.4988010832439613e-15,
+                "lo": 4.5276282722994665e-15,
+                "hi": 1.5005358067199381e-15
+              },
+              "max_abs_diff": 1.0380585280245214e-14,
+              "full_interval": true
+            },
+            {
+              "id": "ami/style/p1",
+              "stats": {
+                "value": 0.4407907284086443,
+                "comparator_value": 0.38203645247749024,
+                "d": 0.058754275931154065,
+                "lo": 0.053537184055273655,
+                "hi": 0.06345916105824853
+              },
+              "abs_diff": {
+                "value": 2.1871393585115584e-14,
+                "comparator_value": 1.9539925233402755e-14,
+                "d": 2.3314683517128287e-15,
+                "lo": 3.247402347028583e-15,
+                "hi": 5.870304242705515e-15
+              },
+              "max_abs_diff": 2.1871393585115584e-14,
+              "full_interval": true
+            },
+            {
+              "id": "ami/style/q1",
+              "stats": {
+                "value": 0.4407907284086443,
+                "comparator_value": 0.4063148343411264,
+                "d": 0.03447589406751789,
+                "lo": 0.029744043951616297,
+                "hi": 0.03855302626365459
+              },
+              "abs_diff": {
+                "value": 2.1871393585115584e-14,
+                "comparator_value": 2.4924506902834764e-14,
+                "d": 3.0531133177191805e-15,
+                "lo": 1.824929096727601e-15,
+                "hi": 2.2620794126737565e-15
+              },
+              "max_abs_diff": 2.4924506902834764e-14,
+              "full_interval": true
+            },
+            {
+              "id": "ami/genre/p1",
+              "stats": {
+                "value": 0.527903259026809,
+                "comparator_value": 0.4016296241640888,
+                "d": 0.1262736348627202,
+                "lo": 0.1183096341834199,
+                "hi": 0.13399169342845002
+              },
+              "abs_diff": {
+                "value": 2.886579864025407e-15,
+                "comparator_value": 1.887379141862766e-15,
+                "d": 9.992007221626409e-16,
+                "lo": 1.915134717478395e-15,
+                "hi": 1.7208456881689926e-15
+              },
+              "max_abs_diff": 2.886579864025407e-15,
+              "full_interval": true
+            },
+            {
+              "id": "ami/genre/q1",
+              "stats": {
+                "value": 0.527903259026809,
+                "comparator_value": 0.5014662806033504,
+                "d": 0.0264369784234586,
+                "lo": 0.02065321345554257,
+                "hi": 0.03255071468476511
+              },
+              "abs_diff": {
+                "value": 2.886579864025407e-15,
+                "comparator_value": 1.4432899320127035e-15,
+                "d": 1.4432899320127035e-15,
+                "lo": 1.3010426069826053e-15,
+                "hi": 1.5681900222830336e-15
+              },
+              "max_abs_diff": 2.886579864025407e-15,
+              "full_interval": true
+            }
+          ],
+          "max_abs_diff": 2.4924506902834764e-14,
+          "scoring_max_abs_diff": 0.0,
+          "full_intervals": true,
+          "full_scoring": true,
+          "aspects": [
+            "emotion",
+            "style",
+            "genre"
+          ],
+          "interval_gate_1e9": true,
+          "scoring_gate_1e9": true
+        }
+      },
+      "source_sha256": "40a710f407efb154a42bbdc83f2b073dbce933c6123c1267c9fa7da4343a18e3",
+      "device": "cpu",
+      "elapsed_seconds": 195.0326887909323,
+      "query_limit": 0,
+      "notes": [
+        "P1 image mAP uses the r17 SC7 untold candidate: unit-normalise emotion/style/genre heads, concatenate in that order, divide by float32 sqrt(3). Q1 image mAP uses the r14 told aspect head. They have separate arm-level cross-fit read-out picks; image_map[aspect].pick is told/Q1 and .p1_pick is untold/P1.",
+        "Both image-map pick paths use each told aspect head's five-seed R0 validation mAP range as the LEVEL/selection unit. The common arm-level pick is repeated per aspect in the requested output structure.",
+        "AMI clusters every painting before masking negative labels at scoring, including in row resampling. Stored candidate float16 rows are promoted to float32 without another L2, as r28/r29 specify. Plain/teacher store inputs are unit-normalised as in the r17 comparator protocol.",
+        "Image mAP uses labelled queries/gallery only; fits use all fit paintings without labels. Validation parity halves are defined before label masking; average the two half means equally. Fit the final picked map on all validation rows.",
+        "Image menu: none, center, PCA-whiten64/256/1024 (capped at width), each crossed with k=0/1/3/5/10. Covariance is float64 with n-1 divisor, eigenvalues descending, epsilon=1e-6*largest eigenvalue; maps and ranking rows are float32. Equal-variance eigenvector sign choices cancel in cosine.",
+        "Image selection uses mean gain in told R0 range units, guard against losses greater than that range, the r11 0.001 tie band and R0/no-expansion/none-center-whiten/smaller-k/larger-dimension order. A 1e-12 comparison epsilon follows the permitted r17 independent derivation; zero ranges invalidate the selection rather than divide by zero.",
+        "Text means are fit on all validation text/image output rows in float64 then cast to float32. Centering and expansion rank all gallery rows; unlabelled rows leave only AP. The own caption sample ID leaves t2t gallery, paired paintings remain cross-modal. Text APs are retained as float32 to match r23 per-unit files, with float64 means and intervals; SC1 kept double AP before its mean.",
+        "Exact cosine ties keep ascending gallery row order: image painting names, caption extraction sample IDs. Painting plurality ties take the alphabetically first of all nine emotions; unknown/conflicting genre is -1.",
+        "Each comparison has a fresh default_rng(0). AMI samples every painting row then five candidate seeds, with three k-means states averaged per seed, 2000 draws. Image mAP samples labelled queries then shared seeds, 10000 draws. Text samples sorted painting units with scored queries then shared seeds; repeats weight query sums and counts, 10000 draws. Percentiles use numpy linear interpolation.",
+        "Forward diagnostics compare our image tower with stored exports after float16 rounding; image cells use the stored rows. CUDA is controller-only, TF32 disabled; AMI/k-means/bootstraps stay on CPU with at most eight worker threads/processes.",
+        "Read-out picks and ranges must be committed by the controller before the held command. --picks-committed is an explicit assertion of that precondition; the held report pins our validation-picks SHA256. This program makes no commits and reads no forbidden pick record.",
+        "A missing or uncertified replay marks its affected comparison INCONCLUSIVE; it contributes neither WIN nor LEVEL. SC3 reports the level supported by decided cells and whether inconclusive cells could raise it, per D22. Replay reports distinguish full interval checks from sampled K0 forward/ranking checks.",
+        "The specified prefixed store metadata uses lowercase represent the caption:; use its supplied rows unchanged. P1 caption form is plain as fixed in the task; its own r23 validation pick is used per cell."
+      ]
+    },
+    {
+      "replays": {
+        "image_map": {
+          "rows": [
+            {
+              "id": "image_map/emotion/p1",
+              "stats": {
+                "value": 0.26057447680032325,
+                "comparator_value": 0.24523517829806704,
+                "d": 0.01533929850225621,
+                "lo": 0.014667186304882033,
+                "hi": 0.016034931648180574,
+                "n_queries": 12281,
+                "n_units": 12281
+              },
+              "abs_diff": {
+                "value": 9.928886229859657e-08,
+                "comparator_value": 1.1101085883868933e-09,
+                "d": 9.817875371020968e-08,
+                "lo": 3.5510008164832407e-07,
+                "hi": 5.0469730686342196e-09
+              },
+              "max_abs_diff": 3.5510008164832407e-07,
+              "full_interval": true
+            },
+            {
+              "id": "image_map/emotion/q1",
+              "stats": {
+                "value": 0.2687972420925629,
+                "comparator_value": 0.2684206728949585,
+                "d": 0.0003765691976043706,
+                "lo": -0.0005481276744347674,
+                "hi": 0.0012874029220642192,
+                "n_queries": 12281,
+                "n_units": 12281
+              },
+              "abs_diff": {
+                "value": 4.806400832890745e-10,
+                "comparator_value": 0.0,
+                "d": 4.806400832890745e-10,
+                "lo": 1.1648744579605824e-09,
+                "hi": 6.465989679446671e-11
+              },
+              "max_abs_diff": 1.1648744579605824e-09,
+              "full_interval": true
+            },
+            {
+              "id": "image_map/style/p1",
+              "stats": {
+                "value": 0.28771262560392963,
+                "comparator_value": 0.29621971701644,
+                "d": -0.008507091412510381,
+                "lo": -0.010119296046920852,
+                "hi": -0.006895024820315681,
+                "n_queries": 12281,
+                "n_units": 12281
+              },
+              "abs_diff": {
+                "value": 1.40101466261644e-07,
+                "comparator_value": 7.696879800178635e-09,
+                "d": 1.4779834606182263e-07,
+                "lo": 3.176347836836291e-08,
+                "hi": 2.665901129971643e-08
+              },
+              "max_abs_diff": 1.4779834606182263e-07,
+              "full_interval": true
+            },
+            {
+              "id": "image_map/style/q1",
+              "stats": {
+                "value": 0.3554564435934525,
+                "comparator_value": 0.32171685368804037,
+                "d": 0.03373958990541215,
+                "lo": 0.03194284711203371,
+                "hi": 0.035667698349282705,
+                "n_queries": 12281,
+                "n_units": 12281
+              },
+              "abs_diff": {
+                "value": 1.258204895826509e-07,
+                "comparator_value": 0.0,
+                "d": 1.258204895826509e-07,
+                "lo": 2.567516129356462e-07,
+                "hi": 1.218706106378975e-07
+              },
+              "max_abs_diff": 2.567516129356462e-07,
+              "full_interval": true
+            },
+            {
+              "id": "image_map/genre/p1",
+              "stats": {
+                "value": 0.5482196174414897,
+                "comparator_value": 0.5035387008354133,
+                "d": 0.044680916606076426,
+                "lo": 0.04201945307951337,
+                "hi": 0.047286849064894255,
+                "n_queries": 9949,
+                "n_units": 9949
+              },
+              "abs_diff": {
+                "value": 1.4103726109215842e-07,
+                "comparator_value": 7.494193043910968e-10,
+                "d": 1.4178668039654951e-07,
+                "lo": 1.065137529981941e-07,
+                "hi": 8.440903274953282e-09
+              },
+              "max_abs_diff": 1.4178668039654951e-07,
+              "full_interval": true
+            },
+            {
+              "id": "image_map/genre/q1",
+              "stats": {
+                "value": 0.6227075908035719,
+                "comparator_value": 0.6124437089715543,
+                "d": 0.01026388183201754,
+                "lo": 0.008328684593021543,
+                "hi": 0.012143753201602854,
+                "n_queries": 9949,
+                "n_units": 9949
+              },
+              "abs_diff": {
+                "value": 5.51381580393695e-08,
+                "comparator_value": 0.0,
+                "d": 5.51381580393695e-08,
+                "lo": 3.755849497730224e-09,
+                "hi": 4.3361233856981096e-08
+              },
+              "max_abs_diff": 5.51381580393695e-08,
+              "full_interval": true
+            }
+          ],
+          "max_abs_diff": 3.5510008164832407e-07,
+          "scoring_max_abs_diff": 0.0,
+          "full_intervals": true,
+          "full_scoring": true,
+          "aspects": [
+            "emotion",
+            "style",
+            "genre"
+          ],
+          "interval_gate_1e9": false,
+          "scoring_gate_1e9": false
+        }
+      },
+      "source_sha256": "40a710f407efb154a42bbdc83f2b073dbce933c6123c1267c9fa7da4343a18e3",
+      "device": "cuda",
+      "elapsed_seconds": 58.9908205550164,
+      "query_limit": 0,
+      "notes": [
+        "P1 image mAP uses the r17 SC7 untold candidate: unit-normalise emotion/style/genre heads, concatenate in that order, divide by float32 sqrt(3). Q1 image mAP uses the r14 told aspect head. They have separate arm-level cross-fit read-out picks; image_map[aspect].pick is told/Q1 and .p1_pick is untold/P1.",
+        "Both image-map pick paths use each told aspect head's five-seed R0 validation mAP range as the LEVEL/selection unit. The common arm-level pick is repeated per aspect in the requested output structure.",
+        "AMI clusters every painting before masking negative labels at scoring, including in row resampling. Stored candidate float16 rows are promoted to float32 without another L2, as r28/r29 specify. Plain/teacher store inputs are unit-normalised as in the r17 comparator protocol.",
+        "Image mAP uses labelled queries/gallery only; fits use all fit paintings without labels. Validation parity halves are defined before label masking; average the two half means equally. Fit the final picked map on all validation rows.",
+        "Image menu: none, center, PCA-whiten64/256/1024 (capped at width), each crossed with k=0/1/3/5/10. Covariance is float64 with n-1 divisor, eigenvalues descending, epsilon=1e-6*largest eigenvalue; maps and ranking rows are float32. Equal-variance eigenvector sign choices cancel in cosine.",
+        "Image selection uses mean gain in told R0 range units, guard against losses greater than that range, the r11 0.001 tie band and R0/no-expansion/none-center-whiten/smaller-k/larger-dimension order. A 1e-12 comparison epsilon follows the permitted r17 independent derivation; zero ranges invalidate the selection rather than divide by zero.",
+        "Text means are fit on all validation text/image output rows in float64 then cast to float32. Centering and expansion rank all gallery rows; unlabelled rows leave only AP. The own caption sample ID leaves t2t gallery, paired paintings remain cross-modal. Text APs are retained as float32 to match r23 per-unit files, with float64 means and intervals; SC1 kept double AP before its mean.",
+        "Exact cosine ties keep ascending gallery row order: image painting names, caption extraction sample IDs. Painting plurality ties take the alphabetically first of all nine emotions; unknown/conflicting genre is -1.",
+        "Each comparison has a fresh default_rng(0). AMI samples every painting row then five candidate seeds, with three k-means states averaged per seed, 2000 draws. Image mAP samples labelled queries then shared seeds, 10000 draws. Text samples sorted painting units with scored queries then shared seeds; repeats weight query sums and counts, 10000 draws. Percentiles use numpy linear interpolation.",
+        "Forward diagnostics compare our image tower with stored exports after float16 rounding; image cells use the stored rows. CUDA is controller-only, TF32 disabled; AMI/k-means/bootstraps stay on CPU with at most eight worker threads/processes.",
+        "Read-out picks and ranges must be committed by the controller before the held command. --picks-committed is an explicit assertion of that precondition; the held report pins our validation-picks SHA256. This program makes no commits and reads no forbidden pick record.",
+        "A missing or uncertified replay marks its affected comparison INCONCLUSIVE; it contributes neither WIN nor LEVEL. SC3 reports the level supported by decided cells and whether inconclusive cells could raise it, per D22. Replay reports distinguish full interval checks from sampled K0 forward/ranking checks.",
+        "The specified prefixed store metadata uses lowercase represent the caption:; use its supplied rows unchanged. P1 caption form is plain as fixed in the task; its own r23 validation pick is used per cell."
+      ]
+    },
+    {
+      "replays": {
+        "text": {
+          "rows": [
+            {
+              "id": "text/emotion/t2i/plain",
+              "stats": {
+                "value": 0.2642016499289193,
+                "comparator_value": 0.22245880672652948,
+                "d": 0.04174284320238983,
+                "lo": 0.04112133369291037,
+                "hi": 0.042353064076119176,
+                "n_queries": 61744,
+                "n_units": 12281
+              },
+              "abs_diff": {
+                "d": 4.5819809668667943e-08,
+                "lo": 3.644929544577291e-07,
+                "hi": 1.3701876314109462e-08
+              },
+              "max_abs_diff": 3.644929544577291e-07,
+              "scoring_max_abs_diff": 0.01290382444858551,
+              "scoring_mean_abs_diff": 2.11150001927507e-07,
+              "scoring_queries": 61744,
+              "scoring_seeds": [
+                0,
+                1,
+                2,
+                3,
+                4
+              ],
+              "full_scoring": true,
+              "interval_inputs": "own_forward_AP",
+              "full_interval": true
+            },
+            {
+              "id": "text/emotion/t2i/teacher",
+              "stats": {
+                "value": 0.2642016499289193,
+                "comparator_value": 0.26781473115043597,
+                "d": -0.0036130812215166563,
+                "lo": -0.0041788674214564255,
+                "hi": -0.003053846415254745,
+                "n_queries": 61744,
+                "n_units": 12281
+              },
+              "abs_diff": {
+                "d": 4.5819809668667943e-08,
+                "lo": 1.8951706497530307e-09,
+                "hi": 1.8760394706034828e-08
+              },
+              "max_abs_diff": 4.5819809668667943e-08,
+              "scoring_max_abs_diff": 0.01290382444858551,
+              "scoring_mean_abs_diff": 2.11150001927507e-07,
+              "scoring_queries": 61744,
+              "scoring_seeds": [
+                0,
+                1,
+                2,
+                3,
+                4
+              ],
+              "full_scoring": true,
+              "interval_inputs": "own_forward_AP",
+              "full_interval": true,
+              "p1_side_point_abs_diff": 0.0
+            },
+            {
+              "id": "text/emotion/i2t/plain",
+              "stats": {
+                "value": 0.28695315461017007,
+                "comparator_value": 0.23969251643867817,
+                "d": 0.0472606381714919,
+                "lo": 0.045427155299678286,
+                "hi": 0.049055519950927697,
+                "n_queries": 12281,
+                "n_units": 12281
+              },
+              "abs_diff": {
+                "d": 2.5260443736740967e-10,
+                "lo": 1.1462675947315759e-10,
+                "hi": 5.471333178186377e-10
+              },
+              "max_abs_diff": 5.471333178186377e-10,
+              "scoring_max_abs_diff": 1.4543533325195312e-05,
+              "scoring_mean_abs_diff": 1.3708588708638558e-09,
+              "scoring_queries": 12281,
+              "scoring_seeds": [
+                0,
+                1,
+                2,
+                3,
+                4
+              ],
+              "full_scoring": true,
+              "interval_inputs": "own_forward_AP",
+              "full_interval": true
+            },
+            {
+              "id": "text/emotion/i2t/teacher",
+              "stats": {
+                "value": 0.28695315461017007,
+                "comparator_value": 0.30353254291514314,
+                "d": -0.016579388304973075,
+                "lo": -0.018660762051308098,
+                "hi": -0.014545187238841085,
+                "n_queries": 12281,
+                "n_units": 12281
+              },
+              "abs_diff": {
+                "d": 2.5260443736740967e-10,
+                "lo": 1.1394953314258771e-09,
+                "hi": 3.4204247593982995e-10
+              },
+              "max_abs_diff": 1.1394953314258771e-09,
+              "scoring_max_abs_diff": 1.4543533325195312e-05,
+              "scoring_mean_abs_diff": 1.3708588708638558e-09,
+              "scoring_queries": 12281,
+              "scoring_seeds": [
+                0,
+                1,
+                2,
+                3,
+                4
+              ],
+              "full_scoring": true,
+              "interval_inputs": "own_forward_AP",
+              "full_interval": true,
+              "p1_side_point_abs_diff": 0.0
+            },
+            {
+              "id": "text/emotion/t2t/plain",
+              "stats": {
+                "value": 0.3457292353460335,
+                "comparator_value": 0.2534408992270781,
+                "d": 0.09228833611895543,
+                "lo": 0.09036299632162474,
+                "hi": 0.09391667751886276,
+                "n_queries": 61744,
+                "n_units": 12281
+              },
+              "abs_diff": {
+                "d": 1.7779138605789058e-08,
+                "lo": 1.0802122962783045e-07,
+                "hi": 2.173593280363484e-08
+              },
+              "max_abs_diff": 1.0802122962783045e-07,
+              "scoring_max_abs_diff": 0.015226125717163086,
+              "scoring_mean_abs_diff": 2.7210039155178833e-07,
+              "scoring_queries": 61744,
+              "scoring_seeds": [
+                0,
+                1,
+                2,
+                3,
+                4
+              ],
+              "full_scoring": true,
+              "interval_inputs": "own_forward_AP",
+              "full_interval": true
+            },
+            {
+              "id": "text/emotion/t2t/teacher",
+              "stats": {
+                "value": 0.3457292353460335,
+                "comparator_value": 0.37650961574297276,
+                "d": -0.030780380396939255,
+                "lo": -0.03252470411560174,
+                "hi": -0.02943767515356299,
+                "n_queries": 61744,
+                "n_units": 12281
+              },
+              "abs_diff": {
+                "d": 1.7779138605789058e-08,
+                "lo": 2.6779671542798145e-08,
+                "hi": 6.40953700947744e-08
+              },
+              "max_abs_diff": 6.40953700947744e-08,
+              "scoring_max_abs_diff": 0.015226125717163086,
+              "scoring_mean_abs_diff": 2.7210039155178833e-07,
+              "scoring_queries": 61744,
+              "scoring_seeds": [
+                0,
+                1,
+                2,
+                3,
+                4
+              ],
+              "full_scoring": true,
+              "interval_inputs": "own_forward_AP",
+              "full_interval": true,
+              "p1_side_point_abs_diff": 0.0
+            },
+            {
+              "id": "text/style/t2i/plain",
+              "stats": {
+                "value": 0.17247717633460857,
+                "comparator_value": 0.13435591344999692,
+                "d": 0.03812126288461165,
+                "lo": 0.03683569915199895,
+                "hi": 0.03941158879256302,
+                "n_queries": 61744,
+                "n_units": 12281
+              },
+              "abs_diff": {
+                "d": 1.2293832982179786e-07,
+                "lo": 2.082023708299685e-08,
+                "hi": 8.791364101978782e-09
+              },
+              "max_abs_diff": 1.2293832982179786e-07,
+              "scoring_max_abs_diff": 0.014781102538108826,
+              "scoring_mean_abs_diff": 3.1247113571608587e-07,
+              "scoring_queries": 61744,
+              "scoring_seeds": [
+                0,
+                1,
+                2,
+                3,
+                4
+              ],
+              "full_scoring": true,
+              "interval_inputs": "own_forward_AP",
+              "full_interval": true
+            },
+            {
+              "id": "text/style/t2i/teacher",
+              "stats": {
+                "value": 0.17247717633460857,
+                "comparator_value": 0.15661686445884393,
+                "d": 0.015860311875764643,
+                "lo": 0.014559869795864084,
+                "hi": 0.017178332870053145,
+                "n_queries": 61744,
+                "n_units": 12281
+              },
+              "abs_diff": {
+                "d": 1.2293832982179786e-07,
+                "lo": 1.777127550967733e-07,
+                "hi": 2.5301046725073606e-07
+              },
+              "max_abs_diff": 2.5301046725073606e-07,
+              "scoring_max_abs_diff": 0.014781102538108826,
+              "scoring_mean_abs_diff": 3.1247113571608587e-07,
+              "scoring_queries": 61744,
+              "scoring_seeds": [
+                0,
+                1,
+                2,
+                3,
+                4
+              ],
+              "full_scoring": true,
+              "interval_inputs": "own_forward_AP",
+              "full_interval": true,
+              "p1_side_point_abs_diff": 0.0
+            },
+            {
+              "id": "text/style/i2t/plain",
+              "stats": {
+                "value": 0.1379364205532288,
+                "comparator_value": 0.10950050529506379,
+                "d": 0.02843591525816501,
+                "lo": 0.027768227143919307,
+                "hi": 0.029112620755447623,
+                "n_queries": 12281,
+                "n_units": 12281
+              },
+              "abs_diff": {
+                "d": 3.552737407042095e-08,
+                "lo": 2.9070333293357287e-10,
+                "hi": 2.517174906013775e-10
+              },
+              "max_abs_diff": 3.552737407042095e-08,
+              "scoring_max_abs_diff": 0.002206653356552124,
+              "scoring_mean_abs_diff": 1.797803871883552e-07,
+              "scoring_queries": 12281,
+              "scoring_seeds": [
+                0,
+                1,
+                2,
+                3,
+                4
+              ],
+              "full_scoring": true,
+              "interval_inputs": "own_forward_AP",
+              "full_interval": true
+            },
+            {
+              "id": "text/style/i2t/teacher",
+              "stats": {
+                "value": 0.1379364205532288,
+                "comparator_value": 0.12425183085193871,
+                "d": 0.013684589701290092,
+                "lo": 0.013195891914299112,
+                "hi": 0.014175905867587671,
+                "n_queries": 12281,
+                "n_units": 12281
+              },
+              "abs_diff": {
+                "d": 3.552737407042095e-08,
+                "lo": 3.469095931178667e-08,
+                "hi": 5.746258729261156e-10
+              },
+              "max_abs_diff": 3.552737407042095e-08,
+              "scoring_max_abs_diff": 0.002206653356552124,
+              "scoring_mean_abs_diff": 1.797803871883552e-07,
+              "scoring_queries": 12281,
+              "scoring_seeds": [
+                0,
+                1,
+                2,
+                3,
+                4
+              ],
+              "full_scoring": true,
+              "interval_inputs": "own_forward_AP",
+              "full_interval": true,
+              "p1_side_point_abs_diff": 0.0
+            },
+            {
+              "id": "text/style/t2t/plain",
+              "stats": {
+                "value": 0.10902191578919747,
+                "comparator_value": 0.09630056091846935,
+                "d": 0.012721354870728119,
+                "lo": 0.012131017876959487,
+                "hi": 0.01330963073920199,
+                "n_queries": 61744,
+                "n_units": 12281
+              },
+              "abs_diff": {
+                "d": 3.349661964469064e-09,
+                "lo": 5.5560729628201244e-11,
+                "hi": 4.3832685286959716e-08
+              },
+              "max_abs_diff": 4.3832685286959716e-08,
+              "scoring_max_abs_diff": 0.0015373080968856812,
+              "scoring_mean_abs_diff": 1.5965682428897843e-08,
+              "scoring_queries": 61744,
+              "scoring_seeds": [
+                0,
+                1,
+                2,
+                3,
+                4
+              ],
+              "full_scoring": true,
+              "interval_inputs": "own_forward_AP",
+              "full_interval": true
+            },
+            {
+              "id": "text/style/t2t/teacher",
+              "stats": {
+                "value": 0.10902191578919747,
+                "comparator_value": 0.09768376728545926,
+                "d": 0.01133814850373821,
+                "lo": 0.010738558597713175,
+                "hi": 0.011946837483557978,
+                "n_queries": 61744,
+                "n_units": 12281
+              },
+              "abs_diff": {
+                "d": 3.349661964469064e-09,
+                "lo": 1.9300602956129342e-10,
+                "hi": 6.439969311294869e-09
+              },
+              "max_abs_diff": 6.439969311294869e-09,
+              "scoring_max_abs_diff": 0.0015373080968856812,
+              "scoring_mean_abs_diff": 1.5965682428897843e-08,
+              "scoring_queries": 61744,
+              "scoring_seeds": [
+                0,
+                1,
+                2,
+                3,
+                4
+              ],
+              "full_scoring": true,
+              "interval_inputs": "own_forward_AP",
+              "full_interval": true,
+              "p1_side_point_abs_diff": 0.0
+            },
+            {
+              "id": "text/genre/t2i/plain",
+              "stats": {
+                "value": 0.4836445622459216,
+                "comparator_value": 0.4179240598805788,
+                "d": 0.06572050236534283,
+                "lo": 0.06375335774303287,
+                "hi": 0.06758692680058015,
+                "n_queries": 49986,
+                "n_units": 9949
+              },
+              "abs_diff": {
+                "d": 2.164352077560494e-07,
+                "lo": 6.306495839575321e-07,
+                "hi": 1.0975339828633857e-07
+              },
+              "max_abs_diff": 6.306495839575321e-07,
+              "scoring_max_abs_diff": 0.04276806116104126,
+              "scoring_mean_abs_diff": 1.6661356015967854e-06,
+              "scoring_queries": 61744,
+              "scoring_seeds": [
+                0,
+                1,
+                2,
+                3,
+                4
+              ],
+              "full_scoring": true,
+              "interval_inputs": "own_forward_AP",
+              "full_interval": true
+            },
+            {
+              "id": "text/genre/t2i/teacher",
+              "stats": {
+                "value": 0.4836445622459216,
+                "comparator_value": 0.4433542520944869,
+                "d": 0.040290310151434694,
+                "lo": 0.03793928007438907,
+                "hi": 0.04259489379037564,
+                "n_queries": 49986,
+                "n_units": 9949
+              },
+              "abs_diff": {
+                "d": 2.164352077560494e-07,
+                "lo": 1.630967174717779e-07,
+                "hi": 3.448457428639751e-08
+              },
+              "max_abs_diff": 2.164352077560494e-07,
+              "scoring_max_abs_diff": 0.04276806116104126,
+              "scoring_mean_abs_diff": 1.6661356015967854e-06,
+              "scoring_queries": 61744,
+              "scoring_seeds": [
+                0,
+                1,
+                2,
+                3,
+                4
+              ],
+              "full_scoring": true,
+              "interval_inputs": "own_forward_AP",
+              "full_interval": true,
+              "p1_side_point_abs_diff": 0.0
+            },
+            {
+              "id": "text/genre/i2t/plain",
+              "stats": {
+                "value": 0.40283375737226507,
+                "comparator_value": 0.3433234157874403,
+                "d": 0.059510341584824766,
+                "lo": 0.05695484917215854,
+                "hi": 0.062196845638829996,
+                "n_queries": 9949,
+                "n_units": 9949
+              },
+              "abs_diff": {
+                "d": 1.6793572088502629e-10,
+                "lo": 1.7470188490298355e-10,
+                "hi": 5.651749207524759e-10
+              },
+              "max_abs_diff": 5.651749207524759e-10,
+              "scoring_max_abs_diff": 1.8984079360961914e-05,
+              "scoring_mean_abs_diff": 1.501124613501048e-09,
+              "scoring_queries": 12281,
+              "scoring_seeds": [
+                0,
+                1,
+                2,
+                3,
+                4
+              ],
+              "full_scoring": true,
+              "interval_inputs": "own_forward_AP",
+              "full_interval": true
+            },
+            {
+              "id": "text/genre/i2t/teacher",
+              "stats": {
+                "value": 0.40283375737226507,
+                "comparator_value": 0.39662282904244023,
+                "d": 0.0062109283298248386,
+                "lo": 0.004109403070587388,
+                "hi": 0.008617170856261545,
+                "n_queries": 9949,
+                "n_units": 9949
+              },
+              "abs_diff": {
+                "d": 1.6793572088502629e-10,
+                "lo": 9.352073464599653e-10,
+                "hi": 9.773523153983055e-10
+              },
+              "max_abs_diff": 9.773523153983055e-10,
+              "scoring_max_abs_diff": 1.8984079360961914e-05,
+              "scoring_mean_abs_diff": 1.501124613501048e-09,
+              "scoring_queries": 12281,
+              "scoring_seeds": [
+                0,
+                1,
+                2,
+                3,
+                4
+              ],
+              "full_scoring": true,
+              "interval_inputs": "own_forward_AP",
+              "full_interval": true,
+              "p1_side_point_abs_diff": 0.0
+            },
+            {
+              "id": "text/genre/t2t/plain",
+              "stats": {
+                "value": 0.3152138169901384,
+                "comparator_value": 0.27254000268527023,
+                "d": 0.04267381430486816,
+                "lo": 0.038292320718125876,
+                "hi": 0.04747208876514148,
+                "n_queries": 49986,
+                "n_units": 9949
+              },
+              "abs_diff": {
+                "d": 1.1571010816169292e-10,
+                "lo": 1.1289819079607355e-10,
+                "hi": 3.89754423180122e-10
+              },
+              "max_abs_diff": 3.89754423180122e-10,
+              "scoring_max_abs_diff": 2.349168062210083e-05,
+              "scoring_mean_abs_diff": 1.0000361649886713e-09,
+              "scoring_queries": 61744,
+              "scoring_seeds": [
+                0,
+                1,
+                2,
+                3,
+                4
+              ],
+              "full_scoring": true,
+              "interval_inputs": "own_forward_AP",
+              "full_interval": true
+            },
+            {
+              "id": "text/genre/t2t/teacher",
+              "stats": {
+                "value": 0.3152138169901384,
+                "comparator_value": 0.29900682471269696,
+                "d": 0.016206992277441434,
+                "lo": 0.011822599749596333,
+                "hi": 0.02107086183111652,
+                "n_queries": 49986,
+                "n_units": 9949
+              },
+              "abs_diff": {
+                "d": 1.1571010816169292e-10,
+                "lo": 1.2396546324178193e-09,
+                "hi": 2.8009921465566023e-10
+              },
+              "max_abs_diff": 1.2396546324178193e-09,
+              "scoring_max_abs_diff": 2.349168062210083e-05,
+              "scoring_mean_abs_diff": 1.0000361649886713e-09,
+              "scoring_queries": 61744,
+              "scoring_seeds": [
+                0,
+                1,
+                2,
+                3,
+                4
+              ],
+              "full_scoring": true,
+              "interval_inputs": "own_forward_AP",
+              "full_interval": true,
+              "p1_side_point_abs_diff": 0.0
+            }
+          ],
+          "max_abs_diff": 6.306495839575321e-07,
+          "scoring_max_abs_diff": 0.04276806116104126,
+          "full_intervals": true,
+          "full_scoring": true,
+          "aspects": [
+            "emotion",
+            "style",
+            "genre"
+          ],
+          "interval_gate_1e9": false,
+          "scoring_gate_1e9": false
+        }
+      },
+      "source_sha256": "40a710f407efb154a42bbdc83f2b073dbce933c6123c1267c9fa7da4343a18e3",
+      "device": "cuda",
+      "elapsed_seconds": 252.73340328782797,
+      "query_limit": 0,
+      "notes": [
+        "P1 image mAP uses the r17 SC7 untold candidate: unit-normalise emotion/style/genre heads, concatenate in that order, divide by float32 sqrt(3). Q1 image mAP uses the r14 told aspect head. They have separate arm-level cross-fit read-out picks; image_map[aspect].pick is told/Q1 and .p1_pick is untold/P1.",
+        "Both image-map pick paths use each told aspect head's five-seed R0 validation mAP range as the LEVEL/selection unit. The common arm-level pick is repeated per aspect in the requested output structure.",
+        "AMI clusters every painting before masking negative labels at scoring, including in row resampling. Stored candidate float16 rows are promoted to float32 without another L2, as r28/r29 specify. Plain/teacher store inputs are unit-normalised as in the r17 comparator protocol.",
+        "Image mAP uses labelled queries/gallery only; fits use all fit paintings without labels. Validation parity halves are defined before label masking; average the two half means equally. Fit the final picked map on all validation rows.",
+        "Image menu: none, center, PCA-whiten64/256/1024 (capped at width), each crossed with k=0/1/3/5/10. Covariance is float64 with n-1 divisor, eigenvalues descending, epsilon=1e-6*largest eigenvalue; maps and ranking rows are float32. Equal-variance eigenvector sign choices cancel in cosine.",
+        "Image selection uses mean gain in told R0 range units, guard against losses greater than that range, the r11 0.001 tie band and R0/no-expansion/none-center-whiten/smaller-k/larger-dimension order. A 1e-12 comparison epsilon follows the permitted r17 independent derivation; zero ranges invalidate the selection rather than divide by zero.",
+        "Text means are fit on all validation text/image output rows in float64 then cast to float32. Centering and expansion rank all gallery rows; unlabelled rows leave only AP. The own caption sample ID leaves t2t gallery, paired paintings remain cross-modal. Text APs are retained as float32 to match r23 per-unit files, with float64 means and intervals; SC1 kept double AP before its mean.",
+        "Exact cosine ties keep ascending gallery row order: image painting names, caption extraction sample IDs. Painting plurality ties take the alphabetically first of all nine emotions; unknown/conflicting genre is -1.",
+        "Each comparison has a fresh default_rng(0). AMI samples every painting row then five candidate seeds, with three k-means states averaged per seed, 2000 draws. Image mAP samples labelled queries then shared seeds, 10000 draws. Text samples sorted painting units with scored queries then shared seeds; repeats weight query sums and counts, 10000 draws. Percentiles use numpy linear interpolation.",
+        "Forward diagnostics compare our image tower with stored exports after float16 rounding; image cells use the stored rows. CUDA is controller-only, TF32 disabled; AMI/k-means/bootstraps stay on CPU with at most eight worker threads/processes.",
+        "Read-out picks and ranges must be committed by the controller before the held command. --picks-committed is an explicit assertion of that precondition; the held report pins our validation-picks SHA256. This program makes no commits and reads no forbidden pick record.",
+        "A missing or uncertified replay marks its affected comparison INCONCLUSIVE; it contributes neither WIN nor LEVEL. SC3 reports the level supported by decided cells and whether inconclusive cells could raise it, per D22. Replay reports distinguish full interval checks from sampled K0 forward/ranking checks.",
+        "The specified prefixed store metadata uses lowercase represent the caption:; use its supplied rows unchanged. P1 caption form is plain as fixed in the task; its own r23 validation pick is used per cell."
+      ]
+    }
+  ],
+  "notes": [
+    "P1 image mAP uses the r17 SC7 untold candidate: unit-normalise emotion/style/genre heads, concatenate in that order, divide by float32 sqrt(3). Q1 image mAP uses the r14 told aspect head. They have separate arm-level cross-fit read-out picks; image_map[aspect].pick is told/Q1 and .p1_pick is untold/P1.",
+    "Both image-map pick paths use each told aspect head's five-seed R0 validation mAP range as the LEVEL/selection unit. The common arm-level pick is repeated per aspect in the requested output structure.",
+    "AMI clusters every painting before masking negative labels at scoring, including in row resampling. Stored candidate float16 rows are promoted to float32 without another L2, as r28/r29 specify. Plain/teacher store inputs are unit-normalised as in the r17 comparator protocol.",
+    "Image mAP uses labelled queries/gallery only; fits use all fit paintings without labels. Validation parity halves are defined before label masking; average the two half means equally. Fit the final picked map on all validation rows.",
+    "Image menu: none, center, PCA-whiten64/256/1024 (capped at width), each crossed with k=0/1/3/5/10. Covariance is float64 with n-1 divisor, eigenvalues descending, epsilon=1e-6*largest eigenvalue; maps and ranking rows are float32. Equal-variance eigenvector sign choices cancel in cosine.",
+    "Image selection uses mean gain in told R0 range units, guard against losses greater than that range, the r11 0.001 tie band and R0/no-expansion/none-center-whiten/smaller-k/larger-dimension order. A 1e-12 comparison epsilon follows the permitted r17 independent derivation; zero ranges invalidate the selection rather than divide by zero.",
+    "Text means are fit on all validation text/image output rows in float64 then cast to float32. Centering and expansion rank all gallery rows; unlabelled rows leave only AP. The own caption sample ID leaves t2t gallery, paired paintings remain cross-modal. Text APs are retained as float32 to match r23 per-unit files, with float64 means and intervals; SC1 kept double AP before its mean.",
+    "Exact cosine ties keep ascending gallery row order: image painting names, caption extraction sample IDs. Painting plurality ties take the alphabetically first of all nine emotions; unknown/conflicting genre is -1.",
+    "Each comparison has a fresh default_rng(0). AMI samples every painting row then five candidate seeds, with three k-means states averaged per seed, 2000 draws. Image mAP samples labelled queries then shared seeds, 10000 draws. Text samples sorted painting units with scored queries then shared seeds; repeats weight query sums and counts, 10000 draws. Percentiles use numpy linear interpolation.",
+    "Forward diagnostics compare our image tower with stored exports after float16 rounding; image cells use the stored rows. CUDA is controller-only, TF32 disabled; AMI/k-means/bootstraps stay on CPU with at most eight worker threads/processes.",
+    "Read-out picks and ranges must be committed by the controller before the held command. --picks-committed is an explicit assertion of that precondition; the held report pins our validation-picks SHA256. This program makes no commits and reads no forbidden pick record.",
+    "A missing or uncertified replay marks its affected comparison INCONCLUSIVE; it contributes neither WIN nor LEVEL. SC3 reports the level supported by decided cells and whether inconclusive cells could raise it, per D22. Replay reports distinguish full interval checks from sampled K0 forward/ranking checks.",
+    "The specified prefixed store metadata uses lowercase represent the caption:; use its supplied rows unchanged. P1 caption form is plain as fixed in the task; its own r23 validation pick is used per cell."
+  ],
+  "picks_sha256": "7ea3ab51a03e8d041b4bbdaa94cf481df628975dbb54a64edf5f2e01821a62d1",
+  "elapsed_seconds": 541.9604012100026
+}

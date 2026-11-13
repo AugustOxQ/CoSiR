@@ -1,0 +1,794 @@
+{
+ "tolerance": 1e-06,
+ "complete": true,
+ "n_cells_compared": 30,
+ "n_cells_expected": 30,
+ "status": "mismatch",
+ "mismatches": [
+  "cell genre/t2i/p1 hi: ours 0.06826425624322217 codex 0.0682652749056199 diff 1.019e-06"
+ ],
+ "max_diff_picks_ranges": 9.356896122914016e-07,
+ "max_diff_cells": 1.0186623977254117e-06,
+ "codex_replays": {
+  "ami": {
+   "max_abs_diff": 2.4924506902834764e-14,
+   "scoring_max_abs_diff": 0.0,
+   "full_intervals": true,
+   "full_scoring": true,
+   "interval_gate_1e9": true,
+   "scoring_gate_1e9": true
+  },
+  "image_map": {
+   "max_abs_diff": 3.5510008164832407e-07,
+   "scoring_max_abs_diff": 0.0,
+   "full_intervals": true,
+   "full_scoring": true,
+   "interval_gate_1e9": false,
+   "scoring_gate_1e9": false
+  },
+  "text": {
+   "max_abs_diff": 6.306495839575321e-07,
+   "scoring_max_abs_diff": 0.04276806116104126,
+   "full_intervals": true,
+   "full_scoring": true,
+   "interval_gate_1e9": false,
+   "scoring_gate_1e9": false
+  }
+ },
+ "codex_sc3_own_field": {
+  "wins_p1": 3,
+  "wins_or_level_q1": 3,
+  "level": 0,
+  "inconclusive_above": true
+ },
+ "note": "Codex outcomes recomputed from its lo and r by the \u00a73.4 rule; its outcome field is INCONCLUSIVE where its replay of older cells differed by more than 1e-9 (its own flag; the spec tolerance is 1e-6, and every replay is within 1e-6).",
+ "items": [
+  {
+   "item": "range/ami/emotion",
+   "ours": 0.010977150174824937,
+   "codex": 0.010977150174825784,
+   "diff": 8.465450562766819e-16
+  },
+  {
+   "item": "range/image_map/emotion",
+   "ours": 0.0014969129812612003,
+   "codex": 0.0014969329136146348,
+   "diff": 1.9932353434448657e-08
+  },
+  {
+   "item": "pick/image_map_told/emotion",
+   "ours": "center+k10",
+   "codex": "center+k10",
+   "equal": true
+  },
+  {
+   "item": "pick/image_map_untold/emotion",
+   "ours": "center+k10",
+   "codex": "center+k10",
+   "equal": true
+  },
+  {
+   "item": "pick/text/emotion/t2i",
+   "ours": "center_k10",
+   "codex": "center_k10",
+   "equal": true
+  },
+  {
+   "item": "range/text/emotion/t2i",
+   "ours": 0.0023162631455777016,
+   "codex": 0.002316432419820935,
+   "diff": 1.6927424323354145e-07
+  },
+  {
+   "item": "mean/text/emotion/t2i",
+   "ours": 0.2637825585790179,
+   "codex": 0.2637824958106698,
+   "diff": 6.276834807472653e-08
+  },
+  {
+   "item": "pick/text/emotion/i2t",
+   "ours": "center_k10",
+   "codex": "center_k10",
+   "equal": true
+  },
+  {
+   "item": "range/text/emotion/i2t",
+   "ours": 0.002892167756748165,
+   "codex": 0.002891535533595724,
+   "diff": 6.322231524413802e-07
+  },
+  {
+   "item": "mean/text/emotion/i2t",
+   "ours": 0.28328428039289716,
+   "codex": 0.28328440666522087,
+   "diff": 1.2627232370832076e-07
+  },
+  {
+   "item": "pick/text/emotion/t2t",
+   "ours": "center_k10",
+   "codex": "center_k10",
+   "equal": true
+  },
+  {
+   "item": "range/text/emotion/t2t",
+   "ours": 0.003961458590087286,
+   "codex": 0.003962394279699577,
+   "diff": 9.356896122914016e-07
+  },
+  {
+   "item": "mean/text/emotion/t2t",
+   "ours": 0.3284008262236065,
+   "codex": 0.3284010138448381,
+   "diff": 1.8762123160653843e-07
+  },
+  {
+   "item": "range/ami/style",
+   "ours": 0.007994029236445876,
+   "codex": 0.007994029236452316,
+   "diff": 6.439293542825908e-15
+  },
+  {
+   "item": "range/image_map/style",
+   "ours": 0.0038051993283246266,
+   "codex": 0.0038051657076788037,
+   "diff": 3.3620645822907136e-08
+  },
+  {
+   "item": "pick/image_map_told/style",
+   "ours": "center+k10",
+   "codex": "center+k10",
+   "equal": true
+  },
+  {
+   "item": "pick/image_map_untold/style",
+   "ours": "center+k10",
+   "codex": "center+k10",
+   "equal": true
+  },
+  {
+   "item": "pick/text/style/t2i",
+   "ours": "center_k10",
+   "codex": "center_k10",
+   "equal": true
+  },
+  {
+   "item": "range/text/style/t2i",
+   "ours": 0.0036956257906529677,
+   "codex": 0.0036959642039223473,
+   "diff": 3.3841326937955607e-07
+  },
+  {
+   "item": "mean/text/style/t2i",
+   "ours": 0.17734465360012175,
+   "codex": 0.17734462981626148,
+   "diff": 2.378386027013235e-08
+  },
+  {
+   "item": "pick/text/style/i2t",
+   "ours": "center_k10",
+   "codex": "center_k10",
+   "equal": true
+  },
+  {
+   "item": "range/text/style/i2t",
+   "ours": 0.0022619257806191784,
+   "codex": 0.002261933002570077,
+   "diff": 7.221950898417262e-09
+  },
+  {
+   "item": "mean/text/style/i2t",
+   "ours": 0.13631460932318076,
+   "codex": 0.13631461366584313,
+   "diff": 4.3426623685949295e-09
+  },
+  {
+   "item": "pick/text/style/t2t",
+   "ours": "center_k10",
+   "codex": "center_k10",
+   "equal": true
+  },
+  {
+   "item": "range/text/style/t2t",
+   "ours": 0.0017366449517459415,
+   "codex": 0.0017366456380729367,
+   "diff": 6.863269952361861e-10
+  },
+  {
+   "item": "mean/text/style/t2t",
+   "ours": 0.10468878403920714,
+   "codex": 0.10468878486528436,
+   "diff": 8.260772205170852e-10
+  },
+  {
+   "item": "range/ami/genre",
+   "ours": 0.02614171196690296,
+   "codex": 0.026141711966902292,
+   "diff": 6.661338147750939e-16
+  },
+  {
+   "item": "range/image_map/genre",
+   "ours": 0.0036960168368130875,
+   "codex": 0.0036959650471728445,
+   "diff": 5.178964024299404e-08
+  },
+  {
+   "item": "pick/image_map_told/genre",
+   "ours": "center+k10",
+   "codex": "center+k10",
+   "equal": true
+  },
+  {
+   "item": "pick/image_map_untold/genre",
+   "ours": "center+k10",
+   "codex": "center+k10",
+   "equal": true
+  },
+  {
+   "item": "pick/text/genre/t2i",
+   "ours": "center_k10",
+   "codex": "center_k10",
+   "equal": true
+  },
+  {
+   "item": "range/text/genre/t2i",
+   "ours": 0.0037556426479267713,
+   "codex": 0.003755487218100373,
+   "diff": 1.5542982639837888e-07
+  },
+  {
+   "item": "mean/text/genre/t2i",
+   "ours": 0.4893506556033357,
+   "codex": 0.4893506085323482,
+   "diff": 4.707098749667793e-08
+  },
+  {
+   "item": "pick/text/genre/i2t",
+   "ours": "center",
+   "codex": "center",
+   "equal": true
+  },
+  {
+   "item": "range/text/genre/i2t",
+   "ours": 0.0032086114613189,
+   "codex": 0.0032086055601886487,
+   "diff": 5.9011302511180475e-09
+  },
+  {
+   "item": "mean/text/genre/i2t",
+   "ours": 0.40342802240558323,
+   "codex": 0.4034280172709165,
+   "diff": 5.134666747341754e-09
+  },
+  {
+   "item": "pick/text/genre/t2t",
+   "ours": "center_k10",
+   "codex": "center_k10",
+   "equal": true
+  },
+  {
+   "item": "range/text/genre/t2t",
+   "ours": 0.006423789738604635,
+   "codex": 0.006423899129674948,
+   "diff": 1.0939107031315842e-07
+  },
+  {
+   "item": "mean/text/genre/t2t",
+   "ours": 0.31497674180200874,
+   "codex": 0.3149767063732346,
+   "diff": 3.542877413664769e-08
+  }
+ ],
+ "cells": [
+  {
+   "cell": "emotion/ami/p1",
+   "codex_id": "ami/emotion/p1",
+   "ours_outcome": "WIN",
+   "codex_outcome_field": "WIN",
+   "codex_outcome_rule": "WIN",
+   "ours_outcome_rule": "WIN",
+   "max_diff": 1.0526302052227265e-14,
+   "diffs": {
+    "value": 6.8833827526759706e-15,
+    "comparator_value": 1.0526302052227265e-14,
+    "d": 3.642919299551295e-15,
+    "lo": 1.7486012637846216e-15,
+    "hi": 1.7486012637846216e-15,
+    "r": 8.465450562766819e-16
+   }
+  },
+  {
+   "cell": "emotion/map/p1",
+   "codex_id": "image_map/emotion/p1",
+   "ours_outcome": "WIN",
+   "codex_outcome_field": "INCONCLUSIVE",
+   "codex_outcome_rule": "WIN",
+   "ours_outcome_rule": "WIN",
+   "max_diff": 1.9932353434448657e-08,
+   "diffs": {
+    "value": 1.6813527792258753e-09,
+    "comparator_value": 1.1101085883868933e-09,
+    "d": 5.71244190838982e-10,
+    "lo": 2.901674140548538e-09,
+    "hi": 7.256440170966272e-10,
+    "r": 1.9932353434448657e-08
+   }
+  },
+  {
+   "cell": "emotion/t2i/p1",
+   "codex_id": "text/emotion/t2i/p1",
+   "ours_outcome": "WIN",
+   "codex_outcome_field": "INCONCLUSIVE",
+   "codex_outcome_rule": "WIN",
+   "ours_outcome_rule": "WIN",
+   "max_diff": 3.9565058063129044e-07,
+   "diffs": {
+    "value": 1.4333521108911285e-07,
+    "comparator_value": 0.0,
+    "d": 1.4333521108911285e-07,
+    "lo": 3.9565058063129044e-07,
+    "hi": 4.7202110033117695e-08,
+    "r": 1.6927424323354145e-07
+   }
+  },
+  {
+   "cell": "emotion/i2t/p1",
+   "codex_id": "text/emotion/i2t/p1",
+   "ours_outcome": "WIN",
+   "codex_outcome_field": "INCONCLUSIVE",
+   "codex_outcome_rule": "WIN",
+   "ours_outcome_rule": "WIN",
+   "max_diff": 6.322231524413802e-07,
+   "diffs": {
+    "value": 9.213931184692825e-08,
+    "comparator_value": 0.0,
+    "d": 9.213931184692825e-08,
+    "lo": 5.080107862154293e-11,
+    "hi": 9.56677739805123e-09,
+    "r": 6.322231524413802e-07
+   }
+  },
+  {
+   "cell": "emotion/t2t/p1",
+   "codex_id": "text/emotion/t2t/p1",
+   "ours_outcome": "WIN",
+   "codex_outcome_field": "INCONCLUSIVE",
+   "codex_outcome_rule": "WIN",
+   "ours_outcome_rule": "WIN",
+   "max_diff": 9.356896122914016e-07,
+   "diffs": {
+    "value": 3.3808656596523434e-08,
+    "comparator_value": 0.0,
+    "d": 3.3808656596523434e-08,
+    "lo": 6.341893829531209e-09,
+    "hi": 7.150252406828983e-08,
+    "r": 9.356896122914016e-07
+   }
+  },
+  {
+   "cell": "emotion/ami/q1",
+   "codex_id": "ami/emotion/q1",
+   "ours_outcome": "WIN",
+   "codex_outcome_field": "WIN",
+   "codex_outcome_rule": "WIN",
+   "ours_outcome_rule": "WIN",
+   "max_diff": 1.0380585280245214e-14,
+   "diffs": {
+    "value": 6.8833827526759706e-15,
+    "comparator_value": 1.0380585280245214e-14,
+    "d": 3.497202527569243e-15,
+    "lo": 1.627170620466245e-15,
+    "hi": 4.288236432614667e-15,
+    "r": 8.465450562766819e-16
+   }
+  },
+  {
+   "cell": "emotion/map/q1",
+   "codex_id": "image_map/emotion/q1",
+   "ours_outcome": "WIN",
+   "codex_outcome_field": "INCONCLUSIVE",
+   "codex_outcome_rule": "WIN",
+   "ours_outcome_rule": "WIN",
+   "max_diff": 1.9932353434448657e-08,
+   "diffs": {
+    "value": 6.829204979297288e-10,
+    "comparator_value": 0.0,
+    "d": 6.829204979297288e-10,
+    "lo": 7.094833678888968e-10,
+    "hi": 8.521084298232506e-10,
+    "r": 1.9932353434448657e-08
+   }
+  },
+  {
+   "cell": "emotion/t2i/q1",
+   "codex_id": "text/emotion/t2i/q1",
+   "ours_outcome": "BELOW",
+   "codex_outcome_field": "INCONCLUSIVE",
+   "codex_outcome_rule": "BELOW",
+   "ours_outcome_rule": "BELOW",
+   "max_diff": 1.6927424323354145e-07,
+   "diffs": {
+    "value": 1.4333521108911285e-07,
+    "comparator_value": 0.0,
+    "d": 1.4333521108911285e-07,
+    "lo": 1.4842156741915608e-07,
+    "hi": 3.9116960688818925e-08,
+    "r": 1.6927424323354145e-07
+   }
+  },
+  {
+   "cell": "emotion/i2t/q1",
+   "codex_id": "text/emotion/i2t/q1",
+   "ours_outcome": "BELOW",
+   "codex_outcome_field": "INCONCLUSIVE",
+   "codex_outcome_rule": "BELOW",
+   "ours_outcome_rule": "BELOW",
+   "max_diff": 6.322231524413802e-07,
+   "diffs": {
+    "value": 9.213931184692825e-08,
+    "comparator_value": 0.0,
+    "d": 9.213931184692825e-08,
+    "lo": 8.878484351187987e-08,
+    "hi": 2.724729980252416e-07,
+    "r": 6.322231524413802e-07
+   }
+  },
+  {
+   "cell": "emotion/t2t/q1",
+   "codex_id": "text/emotion/t2t/q1",
+   "ours_outcome": "BELOW",
+   "codex_outcome_field": "INCONCLUSIVE",
+   "codex_outcome_rule": "BELOW",
+   "ours_outcome_rule": "BELOW",
+   "max_diff": 9.356896122914016e-07,
+   "diffs": {
+    "value": 3.3808656596523434e-08,
+    "comparator_value": 0.0,
+    "d": 3.3808656596523434e-08,
+    "lo": 2.899622202068297e-09,
+    "hi": 2.534199725068298e-10,
+    "r": 9.356896122914016e-07
+   }
+  },
+  {
+   "cell": "style/ami/p1",
+   "codex_id": "ami/style/p1",
+   "ours_outcome": "WIN",
+   "codex_outcome_field": "WIN",
+   "codex_outcome_rule": "WIN",
+   "ours_outcome_rule": "WIN",
+   "max_diff": 1.9539925233402755e-14,
+   "diffs": {
+    "value": 1.7708057242771247e-14,
+    "comparator_value": 1.9539925233402755e-14,
+    "d": 1.8318679906315083e-15,
+    "lo": 2.5326962749261384e-15,
+    "hi": 3.7192471324942744e-15,
+    "r": 6.439293542825908e-15
+   }
+  },
+  {
+   "cell": "style/map/p1",
+   "codex_id": "image_map/style/p1",
+   "ours_outcome": "BELOW",
+   "codex_outcome_field": "INCONCLUSIVE",
+   "codex_outcome_rule": "BELOW",
+   "ours_outcome_rule": "BELOW",
+   "max_diff": 3.3620645822907136e-08,
+   "diffs": {
+    "value": 3.506427759258912e-09,
+    "comparator_value": 7.696879800178635e-09,
+    "d": 1.1203307559437548e-08,
+    "lo": 7.759495601611377e-09,
+    "hi": 1.4626397732732388e-08,
+    "r": 3.3620645822907136e-08
+   }
+  },
+  {
+   "cell": "style/t2i/p1",
+   "codex_id": "text/style/t2i/p1",
+   "ours_outcome": "WIN",
+   "codex_outcome_field": "INCONCLUSIVE",
+   "codex_outcome_rule": "WIN",
+   "ours_outcome_rule": "WIN",
+   "max_diff": 3.3841326937955607e-07,
+   "diffs": {
+    "value": 8.47892816790985e-08,
+    "comparator_value": 0.0,
+    "d": 8.47892816790985e-08,
+    "lo": 1.3201682079466703e-07,
+    "hi": 7.794863747523362e-10,
+    "r": 3.3841326937955607e-07
+   }
+  },
+  {
+   "cell": "style/i2t/p1",
+   "codex_id": "text/style/i2t/p1",
+   "ours_outcome": "WIN",
+   "codex_outcome_field": "INCONCLUSIVE",
+   "codex_outcome_rule": "WIN",
+   "ours_outcome_rule": "WIN",
+   "max_diff": 7.221950898417262e-09,
+   "diffs": {
+    "value": 1.3857830993835307e-09,
+    "comparator_value": 0.0,
+    "d": 1.3857830993835307e-09,
+    "lo": 2.3424432012142393e-09,
+    "hi": 1.6495012231110273e-09,
+    "r": 7.221950898417262e-09
+   }
+  },
+  {
+   "cell": "style/t2t/p1",
+   "codex_id": "text/style/t2t/p1",
+   "ours_outcome": "WIN",
+   "codex_outcome_field": "INCONCLUSIVE",
+   "codex_outcome_rule": "WIN",
+   "ours_outcome_rule": "WIN",
+   "max_diff": 7.0311590629618115e-09,
+   "diffs": {
+    "value": 3.268322265603807e-09,
+    "comparator_value": 0.0,
+    "d": 3.268322265603807e-09,
+    "lo": 1.263483677058086e-09,
+    "hi": 7.0311590629618115e-09,
+    "r": 6.863269952361861e-10
+   }
+  },
+  {
+   "cell": "style/ami/q1",
+   "codex_id": "ami/style/q1",
+   "ours_outcome": "WIN",
+   "codex_outcome_field": "WIN",
+   "codex_outcome_rule": "WIN",
+   "ours_outcome_rule": "WIN",
+   "max_diff": 2.4924506902834764e-14,
+   "diffs": {
+    "value": 1.7708057242771247e-14,
+    "comparator_value": 2.4924506902834764e-14,
+    "d": 7.216449660063518e-15,
+    "lo": 3.58046925441613e-15,
+    "hi": 1.9220736113823023e-15,
+    "r": 6.439293542825908e-15
+   }
+  },
+  {
+   "cell": "style/map/q1",
+   "codex_id": "image_map/style/q1",
+   "ours_outcome": "WIN",
+   "codex_outcome_field": "INCONCLUSIVE",
+   "codex_outcome_rule": "WIN",
+   "ours_outcome_rule": "WIN",
+   "max_diff": 7.3174864959058e-08,
+   "diffs": {
+    "value": 3.614528309991982e-08,
+    "comparator_value": 0.0,
+    "d": 3.614528309991982e-08,
+    "lo": 7.3174864959058e-08,
+    "hi": 4.66853698338765e-08,
+    "r": 3.3620645822907136e-08
+   }
+  },
+  {
+   "cell": "style/t2i/q1",
+   "codex_id": "text/style/t2i/q1",
+   "ours_outcome": "WIN",
+   "codex_outcome_field": "INCONCLUSIVE",
+   "codex_outcome_rule": "WIN",
+   "ours_outcome_rule": "WIN",
+   "max_diff": 3.3841326937955607e-07,
+   "diffs": {
+    "value": 8.47892816790985e-08,
+    "comparator_value": 0.0,
+    "d": 8.47892816790985e-08,
+    "lo": 1.2102390940099683e-08,
+    "hi": 1.7159889490955815e-07,
+    "r": 3.3841326937955607e-07
+   }
+  },
+  {
+   "cell": "style/i2t/q1",
+   "codex_id": "text/style/i2t/q1",
+   "ours_outcome": "WIN",
+   "codex_outcome_field": "INCONCLUSIVE",
+   "codex_outcome_rule": "WIN",
+   "ours_outcome_rule": "WIN",
+   "max_diff": 7.221950898417262e-09,
+   "diffs": {
+    "value": 1.3857830993835307e-09,
+    "comparator_value": 0.0,
+    "d": 1.3857830993835307e-09,
+    "lo": 2.584367749317029e-09,
+    "hi": 1.5635189930945925e-09,
+    "r": 7.221950898417262e-09
+   }
+  },
+  {
+   "cell": "style/t2t/q1",
+   "codex_id": "text/style/t2t/q1",
+   "ours_outcome": "WIN",
+   "codex_outcome_field": "INCONCLUSIVE",
+   "codex_outcome_rule": "WIN",
+   "ours_outcome_rule": "WIN",
+   "max_diff": 8.030533436148568e-09,
+   "diffs": {
+    "value": 3.268322265603807e-09,
+    "comparator_value": 0.0,
+    "d": 3.268322265603807e-09,
+    "lo": 1.6492443261767464e-09,
+    "hi": 8.030533436148568e-09,
+    "r": 6.863269952361861e-10
+   }
+  },
+  {
+   "cell": "genre/ami/p1",
+   "codex_id": "ami/genre/p1",
+   "ours_outcome": "WIN",
+   "codex_outcome_field": "WIN",
+   "codex_outcome_rule": "WIN",
+   "ours_outcome_rule": "WIN",
+   "max_diff": 2.4424906541753444e-15,
+   "diffs": {
+    "value": 2.4424906541753444e-15,
+    "comparator_value": 1.887379141862766e-15,
+    "d": 5.551115123125783e-16,
+    "lo": 1.7208456881689926e-15,
+    "hi": 4.440892098500626e-16,
+    "r": 6.661338147750939e-16
+   }
+  },
+  {
+   "cell": "genre/map/p1",
+   "codex_id": "image_map/genre/p1",
+   "ours_outcome": "WIN",
+   "codex_outcome_field": "INCONCLUSIVE",
+   "codex_outcome_rule": "WIN",
+   "ours_outcome_rule": "WIN",
+   "max_diff": 5.178964024299404e-08,
+   "diffs": {
+    "value": 2.1881365608322767e-09,
+    "comparator_value": 7.494193043910968e-10,
+    "d": 1.4387172564411799e-09,
+    "lo": 7.200981325117262e-09,
+    "hi": 5.75370812105902e-09,
+    "r": 5.178964024299404e-08
+   }
+  },
+  {
+   "cell": "genre/t2i/p1",
+   "codex_id": "text/genre/t2i/p1",
+   "ours_outcome": "WIN",
+   "codex_outcome_field": "INCONCLUSIVE",
+   "codex_outcome_rule": "WIN",
+   "ours_outcome_rule": "WIN",
+   "max_diff": 1.0186623977254117e-06,
+   "diffs": {
+    "value": 6.094383692145655e-08,
+    "comparator_value": 0.0,
+    "d": 6.094383692145655e-08,
+    "lo": 4.359150980459692e-08,
+    "hi": 1.0186623977254117e-06,
+    "r": 1.5542982639837888e-07
+   }
+  },
+  {
+   "cell": "genre/i2t/p1",
+   "codex_id": "text/genre/i2t/p1",
+   "ours_outcome": "WIN",
+   "codex_outcome_field": "INCONCLUSIVE",
+   "codex_outcome_rule": "WIN",
+   "ours_outcome_rule": "WIN",
+   "max_diff": 5.9011302511180475e-09,
+   "diffs": {
+    "value": 4.0053699246200836e-10,
+    "comparator_value": 0.0,
+    "d": 4.0053699246200836e-10,
+    "lo": 7.48914832926495e-10,
+    "hi": 1.719488752771614e-09,
+    "r": 5.9011302511180475e-09
+   }
+  },
+  {
+   "cell": "genre/t2t/p1",
+   "codex_id": "text/genre/t2t/p1",
+   "ours_outcome": "WIN",
+   "codex_outcome_field": "INCONCLUSIVE",
+   "codex_outcome_rule": "WIN",
+   "ours_outcome_rule": "WIN",
+   "max_diff": 1.0939107031315842e-07,
+   "diffs": {
+    "value": 1.6730731355885098e-08,
+    "comparator_value": 0.0,
+    "d": 1.6730731355885098e-08,
+    "lo": 7.400679652436182e-10,
+    "hi": 2.4445189372723775e-08,
+    "r": 1.0939107031315842e-07
+   }
+  },
+  {
+   "cell": "genre/ami/q1",
+   "codex_id": "ami/genre/q1",
+   "ours_outcome": "WIN",
+   "codex_outcome_field": "WIN",
+   "codex_outcome_rule": "WIN",
+   "ours_outcome_rule": "WIN",
+   "max_diff": 2.4424906541753444e-15,
+   "diffs": {
+    "value": 2.4424906541753444e-15,
+    "comparator_value": 1.4432899320127035e-15,
+    "d": 9.992007221626409e-16,
+    "lo": 1.6826817716975029e-15,
+    "hi": 6.938893903907228e-18,
+    "r": 6.661338147750939e-16
+   }
+  },
+  {
+   "cell": "genre/map/q1",
+   "codex_id": "image_map/genre/q1",
+   "ours_outcome": "WIN",
+   "codex_outcome_field": "INCONCLUSIVE",
+   "codex_outcome_rule": "WIN",
+   "ours_outcome_rule": "WIN",
+   "max_diff": 3.080640531560874e-07,
+   "diffs": {
+    "value": 3.080640531560874e-07,
+    "comparator_value": 0.0,
+    "d": 3.080640531560874e-07,
+    "lo": 1.699315383182215e-07,
+    "hi": 6.680412287067561e-08,
+    "r": 5.178964024299404e-08
+   }
+  },
+  {
+   "cell": "genre/t2i/q1",
+   "codex_id": "text/genre/t2i/q1",
+   "ours_outcome": "WIN",
+   "codex_outcome_field": "INCONCLUSIVE",
+   "codex_outcome_rule": "WIN",
+   "ours_outcome_rule": "WIN",
+   "max_diff": 4.280146586599365e-07,
+   "diffs": {
+    "value": 6.094383692145655e-08,
+    "comparator_value": 0.0,
+    "d": 6.094383692145655e-08,
+    "lo": 4.280146586599365e-07,
+    "hi": 3.640714425559577e-07,
+    "r": 1.5542982639837888e-07
+   }
+  },
+  {
+   "cell": "genre/i2t/q1",
+   "codex_id": "text/genre/i2t/q1",
+   "ours_outcome": "WIN",
+   "codex_outcome_field": "INCONCLUSIVE",
+   "codex_outcome_rule": "WIN",
+   "ours_outcome_rule": "WIN",
+   "max_diff": 5.9011302511180475e-09,
+   "diffs": {
+    "value": 4.0053699246200836e-10,
+    "comparator_value": 0.0,
+    "d": 4.0053699246200836e-10,
+    "lo": 1.5764166604037566e-09,
+    "hi": 3.1448206885831276e-11,
+    "r": 5.9011302511180475e-09
+   }
+  },
+  {
+   "cell": "genre/t2t/q1",
+   "codex_id": "text/genre/t2t/q1",
+   "ours_outcome": "WIN",
+   "codex_outcome_field": "INCONCLUSIVE",
+   "codex_outcome_rule": "WIN",
+   "ours_outcome_rule": "WIN",
+   "max_diff": 1.0939107031315842e-07,
+   "diffs": {
+    "value": 1.6730731355885098e-08,
+    "comparator_value": 0.0,
+    "d": 1.6730731355885098e-08,
+    "lo": 3.347280473631198e-10,
+    "hi": 1.3099456866449977e-09,
+    "r": 1.0939107031315842e-07
+   }
+  }
+ ],
+ "written": "2026-11-13 06:18"
+}

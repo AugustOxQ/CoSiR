@@ -50,3 +50,32 @@ mode. Outputs `/data/SSD2/cosir_r29/20261112_siglip_only/` (stage logs in its `l
   SC2 holds: K* is an extra row (D3); stage 2 does not run.
 - 06:10 Cut: this chat passed 200k tokens. "r29 run 2" goes on with stage 1c
   (`docs/superpowers/handoffs/2026-11-13-r29-run-2-handoff.md`).
+
+## Run 2 (chat "r29 run 2")
+
+- 05:59 Chat start. Queue idle, GPU free. Run mode night.
+- 06:00 Stage 1c started (`r29_run_stage1.sh c`, `logs/run_stage1c.log`): its order check passes (pass rule, prefix pick,
+  text and image pick records committed). K* = `siglip1_prefix`, P1 form plain. Held export of the five seeds took about
+  1 min.
+- 06:01 Codex's held part queued on the GPU behind 1c's held text scoring (`rederive/r29rd_run_c1.sh held`, waits for
+  the 15 held exports).
+- 06:02 Codex's 1c validation picks (`rederive/r29rd_c1_picks.json`) against ours (`records/image_picks_siglip1_prefix.json`,
+  `records/text_siglip1_prefix.json`): every pick the same (image told and untold `center+k10` for all aspects; text
+  `center_k10` in eight cells, `center` for genre image to text). Ranges within 1e-6: AMI within 1e-14, image mAP within
+  5.2e-8, text within 9.4e-7 (emotion text to text; its `center_k10` per-seed values differ by up to 9.4e-7, the
+  expansion step on float16 against float32 tower rows).
+- 06:16 Codex's held part done (`rederive/c1_rederived.json`, 9.0 min GPU queue): 30 cells. Its own outcome field marks
+  the image mAP and text cells INCONCLUSIVE, because its replays of older cells differ by more than 1e-9 (its own flag;
+  image 3.6e-7, text 6.3e-7, both within the spec's 1e-6). Its outcomes recomputed from its lo and r by §3.4's rule:
+  14 of 15 WIN over P1 (style image mAP BELOW), 12 of 15 WIN or LEVEL over Q1 (the three emotion text cells BELOW).
+- 06:17 Stage 1c done, no failed step (`logs/run_stage1c.log`): held text scoring 6.7 min GPU, text cells 0.3 min, image
+  cells 10.1 min CPU.
+- 06:18 C13 comparison (`r29_c1_compare.py`, `records/c1_compare.json`): every pick the same, every range within 9.4e-7,
+  all 30 outcomes the same; 29 cells within 1e-6 in value, comparator value, d, lo, hi and r. One number over 1e-6:
+  genre text to image against P1, upper interval end, ours 0.0682642562 against Codex 0.0682652749 (1.02e-6).
+- 06:20 Cause (`r29_c1_cause_check.py`, `records/c1_cause_check.json`): Codex's interval code on our per-query APs gives
+  our record within 6e-17, so the interval code agrees. The gap is in the per-query APs: the two forward passes (both
+  float32, different code and batches) differ in about 1,150 of 61,744 queries per seed, up to 0.04 in a few queries
+  (near-tied captions change rank). Cell means differ by 6e-8; one bootstrap percentile moves by 1.02e-6. No bug to fix,
+  and the night chat does not choose a side or widen the tolerance: the cell is INCONCLUSIVE in the ladder (§3.4), with
+  both sides' WIN kept in the record. It cannot change the SC3 level (below).
