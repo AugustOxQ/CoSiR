@@ -1,0 +1,228 @@
+{
+  "gate": "sc9_replay_siglip2",
+  "status": "pass",
+  "tries": 1,
+  "details": {
+    "tolerance": 1e-06,
+    "abs_diff": {
+      "ami/emotion": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "ami/style": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "ami/genre": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "map/emotion": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "map/style": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "map/genre": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "score_abs_diff": 1.1102230246251565e-16,
+    "max_abs_diff": 1.1102230246251565e-16,
+    "cells": {
+      "ami/emotion": [
+        0.10219604451311688,
+        0.1040290392816605,
+        0.10022135436458875,
+        0.10146412898171049,
+        0.10228483907243902
+      ],
+      "map/emotion": [
+        0.26700130062806704,
+        0.2665376063036734,
+        0.26803057217589144,
+        0.2669905741955047,
+        0.26651638650900905
+      ],
+      "ami/style": [
+        0.46301094629562817,
+        0.45722532420355516,
+        0.4599025187001473,
+        0.45873412983666234,
+        0.4461281220032796
+      ],
+      "map/style": [
+        0.34204171297552755,
+        0.3390263695920976,
+        0.34000415774427606,
+        0.3409120386675401,
+        0.34211935693780526
+      ],
+      "ami/genre": [
+        0.5196930189561503,
+        0.541727689743794,
+        0.5535237488127901,
+        0.5505527854060145,
+        0.5511575201054699
+      ],
+      "map/genre": [
+        0.6015202032858671,
+        0.603385175367105,
+        0.6020215503753813,
+        0.605779537972742,
+        0.6027951347646506
+      ]
+    },
+    "expected_cells": {
+      "ami/emotion": [
+        0.10219604451311688,
+        0.1040290392816605,
+        0.10022135436458875,
+        0.10146412898171049,
+        0.10228483907243902
+      ],
+      "ami/style": [
+        0.46301094629562817,
+        0.45722532420355516,
+        0.4599025187001473,
+        0.45873412983666234,
+        0.4461281220032796
+      ],
+      "ami/genre": [
+        0.5196930189561503,
+        0.541727689743794,
+        0.5535237488127901,
+        0.5505527854060145,
+        0.5511575201054699
+      ],
+      "map/emotion": [
+        0.26700130062806704,
+        0.2665376063036734,
+        0.26803057217589144,
+        0.2669905741955047,
+        0.26651638650900905
+      ],
+      "map/style": [
+        0.34204171297552755,
+        0.3390263695920976,
+        0.34000415774427606,
+        0.3409120386675401,
+        0.34211935693780526
+      ],
+      "map/genre": [
+        0.6015202032858671,
+        0.603385175367105,
+        0.6020215503753813,
+        0.605779537972742,
+        0.6027951347646506
+      ]
+    },
+    "score": 0.38555109625907147,
+    "expected_score": 0.3855510962590716,
+    "encoder": "siglip2",
+    "arm": "k11=40",
+    "seeds": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "root": "/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/siglip2",
+    "source": "/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json",
+    "image": {
+      "cells": {
+        "ami/emotion": [
+          0.10219604451311688,
+          0.1040290392816605,
+          0.10022135436458875,
+          0.10146412898171049,
+          0.10228483907243902
+        ],
+        "map/emotion": [
+          0.26700130062806704,
+          0.2665376063036734,
+          0.26803057217589144,
+          0.2669905741955047,
+          0.26651638650900905
+        ],
+        "ami/style": [
+          0.46301094629562817,
+          0.45722532420355516,
+          0.4599025187001473,
+          0.45873412983666234,
+          0.4461281220032796
+        ],
+        "map/style": [
+          0.34204171297552755,
+          0.3390263695920976,
+          0.34000415774427606,
+          0.3409120386675401,
+          0.34211935693780526
+        ],
+        "ami/genre": [
+          0.5196930189561503,
+          0.541727689743794,
+          0.5535237488127901,
+          0.5505527854060145,
+          0.5511575201054699
+        ],
+        "map/genre": [
+          0.6015202032858671,
+          0.603385175367105,
+          0.6020215503753813,
+          0.605779537972742,
+          0.6027951347646506
+        ]
+      },
+      "per_seed": [
+        0.3825772044423928,
+        0.38532186741531427,
+        0.3872839836955125,
+        0.387405532510029,
+        0.3851668932321089
+      ],
+      "mean": 0.38555109625907147,
+      "names_sha256": "1430d4b56e4a76dbe3e1c4d699e1db5c92967c5f2048b74b6cbcdf1589809e2e",
+      "files": {
+        "emotion/s0": "/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/siglip2/train/k11=40/R6-5/emotion__Gres__s0.npz",
+        "emotion/s1": "/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/siglip2/train/k11=40/R6-5/emotion__Gres__s1.npz",
+        "emotion/s2": "/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/siglip2/train/k11=40/R6-5/emotion__Gres__s2.npz",
+        "emotion/s3": "/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/siglip2/train/k11=40/R6-5/emotion__Gres__s3.npz",
+        "emotion/s4": "/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/siglip2/train/k11=40/R6-5/emotion__Gres__s4.npz",
+        "style/s0": "/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/siglip2/train/k11=40/R6-5/style__Fres05__s0.npz",
+        "style/s1": "/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/siglip2/train/k11=40/R6-5/style__Fres05__s1.npz",
+        "style/s2": "/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/siglip2/train/k11=40/R6-5/style__Fres05__s2.npz",
+        "style/s3": "/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/siglip2/train/k11=40/R6-5/style__Fres05__s3.npz",
+        "style/s4": "/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/siglip2/train/k11=40/R6-5/style__Fres05__s4.npz",
+        "genre/s0": "/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/siglip2/train/k11=40/R6-5/genre__R0o__s0.npz",
+        "genre/s1": "/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/siglip2/train/k11=40/R6-5/genre__R0o__s1.npz",
+        "genre/s2": "/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/siglip2/train/k11=40/R6-5/genre__R0o__s2.npz",
+        "genre/s3": "/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/siglip2/train/k11=40/R6-5/genre__R0o__s3.npz",
+        "genre/s4": "/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/siglip2/train/k11=40/R6-5/genre__R0o__s4.npz"
+      }
+    }
+  },
+  "written": "2026-11-13 16:32"
+}
