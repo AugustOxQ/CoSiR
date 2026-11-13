@@ -2466,3 +2466,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-13-paper-plan-6-handoff.md
 - New chat: tab 'paper plan 6', session c96dfbaa-74c7-4d70-9d67-e728077d1db7
 
+[brief] CoSiR: paper plan 6 -> paper plan 7 (2026-11-13 17:38 Amsterdam)
+- Done: the 4.2 points after r29, "strongest of the three-pass comparators", the 4.1 genre clause, the 4.4 MMArt text, and one big Table 2 grouped by passes (REPO `de7731c`).
+- State: Sections 4.1 to 4.4 have no open TODO left except the opening sentence; 4.5 and 4.6 have no text yet.
+- Next: show the user the SigLIP 1 cluster-count figure (built 2026-11-12) and settle the CLAY style panel point.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-13-paper-plan-7-handoff.md
+- New chat: tab 'paper plan 7', session b0f38334-b76b-4aad-ba62-093f0f43f25f
+
