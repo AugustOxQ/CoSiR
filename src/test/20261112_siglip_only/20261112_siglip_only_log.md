@@ -102,3 +102,14 @@ mode. Outputs `/data/SSD2/cosir_r29/20261112_siglip_only/` (stage logs in its `l
   "the current models win over the plain embedding in every cell") missed this cell.
 - 06:34 Numbers sheet `paper_cells.md` written (`r29_ladder.py sheet`): the 1c cells, K0 beside them, Table 8; stage 2
   rows "not run".
+
+## Run 3 (chat "r29 run 3"): reports
+
+- 06:29 Chat start. Queue idle. Run mode night.
+- 06:50 Auto report `docs/reports/auto/percept/2027-01-18_siglip_only.md` and user-read report
+  `docs/user_read/2026-11-13_siglip_only.md` drafted; Claude's claim review recomputed six brief values from the records.
+- 06:55 Three Codex checks (fresh sessions): the auto report's claims (gpt-6.1-terra, medium; 3 findings), the user-read
+  fidelity check (gpt-6.1-terra, medium; 3 findings), a cold read (gpt-6-luna, medium). One fix wave applied.
+- Correction to 06:23 above: diagnostic (b) is not "as K0's" for emotion. Genre equals K0's per seed (14 to 18), style
+  is 1 to 3 for both; emotion K* 6 to 18 against K0 10 to 18 (seed 0: 6 against 12; seed 2: 6 against 17;
+  `records/diagnostics_val.json`, key `b`).
