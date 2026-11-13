@@ -517,6 +517,34 @@ T5_ARMS = (('instructed_graphs', 'Instructed graphs (removal)'), ('content_corre
            ('buddy', 'Graph-positive loss (removal)'), ('relational', 'Relational term (removal)'))
 
 
+def _t5_star_rows(doc, d3=False):
+    """The K* side of Table 5 from `records/ablation.json` (ticket 14; shapes of r29_ablation.score): {row: (AMI text, mAP text)}
+    for 'ref' (K*'s own means) and each removal, plus 'notes'. A removal the record lists as inconclusive shows its cause and no
+    number; a whole-record `inconclusive` (gate parked, or no removal scorable) shows one line with the cause."""
+    names = ['ref'] + [a for a, _ in T5_ARMS]
+    if doc is None:
+        txt = 'not run (D3)' if d3 else 'not run'
+        return {**{n: (txt, txt) for n in names}, 'notes': []}
+    assert doc.get('claim') == 'SC7' and doc.get('status') in ('ok', 'partial', 'inconclusive'), doc.get('status')
+    listed = doc.get('inconclusive_removals', {})
+    notes = []
+    if doc['status'] == 'inconclusive':
+        notes.append(f'\nK* side of Table 5: INCONCLUSIVE ({doc["cause"]}).')
+        notes += [f'- {a}: {c}' for a, c in listed.items()]
+        return {**{n: ('inconclusive', 'inconclusive') for n in names}, 'notes': notes + ['']}
+    star = doc['arms'][doc['kstar']]
+    out = {'ref': tuple(' / '.join(f3(star[a][f'{m}_mean']) for a in ASPECTS) for m in ('ami', 'map'))}
+    for arm_name, _ in T5_ARMS:
+        if arm_name in listed:
+            out[arm_name] = (f'INCONCLUSIVE: {listed[arm_name]}', 'inconclusive')
+            notes.append(f'- {arm_name}: INCONCLUSIVE, no number: {listed[arm_name]}')
+            continue
+        d = doc['deltas_vs_kstar'][arm_name]
+        out[arm_name] = tuple(' / '.join(f'{f4(d[a][m]["delta"])} [{f4(d[a][m]["lo"])}, {f4(d[a][m]["hi"])}]' for a in ASPECTS)
+                              for m in ('ami', 'map'))
+    return {**out, 'notes': (['\nInconclusive removals (D21: not scored; the others are):'] + notes + ['']) if notes else []}
+
+
 def sheet_text(records):
     records = Path(records)
     arms = discover_arms(records)
@@ -527,15 +555,21 @@ def sheet_text(records):
            'five-seed means on test, three decimals. New cells: value (Q1 cell\'s value; for image mAP the aspect head, the P1 cell '
            'is the untold candidate and shows its own value), the paired difference d from the comparator with its 95% interval, '
            'r (the LEVEL unit) and the outcome by spec §3.4: WIN, LEVEL, BELOW, or INCONCLUSIVE. Q1 claim: WIN "above", LEVEL '
-           '"level with", BELOW none. A cell on a failed claim stays on this sheet (D9). The sheet decides nothing: the levels '
+           '"level with", BELOW none. A failed pass rule (D9) does not hide the cells of SC3: they stay on this sheet. The sheet decides nothing: the levels '
            'are the ladder records\'.\n',
            '"Level" lines come from `records/<claim>_<arm>.json`; "K* - K0" is diagnostic (d), measured after the levels.\n']
+    rule = _j(records / 'pass_rule.json') if (records / 'pass_rule.json').exists() else None
+    d3 = rule is not None and rule['status'] != 'pass'          # D3: SC4 to SC7 do not run unless the pass rule passes
+    out.append('Pass rule (SC2): ' + ('not run.' if rule is None else f'status `{rule["status"]}`, level {rule.get("level")}.'
+               + (' SC4 to SC7: not run (D3).' if d3 else '')) + '\n')
     titles = {'SC3': 'SC3 (ArtELingo test, 15 cells; Tables 2 and 3): K* against P1 (plain embedding) and Q1 (instructed Qwen3)',
               'SC4': 'SC4 (Table 6, ArtELingo test, 6 cells per encoder; K0 on that encoder shown beside, descriptive)',
               'SC5': 'SC5 (Table 4, MMArt test, 6 cells)',
               'SC6': 'SC6 (Table 7, photo model F1, 4 cells: Affection and EmoSet test)'}
     for claim in ('SC3', 'SC4', 'SC5', 'SC6'):
         out.append(f'## {titles[claim]}\n')
+        if d3 and claim != 'SC3':
+            out.append('Not run (D3): the pass rule did not pass.\n')
         claim_arms = _claim_arms(claim, arms) or [None]
         for arm in claim_arms:
             if claim == 'SC4' and arm is None:
@@ -548,24 +582,30 @@ def sheet_text(records):
                 continue
             out.append(claim_section(claim, arm, records, k0))
     # Table 5 and Table 8: K0's rows; the new side is written by tickets 14 and 09
-    out.append('## Table 5 (ablation, ArtELingo test): K0 rows; removals of K*: not run\n')
     new5 = records / 'ablation.json'
+    doc5 = _j(new5) if new5.exists() else None
+    star_title = 'not run (D3)' if d3 and doc5 is None else ('not run' if doc5 is None else 'from `ablation.json`')
+    out.append(f'## Table 5 (ablation, ArtELingo test): K0 rows; removals of K*: {star_title}\n')
     ref, abl = _j(P.R28_RECORDS / 'ablation_ref_replay.json'), _j(P.R28_RECORDS / 'ablation_siglip1.json')
-    out += ['| Row | K0 AMI emotion / style / genre | K0 mAP emotion / style / genre | K* |', '|---|---|---|---|']
-    star = 'record present (`ablation.json`), shape not read by this sheet' if new5.exists() else 'not run'
+    out += ['| Row | K0 AMI emotion / style / genre | K0 mAP emotion / style / genre | K* AMI emotion / style / genre | K* mAP emotion / style / genre |',
+            '|---|---|---|---|---|']
+    star = _t5_star_rows(doc5, d3)
     out.append('| CoSiR (ours) = c* | ' + ' / '.join(f3(ref['ami'][a]['mean']) for a in ASPECTS) + ' | '
-               + ' / '.join(f3(ref['map_plain_cosine'][a]['mean']) for a in ASPECTS) + f' | {star} |')
+               + ' / '.join(f3(ref['map_plain_cosine'][a]['mean']) for a in ASPECTS) + f' | {star["ref"][0]} | {star["ref"][1]} |')
     for arm_name, label in T5_ARMS:
         d = abl['deltas_vs_cstar'][arm_name]
-        out.append(f'| {label}, change from c* | ' + ' / '.join(f4(d[a]['ami']['delta']) for a in ASPECTS) + ' | '
-                   + ' / '.join(f4(d[a]['map']['delta']) for a in ASPECTS) + f' | {star} |')
+        out.append(f'| {label}, change from c* (K*: change from K*, paired 95% interval) | '
+                   + ' / '.join(f4(d[a]['ami']['delta']) for a in ASPECTS) + ' | '
+                   + ' / '.join(f4(d[a]['map']['delta']) for a in ASPECTS) + f' | {star[arm_name][0]} | {star[arm_name][1]} |')
+    out += star['notes']
     out.append('\n## Table 8 (cost, ms per caption, one RTX 3090, batch 32)\n')
     tt, new8 = _j(P.R28_RECORDS / 'time_text.json'), records / 'time_text.json'
     n8 = _j(new8) if new8.exists() else None
     ms = lambda d, k: f3(d[k]['ms_per_caption_mean_of_repeats']) if d and k in d else 'not run'
+    form8 = f' (K* caption form: {n8["kstar_form"]})' if n8 and 'kstar_form' in n8 else ''
     out += ['| Row | K0 (r28) | new |', '|---|---|---|',
             f'| Qwen3 text pass | {ms(tt, "qwen_text_pass")} | n/a (no Qwen3 pass) |',
-            f'| SigLIP 1 text pass | n/a | {ms(n8, "siglip1_text_pass")} |',
+            f'| SigLIP 1 text pass{form8} | n/a | {ms(n8, "siglip1_text_pass")} |',
             f'| Caption tower, three aspects | {ms(tt, "caption_tower_three_aspects")} | {ms(n8, "caption_tower_three_aspects")} |', '']
     return '\n'.join(out)
 
@@ -737,7 +777,7 @@ def main(argv=None):
     s.add_argument('--encoder')
     s.add_argument('--missing-ok', metavar='REASON', help='let a cell file be absent; the reason goes into the record')
     sub.add_parser('sheet', help='rewrite paper_cells.md from every cell record present').add_argument('--out', type=Path)
-    d = sub.add_parser('diag-d', help='K* minus K0 per test cell, after the ladder record')
+    d = sub.add_parser('diag-d', help='K* minus K0 per test cell, after the ladder record (SC3 and SC4 only: SC5 and SC6 have no K0 paired path)')
     d.add_argument('--arm', required=True)
     d.add_argument('--claim', default='SC3', choices=['SC3', 'SC4'])
     d.add_argument('--encoder')

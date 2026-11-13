@@ -698,3 +698,89 @@ def test_a_cell_at_the_edge_is_checked_against_the_rule(tmp_path):
     write_cells(tmp_path, 'siglip1', img, txt)
     with pytest.raises(AssertionError):
         L.build_record('SC3', 'siglip1', records=tmp_path)
+
+
+# ================================================================================================ Table 5's K* side, the pass-rule line (final fix B)
+def fake_sc7(kind, tmp_path):
+    """A small `ablation.json` of each shape r29_ablation.score writes (ok, partial, inconclusive with and without removals)."""
+    cell = lambda v: dict(ami_mean=v, map_mean=v)
+    delta = lambda d: {a: {m: dict(d=d, delta=d, lo=d - 0.01, hi=d + 0.02, n_draws=1) for m in ('ami', 'map')} for a in ASP}
+    arms = {'siglip1': {a: cell(0.5) for a in ASP}}
+    if kind == 'whole_gate':
+        doc = dict(claim='SC7', complete=False, status='inconclusive', kstar='siglip1', cause='gate vii_ablation is parked (a fail at try 3 parks)')
+    elif kind == 'none_scorable':
+        doc = dict(claim='SC7', complete=False, status='inconclusive', kstar='siglip1', cause='no removal is scorable (D21)',
+                   inconclusive_removals={r: f'journal j/{r}: status None' for r, _ in L.T5_ARMS})
+    else:
+        scored = [r for r, _ in L.T5_ARMS if kind == 'ok' or r != 'relational']
+        doc = dict(claim='SC7', complete=kind == 'ok', status='ok' if kind == 'ok' else 'partial', kstar='siglip1',
+                   scored_removals=scored, inconclusive_removals={} if kind == 'ok' else {'relational': 'missing export h/x__s2.npz'},
+                   arms={**arms, **{r: {a: cell(0.4) for a in ASP} for r in scored}}, deltas_vs_kstar={r: delta(-0.1) for r in scored})
+    (tmp_path / 'ablation.json').write_text(json.dumps(doc))
+
+
+def sheet_of(tmp_path):
+    L.write_sheet(records=tmp_path, out=tmp_path / 'p.md')
+    return (tmp_path / 'p.md').read_text()
+
+
+def test_table5_shows_kstar_removal_rows_with_their_intervals(tmp_path):
+    fake_sc7('ok', tmp_path)
+    text = sheet_of(tmp_path)
+    assert 'removals of K*: from `ablation.json`' in text and 'shape not read' not in text
+    row = next(l for l in text.splitlines() if l.startswith('| Relational term'))
+    assert '-0.1000 [-0.1100, -0.0800] / -0.1000 [-0.1100, -0.0800]' in row          # delta [lo, hi] per aspect, AMI and mAP
+    ref = next(l for l in text.splitlines() if l.startswith('| CoSiR (ours)'))
+    assert '0.500 / 0.500 / 0.500' in ref and 'INCONCLUSIVE:' not in text
+
+
+def test_table5_lists_an_inconclusive_removal_with_its_cause_and_no_number(tmp_path):
+    fake_sc7('partial', tmp_path)
+    text = sheet_of(tmp_path)
+    row = next(l for l in text.splitlines() if l.startswith('| Relational term'))
+    assert 'INCONCLUSIVE: missing export h/x__s2.npz' in row and '[' not in row.split('|')[4] + row.split('|')[5]
+    assert '[-0.1100, -0.0800]' in next(l for l in text.splitlines() if l.startswith('| Graph-positive'))      # the others are scored
+    assert '- relational: INCONCLUSIVE, no number: missing export h/x__s2.npz' in text
+
+
+@pytest.mark.parametrize('kind,cause', [('whole_gate', 'gate vii_ablation is parked'), ('none_scorable', 'no removal is scorable')])
+def test_table5_whole_record_inconclusive_shows_one_line_with_the_cause(tmp_path, kind, cause):
+    fake_sc7(kind, tmp_path)
+    text = sheet_of(tmp_path)
+    assert f'K* side of Table 5: INCONCLUSIVE ({cause}' in text
+    row = next(l for l in text.splitlines() if l.startswith('| Instructed graphs'))
+    assert row.endswith('| inconclusive | inconclusive |')
+
+
+def test_table5_with_no_record_shows_not_run(tmp_path):
+    text = sheet_of(tmp_path)
+    assert 'removals of K*: not run' in text
+    assert next(l for l in text.splitlines() if l.startswith('| Content correction')).endswith('| not run | not run |')
+
+
+def test_sheet_on_a_failed_pass_rule_says_so_and_marks_stage_2_not_run(tmp_path):
+    (tmp_path / 'pass_rule.json').write_text(json.dumps(dict(status='fail', level=0)))
+    text = sheet_of(tmp_path)
+    assert 'Pass rule (SC2): status `fail`, level 0. SC4 to SC7: not run (D3).' in text
+    assert 'failed pass rule' in text and 'failed claim' not in text
+    assert text.count('Not run (D3): the pass rule did not pass.') == 3 and 'removals of K*: not run (D3)' in text
+    (tmp_path / 'pass_rule.json').write_text(json.dumps(dict(status='pass', level=2)))
+    text = sheet_of(tmp_path)
+    assert 'Pass rule (SC2): status `pass`, level 2.' in text and '(D3)' not in text
+
+
+def test_sheet_shows_the_r28_k0_value_beside_every_sc5_and_sc6_cell(tmp_path):
+    text = sheet_of(tmp_path)
+    k0 = L.k0_values()
+    for claim in ('SC5', 'SC6'):
+        for key in L.CLAIMS[claim]['cells']:
+            row = f'| {key[1] or key[0]} {key[2]} | {k0[key]["value"]:.3f} |'
+            assert row in text, row
+
+
+def test_table8_reads_the_new_record_with_k_stars_caption_form(tmp_path):
+    ms = lambda v: dict(ms_per_caption_mean_of_repeats=v)
+    (tmp_path / 'time_text.json').write_text(json.dumps(dict(kstar='siglip1_prefix', kstar_form='prefixed', cap_source='siglip1_prefix',
+                                                           siglip1_text_pass=ms(1.234), caption_tower_three_aspects=ms(0.056))))
+    text = sheet_of(tmp_path)
+    assert '| SigLIP 1 text pass (K* caption form: prefixed) | n/a | 1.234 |' in text and '| 0.056 |' in text

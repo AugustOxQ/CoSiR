@@ -262,6 +262,30 @@ def default_root(source, smoke=False):
     return (P.SMOKE_OUT if smoke else P.OUT) / 'ablation' / 'siglip1' / source
 
 
+def removal_cause(root, row):
+    """None when the removal is scorable: its five seed journals exist and say `ok` (a journal without `status` is not ok; no
+    journal means not trained) and its held exports (npz and sidecar, three aspects, five seeds) exist. Else the cause: the
+    journal path and its status, or the missing export file. Reads no held row."""
+    causes = []
+    for seed in P.SEEDS:
+        path = Path(root) / 'train' / row / f'attempts__s{seed}.json'
+        if not path.is_file():
+            causes.append(f'not trained: no journal {path}')
+        else:
+            status = json.loads(path.read_text()).get('status')
+            if status != 'ok':
+                causes.append(f'journal {path}: status {status!r}')
+    if causes:
+        return '; '.join(causes)
+    for seed in P.SEEDS:
+        for aspect in P.ASPECTS:
+            for suffix in ('.npz', '.json'):
+                path = Path(root) / 'held' / row / f'{aspect}__s{seed}{suffix}'
+                if not path.is_file():
+                    return f'missing export {path}'
+    return None
+
+
 def score(root=None):
     """Full SC7 table, five seeds and all four removals; no held-driven picks.
     This readout is fixed by §3.4, so there is no validation readout selection
@@ -278,19 +302,29 @@ def score(root=None):
         write_json(P.RECORDS / 'ablation.json', document)
         return document
     root = T.check_root(root or default_root(source))
-    # Check crash status before reading ANY held rows, including K*'s.
+    # D21, §3.5 row 2b ("the others go on"): a removal is scored only when its five journals say `ok` and its 15 held exports
+    # exist. Every other removal is listed as inconclusive with its cause and no number. Decided before ANY held row is
+    # read, K*'s included.
+    scored_rows, inconclusive = [], {}
     for row in REMOVALS:
-        for seed in P.SEEDS:
-            path = root / 'train' / row / f'attempts__s{seed}.json'
-            if path.exists():
-                assert json.loads(path.read_text())['status'] == 'ok', f'{row}: stage inconclusive (D21): {path}'
+        cause = removal_cause(root, row)
+        if cause is None:
+            scored_rows.append(row)
+        else:
+            inconclusive[row] = cause
+    if not scored_rows:
+        document = dict(kind='r29_ablation', claim='SC7', complete=False, status='inconclusive', set='artelingo',
+                        split='held', encoder='siglip1', kstar=source, cause='no removal is scorable (D21)',
+                        inconclusive_removals=inconclusive, code_sha256=code_hashes())
+        write_json(P.RECORDS / 'ablation.json', document)
+        return document
     names, list_sha, labels = F.t5.bind_labels()
-    hashes, arms, deltas, cells = {}, {a: {} for a in (source, *REMOVALS)}, {r: {} for r in REMOVALS}, []
+    hashes, arms, deltas, cells = {}, {a: {} for a in (source, *scored_rows)}, {r: {} for r in scored_rows}, []
     for aspect in P.ASPECTS:
         reference = score_aspect(P.OUT / 'cstar/siglip1', source, aspect, labels[aspect], names, list_sha, hashes,
                                  source=source)
         arms[source][aspect] = reference['cell']
-        for row in REMOVALS:
+        for row in scored_rows:
             removal = score_aspect(root, row, aspect, labels[aspect], names, list_sha, hashes, source=source)
             arms[row][aspect] = removal['cell']
             paired = paired_change(removal, reference, labels[aspect], F.CLASS_COUNT[aspect])
@@ -312,7 +346,9 @@ def score(root=None):
                                   seeds=list(P.SEEDS), per_seed=per_seed))
     drawn = {m: {c['n_draws'] for c in cells if c['measure'] == m} for m in ('ami', 'map')}
     assert all(len(v) == 1 for v in drawn.values()), drawn
-    document = dict(kind='r29_ablation', claim='SC7', complete=True, status='ok', set='artelingo', split='held', encoder='siglip1',
+    complete = not inconclusive
+    document = dict(kind='r29_ablation', claim='SC7', complete=complete, status='ok' if complete else 'partial', set='artelingo',
+                    split='held', encoder='siglip1', scored_removals=scored_rows, inconclusive_removals=inconclusive,
                     kstar=source, kstar_form={'siglip1': 'plain', 'siglip1_prefix': 'prefixed'}[source],
                     cap_source=source, cap_width=P.CAPTION_SOURCES[source][1], seeds=list(P.SEEDS),
                     roots=dict(kstar=str(P.OUT / 'cstar/siglip1'), removals=str(root)),
@@ -409,7 +445,7 @@ def main(argv=None):
         return 0 if gate['status'] == 'pass' else 2
     if args.command == 'score':
         doc = score(args.root)
-        print(f'SC7: {len(doc["cells"])} cells -> {P.RECORDS / "ablation.json"}', flush=True)
+        print(f'SC7: {len(doc.get("cells", []))} cells -> {P.RECORDS / "ablation.json"}', flush=True)
         return 0
     assert not args.k0_standin or args.smoke, '--k0-standin is smoke only'
     source = 'qwen' if args.k0_standin else None

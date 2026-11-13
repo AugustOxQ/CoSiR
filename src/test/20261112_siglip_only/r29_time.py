@@ -1,8 +1,8 @@
 """r29 Table 8 (ticket 09; spec §3.4, SC8, D8): text-pass time per caption, r28's protocol (r28_time.py: batch 32, three
 warm-up batches, wall time per batch with cuda synchronize, three repeats, foreign GPU processes polled around every repeat,
 tokenisation inside the timed loop, the same 2,000 captions) for (a) the SigLIP 1 text pass (`encode_texts` of
-`load_encoder('siglip_so400m')`) and (b) the new caption tower (`view['cap']` of the three aspects' K* checkpoints, timed together as r28's three-aspect pass, 1152 -> 2048, fp32) on
-the stored SigLIP 1 rows of those captions. r28's Qwen3 value is read from r28's record. Descriptive; no verdict.
+`load_encoder('siglip_so400m')`, on the texts in K*'s own caption form: with the prefix when K* is `siglip1_prefix`) and (b) the new caption tower (`view['cap']` of the three aspects' K* checkpoints, timed together as r28's three-aspect pass, 1152 -> 2048, fp32) on
+the stored rows of those captions from K*'s store (K* is read from the committed `records/prefix_pick.json`). r28's Qwen3 value is read from r28's record. Descriptive; no verdict.
 
     python r29_time.py --weights-dir DIR [--seed S] [--out PATH] [--repeats N]
 """
@@ -30,8 +30,29 @@ P.check_older_imports()  # every older-round module loaded so far is the main ch
 
 R28_RECORD = P.R28_RECORDS / 'time_text.json'
 OUT = P.RECORDS / 'time_text.json'
-SOURCE = 'siglip1'
+PICK = P.RECORDS / 'prefix_pick.json'
+FORMS = {'siglip1': 'plain', 'siglip1_prefix': 'prefixed'}       # K*'s arm -> its caption form
 SIGLIP_WIDTH, TOWER_WIDTH = 1152, 2048
+
+
+def read_kstar(path=PICK):
+    """K* and its caption form from `records/prefix_pick.json` (ticket 05), which must be committed unchanged (spec §3.5 order
+    rule; the other K* readers refuse the same way). Returns (kstar, kstar_form); the keys and their consistency are asserted."""
+    path = Path(path)
+    P.require_committed(path, 'Table 8 times K*; the pick is written and committed before it (spec §3.4, §3.5)')
+    doc = json.loads(path.read_text())
+    assert {'kstar', 'kstar_form', 'p1_form', 'flag'} <= doc.keys(), f'{path}: missing shared interface keys ({sorted(doc)})'
+    assert doc['kstar'] in FORMS, f'{path}: kstar {doc["kstar"]!r} not in {sorted(FORMS)}'
+    assert doc['kstar_form'] == FORMS[doc['kstar']], f'{path}: kstar_form {doc["kstar_form"]!r} does not match {doc["kstar"]!r}'
+    return doc['kstar'], doc['kstar_form']
+
+
+def caption_texts(captions, form):
+    """The texts the SigLIP 1 text pass reads, in K*'s caption form. Prefixed: exactly as ticket 02's prefixed store builds them
+    (`r29_extract._encode_chunk`: `prefix + caption`, one concatenation, before the encoder's own lowercasing)."""
+    assert form in ('plain', 'prefixed'), form
+    captions = list(captions)
+    return captions if form == 'plain' else [P.PREFIX + caption for caption in captions]
 
 
 def main():
@@ -41,6 +62,7 @@ def main():
     ap.add_argument('--out', default=str(OUT))
     ap.add_argument('--repeats', type=int, default=R28.REPEATS)
     a = ap.parse_args()
+    kstar, kform = read_kstar()
     N, BATCH, WARMUP, SEED = R28.N, R28.BATCH, R28.WARMUP, R28.SEED
     own = os.getpid()
     gpu_before = PR.poll_gpu()
@@ -57,11 +79,12 @@ def main():
     assert r28['sample'].startswith(f'np.random.RandomState({SEED}).choice({n_txt}, {N}, replace=False)')
     sample_ids = np.asarray([idx['texts'][int(i)]['sample_id'] for i in rows])
     ann = json.load(open('/data/PDD/artelingo/artelingo_train.json'))
-    texts = [ann[s]['caption'] for s in sample_ids]
-    assert all(isinstance(t, str) for t in texts) and len(texts) == N
+    captions = [ann[s]['caption'] for s in sample_ids]
+    assert all(isinstance(t, str) for t in captions) and len(captions) == N
+    texts = caption_texts(captions, kform)                                        # K*'s own caption form
     ids_sha = hashlib.sha256(json.dumps([str(s) for s in sample_ids]).encode()).hexdigest()
     paintings = C.annotation_paintings()[[int(s) for s in sample_ids]]
-    emb = C.caption_rows(SOURCE, [int(s) for s in sample_ids], paintings)     # SigLIP 1 rows; ID and painting checked
+    emb = C.caption_rows(kstar, [int(s) for s in sample_ids], paintings)      # K*'s rows (width 1152); ID and painting checked
     assert emb.shape == (N, SIGLIP_WIDTH) and emb.dtype == np.float32
 
     device = torch.device('cuda')
@@ -69,8 +92,8 @@ def main():
     for aspect in P.ASPECTS:                       # as r28: the three aspects' cap sides, one seed
         w = Path(a.weights_dir) / f'{aspect}__s{a.seed}.pt'
         cfg, rb = M.read_sidecar(w)
-        assert cfg['aspect'] == aspect and rb['cap_source'] == SOURCE, (w, cfg['aspect'], rb['cap_source'])
-        view = M.load_view(w, device, expect_store_sha256=C.store_hash(rb['cap_source']))
+        assert cfg['aspect'] == aspect and rb['cap_source'] == kstar, (w, cfg['aspect'], rb['cap_source'], kstar)
+        view = M.load_view(w, device, expect_store_sha256=C.store_hash(kstar))
         assert view['cap'].trunk[0].weight.shape[1] == SIGLIP_WIDTH
         towers.append(view['cap'])
         paths.append(str(w))
@@ -84,12 +107,14 @@ def main():
     print('live vs stored cosine min', cos.min(), flush=True)
     sync, clock = torch.cuda.synchronize, time.perf_counter
 
-    out = {'task': 'r29 Table 8 text-pass time', 'written': time.strftime('%F %H:%M'), 'gpu': torch.cuda.get_device_name(0),
+    out = {'task': 'r29 Table 8 text-pass time', 'written': time.strftime('%F %H:%M'),
+           'kstar': kstar, 'kstar_form': kform, 'cap_source': kstar,
+           'siglip1_text_input': f'{kform} captions' + (f' ({P.PREFIX!r} + caption)' if kform == 'prefixed' else ''), 'gpu': torch.cuda.get_device_name(0),
            'torch': torch.__version__, 'batch': BATCH, 'warmup_batches': WARMUP, 'repeats': a.repeats, 'n_captions': N,
            'sample': r28['sample'], 'caption_sample_ids_sha256': ids_sha, 'same_captions_as': str(R28_RECORD),
            'siglip1_live_vs_stored_cos_min': float(cos.min()), 'gpu_processes_before_start': gpu_before,
            'caption_tower_weights': paths,
-           'caption_tower_input': f'stored {SOURCE} rows of the same captions, fp32',
+           'caption_tower_input': f'stored {kstar} rows of the same captions, fp32',
            'qwen3_text_pass_r28': {'ms_per_caption_mean_of_repeats': qwen_ms, 'source': str(R28_RECORD),
                                    'written': r28['written'], 'model': r28['model']}}
     discards = []

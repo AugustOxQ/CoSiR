@@ -16,6 +16,26 @@ def pick(arm, form='plain', **extra):
     return json.dumps(dict(kstar=arm, kstar_form=form, p1_form='plain', flag=None, **extra))
 
 
+def removal_root(tmp_path, source='siglip1'):
+    return tmp_path / 'out' / 'ablation' / 'siglip1' / source
+
+
+def make_trained(tmp_path, rows=A.REMOVALS, source='siglip1'):
+    """Journals saying ok and the 15 held exports (npz + sidecar; empty files: the scorer is stubbed) of the given removals."""
+    root = removal_root(tmp_path, source)
+    for row in rows:
+        for seed in A.P.SEEDS:
+            journal = root / 'train' / row / f'attempts__s{seed}.json'
+            journal.parent.mkdir(parents=True, exist_ok=True)
+            journal.write_text(json.dumps(dict(row=row, seed=seed, status='ok')))
+            for aspect in A.P.ASPECTS:
+                for suffix in ('.npz', '.json'):
+                    export = root / 'held' / row / f'{aspect}__s{seed}{suffix}'
+                    export.parent.mkdir(parents=True, exist_ok=True)
+                    export.write_text('')
+    return root
+
+
 def test_train_refuses_without_a_pass_before_reading_any_training_input(tmp_path, monkeypatch):
     monkeypatch.setattr(A.P, 'RECORDS', tmp_path)
     for record in (None, {'status': 'fail'}, {'status': 'inconclusive'}, {'pass': True}):
@@ -225,6 +245,7 @@ def test_full_scoring_has_sheet_rows_with_paired_intervals_and_no_outcome(tmp_pa
     (tmp_path / 'prefix_pick.json').write_text(pick('siglip1_prefix', 'prefixed'))
     monkeypatch.setattr(A, 'require_committed', lambda _: None)
     monkeypatch.setattr(A, 'require_gate', lambda: 'pass')
+    make_trained(tmp_path, source='siglip1_prefix')
     labels = {a: np.tile(np.arange(A.F.CLASS_COUNT[a]), 2).astype(np.int64) for a in A.P.ASPECTS}
     monkeypatch.setattr(A.F.t5, 'bind_labels', lambda: (np.array(['p']), 'names', labels))
     calls = []
@@ -398,7 +419,7 @@ def test_non_smoke_and_non_standin_calls_still_refuse_without_a_pass_record(tmp_
     assert calls == []
 
 
-def score_setup(tmp_path, monkeypatch, *, gate=None, tries=1, committed=True, stub_paired=True):
+def score_setup(tmp_path, monkeypatch, *, gate=None, tries=1, committed=True, stub_paired=True, trained=True):
     """Everything `score` reads is a stub that records a call, so a test can see whether held rows were reached."""
     monkeypatch.setattr(A.P, 'RECORDS', tmp_path)
     monkeypatch.setattr(A.P, 'GATES', tmp_path / 'gates')
@@ -410,6 +431,8 @@ def score_setup(tmp_path, monkeypatch, *, gate=None, tries=1, committed=True, st
         (tmp_path / 'gates').mkdir(exist_ok=True)
         (tmp_path / 'gates' / 'vii_ablation.json').write_text(
             json.dumps(dict(gate='vii_ablation', status=gate, tries=tries, details=details)))
+    if trained:
+        make_trained(tmp_path)
     labels = {a: np.tile(np.arange(A.F.CLASS_COUNT[a]), 2).astype(np.int64) for a in A.P.ASPECTS}
     monkeypatch.setattr(A.F.t5, 'bind_labels', lambda: (np.array(['p']), 'names', labels))
     if committed:
@@ -453,17 +476,74 @@ def test_score_reads_no_held_rows_while_a_selection_record_is_uncommitted(tmp_pa
     assert held
 
 
+def journal_of(tmp_path, row, seed):
+    return removal_root(tmp_path) / 'train' / row / f'attempts__s{seed}.json'
+
+
 @pytest.mark.parametrize('status', ['inconclusive', 'running', 'failed'])
-def test_score_refuses_a_failed_crash_journal_before_any_held_read(tmp_path, monkeypatch, status):
+def test_a_crashed_removal_is_listed_inconclusive_and_the_others_are_scored(tmp_path, monkeypatch, status):
     held = score_setup(tmp_path, monkeypatch, gate='pass')
-    journal = tmp_path / 'out' / 'ablation' / 'siglip1' / 'siglip1' / 'train' / 'relational' / 'attempts__s3.json'
-    journal.parent.mkdir(parents=True)
-    journal.write_text(json.dumps(dict(status=status)))
-    with pytest.raises(AssertionError, match='inconclusive'):
-        A.score()
-    assert held == [] and not (tmp_path / 'ablation.json').exists()
-    journal.write_text(json.dumps(dict(status='ok')))
-    assert A.score()['complete'] and held
+    journal_of(tmp_path, 'relational', 3).write_text(json.dumps(dict(status=status)))      # one removal, one seed, crashed twice
+    doc = A.score()
+    assert doc['complete'] is False and doc['status'] == 'partial'
+    assert doc['scored_removals'] == ['instructed_graphs', 'content_correction', 'buddy']
+    assert list(doc['inconclusive_removals']) == ['relational']
+    cause = doc['inconclusive_removals']['relational']
+    assert str(journal_of(tmp_path, 'relational', 3)) in cause and repr(status) in cause
+    assert set(doc['deltas_vs_kstar']) == set(doc['scored_removals']) and set(doc['arms']) == {'siglip1', *doc['scored_removals']}
+    assert len(doc['cells']) == 18 and all(c['arm'] != 'relational' for c in doc['cells'])
+    assert not any(arm == 'relational' for _, arm, _ in held)            # no held row of the inconclusive removal is read
+    assert any(arm == 'siglip1' for _, arm, _ in held)                  # K*'s reference rows are read
+    assert json.loads((tmp_path / 'ablation.json').read_text()) == doc
+    journal_of(tmp_path, 'relational', 3).write_text(json.dumps(dict(status='ok')))
+    full = A.score()
+    assert full['complete'] and full['status'] == 'ok' and full['inconclusive_removals'] == {} and len(full['cells']) == 24
+
+
+def test_a_journal_without_status_counts_as_not_ok(tmp_path, monkeypatch):
+    score_setup(tmp_path, monkeypatch, gate='pass')
+    journal_of(tmp_path, 'buddy', 0).write_text(json.dumps(dict(row='buddy', attempts=[dict(status='running')])))     # no KeyError
+    doc = A.score()
+    assert list(doc['inconclusive_removals']) == ['buddy'] and 'None' in doc['inconclusive_removals']['buddy']
+    assert doc['complete'] is False and 'buddy' not in doc['scored_removals']
+
+
+def test_a_removal_without_any_journal_is_not_trained(tmp_path, monkeypatch):
+    score_setup(tmp_path, monkeypatch, gate='pass', trained=False)
+    make_trained(tmp_path, rows=('instructed_graphs', 'content_correction', 'relational'))
+    doc = A.score()
+    assert list(doc['inconclusive_removals']) == ['buddy'] and 'not trained' in doc['inconclusive_removals']['buddy']
+
+
+def test_a_missing_export_makes_the_removal_inconclusive_and_names_the_file(tmp_path, monkeypatch):
+    held = score_setup(tmp_path, monkeypatch, gate='pass')
+    missing = removal_root(tmp_path) / 'held' / 'content_correction' / 'style__s2.npz'
+    missing.unlink()
+    doc = A.score()
+    assert list(doc['inconclusive_removals']) == ['content_correction']
+    assert str(missing) in doc['inconclusive_removals']['content_correction']
+    assert not any(arm == 'content_correction' for _, arm, _ in held) and doc['complete'] is False
+    assert len(doc['cells']) == 18
+
+
+def test_all_four_removals_inconclusive_writes_a_record_with_no_cells_and_no_held_read(tmp_path, monkeypatch):
+    held = score_setup(tmp_path, monkeypatch, gate='pass')
+    for row in A.REMOVALS:
+        journal_of(tmp_path, row, 0).write_text(json.dumps(dict(status='inconclusive')))
+    doc = A.score()
+    assert doc['status'] == 'inconclusive' and doc['complete'] is False and 'cells' not in doc
+    assert set(doc['inconclusive_removals']) == set(A.REMOVALS) and 'deltas_vs_kstar' not in doc
+    assert held == []                                                       # not even K*'s rows
+    assert json.loads((tmp_path / 'ablation.json').read_text()) == doc
+
+
+def test_cli_score_exits_zero_for_a_record_without_cells(tmp_path, monkeypatch, capsys):
+    score_setup(tmp_path, monkeypatch, gate='pass')
+    for row in A.REMOVALS:
+        journal_of(tmp_path, row, 0).write_text(json.dumps(dict(status='inconclusive')))
+    assert A.main(['score']) == 0 and '0 cells' in capsys.readouterr().out
+    score_setup(tmp_path, monkeypatch, gate='parked', tries=3)              # a parked gate: the record has no `cells` either
+    assert A.main(['score']) == 0
 
 
 def test_gate_states_decide_whether_sc7_scores_waits_or_is_inconclusive(tmp_path, monkeypatch):

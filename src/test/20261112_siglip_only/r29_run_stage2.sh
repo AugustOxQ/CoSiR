@@ -87,20 +87,16 @@ elif [[ $PART == a ]]; then
   } && photo_gate_ok && train_retry f1 done_f1 x 20m train-f1 "0 1 2 3 4" -- "${PYC[@]}" r29_photo.py train --seeds @SEEDS@ --device cuda && {
     q gpu short f1-export-val-affection -- "${PYC[@]}" r29_photo.py export --dataset affection --splits val
     q gpu short f1-export-val-emoset -- "${PYC[@]}" r29_photo.py export --dataset emoset --splits val
-    # ---- TO CHECK AFTER TICKET 13 MERGES: the r29_photo_cells.py CLI below is taken from issues/13-photo-cells.md ----
     if [[ -f r29_photo_cells.py ]]; then q cpu 45m "photo-picks-$K" -- "${PYC[@]}" r29_photo_cells.py picks --arm "$K"
     else SKIPPED+=(r29_photo_cells.py); echo "skip: r29_photo_cells.py not in this checkout (ticket 13)"; fi
-    # ---- end of the ticket 13 block ----
   }
 else
   q gpu short f1-export-test-affection -- "${PYC[@]}" r29_photo.py export --dataset affection --splits test
   q gpu short f1-export-test-emoset -- "${PYC[@]}" r29_photo.py export --dataset emoset --splits test
-  # ---- TO CHECK AFTER TICKET 13 MERGES ----
   if [[ -f r29_photo_cells.py ]]; then
     need_committed "photo-cells-$K" "records/photo_picks_$K.json" && \
       q cpu 45m "photo-cells-$K" -- "${PYC[@]}" r29_photo_cells.py cells --arm "$K"
   else SKIPPED+=(r29_photo_cells.py); echo "skip: r29_photo_cells.py not in this checkout (ticket 13)"; fi
-  # ---- end of the ticket 13 block ----
 fi
 
 # ---------------------------------------------------------------- ablation R1 to R4 (ticket 14)
@@ -109,9 +105,12 @@ if [[ ! -f r29_ablation.py ]]; then SKIPPED+=(r29_ablation.py); echo "skip: r29_
 else
   for ROW in instructed_graphs content_correction buddy relational; do
     if [[ $PART == a ]]; then
-      # r29_ablation.py train carries D21 itself (one same-seed retry per seed, journal attempts__s<seed>.json), so it is
-      # run once here; a non-zero exit is an inconclusive seed and goes on the failure list.
-      q gpu 40m "ablation-train-$ROW" -- "${PYC[@]}" r29_ablation.py train --row "$ROW" --seeds 0 1 2 3 4 && \
+      # D21's same-seed rerun when the process dies (for example an out-of-memory kill): a non-zero exit runs the train step a
+      # second time. r29_ablation.py train caps every seed at two attempts in its journal attempts__s<seed>.json (an attempt
+      # left `running` by a dead process counts as one) and refuses an `inconclusive` seed, so the second call never gives a
+      # third try. The first failure goes on the failure list only when the second call fails too (qrun, then q).
+      { qrun gpu 40m "ablation-train-$ROW" -- "${PYC[@]}" r29_ablation.py train --row "$ROW" --seeds 0 1 2 3 4 || \
+          q gpu 40m "ablation-train-$ROW" -- "${PYC[@]}" r29_ablation.py train --row "$ROW" --seeds 0 1 2 3 4; } && \
         q gpu short "ablation-export-val-$ROW" -- "${PYC[@]}" r29_ablation.py export --row "$ROW" --seeds 0 1 2 3 4 --kind val
     else
       q gpu short "ablation-export-held-$ROW" -- "${PYC[@]}" r29_ablation.py export --row "$ROW" --seeds 0 1 2 3 4 --kind held
