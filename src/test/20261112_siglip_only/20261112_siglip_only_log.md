@@ -92,3 +92,13 @@ mode. Outputs `/data/SSD2/cosir_r29/20261112_siglip_only/` (stage logs in its `l
 - 06:25 Report alternative (`r29_alt_told_vs_p1.py`, `records/alt_told_vs_p1.json`; exploration, decides nothing):
   image mAP against plain SigLIP 1 with K*'s own aspect head instead of the joined vector: WIN in all three (style
   +0.0588 [+0.0565, +0.0611]).
+- 06:32 Diagnostic (d) (`records/diag_d_SC3_siglip1_prefix.json`, 489 s): K* minus K0 on test, paired intervals.
+  Image (told head): AMI emotion +0.0033 [+0.0006, +0.0061], style +0.0057 [+0.0022, +0.0092], genre -0.0107 [-0.0209,
+  -0.0013]; mAP emotion +0.0008, style -0.0005, genre +0.0002 (style and genre intervals cover 0). Text: emotion t2i
+  -0.0023, i2t -0.0058, t2t -0.0191 [-0.0213, -0.0169]; style t2i -0.0040, i2t -0.0036, t2t -0.0029; genre t2i -0.0039,
+  i2t -0.0022, t2t +0.0011 [-0.0025, +0.0044].
+- 06:33 The one BELOW over P1 is inherited: K0's own cell in r17 SC7 (`20261103_new_scores/records/outcomes.json`,
+  untold style mAP) is also BELOW, 0.2877 against plain 0.2962 (d -0.0085 [-0.0101, -0.0069]). The spec's prior (§3.1,
+  "the current models win over the plain embedding in every cell") missed this cell.
+- 06:34 Numbers sheet `paper_cells.md` written (`r29_ladder.py sheet`): the 1c cells, K0 beside them, Table 8; stage 2
+  rows "not run".

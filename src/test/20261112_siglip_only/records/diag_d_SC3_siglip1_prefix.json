@@ -1,0 +1,175 @@
+{
+ "claim": "SC3",
+ "arm": "siglip1_prefix",
+ "encoder": "siglip1",
+ "ladder_record": "/project/CoSiR/src/test/20261112_siglip_only/records/SC3_siglip1_prefix.json",
+ "ladder_level": 1,
+ "written": "2026-11-13 06:27",
+ "cells": [
+  {
+   "cell": "artelingo/emotion/ami",
+   "k_star": 0.10179985944237299,
+   "k0": 0.09854237890029688,
+   "k0_source": "r28/per_seed.json :: ours_siglip1/ami/emotion/mean",
+   "d": 0.0032574805420761133,
+   "lo": 0.0006481687361498907,
+   "hi": 0.00609869131810241,
+   "n_draws": 2000,
+   "protocol": "r17 paired_cell, comparator seeded (apart)"
+  },
+  {
+   "cell": "artelingo/emotion/map",
+   "k_star": 0.2696081740550688,
+   "k0": 0.2687972416119228,
+   "k0_source": "r28/per_seed.json :: ours_siglip1/i2i/emotion/mean",
+   "d": 0.0008109324431460063,
+   "lo": 5.840557418165249e-05,
+   "hi": 0.0016162765357152192,
+   "n_draws": 10000,
+   "protocol": "r17 paired_ret, comp_seeds apart"
+  },
+  {
+   "cell": "artelingo/emotion/t2i",
+   "k_star": 0.2617893304242948,
+   "k0": 0.2641280458465928,
+   "k0_source": "r28/per_seed.json :: ours_siglip1/t2i/emotion/mean",
+   "d": -0.0023387154222979656,
+   "lo": -0.003506513081575438,
+   "hi": -0.0011933639510638115,
+   "n_draws": 10000,
+   "protocol": "r23 painting unit, seeded comparator (apart); K* center_k10, K0 center_k10"
+  },
+  {
+   "cell": "artelingo/emotion/i2t",
+   "k_star": 0.28058481109273586,
+   "k0": 0.2863664688744963,
+   "k0_source": "r28/per_seed.json :: ours_siglip1/i2t/emotion/mean",
+   "d": -0.00578165778176043,
+   "lo": -0.0070633207459303874,
+   "hi": -0.0045317874390226436,
+   "n_draws": 10000,
+   "protocol": "r23 painting unit, seeded comparator (apart); K* center_k10, K0 center_k10"
+  },
+  {
+   "cell": "artelingo/emotion/t2t",
+   "k_star": 0.3271757277071208,
+   "k0": 0.346308378633948,
+   "k0_source": "r28/per_seed.json :: ours_siglip1/t2t/emotion/mean",
+   "d": -0.0191326509268272,
+   "lo": -0.02133309174341079,
+   "hi": -0.016944800507113614,
+   "n_draws": 10000,
+   "protocol": "r23 painting unit, seeded comparator (apart); K* center_k10, K0 center_k10"
+  },
+  {
+   "cell": "artelingo/style/ami",
+   "k_star": 0.44644646139256344,
+   "k0": 0.4407907284086662,
+   "k0_source": "r28/per_seed.json :: ours_siglip1/ami/style/mean",
+   "d": 0.005655732983897266,
+   "lo": 0.0021565985903127956,
+   "hi": 0.009206923827220702,
+   "n_draws": 2000,
+   "protocol": "r17 paired_cell, comparator seeded (apart)"
+  },
+  {
+   "cell": "artelingo/style/map",
+   "k_star": 0.355001609035649,
+   "k0": 0.3554565694139421,
+   "k0_source": "r28/per_seed.json :: ours_siglip1/i2i/style/mean",
+   "d": -0.0004549603782931233,
+   "lo": -0.0022548685414754007,
+   "hi": 0.0015101829115540001,
+   "n_draws": 10000,
+   "protocol": "r17 paired_ret, comp_seeds apart"
+  },
+  {
+   "cell": "artelingo/style/t2i",
+   "k_star": 0.17548216006365647,
+   "k0": 0.1794362271432078,
+   "k0_source": "r28/per_seed.json :: ours_siglip1/t2i/style/mean",
+   "d": -0.003954067079551343,
+   "lo": -0.005443379273254323,
+   "hi": -0.0023932770731162653,
+   "n_draws": 10000,
+   "protocol": "r23 painting unit, seeded comparator (apart); K* center_k10, K0 center_k10"
+  },
+  {
+   "cell": "artelingo/style/i2t",
+   "k_star": 0.1369157244471592,
+   "k0": 0.1405202122657359,
+   "k0_source": "r28/per_seed.json :: ours_siglip1/i2t/style/mean",
+   "d": -0.003604487818576696,
+   "lo": -0.004610487576774577,
+   "hi": -0.0026470010636745894,
+   "n_draws": 10000,
+   "protocol": "r23 painting unit, seeded comparator (apart); K* center_k10, K0 center_k10"
+  },
+  {
+   "cell": "artelingo/style/t2t",
+   "k_star": 0.10657445510978861,
+   "k0": 0.10944299368840468,
+   "k0_source": "r28/per_seed.json :: ours_siglip1/t2t/style/mean",
+   "d": -0.0028685385786160755,
+   "lo": -0.003796827159408294,
+   "hi": -0.0019275380295619056,
+   "n_draws": 10000,
+   "protocol": "r23 painting unit, seeded comparator (apart); K* center_k10, K0 center_k10"
+  },
+  {
+   "cell": "artelingo/genre/ami",
+   "k_star": 0.5171772062814376,
+   "k0": 0.5279032590268119,
+   "k0_source": "r28/per_seed.json :: ours_siglip1/ami/genre/mean",
+   "d": -0.010726052745374304,
+   "lo": -0.020936371575817955,
+   "hi": -0.0013051737200853403,
+   "n_draws": 2000,
+   "protocol": "r17 paired_cell, comparator seeded (apart)"
+  },
+  {
+   "cell": "artelingo/genre/map",
+   "k_star": 0.6229056512591763,
+   "k0": 0.6227076459417298,
+   "k0_source": "r28/per_seed.json :: ours_siglip1/i2i/genre/mean",
+   "d": 0.0001980053174464036,
+   "lo": -0.0014507756282003347,
+   "hi": 0.0018244339459123399,
+   "n_draws": 10000,
+   "protocol": "r17 paired_ret, comp_seeds apart"
+  },
+  {
+   "cell": "artelingo/genre/t2i",
+   "k_star": 0.48504144867175397,
+   "k0": 0.488979071166605,
+   "k0_source": "r28/per_seed.json :: ours_siglip1/t2i/genre/mean",
+   "d": -0.003937622494851023,
+   "lo": -0.006027618801954969,
+   "hi": -0.0018351167830132715,
+   "n_draws": 10000,
+   "protocol": "r23 painting unit, seeded comparator (apart); K* center_k10, K0 center_k10"
+  },
+  {
+   "cell": "artelingo/genre/i2t",
+   "k_star": 0.4043406558800359,
+   "k0": 0.40650559334820724,
+   "k0_source": "r28/per_seed.json :: ours_siglip1/i2t/genre/mean",
+   "d": -0.002164937468171313,
+   "lo": -0.004221933410367309,
+   "hi": -0.00024130704804655492,
+   "n_draws": 10000,
+   "protocol": "r23 painting unit, seeded comparator (apart); K* center, K0 center"
+  },
+  {
+   "cell": "artelingo/genre/t2t",
+   "k_star": 0.31741307003575087,
+   "k0": 0.31634883609271813,
+   "k0_source": "r28/per_seed.json :: ours_siglip1/t2t/genre/mean",
+   "d": 0.001064233943032733,
+   "lo": -0.002506068406515624,
+   "hi": 0.004422627602121745,
+   "n_draws": 10000,
+   "protocol": "r23 painting unit, seeded comparator (apart); K* center_k10, K0 center_k10"
+  }
+ ]
+}
