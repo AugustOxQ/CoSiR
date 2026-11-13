@@ -1,0 +1,48 @@
+{
+  "gate": "viii_clipl14_prefix",
+  "status": "pass",
+  "tries": 1,
+  "details": {
+    "source": "clipl14_prefix",
+    "encoder": "clip_l14",
+    "form": "prefixed",
+    "store": {
+      "ok": true,
+      "n_nonfinite": 0,
+      "n_bad_norm": 0,
+      "max_norm_dev": 0.0003299117088317871,
+      "n_texts": 308723,
+      "n_truncated": 0,
+      "index_sha256": "80c46708446c5de35a9671c0dff015c238d9ecb286bd33b670025e8b4f9ea54a",
+      "truncation_limit": 77,
+      "prefix": "Represent the caption: ",
+      "width": 768,
+      "folder": "/data/SSD2/pre_extract/artelingo_full/clip_l14_capprefix"
+    },
+    "truncation_flag": null,
+    "join": {
+      "checks": {
+        "same_ids": true,
+        "qwen_ids_join_with_painting": true,
+        "painting_counts_equal": true,
+        "train_joins": true,
+        "val_joins": true,
+        "held_joins": true,
+        "roles_disjoint_and_cover_store": true,
+        "annotation_painting_equals_store": true,
+        "role_sizes_equal_ct_counts": true,
+        "train_val_painting_means_ok": true
+      },
+      "n_captions": 308723,
+      "n_paintings": 61402,
+      "roles": {
+        "train": 216107,
+        "val": 30872,
+        "held": 61744
+      },
+      "source": "clipl14_prefix",
+      "store_sha256": "80c46708446c5de35a9671c0dff015c238d9ecb286bd33b670025e8b4f9ea54a"
+    }
+  },
+  "written": "2026-11-13 20:04"
+}
