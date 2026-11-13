@@ -196,3 +196,18 @@ def test_stage2_gate_without_a_pass_rule_refuses(tmp_path, monkeypatch):
     rec, _ = _gate_repo(tmp_path, monkeypatch, None)
     with pytest.raises(RuntimeError, match='no .*pass_rule.json'):
         P.stage2_gate(rec)
+
+
+@pytest.mark.parametrize('flag', [None, 'A1', 'A2'])
+def test_stage2_record_gate_checks_records_without_consulting_the_flag(tmp_path, monkeypatch, flag):
+    rec, run = _gate_repo(tmp_path, monkeypatch, FAIL, flag=flag)
+    assert P.stage2_record_gate(rec) == 'A1'
+    doc = json.loads((rec / 'amendment_A1.json').read_text())
+    doc['applies_to']['arm'] = 'siglip1'
+    (rec / 'amendment_A1.json').write_text(json.dumps(doc))
+    with pytest.raises(RuntimeError, match='not committed'):
+        P.stage2_record_gate(rec)
+    run('add', '-f', 'records/amendment_A1.json')
+    run('commit', '-q', '-m', 'mismatched a1')
+    with pytest.raises(RuntimeError, match='does not match'):
+        P.stage2_record_gate(rec)

@@ -614,3 +614,28 @@ def test_require_pass_on_the_fail_needs_the_flag_and_a_committed_a1_record(tmp_p
     (rec / 'amendment_A1.json').write_text('{}')
     with pytest.raises(AssertionError, match='pass_rule'):
         A.require_pass()
+
+
+@pytest.mark.parametrize('mode', ['scored', 'parked', 'no_removals'])
+def test_score_writes_a1_marks_to_the_ablation_record(tmp_path, monkeypatch, mode):
+    import subprocess
+    repo = tmp_path / 'repo'
+    records = repo / 'records'
+    records.mkdir(parents=True)
+    held = score_setup(records, monkeypatch, gate='parked' if mode == 'parked' else 'pass',
+                       tries=3 if mode == 'parked' else 1)
+    (records / 'pass_rule.json').write_text(json.dumps(dict(status='fail', level=0, arm='siglip1')))
+    (records / 'amendment_A1.json').write_text(json.dumps(dict(amendment='A1', note=A.P.A1_LINE,
+        applies_to=dict(pass_rule_status='fail', pass_rule_level=0, arm='siglip1'))))
+    git = ['git', '-C', str(repo), '-c', 'user.name=t', '-c', 'user.email=t@t']
+    for args in (['init', '-q'], ['add', '-f', 'records/pass_rule.json', 'records/amendment_A1.json'],
+                 ['commit', '-q', '-m', 'A1']):
+        subprocess.run(git + args, check=True, capture_output=True)
+    monkeypatch.setenv('R29_AMENDMENT', 'A1')
+    if mode == 'no_removals':
+        for row in A.REMOVALS:
+            journal_of(records, row, 0).write_text(json.dumps(dict(status='inconclusive')))
+    doc = A.score()
+    assert bool(held) == (mode == 'scored')
+    assert doc['amendment'] == 'A1' and doc['amendment_line'] == A.P.A1_LINE
+    assert json.loads((records / 'ablation.json').read_text()) == doc

@@ -729,6 +729,7 @@ def test_sc9_image_group_record_uses_kstars_form_and_encoder_root(tmp_path, monk
     put(records, 'prefix_pick.json', dict(kstar='siglip1_prefix' if prefixed else 'siglip1',
         kstar_form='prefixed' if prefixed else 'plain', p1_form='plain', flag=None))
     put_sc9_gate(records, encoder)
+    put(records, 'pass_rule.json', dict(status='pass'))
     root = tmp_path / 'override' if override_root else D.P.OUT / 'cstar' / encoder
     exports(root, arm)
     got = D.encoder_image_groups(encoder, root=root if override_root else None, records=records)
@@ -742,6 +743,7 @@ def test_sc9_image_group_record_uses_kstars_form_and_encoder_root(tmp_path, monk
 @pytest.mark.parametrize('status', [None, 'fail', 'parked', 'fallback'])
 @pytest.mark.parametrize('encoder', ['siglip2', 'clip_l14'])
 def test_sc9_image_groups_refuse_before_scoring_without_a_passing_replay(tmp_path, monkeypatch, status, encoder):
+    put(tmp_path, 'pass_rule.json', dict(status='pass'))
     if status is not None:
         put_sc9_gate(tmp_path, encoder, status)
     monkeypatch.setattr(D, 'image_groups', lambda *a, **k: pytest.fail('ungated scoring'))
@@ -755,20 +757,20 @@ def put_sc9_inputs(records, frozen, prefixed=True):
     kstar = 'siglip1' + suffix
     put(records, 'prefix_pick.json', dict(kstar=kstar, kstar_form='prefixed' if prefixed else 'plain', p1_form='plain', flag=None))
     put(records, f'groups_{kstar}.json', dict(arm=kstar, seeds=D.SEEDS, image=dict(per_seed=[.5]*5)))
-    # A1: SC2's fail remains a fail; SC9 consumes its image groups without changing it.
     put(records, 'pass_rule.json', dict(arm=kstar, seeds=D.SEEDS,
-                                       status='fail', level=0, per_seed=dict(image=[.5]*5)))
+                                       status='pass', level=1, per_seed=dict(image=[.5]*5)))
     for encoder, arm, value in [('siglip2', 'siglip2' + suffix, .375), ('clip_l14', 'clipl14' + suffix, .25)]:
         put_sc9_gate(records, encoder)
         put(records, f'image_groups_{arm}.json', dict(arm=arm, encoder=encoder, seeds=D.SEEDS,
             image=dict(cells={c: [value]*5 for c in D.IMAGE_CELLS}, per_seed=[value]*5, mean=value,
-                       names_sha256='names', files={}), root=str(records / encoder), written='test'))
+                       names_sha256='names', files={}), root=str(D.P.OUT / 'cstar' / encoder), written='test'))
     put_valpick(frozen)
 
 
 @pytest.mark.parametrize('prefixed', [False, True])
 def test_sc9_pick_reads_kstar_record_never_exports_and_keeps_qwen_information_only(tmp_path, monkeypatch, prefixed):
     records, frozen = tmp_path / 'records', tmp_path / 'r28'
+    monkeypatch.setattr(D.P, 'OUT', tmp_path / 'out')
     put_sc9_inputs(records, frozen, prefixed=prefixed)
     kstar = 'siglip1_prefix' if prefixed else 'siglip1'
     # r28's recorded score may differ from re-averaging its seed groups by one ULP.
@@ -821,7 +823,7 @@ def test_sc9_pick_refuses_missing_inputs(tmp_path, missing):
     put_sc9_inputs(records, frozen)
     path = records / missing
     path.rename(path.with_suffix('.absent'))
-    with pytest.raises((AssertionError, FileNotFoundError)):
+    with pytest.raises((AssertionError, FileNotFoundError, RuntimeError)):
         D.encoder_pick(records=records, r28_records=frozen)
     assert not (records / 'encoder_pick.json').exists()
 
@@ -901,9 +903,13 @@ def test_sc9_cli_runs_replay_group_and_pick_with_temporary_records(tmp_path, mon
     assert D.main(['sc9-replay', '--encoder', 'siglip2', '--records', str(records)]) == 1
     assert D.read_json(records / 'gates/sc9_replay_siglip2.json')['status'] == 'fail'
     put_sc9_gate(records, 'siglip2')
-    root = tmp_path / 'exports'
+    monkeypatch.setattr(D.P, 'OUT', tmp_path / 'out')
+    for enc, arm in [('siglip2', 'siglip2_prefix'), ('clip_l14', 'clipl14_prefix')]:
+        doc = D.read_json(records / f'image_groups_{arm}.json')
+        put(records, f'image_groups_{arm}.json', dict(doc, root=str(D.P.OUT / 'cstar' / enc)))
+    root = D.P.OUT / 'cstar/siglip2'
     exports(root, 'siglip2_prefix')
-    assert D.main(['image-groups', '--encoder', 'siglip2', '--root', str(root), '--records', str(records)]) == 0
+    assert D.main(['image-groups', '--encoder', 'siglip2', '--root', str(root), '--records', str(records), '--force', 'refresh fake groups']) == 0
     assert D.read_json(records / 'image_groups_siglip2_prefix.json')['root'] == str(root)
     assert D.main(['encoder-pick', '--records', str(records)]) == 0
     got = D.read_json(records / 'encoder_pick.json')
@@ -911,3 +917,75 @@ def test_sc9_cli_runs_replay_group_and_pick_with_temporary_records(tmp_path, mon
     assert set(got) == {'kind', 'split', 'seeds', 'kstar', 'pick_candidates', 'information_rows',
                         'pick', 'ranking', 'tie', 'margin', 'seeds_ahead', 'close_call', 'encoders', 'sources', 'written'}
     assert set(got['sources']) == {'prefix_pick', 'pass_rule', 'groups', 'replay_gates', 'valpick'}
+
+
+def commit_sc9_a1(records, monkeypatch):
+    import subprocess
+    rule = D.read_json(records / 'pass_rule.json')
+    rule.update(status='fail', level=0)
+    put(records, 'pass_rule.json', rule)
+    put(records, 'amendment_A1.json', dict(amendment='A1', note=D.P.A1_LINE,
+        applies_to=dict(pass_rule_status='fail', pass_rule_level=0, arm=rule['arm'])))
+    git = ['git', '-C', str(records.parent), '-c', 'user.name=t', '-c', 'user.email=t@t']
+    for args in (['init', '-q'], ['add', '-f', 'records/pass_rule.json', 'records/amendment_A1.json'],
+                 ['commit', '-q', '-m', 'A1']):
+        subprocess.run(git + args, check=True, capture_output=True)
+    monkeypatch.setenv('R29_AMENDMENT', 'A1')
+
+
+@pytest.mark.parametrize('writer', ['siglip2', 'clip_l14', 'pick'])
+def test_sc9_writers_require_flag_before_any_work_and_record_a1(tmp_path, monkeypatch, writer):
+    records, frozen = tmp_path / 'records', tmp_path / 'r28'
+    put_sc9_inputs(records, frozen)
+    commit_sc9_a1(records, monkeypatch)
+    def run():
+        if writer == 'pick':
+            return D.encoder_pick(records=records, r28_records=frozen)
+        return D.encoder_image_groups(writer, records=records)
+    with monkeypatch.context() as m:
+        m.delenv('R29_AMENDMENT')
+        m.setattr(D, 'require_sc9_replay', lambda *a: pytest.fail('work before stage 2 gate'))
+        with pytest.raises(RuntimeError, match='--amendment A1'):
+            run()
+    monkeypatch.setattr(D, 'image_groups', lambda *a, **kw: dict(per_seed=[.25]*5))
+    if writer != 'pick':
+        arm = 'siglip2_prefix' if writer == 'siglip2' else 'clipl14_prefix'
+        path = records / f'image_groups_{arm}.json'
+        path.rename(path.with_suffix('.input'))
+    else:
+        path = records / 'encoder_pick.json'
+    doc = run()
+    assert doc['amendment'] == 'A1' and doc['amendment_line'] == D.P.A1_LINE
+    assert D.read_json(path) == doc
+    assert D.read_json(records / 'pass_rule.json')['status'] == 'fail'
+
+
+@pytest.mark.parametrize('encoder', ['siglip2', 'clip_l14'])
+def test_sc9_pick_refuses_a_group_from_another_root(tmp_path, encoder):
+    records, frozen = tmp_path / 'records', tmp_path / 'r28'
+    put_sc9_inputs(records, frozen)
+    expected_roots = {enc: tmp_path / 'exports' / enc for enc in D.SC9_NEW_ENCODERS}
+    for enc, arm in [('siglip2', 'siglip2_prefix'), ('clip_l14', 'clipl14_prefix')]:
+        doc = D.read_json(records / f'image_groups_{arm}.json')
+        put(records, f'image_groups_{arm}.json', dict(doc, root=str(expected_roots[enc])))
+    assert D.encoder_pick(records=records, r28_records=frozen, expected_roots=expected_roots)['pick'] == 'siglip1'
+    arm = 'siglip2_prefix' if encoder == 'siglip2' else 'clipl14_prefix'
+    doc = D.read_json(records / f'image_groups_{arm}.json')
+    put(records, f'image_groups_{arm}.json', dict(doc, root=str(tmp_path / 'smoke')))
+    with pytest.raises(AssertionError, match='root'):
+        D.encoder_pick(records=records, r28_records=frozen, expected_roots=expected_roots)
+
+
+@pytest.mark.parametrize('encoder', ['siglip2', 'clip_l14'])
+def test_sc9_image_groups_are_written_once_with_a_force_reason(tmp_path, monkeypatch, encoder):
+    put(tmp_path, 'pass_rule.json', dict(status='pass'))
+    put(tmp_path, 'prefix_pick.json', dict(kstar='siglip1_prefix', kstar_form='prefixed', p1_form='plain', flag=None))
+    put_sc9_gate(tmp_path, encoder)
+    monkeypatch.setattr(D, 'image_groups', lambda *a, **kw: dict(per_seed=[.25]*5))
+    monkeypatch.setattr(D, 'now', lambda: 'test')
+    first = D.encoder_image_groups(encoder, records=tmp_path)
+    with pytest.raises(AssertionError, match='written once'):
+        D.encoder_image_groups(encoder, records=tmp_path)
+    assert D.encoder_image_groups(encoder, records=tmp_path, force='verified rerun') == first
+    side = D.read_json(tmp_path / f'image_groups_{first["arm"]}_forced.json')
+    assert side['force_reason'] == 'verified rerun' and side['replaced'] == first

@@ -831,10 +831,28 @@ def test_a_pass_record_and_an_sc3_record_carry_no_a1_key(tmp_path, monkeypatch):
     assert 'amendment' not in L.build_record('SC3', 'siglip1', records=records, repo=repo)    # stage 1: presence and commit only (D9)
 
 
-def test_sheet_under_a1_carries_the_a1_line_instead_of_not_run_d3(tmp_path, monkeypatch):
-    repo, records = _a1_repo(tmp_path, monkeypatch)
+@pytest.mark.parametrize('flag', [None, 'A1', 'A2'])
+def test_sheet_under_a1_carries_the_a1_line_instead_of_not_run_d3(tmp_path, monkeypatch, flag):
+    repo, records = _a1_repo(tmp_path, monkeypatch, flag=flag)
     text = L.sheet_text(records)
     assert 'stage 2 ran on the fail under A1' in text and 'not run (D3)' not in text and 'Not run (D3)' not in text
-    monkeypatch.delenv('R29_AMENDMENT')
+    (records / 'amendment_A1.json').write_text('{}')
     text = L.sheet_text(records)
     assert 'SC4 to SC7: not run (D3).' in text and 'under A1' not in text
+    (records / 'amendment_A1.json').rename(records / 'amendment_A1.absent')
+    assert 'SC4 to SC7: not run (D3).' in L.sheet_text(records)
+
+
+@pytest.mark.parametrize('tie', [None, ['siglip1', 'siglip2']])
+def test_sc9_sheet_section_shows_recorded_a1_line_and_tied_encoders(tmp_path, tie):
+    rows = {enc: dict(score=.5, seed_range=0., per_seed=[.5]*5)
+            for enc in ('siglip1', 'siglip2', 'clip_l14', 'qwen')}
+    (tmp_path / 'encoder_pick.json').write_text(json.dumps(dict(
+        seeds=list(range(5)), encoders=rows, pick='siglip1', margin=0., seeds_ahead=[], close_call=False,
+        tie=tie, amendment='A1', amendment_line=L.P.A1_LINE)))
+    text = L.sc9_section(tmp_path)
+    assert text.index('## SC9') < text.index(L.P.A1_LINE) < text.index('| Encoder |')
+    if tie is None:
+        assert 'Tie:' not in text
+    else:
+        assert 'Tie: siglip1, siglip2' in text

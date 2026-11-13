@@ -119,11 +119,9 @@ A1_ENV = 'R29_AMENDMENT'                         # the runner's `--amendment A1`
 A1_RECORD = 'amendment_A1.json'                  # in the records folder, committed (written by the controller)
 
 
-def stage2_gate(records):
-    """D3 as amended by A1 (spec §4): the one check every stage 2 entry point makes. Returns "pass" when `records/pass_rule.json`
-    says pass (a status check only, as before), or "A1" when it says exactly "fail", R29_AMENDMENT=A1 is set and
-    `records/amendment_A1.json` exists, is committed unchanged in HEAD, says amendment A1 and applies to this pass rule's status,
-    level and arm. Any other case (no record, parked, a fail without the flag, a bad A1 record) raises RuntimeError."""
+def stage2_record_gate(records):
+    """Read D3/A1 from records only, for readers such as the sheet. A fail needs the committed,
+    unchanged pass rule and matching A1 record; no environment flag is consulted."""
     records = Path(records)
     path = records / 'pass_rule.json'
     if not path.is_file():
@@ -134,12 +132,6 @@ def stage2_gate(records):
         return 'pass'
     if status != 'fail':
         raise RuntimeError(f'{path}: status {status!r}, not "pass" (D3): stage 2 does not run (A1 covers only a fail)')
-    flag = os.environ.get(A1_ENV)
-    if flag is None:
-        raise RuntimeError(f'{path}: status "fail", not "pass": stage 2 does not run (D3); it runs on a fail only with the runner '
-                           f'flag --amendment A1 ({A1_ENV}=A1) and a committed {A1_RECORD}')
-    if flag != 'A1':
-        raise RuntimeError(f'{A1_ENV}={flag!r}: only "A1" is an amendment this code knows')
     a1 = records / A1_RECORD
     require_committed(path, 'A1 names the committed pass rule it applies to')
     require_committed(a1, 'stage 2 runs on the fail only under a committed record of A1')
@@ -150,6 +142,20 @@ def stage2_gate(records):
     if doc.get('applies_to') != want:
         raise RuntimeError(f'{a1}: applies_to {doc.get("applies_to")} does not match {path} ({want})')
     return 'A1'
+
+
+def stage2_gate(records):
+    """Writer gate: a pass needs no flag; a fail needs R29_AMENDMENT=A1 plus valid A1 records.
+    Check the flag first on a fail, preserving the caller's refusal before inspecting A1."""
+    path = Path(records) / 'pass_rule.json'
+    if path.is_file() and json.loads(path.read_text()).get('status') == 'fail':
+        flag = os.environ.get(A1_ENV)
+        if flag is None:
+            raise RuntimeError(f'{path}: status "fail", not "pass": stage 2 does not run (D3); it runs on a fail only with the runner '
+                               f'flag --amendment A1 ({A1_ENV}=A1) and a committed {A1_RECORD}')
+        if flag != 'A1':
+            raise RuntimeError(f'{A1_ENV}={flag!r}: only "A1" is an amendment this code knows')
+    return stage2_record_gate(records)
 
 
 def a1_marks(gate):

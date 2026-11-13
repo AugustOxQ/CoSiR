@@ -409,20 +409,25 @@ def require_sc9_replay(records, encoder):
     return doc
 
 
-def encoder_image_groups(encoder, root=None, records=P.RECORDS):
+def encoder_image_groups(encoder, root=None, records=P.RECORDS, force=None):
     """SC9 E2/E3 group: validation only, five seeds, K*'s caption form (D13)."""
+    gate = P.stage2_gate(records)
     require_sc9_replay(records, encoder)  # regression before the first new number
     import r29_encoders as E
     arm = E.kstar_source(encoder, records=records)
     root = Path(root) if root is not None else P.OUT / 'cstar' / encoder
     image = image_groups(root, arm, SEEDS, encoder=encoder)
-    return write_json(Path(records) / f'image_groups_{arm}.json', dict(arm=arm, encoder=encoder,
-                      seeds=SEEDS, image=image, root=str(root), written=now()))
+    return write_once(Path(records) / f'image_groups_{arm}.json', dict(arm=arm, encoder=encoder,
+                      seeds=SEEDS, image=image, root=str(root), written=now(), **P.a1_marks(gate)), force)
 
 
-def encoder_pick(records=P.RECORDS, force=None, r28_records=P.R28_RECORDS):
-    """SC9: reuse SC2's K* seed groups; E2/E3's saved groups; Qwen is information only (A2)."""
+def encoder_pick(records=P.RECORDS, force=None, r28_records=P.R28_RECORDS, expected_roots=None):
+    """SC9: reuse SC2's K* seed groups; E2/E3's saved groups; Qwen is information only (A2).
+    expected_roots can supply temporary training roots for tests; production uses image-groups' defaults."""
+    gate = P.stage2_gate(records)
     records = Path(records)
+    if expected_roots is None:
+        expected_roots = {enc: P.OUT / 'cstar' / enc for enc in SC9_NEW_ENCODERS}
     for enc in SC9_NEW_ENCODERS:
         require_sc9_replay(records, enc)
     pick = read_pick(records)
@@ -439,6 +444,7 @@ def encoder_pick(records=P.RECORDS, force=None, r28_records=P.R28_RECORDS):
         path = records / f'image_groups_{source}.json'
         doc = read_json(path)
         assert (doc['arm'], doc['encoder'], doc['seeds']) == (source, enc, SEEDS), path
+        assert Path(doc['root']) == Path(expected_roots[enc]), f'{path}: unexpected encoder root {doc["root"]}'
         image = doc['image']
         checked = group_cells(image['cells'], IMAGE_CELLS, SEEDS)
         assert image['per_seed'] == checked['per_seed'] and image['mean'] == checked['mean'], path
@@ -455,6 +461,7 @@ def encoder_pick(records=P.RECORDS, force=None, r28_records=P.R28_RECORDS):
                                 pass_rule=str(records / 'pass_rule.json'), groups=group_paths,
                                 replay_gates={e: str(records / f'gates/sc9_replay_{e}.json') for e in SC9_NEW_ENCODERS},
                                 valpick=str(Path(r28_records) / 'valpick.json')))
+    verdict.update(P.a1_marks(gate))
     return write_once(records / 'encoder_pick.json', verdict, force)
 
 
@@ -639,7 +646,7 @@ def cli_parser():
                     'sc9-replay', 'image-groups', 'encoder-pick'):
         p = sub.add_parser(command)
         p.add_argument('--records', type=Path, default=P.RECORDS)
-        if command in ('sc1', 'sc2', 'encoder-pick'):
+        if command in ('sc1', 'sc2', 'encoder-pick', 'image-groups'):
             p.add_argument('--force', metavar='REASON', help='replace an existing record; the reason is kept in a side file')
         if command == 'groups':
             p.add_argument('--arm', choices=(*CANDIDATES, 'qwen', 'gate_i_a_new'), required=True)
@@ -663,7 +670,7 @@ def main(argv=None):
     elif args.command == 'sc9-replay':
         result = sc9_replay(args.encoder, args.records)
     elif args.command == 'image-groups':
-        result = encoder_image_groups(args.encoder, args.root, args.records)
+        result = encoder_image_groups(args.encoder, args.root, args.records, args.force)
     elif args.command == 'encoder-pick':
         result = encoder_pick(args.records, args.force)
     elif args.command in ('sc1', 'sc2'):
