@@ -187,8 +187,10 @@ def gate_viii(source, store_check=store_check, join_check=_join_check):
     count is recorded; a count above 0 is flagged and does not fail the gate (D14: cut at the limit, count, flag)."""
     assert source in STORE_SOURCES, f'{source!r}: not one of the four E2 / E3 stores {STORE_SOURCES}'
     path = _gate_path(source)
+    prior = 0                                          # recorded tries before this run
     if path.exists():
         old = json.loads(path.read_text())
+        prior = old['tries']
         if old['status'] == 'pass':
             raise RuntimeError(f'gate viii_{source} already passed (try {old["tries"]}): {path}')
         if old['tries'] >= MAX_TRIES:
@@ -207,6 +209,8 @@ def gate_viii(source, store_check=store_check, join_check=_join_check):
         status = 'pass' if join['status'] == 'pass' else 'fail'
     except AssertionError as error:
         details['error'] = f'{type(error).__name__}: {error}'
+    if status == 'fail' and prior == MAX_TRIES - 1:    # a failure at try 3 parks (as ticket 14's gate_vii); before it, the gate stays open
+        status = 'parked'
     return _captions().write_gate_record(_gates_dir(), dict(status=status, details=details), gate=f'viii_{source}')
 
 
@@ -364,8 +368,8 @@ def main(argv=None):
 
     enc = args.encoder
     source = kstar_source(enc)
-    if args.cmd != 'beside':
-        require_store_gate(source)                 # no training, cells or ladder on a store that did not pass (viii)
+    if args.cmd not in ('beside', 'ladder'):       # the ladder reads gate viii itself: a parked store makes SC4 of that encoder inconclusive
+        require_store_gate(source)                 # no training, export, picks or cells on a store that did not pass (viii)
     root = getattr(args, 'root', None) or default_root(enc)
     if args.cmd == 'train':
         _trainer().train(enc, source, args.seeds, args.device, root)

@@ -167,6 +167,21 @@ def test_gate_viii_three_tries_then_refuses(rec):
     assert json.loads((rec / 'gates/viii_siglip2.json').read_text())['tries'] == 3
 
 
+def test_gate_viii_a_fail_is_open_before_try_3_and_parked_at_try_3(rec):
+    boom = lambda s: (_ for _ in ()).throw(AssertionError('x'))   # noqa: E731
+    out = [E.gate_viii('siglip2', store_check=boom, join_check=ok_join) for _ in range(3)]
+    assert [(o['tries'], o['status']) for o in out] == [(1, 'fail'), (2, 'fail'), (3, 'parked')]
+    assert json.loads((rec / 'gates/viii_siglip2.json').read_text())['status'] == 'parked'
+    # a join that fails (no assertion) follows the same rule, and a pass at try 3 stays a pass
+    bad = lambda s: dict(status='fail', details=dict(checks={}))   # noqa: E731
+    E.gate_viii('clipl14', store_check=ok_store(), join_check=bad)
+    E.gate_viii('clipl14', store_check=ok_store(), join_check=bad)
+    assert E.gate_viii('clipl14', store_check=ok_store(), join_check=bad)['status'] == 'parked'
+    E.gate_viii('siglip2_prefix', store_check=ok_store(), join_check=bad)
+    E.gate_viii('siglip2_prefix', store_check=ok_store(), join_check=bad)
+    assert E.gate_viii('siglip2_prefix', store_check=ok_store(), join_check=ok_join)['status'] == 'pass'
+
+
 def test_gate_viii_is_not_rerun_after_a_pass(rec):
     E.gate_viii('siglip2', store_check=ok_store(), join_check=ok_join)
     with pytest.raises(RuntimeError, match='already passed'):
@@ -237,6 +252,13 @@ def test_store_check_keys_join_by_id_and_painting(tmp_path):
     wrong['texts'][1]['painting'] = 'zz'                 # same sample ID, another painting (C6)
     with pytest.raises(AssertionError, match='painting'):
         E.store_check('siglip2', folder=folder, reference=wrong, width=3)
+
+
+def test_store_check_backbone_is_the_sources(tmp_path):
+    folder, ref = _tiny(tmp_path, 'Siglip2So400m', ['a b', 'c d', 'e f'])      # a SigLIP 2 store read as the CLIP L/14 source
+    with pytest.raises(AssertionError, match='backbone'):
+        E.store_check('clipl14', folder=folder, reference=ref, width=3)
+    assert E.store_check('siglip2', folder=folder, reference=ref, width=3)['ok']
 
 
 def test_store_check_width_is_the_sources(tmp_path):
@@ -348,6 +370,26 @@ def test_ladder_is_ticket_08s_sc4_for_the_arm_and_encoder(rec, monkeypatch):
     monkeypatch.setattr(E, '_ladder', lambda: r)
     assert E.main(['ladder', '--encoder', 'clip_l14']) == 0
     assert r.argv == ['ladder', '--claim', 'SC4', '--arm', 'clipl14', '--encoder', 'clip_l14']
+
+
+@pytest.mark.parametrize('status, tries', [('parked', 3), ('fail', 3)])
+def test_ladder_runs_on_a_store_that_did_not_pass_ticket_08_writes_the_claim_inconclusive(rec, monkeypatch, status, tries):
+    """The ladder is exempt from the store gate: ticket 08 reads `viii_<source>` itself (parked: SC4 of that encoder inconclusive)."""
+    pass_rule(rec)
+    prefix_pick(rec, 'plain')
+    gate(rec, 'clipl14', status=status, tries=tries)
+    r = Recorder()
+    monkeypatch.setattr(E, '_ladder', lambda: r)
+    assert E.main(['ladder', '--encoder', 'clip_l14']) == 0
+    assert r.argv == ['ladder', '--claim', 'SC4', '--arm', 'clipl14', '--encoder', 'clip_l14']
+
+
+def test_ladder_with_a_parked_store_gate_records_sc4_inconclusive_through_ticket_08(rec):
+    """Ticket 08's own reading of a parked `viii_<source>`: the claim's parking gate is that store."""
+    import r29_ladder as L
+    gate(rec, 'clipl14', status='parked', tries=3)
+    assert L.gate_status(rec, 'viii_clipl14') == 'parked'
+    assert L.parked_by({'viii_clipl14': 'parked'}) == 'viii_clipl14'
 
 
 # ------------------------------------------------------------------------------------------------ r per encoder
