@@ -158,6 +158,14 @@ def checkpoint_path(root, arm, aspect, seed):
     return bs_cstar.rb_student.weights_path(root, arm, aspect, seed)
 
 
+def check_sidecar_source(weights, arm):
+    """The head's sidecar names the caption source, width and store of the arm (K0's arm: `qwen`), as `r29_trainer.export` asserts."""
+    source = 'qwen' if arm == P.K0_ARM else arm
+    _, rb = T._sidecar(weights)
+    assert (rb['cap_source'], rb['cap_width'], rb['cap_store_sha256']) == (source, P.CAPTION_SOURCES[source][1], C.store_hash(source)), \
+        f'{weights}: trained on another caption source or store than arm {arm}'
+
+
 def _heads_inference(stack, root, arm, device):
     """r14's inference of one saved head's image tower (`r29_trainer.infer_sides`: batches of 512, float16, the saved best view, at
     the widths the sidecar records) after r14's weights checks, inside r14's export context (as `r29_trainer.export`)."""
@@ -167,6 +175,7 @@ def _heads_inference(stack, root, arm, device):
     def infer(weights, aspect, seed, x):
         got, _, sha = bs_cstar._check_weights(root, arm, aspect, seed, ctx.backbone, False)
         assert Path(got) == Path(weights) and sha == sha_file(weights), (got, weights)
+        check_sidecar_source(weights, arm)
         assert x.shape[1] == ctx.width == ns_paths.WIDTH[ENCODER], (x.shape, ctx.width)
         emb = T.infer_sides(weights, {'img': x}, device)['img']
         problem = bs_cstar.rg_full.vc3_problem(emb, n_rows=len(x))
@@ -326,7 +335,7 @@ def compute_picks(w, workers=8):
     crow = cdoc['table'][cdoc['pick']]
     readouts = dict(
         untold=dict(pick=udoc['pick'], k=int(udoc['readout'].k), score=urow['score'], kept=urow['kept'], map=urow['map'],
-                    r0_map=udoc['table']['none+k0']['map'], table=udoc['table']),
+                    r0_map=udoc['table']['none+k0']['map'], ranges=udoc['ranges'], table=udoc['table']),
         cstar=dict(pick=cdoc['pick'], score=crow['score'], kept=crow['kept'], map=crow['map'], table=cdoc['table']),
         plain=dict(pick=ns_ret.reused_pick('plain', SET, ENCODER), source=f'r15 stage1_{ENCODER}.json picks.arms.frozen'),
         teacher=dict(pick=teacher_pick(), source='r15 records/stage1_teacher.json arms.teacher'))
@@ -426,6 +435,7 @@ def run_picks(arm, *, records=None, root=None, export_root=None, workers=8, tabl
 
 def run_cells(arm, *, records=None, root=None, export_root=None, types=CELL_TYPES, workers=8, allow_uncommitted=False):
     """The order rule's refusals first (pass_rule committed and pass; K*; the picks record present and committed), then the cells."""
+    assert not allow_uncommitted or P.OUT != P.DEFAULT_OUT, '--allow-uncommitted is for smoke runs only (set R29_OUTPUTS to a smoke root)'
     records = Path(records or records_dir())
     require_stage2(records)
     pp = check_kstar(arm, records)

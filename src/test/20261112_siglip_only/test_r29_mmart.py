@@ -340,6 +340,28 @@ def test_cells_run_and_write_the_record_after_the_picks_are_committed(records):
     assert rec['kstar'] == 'siglip1' and rec['kstar_form'] == 'plain' and rec['flag'] is None and rec['cells'] == []
 
 
+def test_cells_record_is_written_once(records):
+    _commit(records, f'mmart_picks_{ARM}.json', _picks_record())
+    _run(records)
+    scorer = mock.Mock()
+    with pytest.raises(FileExistsError, match='cells record'):
+        _run(records, scorer)
+    scorer.assert_not_called()
+    assert json.loads((records / f'mmart_cells_{ARM}.json').read_text())['cells'] == []       # the first record is untouched
+
+
+def test_allow_uncommitted_is_for_a_smoke_output_root_only(records, tmp_path):
+    (records / f'mmart_picks_{ARM}.json').write_text(json.dumps(_picks_record()))              # present, not committed
+    with mock.patch.object(mm.P, 'OUT', mm.P.DEFAULT_OUT):
+        scorer = mock.Mock()
+        with pytest.raises(AssertionError, match='smoke'):
+            _run(records, scorer, allow_uncommitted=True)
+        scorer.assert_not_called()
+    with mock.patch.object(mm.P, 'OUT', tmp_path / 'smoke'):
+        _, path = _run(records, allow_uncommitted=True)
+    assert Path(path).exists()
+
+
 def test_picks_record_is_written_once(records, tmp_path):
     body = dict(ami_ranges={}, map_ranges={}, readouts={}, validation_files={}, n_val=N_VAL)
     mm.write_picks(ARM, tmp_path / 'r', tmp_path / 'e', body, records=records)
@@ -382,7 +404,20 @@ def test_picks_read_validation_rows_only_and_record_ranges_and_readouts(world, e
         assert body['map_ranges'][a]['r'] > 0 and len(body['map_ranges'][a]['per_seed']) == 5
     assert set(body['readouts']) == {'untold', 'cstar', 'plain', 'teacher'}
     assert body['readouts']['plain']['pick'] == 'none+k1' and body['readouts']['teacher']['pick'] == 'center+k10'
+    assert body['readouts']['untold']['ranges'] == {a: body['map_ranges'][a]['r'] for a in mm.ASPECTS}   # the untold pick's unit
     json.dumps(body)                                                       # a record: plain JSON types only
+
+
+# ------------------------------------------------------------------------------------------------ the heads' caption source
+@pytest.mark.parametrize('arm, source', [('siglip1', 'siglip1'), ('siglip1_prefix', 'siglip1_prefix'), (mm.P.K0_ARM, 'qwen')])
+def test_head_sidecar_must_name_the_arms_caption_source_width_and_store(arm, source):
+    good = dict(cap_source=source, cap_width=mm.P.CAPTION_SOURCES[source][1], cap_store_sha256=mm.C.store_hash(source))
+    with mock.patch.object(mm.T, '_sidecar', lambda w: ({}, good)):
+        mm.check_sidecar_source('w.pt', arm)
+    other = 'siglip1_prefix' if source == 'siglip1' else 'siglip1'
+    for bad in (dict(good, cap_source=other), dict(good, cap_width=good['cap_width'] + 1), dict(good, cap_store_sha256='0' * 64)):
+        with mock.patch.object(mm.T, '_sidecar', lambda w, bad=bad: ({}, bad)), pytest.raises(AssertionError, match='caption source'):
+            mm.check_sidecar_source('w.pt', arm)
 
 
 # ------------------------------------------------------------------------------------------------ gate comparisons
@@ -508,3 +543,20 @@ def test_gate_vi_score_passes_into_a_pass_record(tmp_path):
             mock.patch.object(mm, 'gate_vi_score', lambda *a, **kw: (True, dict(intervals_checked=True, picks=[], max_abs_diff=0.0))):
         assert mm.main(['gate-vi', 'score', '--try', '1']) == 0
     assert LD.gate_status(rec, 'vi') == 'pass'
+
+
+def test_heads_inference_checks_the_sidecar_before_it_infers(tmp_path):
+    import contextlib
+    weights = tmp_path / 'w.pt'
+    weights.write_bytes(b'w')
+    ctx = mock.Mock(width=ns_paths.WIDTH[mm.ENCODER], backbone='b')
+    infer_sides = mock.Mock()
+    with contextlib.ExitStack() as stack, \
+            mock.patch.object(mm.bs_cstar, 'training_context', lambda *a, **k: contextlib.nullcontext(ctx)), \
+            mock.patch.object(mm.bs_cstar, '_check_weights', lambda *a: (weights, None, mm.sha_file(weights))), \
+            mock.patch.object(mm.T, 'infer_sides', infer_sides), \
+            mock.patch.object(mm, 'check_sidecar_source', mock.Mock(side_effect=AssertionError('another caption source'))):
+        infer = mm._heads_inference(stack, tmp_path, ARM, 'cpu')
+        with pytest.raises(AssertionError, match='another caption source'):
+            infer(weights, 'emotion', 0, np.zeros((2, ctx.width), dtype=np.float32))
+    infer_sides.assert_not_called()
