@@ -1,0 +1,8 @@
+{
+  "arm": "siglip2_prefix",
+  "seed": 0,
+  "status": "out",
+  "tries": 2,
+  "details": "D21: two failures (exit 1 1); seeds not finished: 0 1 2 3 4; command: env R29_AMENDMENT=A1 PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 HF_HOME=/data/SSD2/HF_home HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 /root/miniconda3/envs/CoSiR/bin/python r29_encoders.py train --encoder siglip2 --seeds 0 1 2 3 4",
+  "written": "2026-11-13 19:06"
+}
