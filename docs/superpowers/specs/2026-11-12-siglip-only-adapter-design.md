@@ -1,6 +1,6 @@
 # r29: the SigLIP-only aspect adapter: design
 
-> Date: 2026-11-12 21:40 (revised 22:05 after the rule review and the re-review) · Status: approved 2026-11-12 22:42 · Kind: experiment
+> Date: 2026-11-12 21:40 (revised 22:05 after the rule review and the re-review) · Status: approved 2026-11-12 22:42; amended 2026-11-13 after results (A1, A2, §4) · Kind: experiment
 > Builds on: the [r29 decide handoff](../handoffs/2026-11-12-r29-decide-handoff.md); r28's numbers sheet
 > (`src/test/20261112_siglip_main/paper_cells.md`); the grill in the r29 decide chat (2026-11-12, one key question, a
 > scenario check, five minor points and a closing summary; its answers are §4) · Constitution:
@@ -29,9 +29,10 @@ SigLIP 2 and CLIP L/14 get the same design.
 3. Stage 1b (incremental, validation, seeds 0 to 4): the pick against the current SigLIP 1 model. A pass rule decides:
    the main model, or an extra row.
 4. Stage 1c (claim test, ArtELingo test): the paper cells of Tables 2, 3 and 6. It runs on a pass and on a fail.
-5. Stage 2 (only on a pass): new models trained and their read-outs picked on validation; then MMArt (Table 4), the
+5. Stage 2 (on a pass; after A1 it also runs on the fail): new models trained and their read-outs picked on validation; then MMArt (Table 4), the
    ablation (Table 5), the photo model (Table 7), SigLIP 2 and CLIP L/14 with own text encoders (Table 6). The
-   text-time measure (Table 8) runs in every case.
+   text-time measure (Table 8) runs in every case. After A2, stage 2 also picks an encoder among the SigLIP-only
+   models on validation, as r28 did for the current model (SC9).
 
 **Compared against.** On validation: the current SigLIP 1 model (its caption tower reads Qwen3). On test: plain
 SigLIP 1, with its own text encoder (paper claim 1), and the instructed Qwen3 (paper claim 2, the strongest comparator).
@@ -39,7 +40,9 @@ SigLIP 1, with its own text encoder (paper claim 1), and the instructed Qwen3 (p
 **Outcomes.**
 - Pass rule (stage 1b), five-seed means on validation: the image group (AMI and mAP, three aspects) stays within its
   seed range (0.0030) below the current 0.3863; the text group (three directions × three aspects, plain cosine) within
-  its range (0.0020) below the current 0.2594. Pass: the new main model. Fail: an extra row; no stage 2.
+  its range (0.0020) below the current 0.2594. Pass: the new main model. Fail: an extra row; no stage 2. Amended after results (A1): the pass rule failed on
+  text; stage 2 runs anyway. Place (your decision with the co-authors, 15:25): an ablation or supplementary row, not
+  the main model.
 - Stage 1b ladder: level 1 is the pass; level 2 adds a text group at or above the current model's; level 3 puts both
   groups above the current model's best seed.
 - Stage 1c and each stage 2 claim test: level 1 is a WIN over the plain embedding in most cells (12 of 15 on
@@ -62,6 +65,10 @@ Friday (each job under 1 hour); stage 2 from Friday 19:00, or on DAS6. Report by
    token limit are cut and counted (agent defaults).
 5. Stage types (agent default): 1c and the stage 2 tests are claim tests, so the rule had an independent review and a
    re-review (both pass after fixes, fixes applied).
+6. Amendments after results (2026-11-13). A1: stage 2 runs on the fail (your decision, after seeing the
+   recommendation). The place is an ablation or supplementary row, not the main model (you, with the co-authors:
+   "more a nice to have than essential; the fewer numbers we change now the better"), as SC2's fail sets it. A2: the SigLIP-only encoder pick (SC9; you said yes to
+   the recommendation; its rule is r28's, an agent default).
 
 **Morning checks** (in `src/test/20261112_siglip_only/`, and the auto report).
 | What | Look for |
@@ -198,7 +205,7 @@ input changes (D16). The per-cell sources of P1 and Q1 are in §3.4.
 | 1a | sweep | K1, K2, seed 0, validation; if K2 wins, P1's caption form (D20) | both trained and scored; SC1 re-derived and committed before 1b | that arm out: the other becomes K* with no comparison, flagged in `prefix_pick.json`; both out: stage 1 inconclusive |
 | 1b | incremental | K* seeds 1 to 4 (seed 0 from 1a), validation | five seeds trained; SC2 re-derived and committed before any test number | inconclusive |
 | 1c | claim test | K*, ArtELingo test | K*'s read-out picks and seed ranges committed first | that cell inconclusive |
-| 2a | sweep (development only) | only after a pass in 1b: E2, E3, F1, R1-R4 trained; picks and seed ranges on validation | picks and ranges committed before any test number of that piece | that piece inconclusive; the others go on |
+| 2a | sweep (development only) | after 1b (a pass, or the fail under A1): E2, E3, F1, R1-R4 trained; picks and seed ranges on validation; the encoder pick SC9 (A2) after E2's and E3's validation exports | picks and ranges committed before any test number of that piece | that piece inconclusive; the others go on |
 | 2b | claim tests, ablation, measure | the 2a models on test; Table 8 in every case, after 1b | as 1c | that piece inconclusive; the others go on |
 
 Stage 0 gates (tolerances: D23):
@@ -263,7 +270,7 @@ picks it.
 |---|---|---|---|---|---|
 | D1 | Direction | a SigLIP-only model as a medium loop with its own decide chat | the PercepT sentence is "a bit problematic" while texts need Qwen3 | user | 2026-11-12 21:10 |
 | D2 | Idea | Qwen3 keeps the instructions, graphs, content correction, alignment targets; the adapter reads SigLIP 1 only | "the later student part becomes all siglip" (not the paper plan's wider version) | user | 2026-11-12 21:10 |
-| D3 | Place in the paper | decided on validation: a pass makes it the main model and starts stage 2 (all tables, more encoders); a fail gives an extra row or ablation | own pick, option c, with the encoder extension (rejected: a row now, option a; the main model whatever the numbers, option b) | user | 2026-11-12 21:30 |
+| D3 | Place in the paper | decided on validation: a pass makes it the main model and starts stage 2 (all tables, more encoders); a fail gives an extra row or ablation | own pick, option c, with the encoder extension (rejected: a row now, option a; the main model whatever the numbers, option b) | user | 2026-11-12 21:30; amended by A1 |
 | D4 | Pass rule form | one mean per group, image and text; a loss in one aspect can be offset | a floor per aspect | user, after seeing the recommendation (scenario check) | 2026-11-12 21:34 |
 | D5 | Caption form | run plain and the "Represent the caption: " prefix on seed 0; higher text group wins (an exact tie: plain) | pick one untested | user, after seeing the recommendation (the tie: agent default) | 2026-11-12 21:34 |
 | D6 | Settings | c*'s settings unchanged | r28's check: no row clearly ahead (+0.0007 inside 0.0030) | user, after seeing the recommendation | 2026-11-12 21:34 |
@@ -287,7 +294,12 @@ picks it.
 | D24 | Stage 2 order | E2, E3; MMArt; photo; ablation | cheap and central first; rejected: the paper's table order | agent default | 2026-11-12 22:00 |
 | D25 | Machine | K* trains on the local GPU against r14's node402 K0; gate (i) checks the trainer locally and replays r14's weights; the local minus node402 change is diagnostic (e) | a bit-for-bit retrain of node402 weights cannot pass locally (r14: up to 0.0024 per cell); rejected: retrain K0 locally (changes D4's numbers and the paper's model) | user, after seeing the recommendation | 2026-11-12 22:42 |
 
-**Amendments:** none.
+**Amendments** (changes after approval)
+
+| ID | When | Change | Reason | Decided by | Before or after results | Places updated |
+|----|------|--------|--------|------------|-------------------------|----------------|
+| A1 | 2026-11-13 14:40 | D3: stage 2 runs although SC2 failed (text group 0.2549 against the bound 0.2573). `pass_rule.json` stays "fail". The place in the paper: an ablation or supplementary row, not the main model (the user with the co-authors, 2026-11-13 15:25), as SC2's fail sets it. The stage 2 runner runs on the fail only with a flag that names a committed record of A1. | user's reading (decision C): judged against the instructed Qwen3 and plain SigLIP 1, K* keeps the current model's win and lose pattern; a model with no Qwen3 pass at test time is its own story | user, after seeing the recommendation (option b; "run can happen anyway") | after | header, brief (Plan 5, Outcomes, Check these 6), §3.5 row 2a, §4 D3, §6 (SC9, "Pick"), §7, §8 disclosure, §9 budget |
+| A2 | 2026-11-13 14:40 | New SC9 in stage 2a: the encoder pick among the SigLIP-only models (K*, E2, E3) on validation, r28's rule (§6) | the paper says SigLIP 1 "did best on the validation split"; that holds for the current model only | user, after seeing the recommendation (the pick); agent default (its rule: r28's) | after (SC9 reads only validation) | brief (Plan 5, Check these 6), §3.5 row 2a, §6, §8, §9 |
 
 ## 5. Assumptions and open questions
 
@@ -318,6 +330,7 @@ picks it.
 | SC6 | photo model F1: 4 cells | P1; Q1 | WIN in ≥ 3 | WIN in 4 | L2 and WIN or LEVEL over Q1 in ≥ 3 | Affection, EmoSet test |
 | SC7 | ablation R1-R4 | K* | each removal's change with its interval (attribution) | – | – | ArtELingo test |
 | SC8 | Table 8 | Qwen3 text pass, 3.616 ms | measured (descriptive) | – | – | 2,000 captions |
+| SC9 (A2) | 2a: image group (the six cells of SC2, r28's `valpick` protocol), five-seed means, of K* (SigLIP 1), E2 (SigLIP 2), E3 (CLIP L/14), all trained on the local GPU | each other; c* on Qwen3 as an information row (r28's value), not a candidate | pick: the highest mean (r28's rule; an exact tie: SigLIP 1); the margin and the seeds ahead are reported; a close call when the margin is under the leader's seed range | – | – | validation |
 
 - SC1 lets us say: "On validation seed 0, the <plain / prefixed> caption gives the higher text group (x against y)."
 - SC2 level 1: "On validation, the SigLIP-only model's image and text group means are within one seed range of the
@@ -331,12 +344,18 @@ picks it.
   result it explains."
 - SC8 lets us say: "On one RTX 3090, the SigLIP 1 text pass takes x ms per caption against 3.616 ms for the Qwen3 pass
   (r28 protocol)."
+- SC9 lets us say: "Among the SigLIP-only models, <encoder> did best on the validation split (x against y and z)." K*
+  reads its SC2 per-seed image groups (not recomputed); E2 and E3 use the same code on their validation exports. The
+  pick decides nothing by itself: if SigLIP 2 or CLIP L/14 wins, the main tables would need that model's 15 test cells,
+  which this loop does not run; with K* an extra row (A1), the pick is a supplementary fact only. The record is committed and re-derived (C13)
+  before any test number of E2 or E3.
 - Inconclusive: a gate that fails after three tries, a second crash (D21), or a missing pick record, for the cells it
   touches. An inconclusive cell counts as neither WIN nor LEVEL; a level holds when its count holds on the decided
   cells; if every inconclusive cell as a WIN would raise the level, the report gives "level L, inconclusive above"
   (D22). If SC1 or SC2 is parked, stage 1 is inconclusive: 1c and stage 2 do not run; Table 8 runs.
 - Pick: K*'s place (main model or extra row) is set by SC2 alone. If it changes after any test number exists, the
-  report says the choice was made after reading test data (constitution row 2).
+  report says the choice was made after reading test data (constitution row 2). After A1, SC2's fail stays on record and K*
+  stays an extra row (ablation or supplementary; the user with the co-authors, 2026-11-13 15:25).
 - Licensed claim: ArtELingo (and MMArt, Affection, EmoSet for SC5, SC6) under c*'s settings and these encoders only;
   development results (SC1, SC2) are never quoted as test results; the sentence never goes beyond the level reached.
 
@@ -350,7 +369,8 @@ picks it.
 | C8 prior and disclosure | pass | §3.1; disclosure in §8 |
 | C12 regression check | pass | stage 0 (i) to (viii) |
 | C13 re-derivation | pass | §3.4, "Order and C13" |
-| Decisions never alone | pass | rows 1 to 9 apply as written; "and more" encoders are parked (row 6) |
+| Decisions never alone | pass | rows 1 to 9 apply as written; "and more" encoders are parked (row 6); A1's place was decided by the user with the co-authors |
+| C7 for A1 and A2 | pass | A1 changes no ladder (SC4 to SC7 stay as reviewed); SC9 is a selection rule with no ladder, written before E2's and E3's training |
 
 Exceptions: none.
 
@@ -368,7 +388,7 @@ Exceptions: none.
 Selection disclosure: on ArtELingo validation, c*'s settings came from r10's sweeps on Qwen3; SigLIP 1 was picked over
 two other encoders (SigLIP 2, CLIP L/14) by 0.0007 (r28, a close call). r28 also tried four settings rows on SigLIP 1
 seed 0 validation (k11 = 10, 20, 80; learning rate 0.0005), none adopted. This loop adds two caption forms (seed 0) and
-one pass decision. Test numbers shape nothing; the 80% and LEVEL bars are fixed here.
+one pass decision; after A2 also one encoder pick among the SigLIP-only models. Test numbers shape nothing; the 80% and LEVEL bars are fixed here.
 
 ## 9. Deliverables and review
 
@@ -385,5 +405,6 @@ The body is over the 150-line target: five stages, eight gates and one rule in o
   about 6 minutes; one extraction of 6 minutes; scoring). Stage 2 about 6 GPU-hours (E2, E3 10 runs; R1-R4 20 runs of
   about 7.5 minutes; F1 five runs of about 3 minutes (r14: 187 s per seed on node402); one Affection extraction; if K2
   wins, two prefixed extractions (SigLIP 2, CLIP L/14, with a truncation count at CLIP's 77-token limit); scoring).
-  CPU scoring under `res-queue cpu`. Local GPU; each stage 1 job (one training run or one scoring pass) stays under
+  CPU scoring under `res-queue cpu`. SC9 (A2): two image-group scorings on validation, CPU, about 30 minutes each
+  (as stage 1b's groups step). Local GPU; each stage 1 job (one training run or one scoring pass) stays under
   1 hour on weekdays 10:00 to 19:00.
