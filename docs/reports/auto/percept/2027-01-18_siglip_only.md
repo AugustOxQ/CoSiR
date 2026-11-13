@@ -212,7 +212,7 @@ One cell is inconclusive by C13; one analysis is exploration; nothing else diffe
 
 ## Claim review
 
-Claude, 2026-11-13 06:50, from the record files (not from this report's tables):
+Claude, 2026-11-13 06:35, from the record files (not from this report's tables):
 
 | Brief value | Recomputed | File |
 |---|---|---|
@@ -240,7 +240,7 @@ fidelity check added one caveat here: intervals are per cell, with no multiplici
   [`decisions.md`](../../../../src/test/20261112_siglip_only/decisions.md), `rederive/` (Codex's code and outputs).
 - **Untracked:** Codex's working notes `rederive/findings.md`, `progress.md`, `task_plan.md`,
   `r29rd_c1_replay_text_impl.txt`; they can stay out of git.
-- **Outputs:** `/data/SSD2/cosir_r29/20261112_siglip_only/`, 52 GB (`du -sh`, 2026-11-13 06:45): models, exports,
+- **Outputs:** `/data/SSD2/cosir_r29/20261112_siglip_only/`, 52 GB (`du -sh`, 2026-11-13 06:33): models, exports,
   scores, logs.
 - **Storage:** nothing deleted (night mode). On `.scratch/pending_deletions.md`: Codex's cache `rd_c1_cache` (38 GB),
   `gate_vi/try1/` (1.5 GB), ticket 12's test scratch (4.6 GB, system disk), the build's test and smoke folders and
