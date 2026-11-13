@@ -1,0 +1,30 @@
+{
+  "amendment": "A1",
+  "spec": "docs/superpowers/specs/2026-11-12-siglip-only-adapter-design.md",
+  "spec_commit": "d018f92691686994b2b211ef2699eeba390a0471",
+  "spec_section": "§4 Amendments, row A1",
+  "applies_to": {
+    "pass_rule_status": "fail",
+    "pass_rule_level": 0,
+    "arm": "siglip1_prefix"
+  },
+  "decisions": [
+    {
+      "line": "D3: stage 2 runs although SC2 failed (text group 0.2549 against the bound 0.2573). records/pass_rule.json stays \"fail\" and is never edited.",
+      "who": "user, after seeing the recommendation (option b; \"run can happen anyway\")",
+      "when": "2026-11-13 14:40"
+    },
+    {
+      "line": "The stage 2 runner runs on the fail only with a flag that names a committed record of A1.",
+      "who": "user, after seeing the recommendation (option b)",
+      "when": "2026-11-13 14:40"
+    },
+    {
+      "line": "The place in the paper: an ablation or supplementary row, not the main model (\"the fewer numbers we change now the better\").",
+      "who": "user, with the co-authors",
+      "when": "2026-11-13 15:25"
+    }
+  ],
+  "note": "stage 2 ran on the fail under A1",
+  "written": "2026-11-13 16:05 by the r31 build chat"
+}
