@@ -412,3 +412,14 @@ def test_compare_picks_accepts_identical_records():
 ])
 def test_compare_picks_flags_a_difference_in_the_full_readout_table_or_untold_score(mutate):
     assert not _compare(mutate)
+
+
+def test_gate_v_image_third_failure_parks_and_a_fourth_try_raises(tmp_path, monkeypatch):
+    """Final review fix A, ruling 3: v_image goes through r29_captions.write_gate_record."""
+    monkeypatch.setattr(ic.P, 'GATES', tmp_path / 'gates')
+    det = dict(aspects=list(ic.ASPECTS), intervals_checked=True, picks=[])
+    got = [ic.write_gate(False, det)[1] for _ in range(3)]
+    assert [(r['status'], r['tries']) for r in got] == [('fail', 1), ('fail', 2), ('parked', 3)]
+    assert set(got[2]) == {'gate', 'status', 'tries', 'details', 'written'}
+    with pytest.raises(AssertionError, match='fourth'):
+        ic.write_gate(False, det)

@@ -50,6 +50,22 @@ require_committed() {
   if ((bad && !DRY)); then exit 2; fi
   return 0
 }
+# need_committed <piece> <file>...: the non-exiting check of stage 2 (§3.5: "that piece inconclusive; the others go on"). A missing
+# or uncommitted record puts the piece on the failure list with the reason and returns 1; the caller skips the piece only.
+# A dry run prints what a real run does and returns 0 (so the commands of the piece are still listed).
+need_committed() {
+  local piece=$1 f bad=() ; shift
+  for f in "$@"; do
+    if committed "$f"; then echo "committed ok: $f"; else bad+=("$f"); fi
+  done
+  ((${#bad[@]})) || return 0
+  if ((DRY)); then echo "[dry-run] NOT committed or missing: ${bad[*]}; a real run skips piece $piece (failure list) and goes on"; return 0; fi
+  echo "SKIP piece $piece: ${bad[*]} not committed unchanged in git HEAD (inconclusive, §3.5); the other pieces go on"
+  FAILS+=("$piece: ${bad[*]} missing or not committed")
+  return 1
+}
+# gate_status <gate name>: the status of records/gates/<name>.json, or "missing"
+gate_status() { if [[ -f records/gates/$1.json ]]; then jget "records/gates/$1.json" status; else echo missing; fi; }
 require_pass() {   # D3
   local s
   if [[ -f records/pass_rule.json ]]; then s=$(jget records/pass_rule.json status); else s=missing; fi

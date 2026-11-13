@@ -651,3 +651,20 @@ def test_replay_rule_needs_99_5_percent_equal_and_one_float16_step():
     assert X.replay_passed(0.998, True)
     assert not X.replay_passed(0.99, True)             # r28's rule: at least 99.5% of the elements equal
     assert not X.replay_passed(0.999, False)
+
+
+# --- the gate writers count their tries through r29_captions.write_gate_record (final review fix A, ruling 3) -----------
+
+@pytest.mark.parametrize('name', ['ii', 'iv_hash'])
+def test_a_third_failure_parks_and_a_fourth_try_raises(world, name):
+    got = [X.write_gate(name, 'fail', dict(n=i)) for i in range(3)]
+    assert [(r['status'], r['tries']) for r in got] == [('fail', 1), ('fail', 2), ('parked', 3)]
+    assert set(got[2]) == {'gate', 'status', 'tries', 'details', 'written'}
+    with pytest.raises(AssertionError, match='fourth'):
+        X.write_gate(name, 'fail', dict(n=3))
+    assert json.loads((Path(X.RECORDS_DIR) / 'gates' / f'{name}.json').read_text())['tries'] == 3
+
+
+def test_a_pass_after_two_failures_stays_a_pass(world):
+    X.write_gate('ii', 'fail', {}); X.write_gate('ii', 'fail', {})
+    assert X.write_gate('ii', 'pass', {})['status'] == 'pass'

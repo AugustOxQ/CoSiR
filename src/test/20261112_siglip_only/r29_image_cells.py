@@ -66,6 +66,7 @@ import rt_data  # noqa: E402
 import rt_metrics  # noqa: E402
 import rt_readout  # noqa: E402
 import rt_stats  # noqa: E402
+import r29_captions as C  # noqa: E402  (write_gate_record: the three-try limit)
 P.check_older_imports()  # every older-round module loaded so far is the main checkout's copy
 
 ASPECTS = tuple(P.ASPECTS)
@@ -507,16 +508,20 @@ def gate_v_image(aspects=ASPECTS, draws=None, validation=True, workers=8, root=P
 
 
 def write_gate(ok, details, partial_dir=None):
-    """records/gates/v_image.json (`tries` counts earlier writes). A reduced check (a subset of aspects, fewer draws, no
-    validation part) goes to `partial_dir` and never to the gate record."""
+    """records/gates/v_image.json = {gate, status, tries, details, written}, written through `r29_captions.write_gate_record` (it counts
+    the tries and raises on a fourth): `pass`; a failure is `fail` before try 3 and `parked` at try 3. A reduced check (a subset of
+    aspects, fewer draws, no validation part) goes to `partial_dir` and never to the gate record (not a gate try: it counts its own)."""
     full = (set(details['aspects']) == set(ASPECTS) and details['intervals_checked'] and 'picks' in details)
-    path = (P.GATES if full else Path(partial_dir or P.OUT / 'gates_partial')) / 'v_image.json'
+    if full:
+        path = P.GATES / 'v_image.json'
+        prior = int(json.loads(path.read_text()).get('tries', 0)) if path.exists() else 0
+        status = 'pass' if ok else ('parked' if prior == 2 else 'fail')
+        return path, C.write_gate_record(P.GATES, dict(status=status, details=details), gate='v_image')
+    path = Path(partial_dir or P.OUT / 'gates_partial') / 'v_image.json'
     tries = 1
     if path.exists():
         tries = int(json.loads(path.read_text()).get('tries', 0)) + 1
-    rec = dict(gate='v_image', status='pass' if ok else 'fail', tries=tries, details=details, written=now())
-    if not full:
-        rec['status'] = 'partial-' + rec['status']
+    rec = dict(gate='v_image', status='partial-' + ('pass' if ok else 'fail'), tries=tries, details=details, written=now())
     ns_paths.write_json(path, rec)
     return path, rec
 

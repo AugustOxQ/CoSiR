@@ -464,13 +464,15 @@ def replay(arm, device='cpu', write=True):
 
 # ------------------------------------------------------------------------------------------------ gates
 def write_gate(name, status, details):
-    """records/gates/<name>.json = {gate, status, tries, details, written} (the index's shape). This ticket's gate files are
-    `ii` and `iv_hash`; ticket 02 writes `iv_store`, ticket 05 merges the parts of (iv)."""
-    path = Path(RECORDS_DIR) / 'gates' / f'{name}.json'
-    tries = json.loads(path.read_text())['tries'] if path.exists() else 0
-    rec = dict(gate=name, status=status, tries=tries + 1, details=details, written=now())
-    write_json(path, rec)
-    return rec
+    """records/gates/<name>.json = {gate, status, tries, details, written} (the index's shape), written through
+    `r29_captions.write_gate_record` (it counts the tries and raises on a fourth). Status rule: `pass`; a failure is `fail` before
+    try 3 and `parked` at try 3. This ticket's gate files are `ii` and `iv_hash`; ticket 02 writes `iv_store`, ticket 05 merges (iv)."""
+    folder = Path(RECORDS_DIR) / 'gates'
+    path = folder / f'{name}.json'
+    prior = json.loads(path.read_text())['tries'] if path.exists() else 0
+    if status != 'pass':
+        status = 'parked' if prior == 2 else 'fail'
+    return C.write_gate_record(folder, dict(status=status, details=details), gate=name)
 
 
 def replay_passed(min_share_equal, all_one_step):

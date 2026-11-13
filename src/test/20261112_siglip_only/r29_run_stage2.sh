@@ -44,13 +44,15 @@ for E in siglip2 clip_l14; do
     if [[ $FORM == prefixed && ! -f $STORE/index.json ]]; then
       q gpu short "extract-$SRC" -- "${PYC[@]}" r29_extract.py extract --encoder "$XENC" || continue
     fi
-    q cpu 10m "gate-viii-$SRC" -- "${PYC[@]}" r29_encoders.py stores --encoder "$E" || continue
+    # a rerun of 2a: `stores` raises on a gate (viii) that already passed (r29_encoders.py gate_viii), so a pass skips the step
+    if [[ $(gate_status "viii_$SRC") == pass ]]; then echo "skip (gate viii_$SRC already pass)"; SKIPPED+=("records/gates/viii_$SRC.json")
+    else q cpu 10m "gate-viii-$SRC" -- "${PYC[@]}" r29_encoders.py stores --encoder "$E" || continue; fi
     train_retry "$SRC" done_k "$OUT/cstar/$E/weights/$SRC" 40m "train-$E" "0 1 2 3 4" -- "${PYC[@]}" r29_encoders.py train \
       --encoder "$E" --seeds @SEEDS@ || continue
     q gpu short "export-val-$E" -- "${PYC[@]}" r29_encoders.py export --encoder "$E" --kind val || continue
     q cpu 45m "picks-$E" -- "${PYC[@]}" r29_encoders.py picks --encoder "$E"
   else
-    require_committed "records/image_picks_$SRC.json"
+    need_committed "cells-$E" "records/image_picks_$SRC.json" || continue
     q gpu short "export-held-$E" -- "${PYC[@]}" r29_encoders.py export --encoder "$E" --kind held || continue
     q cpu 45m "cells-$E" -- "${PYC[@]}" r29_encoders.py cells --encoder "$E"
   fi
@@ -63,12 +65,18 @@ elif [[ $PART == a ]]; then
   q cpu 20m "mmart-export-$K" -- "${PYC[@]}" r29_mmart.py export --arm "$K" && \
     q cpu 45m "mmart-picks-$K" -- "${PYC[@]}" r29_mmart.py picks --arm "$K"
 else
-  require_committed "records/mmart_picks_$K.json"
-  q cpu 45m "mmart-cells-$K" -- "${PYC[@]}" r29_mmart.py cells --arm "$K"
+  need_committed "mmart-cells-$K" "records/mmart_picks_$K.json" && \
+    q cpu 45m "mmart-cells-$K" -- "${PYC[@]}" r29_mmart.py cells --arm "$K"
 fi
 
 # ---------------------------------------------------------------- photo model F1 (tickets 12 and 13)
 echo "== photo =="
+# F1 trains only on a passed gate (viii) affection; any other status goes on the failure list (no crash record: D21's are for real crashes)
+photo_gate_ok() {
+  local s; s=$(gate_status viii_affection)
+  if [[ $s == pass || $s == missing ]]; then return 0; fi
+  echo "F1 not trained: gate viii_affection is $s"; FAILS+=("train:f1 not run: gate viii_affection $s"); return 1
+}
 done_f1() { [[ -f $OUT/photo/siglip1/s$2/emotion.pt && -f $OUT/photo/siglip1/s$2/run.json ]]; }
 if [[ ! -f r29_photo.py ]]; then SKIPPED+=(r29_photo.py); echo "skip: r29_photo.py not in this checkout"
 elif [[ $PART == a ]]; then
@@ -76,7 +84,7 @@ elif [[ $PART == a ]]; then
   {
     if [[ -f $AFF/index.json ]]; then have records/gates/viii_affection.json || q cpu 10m gate-viii-affection -- "${PYC[@]}" r29_photo.py gate-viii
     else q gpu 20m affection-store -- "${PYC[@]}" r29_photo.py store --device cuda; fi
-  } && train_retry f1 done_f1 x 20m train-f1 "0 1 2 3 4" -- "${PYC[@]}" r29_photo.py train --seeds @SEEDS@ --device cuda && {
+  } && photo_gate_ok && train_retry f1 done_f1 x 20m train-f1 "0 1 2 3 4" -- "${PYC[@]}" r29_photo.py train --seeds @SEEDS@ --device cuda && {
     q gpu short f1-export-val-affection -- "${PYC[@]}" r29_photo.py export --dataset affection --splits val
     q gpu short f1-export-val-emoset -- "${PYC[@]}" r29_photo.py export --dataset emoset --splits val
     # ---- TO CHECK AFTER TICKET 13 MERGES: the r29_photo_cells.py CLI below is taken from issues/13-photo-cells.md ----
@@ -89,8 +97,8 @@ else
   q gpu short f1-export-test-emoset -- "${PYC[@]}" r29_photo.py export --dataset emoset --splits test
   # ---- TO CHECK AFTER TICKET 13 MERGES ----
   if [[ -f r29_photo_cells.py ]]; then
-    require_committed "records/photo_picks_$K.json"
-    q cpu 45m "photo-cells-$K" -- "${PYC[@]}" r29_photo_cells.py cells --arm "$K"
+    need_committed "photo-cells-$K" "records/photo_picks_$K.json" && \
+      q cpu 45m "photo-cells-$K" -- "${PYC[@]}" r29_photo_cells.py cells --arm "$K"
   else SKIPPED+=(r29_photo_cells.py); echo "skip: r29_photo_cells.py not in this checkout (ticket 13)"; fi
   # ---- end of the ticket 13 block ----
 fi

@@ -355,13 +355,19 @@ def gate_v_text(aspects=ASPECTS, draws=N_DRAWS):
 
 
 def write_gate(ok, details, partial_dir=None):
-    """records/gates/v_text.json = {gate, status, tries, details, written}. A reduced check (a subset of aspects or fewer
-    draws) goes to `partial_dir` (default OUT/gates_partial) and never to the gate record."""
+    """records/gates/v_text.json = {gate, status, tries, details, written}, written through `r29_captions.write_gate_record` (it counts
+    the tries and raises on a fourth): `pass`; a failure is `fail` before try 3 and `parked` at try 3. A reduced check (a subset of
+    aspects or fewer draws) goes to `partial_dir` (default OUT/gates_partial) and never to the gate record (it counts its own)."""
     full = set(details['aspects']) == set(ASPECTS) and details['intervals_checked']
-    path = (Path(X.RECORDS_DIR) / 'gates' if full else Path(partial_dir or P29.OUT / 'gates_partial')) / 'v_text.json'
+    if full:
+        folder = Path(X.RECORDS_DIR) / 'gates'
+        path = folder / 'v_text.json'
+        prior = json.loads(path.read_text()).get('tries', 0) if path.exists() else 0
+        status = 'pass' if ok else ('parked' if prior == 2 else 'fail')
+        return path, X.C.write_gate_record(folder, dict(status=status, details=details), gate='v_text')
+    path = Path(partial_dir or P29.OUT / 'gates_partial') / 'v_text.json'
     tries = json.loads(path.read_text()).get('tries', 0) + 1 if path.exists() else 1
-    rec = dict(gate='v_text', status=('pass' if ok else 'fail') if full else ('partial-pass' if ok else 'partial-fail'),
-               tries=tries, details=details, written=X.now())
+    rec = dict(gate='v_text', status='partial-pass' if ok else 'partial-fail', tries=tries, details=details, written=X.now())
     X.write_json(path, rec)
     return path, rec
 

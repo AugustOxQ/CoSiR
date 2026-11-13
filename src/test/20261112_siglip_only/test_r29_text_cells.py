@@ -703,3 +703,13 @@ def test_a_reduced_run_never_writes_the_gate_record(tmp_path, d):
         assert path == tmp_path / 'partial' / 'v_text.json' and rec['status'] == 'partial-pass'
         assert TC.write_gate(False, d, partial_dir=tmp_path / 'partial')[1]['status'] == 'partial-fail'
     assert not (tmp_path / 'records' / 'gates' / 'v_text.json').exists()
+
+
+def test_a_third_failure_parks_and_a_fourth_try_raises(tmp_path):
+    """Final review fix A, ruling 3: v_text goes through r29_captions.write_gate_record."""
+    with mock.patch.object(X, 'RECORDS_DIR', tmp_path / 'records'):
+        got = [TC.write_gate(False, det(), partial_dir=tmp_path / 'partial')[1] for _ in range(3)]
+        assert [(r['status'], r['tries']) for r in got] == [('fail', 1), ('fail', 2), ('parked', 3)]
+        assert set(got[2]) == {'gate', 'status', 'tries', 'details', 'written'}
+        with pytest.raises(AssertionError, match='fourth'):
+            TC.write_gate(False, det(), partial_dir=tmp_path / 'partial')
