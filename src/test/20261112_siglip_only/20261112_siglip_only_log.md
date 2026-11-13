@@ -133,3 +133,9 @@ mode. Outputs `/data/SSD2/cosir_r29/20261112_siglip_only/` (stage logs in its `l
   (complete rankings, all intervals) queued on the CPU (45 to 90 min). Its notes say r11's docstrings ask for float64
   dot products, unlike the 1c helper's (observation only; 1c's comparison is closed).
 - 17:55 Cut to chat "r31 run 2" (context past 200k), before part a; handoff `docs/superpowers/handoffs/2026-11-13-r31-run-2-handoff.md`.
+
+### Chat "r31 run 2"
+
+- 17:55 Chat start (handoff `2026-11-13-r31-run-2-handoff.md`). Both Codex replays run on the CPU queue (s2e from 17:42,
+  s2mp from 17:52). Dry run of part a under A1 unchanged (28 queued steps; SC9 replays skipped). A Sonnet `high` worker
+  writes the C13 comparison script `r29_s2_compare.py` (val and held phases, tolerance 1e-6). Part a waits for 19:00.
