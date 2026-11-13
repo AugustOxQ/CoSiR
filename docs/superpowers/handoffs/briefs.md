@@ -2490,3 +2490,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-13-paper-plan-8-handoff.md
 - New chat: tab 'paper plan 8', session aabac664-f442-432b-a151-6bebed462376
 
+[brief] CoSiR: paper plan 8 -> paper plan 9 (2026-11-13 18:53 Amsterdam)
+- Done: 4.2 to 4.4 rewritten by the user's three rules; photos moved to their own subsection 4.6; 4.5 text in (three paragraphs). REPO `a011509`.
+- State: Section 4 has text in 4.1 to 4.6. The 4.5 number sets and analyses are the agent's picks and wait for the user's check.
+- Next: take the user's corrections to 4.5, then 4.7 (qualitative examples), the user's points first.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-13-paper-plan-9-handoff.md
+- New chat: tab 'paper plan 9', session f18b507d-d744-472e-a1ad-c3b00063271e
+
