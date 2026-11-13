@@ -146,11 +146,15 @@ mode. Outputs `/data/SSD2/cosir_r29/20261112_siglip_only/` (stage logs in its `l
 - 19:05 Codex's full MMArt/photo replay done (73.5 min, exit 0) with one entry over its 1e-9 target: r17's MMArt SC7
   genre image mAP cell, interval end `hi`, 1.03e-9 (point values within 2.4e-10; every other family passes). Its held
   guard would park all six MMArt mAP cells. Codex has no room until 21:04, so a Sonnet `high` worker looks for the
-  cause (19:15), under Codex's independence rules; no tolerance changes.
+  cause (19:10), under Codex's independence rules; no tolerance changes.
 - 19:06 E2 training failed at start on both tries: r14's `bs_cstar.train` asserts `CUBLAS_WORKSPACE_CONFIG`, which
   `r29_encoders.py train` never set (stage 1 trained through `r29_trainer.main`, which sets it). The runner wrote a crash
   record for E2 and went on to E3's store. Runner stopped at 19:07 (E3's store extraction finished on its own: 308,723
   captions, 0 truncated, gate ok). Fix e2641622 (both `main`s set it when unset); the false crash record moved to
-  `records/void/` (decision line 19:10). 120 tests of the two modules pass.
+  `records/void/` (decision line 19:08). 120 tests of the two modules pass.
 - 19:09 Part a restarted (log `logs/stage2a_run.log`; first try's log `logs/stage2a_run_try1_1900.log`). E2 training
   started 19:09.
+- 19:24 Worker's cause for the MMArt replay miss: `rederive/r29rd_s2mp.py` cast the query-expansion vector to float32,
+  against r11's written convention (no downcast); r17's frozen per-query APs (`/data/SSD2/cosir_r17/.../c13/cache/`)
+  now match exactly, and the genre cell's 12 entries are within 2.2e-16 (was 1.03e-9). Commit 3d081848, decision line
+  19:24. The full s2mp replay reruns on the new source (`rederive/r29rd_s2mp_replay_v2.json`, CPU queue, about 75 min).
