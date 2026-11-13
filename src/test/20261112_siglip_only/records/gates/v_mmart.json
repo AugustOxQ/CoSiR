@@ -1,0 +1,188 @@
+{
+  "gate": "v_mmart",
+  "status": "pass",
+  "tries": 1,
+  "details": {
+    "aspects": [
+      "emotion",
+      "style",
+      "genre"
+    ],
+    "tol": 1e-09,
+    "picks": {
+      "teacher": "center+k10",
+      "plain": "none+k10"
+    },
+    "comparators_ok": {
+      "teacher": true,
+      "plain": true
+    },
+    "failed_comparators": [],
+    "items": [
+      {
+        "comparator": "teacher",
+        "aspect": "emotion",
+        "source": "r15 verdicts SC4 qwen/emotion comparator_value",
+        "rebuilt": 0.20208184800749496,
+        "recorded": 0.20208184800749496,
+        "abs_diff": 0.0,
+        "ok": true
+      },
+      {
+        "comparator": "teacher",
+        "aspect": "emotion",
+        "source": "r15 verdicts SC4 siglip2/emotion comparator_value",
+        "rebuilt": 0.20208184800749496,
+        "recorded": 0.20208184800749496,
+        "abs_diff": 0.0,
+        "ok": true
+      },
+      {
+        "comparator": "teacher",
+        "aspect": "emotion",
+        "source": "r15 verdicts SC4 siglip1/emotion comparator_value",
+        "rebuilt": 0.20208184800749496,
+        "recorded": 0.20208184800749496,
+        "abs_diff": 0.0,
+        "ok": true
+      },
+      {
+        "comparator": "teacher",
+        "aspect": "emotion",
+        "source": "r15 verdicts SC4 clip_l14/emotion comparator_value",
+        "rebuilt": 0.20208184800749496,
+        "recorded": 0.20208184800749496,
+        "abs_diff": 0.0,
+        "ok": true
+      },
+      {
+        "comparator": "teacher",
+        "aspect": "style",
+        "source": "r15 verdicts SC4 qwen/style comparator_value",
+        "rebuilt": 0.3475531651604354,
+        "recorded": 0.3475531651604354,
+        "abs_diff": 0.0,
+        "ok": true
+      },
+      {
+        "comparator": "teacher",
+        "aspect": "style",
+        "source": "r15 verdicts SC4 siglip2/style comparator_value",
+        "rebuilt": 0.3475531651604354,
+        "recorded": 0.3475531651604354,
+        "abs_diff": 0.0,
+        "ok": true
+      },
+      {
+        "comparator": "teacher",
+        "aspect": "style",
+        "source": "r15 verdicts SC4 siglip1/style comparator_value",
+        "rebuilt": 0.3475531651604354,
+        "recorded": 0.3475531651604354,
+        "abs_diff": 0.0,
+        "ok": true
+      },
+      {
+        "comparator": "teacher",
+        "aspect": "style",
+        "source": "r15 verdicts SC4 clip_l14/style comparator_value",
+        "rebuilt": 0.3475531651604354,
+        "recorded": 0.3475531651604354,
+        "abs_diff": 0.0,
+        "ok": true
+      },
+      {
+        "comparator": "teacher",
+        "aspect": "genre",
+        "source": "r15 verdicts SC4 qwen/genre comparator_value",
+        "rebuilt": 0.6172051670902616,
+        "recorded": 0.6172051670902616,
+        "abs_diff": 0.0,
+        "ok": true
+      },
+      {
+        "comparator": "teacher",
+        "aspect": "genre",
+        "source": "r15 verdicts SC4 siglip2/genre comparator_value",
+        "rebuilt": 0.6172051670902616,
+        "recorded": 0.6172051670902616,
+        "abs_diff": 0.0,
+        "ok": true
+      },
+      {
+        "comparator": "teacher",
+        "aspect": "genre",
+        "source": "r15 verdicts SC4 siglip1/genre comparator_value",
+        "rebuilt": 0.6172051670902616,
+        "recorded": 0.6172051670902616,
+        "abs_diff": 0.0,
+        "ok": true
+      },
+      {
+        "comparator": "teacher",
+        "aspect": "genre",
+        "source": "r15 verdicts SC4 clip_l14/genre comparator_value",
+        "rebuilt": 0.6172051670902616,
+        "recorded": 0.6172051670902616,
+        "abs_diff": 0.0,
+        "ok": true
+      },
+      {
+        "comparator": "plain",
+        "aspect": "emotion",
+        "source": "r17 verdicts SC7/mmart/siglip1/emotion/map/-/plain comp",
+        "rebuilt": 0.19125931122827552,
+        "recorded": 0.19125931122827552,
+        "abs_diff": 0.0,
+        "ok": true
+      },
+      {
+        "comparator": "plain",
+        "aspect": "emotion",
+        "source": "r15 verdicts SC2 siglip1/emotion comparator_value",
+        "rebuilt": 0.19125931122827552,
+        "recorded": 0.19125931122827552,
+        "abs_diff": 0.0,
+        "ok": true
+      },
+      {
+        "comparator": "plain",
+        "aspect": "style",
+        "source": "r17 verdicts SC7/mmart/siglip1/style/map/-/plain comp",
+        "rebuilt": 0.30310640376756215,
+        "recorded": 0.30310640376756215,
+        "abs_diff": 0.0,
+        "ok": true
+      },
+      {
+        "comparator": "plain",
+        "aspect": "style",
+        "source": "r15 verdicts SC2 siglip1/style comparator_value",
+        "rebuilt": 0.30310640376756215,
+        "recorded": 0.30310640376756215,
+        "abs_diff": 0.0,
+        "ok": true
+      },
+      {
+        "comparator": "plain",
+        "aspect": "genre",
+        "source": "r17 verdicts SC7/mmart/siglip1/genre/map/-/plain comp",
+        "rebuilt": 0.49322669333886887,
+        "recorded": 0.49322669333886887,
+        "abs_diff": 0.0,
+        "ok": true
+      },
+      {
+        "comparator": "plain",
+        "aspect": "genre",
+        "source": "r15 verdicts SC2 siglip1/genre comparator_value",
+        "rebuilt": 0.49322669333886887,
+        "recorded": 0.49322669333886887,
+        "abs_diff": 0.0,
+        "ok": true
+      }
+    ],
+    "max_abs_diff": 0.0
+  },
+  "written": "2026-11-13 02:08"
+}

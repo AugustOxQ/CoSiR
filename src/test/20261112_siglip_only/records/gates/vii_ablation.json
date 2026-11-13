@@ -1,0 +1,171 @@
+{
+  "gate": "vii_ablation",
+  "status": "pass",
+  "tries": 3,
+  "details": {
+    "code_sha256": {
+      "r29_trainer.py": "0e61deda49c649f79c2a556682cf4d5491f465a21c8b3b87e198e509b6f4b372",
+      "r29_model.py": "00b96f402097725c45577618486c4b31f7c7af8a9eb818d6d56b59a49d06e2ab",
+      "r29_captions.py": "7f81bbe7daf2e48da4920961445f99c248d270679071a894d38d480c8a2c4260",
+      "r28_trainer.py": "722bed8d1d506d6be4d569e8bf19a467ea9cea5d98256775aabd26158e286292",
+      "r28_trainer_loss.py": "01132e756fc34bbcce0a3fa0b368bc156e346975c3c199fde73711197b4ed2ff",
+      "r29_ablation.py": "bef326b9570a03aee39fbb7e56d1c799db7136c35f1d23edb9bdfe7a3fd6cbcd"
+    },
+    "trainer_test_sha256": "a671d57e41a50625d3b3e59723f6cc0f7c46b82cb1624f82159b95f405da2183",
+    "trainer": {
+      "command": [
+        "/root/miniconda3/envs/CoSiR/bin/python",
+        "-m",
+        "pytest",
+        "-q",
+        "/project/CoSiR-r29/src/test/20261112_siglip_only/test_r29_ablation.py",
+        "-k",
+        "qwen_equals_r28_state_loss_and_gradients_on_fixed_batch"
+      ],
+      "pass": true,
+      "returncode": 0,
+      "output": "....                                                                     [100%]\n4 passed, 31 deselected in 4.61s\n"
+    },
+    "replay": {
+      "checks": {
+        "list_sha256": true,
+        "emotion/identity": true,
+        "emotion/ami": true,
+        "emotion/map": true,
+        "style/identity": true,
+        "style/ami": true,
+        "style/map": true,
+        "genre/identity": true,
+        "genre/ami": true,
+        "genre/map": true
+      },
+      "tolerance": 1e-09,
+      "pass": true,
+      "source": "/project/CoSiR/src/test/20261112_siglip_main/records/ablation_ref_replay.json",
+      "source_sha256": "b6606f82e78492d430ae6009c2396d60660ee68e80479e41f0e6ef8ba064ffc3",
+      "cells": {
+        "emotion": {
+          "k": 9,
+          "seeds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "ami_per_seed": [
+            0.09909113712346489,
+            0.10041617475909925,
+            0.0987457872729246,
+            0.09724027329540719,
+            0.09721852205058844
+          ],
+          "ami_mean": 0.09854237890029688,
+          "map_per_seed": [
+            0.2627389804570249,
+            0.2634177384227142,
+            0.26310601002673223,
+            0.2632492890348042,
+            0.26175642749477407
+          ],
+          "map_mean": 0.2628536890872099,
+          "n_labelled": 12281,
+          "n_queries": 12281,
+          "dropped": 0
+        },
+        "style": {
+          "k": 27,
+          "seeds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "ami_per_seed": [
+            0.4426370469847576,
+            0.437866364281602,
+            0.443125486649689,
+            0.43708097303843213,
+            0.44324377108884994
+          ],
+          "ami_mean": 0.4407907284086662,
+          "map_per_seed": [
+            0.3424522216744422,
+            0.3389998381739086,
+            0.3381528624150161,
+            0.3395703924413503,
+            0.34135798991086236
+          ],
+          "map_mean": 0.3401066609231159,
+          "n_labelled": 12281,
+          "n_queries": 12281,
+          "dropped": 0
+        },
+        "genre": {
+          "k": 10,
+          "seeds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "ami_per_seed": [
+            0.5347167929945421,
+            0.525967799262326,
+            0.5231227172728964,
+            0.5250368644100512,
+            0.5306721211942436
+          ],
+          "ami_mean": 0.5279032590268119,
+          "map_per_seed": [
+            0.5965771786416686,
+            0.5978928077650739,
+            0.5995756489463016,
+            0.6005155153383326,
+            0.5985395010349832
+          ],
+          "map_mean": 0.5986201303452721,
+          "n_labelled": 9949,
+          "n_queries": 9949,
+          "dropped": 0
+        }
+      },
+      "list_sha256": "a0b1139c6056fd858ddbd2ee1dd4bafd1453e590818c6aa59883364c0288a876",
+      "input_sha256": {
+        "/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/siglip1/held/k11=40/emotion__s0.npz": "51b970833e6d61324d784283201c01503e860c7cd1afdff17d1013523a998d61",
+        "/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/siglip1/held/k11=40/emotion__s0.json": "75bb06c012c33f656ae702c717733d46f8e6deeb821614ed21834e570714fcfc",
+        "/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/siglip1/held/k11=40/emotion__s1.npz": "bc0b48f2dc51a4bfcfc01e45248eccef26c589d674f84d44ce61155a097bfc8b",
+        "/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/siglip1/held/k11=40/emotion__s1.json": "933d7066b486a86aab07ae285335c3532d718a03507146b619a25508f90b7d93",
+        "/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/siglip1/held/k11=40/emotion__s2.npz": "6e0411195851bac5992e51b2cc0cb17fa0dd61deeb918cbcad8104cabea98a1c",
+        "/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/siglip1/held/k11=40/emotion__s2.json": "be4502f100834fb2252d342adfd2e30c8fcb4c07e12a5e00e2d07f0b24c8baf2",
+        "/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/siglip1/held/k11=40/emotion__s3.npz": "829d3e59d8b1afb100c08d0b8f543f0cbd4d5cb8847a3db6d2abed9a4d943a38",
+        "/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/siglip1/held/k11=40/emotion__s3.json": "b2422358615dbab2a184cf5257a0681cf4464efdc7cca2fc72996388fff0818f",
+        "/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/siglip1/held/k11=40/emotion__s4.npz": "1c888ce5b14a474d27962b7a10c13ed4f25d8f1d2825ed66821d73bcced6a286",
+        "/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/siglip1/held/k11=40/emotion__s4.json": "31189e46c5c29e8c684787e410d90da8d41633bbb26f945c0b0c232fd0907144",
+        "/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/siglip1/held/k11=40/style__s0.npz": "98749b4f259134d77d8480c2d8583981f225bb63003103dd6c6f3046981a518f",
+        "/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/siglip1/held/k11=40/style__s0.json": "d226bbf93597a5b77491968e274d14ef833101d13d24064523c7a7b1df971d84",
+        "/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/siglip1/held/k11=40/style__s1.npz": "1d2292dc1334f93788964f9d7b1fb3ff8629ae8ff4ffd69534aed6687a53570e",
+        "/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/siglip1/held/k11=40/style__s1.json": "524b22a4200dd32a7a4fd8221129c995e599cead82ff7a521b24ed4dac5c1259",
+        "/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/siglip1/held/k11=40/style__s2.npz": "7321884bae7a6b5def782f46190854711345254ea6d2145e41646560e1ba0530",
+        "/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/siglip1/held/k11=40/style__s2.json": "db8c3b24993710be3c8d25e637f9293d67c1735a320d1e8a6eaaa92b2d33a295",
+        "/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/siglip1/held/k11=40/style__s3.npz": "e50c05b4c6201718bd8b535cf641d792344864bad5f9385fcb0495d3ae670362",
+        "/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/siglip1/held/k11=40/style__s3.json": "d2859d25a4efe53f688542218bbe8227f24fcecd3540490b6482d6ddd09854a2",
+        "/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/siglip1/held/k11=40/style__s4.npz": "f0670e95f10378a46bea64fde57ee7dbc8ebe1b409e8847acd95d02a7a18f016",
+        "/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/siglip1/held/k11=40/style__s4.json": "2c23d13a0fb0fb26970e60cf10893a4d5f35a962ddfaa3229097f5358b139b8f",
+        "/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/siglip1/held/k11=40/genre__s0.npz": "e88ec21af115720ff36513dc6fecd06a4bf1beb9b85fc6dccdbfb65a20be42e4",
+        "/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/siglip1/held/k11=40/genre__s0.json": "e8995d2c7a35bebf563a46a91743f33e50df8abc47ad795bb9b6e148ca5a5ef2",
+        "/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/siglip1/held/k11=40/genre__s1.npz": "e05fd8203a27f83b3a1a6227f8f7a86f6c02e3dfaac8d62a37a4fbb6a9090f12",
+        "/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/siglip1/held/k11=40/genre__s1.json": "ddaeffea185214a2244cb2ca9ca425b526631751326fac552e29834620ab4f73",
+        "/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/siglip1/held/k11=40/genre__s2.npz": "6d31b9f2082e52549be603fa52c04510f04ff48e451b20f5c053a61d561cbca5",
+        "/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/siglip1/held/k11=40/genre__s2.json": "7f1221d030fc0ac281d7a53c357fa504672a95ffcc3e04643c852b981c3b01db",
+        "/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/siglip1/held/k11=40/genre__s3.npz": "afe384fa7a56485f3e2dec6ea0f9aa20a132442edcfc0790e86ea013c8ca881b",
+        "/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/siglip1/held/k11=40/genre__s3.json": "a159bfdce426c863dea4857aed030a6c0b21b78868fdf81c1c50ab153ab51dba",
+        "/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/siglip1/held/k11=40/genre__s4.npz": "3437a513053b84942ec0248c8acb8da8526c8ee9fbcf283cada236a7e7831951",
+        "/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/siglip1/held/k11=40/genre__s4.json": "1571d961d6a4a91d94de4a2a1c46f0869ce5fe4c22c24fe5e34f2e17e6e45a1a"
+      }
+    }
+  },
+  "written": "2026-11-13 04:04"
+}

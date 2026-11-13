@@ -1,0 +1,2849 @@
+{
+  "gates": {
+    "i_a": {
+      "gate": "i_a",
+      "status": "pass",
+      "missing_parts": [],
+      "parts": {
+        "i_a_weights": {
+          "gate": "i_a_weights",
+          "status": "pass",
+          "tries": 1,
+          "details": {
+            "seed": 0,
+            "encoder": "siglip1",
+            "comparisons": {
+              "new_vs_r14": {
+                "equal": true,
+                "heads": {
+                  "emotion": {
+                    "sha256": [
+                      "cde9eb566650d87783a850a1349c70ec2a0ac8bc3844435eee66af5693b3884e",
+                      "cde9eb566650d87783a850a1349c70ec2a0ac8bc3844435eee66af5693b3884e"
+                    ],
+                    "bytes_equal": true,
+                    "tensors_equal": true,
+                    "best_epoch": [
+                      12,
+                      12
+                    ],
+                    "best_dev_loss": [
+                      6.246208131466828,
+                      6.246208131466828
+                    ],
+                    "recorded_sha_ok": [
+                      true,
+                      true
+                    ]
+                  },
+                  "style": {
+                    "sha256": [
+                      "99a44afe0a3b68995d9f162ae590ca567542946bbf2d1d8ac3addc4797b40ac3",
+                      "99a44afe0a3b68995d9f162ae590ca567542946bbf2d1d8ac3addc4797b40ac3"
+                    ],
+                    "bytes_equal": true,
+                    "tensors_equal": true,
+                    "best_epoch": [
+                      1,
+                      1
+                    ],
+                    "best_dev_loss": [
+                      6.615903340571214,
+                      6.615903340571214
+                    ],
+                    "recorded_sha_ok": [
+                      true,
+                      true
+                    ]
+                  },
+                  "genre": {
+                    "sha256": [
+                      "2efb9f5dae4d7f541f9f3363339558b4ec16d356ab31771e77250db7aa0f66ef",
+                      "2efb9f5dae4d7f541f9f3363339558b4ec16d356ab31771e77250db7aa0f66ef"
+                    ],
+                    "bytes_equal": true,
+                    "tensors_equal": true,
+                    "best_epoch": [
+                      15,
+                      15
+                    ],
+                    "best_dev_loss": [
+                      8.220256616155774,
+                      8.220256616155774
+                    ],
+                    "recorded_sha_ok": [
+                      true,
+                      true
+                    ]
+                  }
+                },
+                "runs": [
+                  "new",
+                  "r14"
+                ]
+              },
+              "r14_vs_r14_b": {
+                "equal": true,
+                "heads": {
+                  "emotion": {
+                    "sha256": [
+                      "cde9eb566650d87783a850a1349c70ec2a0ac8bc3844435eee66af5693b3884e",
+                      "cde9eb566650d87783a850a1349c70ec2a0ac8bc3844435eee66af5693b3884e"
+                    ],
+                    "bytes_equal": true,
+                    "tensors_equal": true,
+                    "best_epoch": [
+                      12,
+                      12
+                    ],
+                    "best_dev_loss": [
+                      6.246208131466828,
+                      6.246208131466828
+                    ],
+                    "recorded_sha_ok": [
+                      true,
+                      true
+                    ]
+                  },
+                  "style": {
+                    "sha256": [
+                      "99a44afe0a3b68995d9f162ae590ca567542946bbf2d1d8ac3addc4797b40ac3",
+                      "99a44afe0a3b68995d9f162ae590ca567542946bbf2d1d8ac3addc4797b40ac3"
+                    ],
+                    "bytes_equal": true,
+                    "tensors_equal": true,
+                    "best_epoch": [
+                      1,
+                      1
+                    ],
+                    "best_dev_loss": [
+                      6.615903340571214,
+                      6.615903340571214
+                    ],
+                    "recorded_sha_ok": [
+                      true,
+                      true
+                    ]
+                  },
+                  "genre": {
+                    "sha256": [
+                      "2efb9f5dae4d7f541f9f3363339558b4ec16d356ab31771e77250db7aa0f66ef",
+                      "2efb9f5dae4d7f541f9f3363339558b4ec16d356ab31771e77250db7aa0f66ef"
+                    ],
+                    "bytes_equal": true,
+                    "tensors_equal": true,
+                    "best_epoch": [
+                      15,
+                      15
+                    ],
+                    "best_dev_loss": [
+                      8.220256616155774,
+                      8.220256616155774
+                    ],
+                    "recorded_sha_ok": [
+                      true,
+                      true
+                    ]
+                  }
+                },
+                "runs": [
+                  "r14",
+                  "r14_b"
+                ]
+              }
+            },
+            "run_records": {
+              "r14": {
+                "device": "cuda",
+                "host": "cbd437f8ce92",
+                "seconds": 373.94088269909844,
+                "best_epoch": {
+                  "emotion": 12,
+                  "style": 1,
+                  "genre": 15
+                },
+                "code_commit": "bdabdd28972f79438f3abceab241b05d346fb6a3",
+                "code_dirty": false,
+                "r29_code_sha256": null,
+                "cap_source": null
+              },
+              "r14_b": {
+                "device": "cuda",
+                "host": "cbd437f8ce92",
+                "seconds": 329.83939874591306,
+                "best_epoch": {
+                  "emotion": 12,
+                  "style": 1,
+                  "genre": 15
+                },
+                "code_commit": "bdabdd28972f79438f3abceab241b05d346fb6a3",
+                "code_dirty": false,
+                "r29_code_sha256": null,
+                "cap_source": null
+              },
+              "new": {
+                "device": "cuda",
+                "host": "cbd437f8ce92",
+                "seconds": 418.61981100030243,
+                "best_epoch": {
+                  "emotion": 12,
+                  "style": 1,
+                  "genre": 15
+                },
+                "code_commit": "bdabdd28972f79438f3abceab241b05d346fb6a3",
+                "code_dirty": false,
+                "r29_code_sha256": {
+                  "r29_trainer.py": "0e61deda49c649f79c2a556682cf4d5491f465a21c8b3b87e198e509b6f4b372",
+                  "r29_model.py": "00b96f402097725c45577618486c4b31f7c7af8a9eb818d6d56b59a49d06e2ab",
+                  "r29_captions.py": "51b2d86eba6f9f0252d1b267dac2dd0cbac6a4e5649bba033c1e367654178db2"
+                },
+                "cap_source": "qwen"
+              }
+            },
+            "note": "status is weights equality only; the CUDA fallback verdict is ticket 05's"
+          },
+          "written": "2026-11-13 00:20"
+        },
+        "i_a": {
+          "gate": "i_a",
+          "status": "pass",
+          "tries": 1,
+          "details": {
+            "cuda_fallback": false,
+            "comparisons": {
+              "new_vs_r14": {
+                "equal": true,
+                "heads": {
+                  "emotion": {
+                    "sha256": [
+                      "cde9eb566650d87783a850a1349c70ec2a0ac8bc3844435eee66af5693b3884e",
+                      "cde9eb566650d87783a850a1349c70ec2a0ac8bc3844435eee66af5693b3884e"
+                    ],
+                    "bytes_equal": true,
+                    "tensors_equal": true,
+                    "best_epoch": [
+                      12,
+                      12
+                    ],
+                    "best_dev_loss": [
+                      6.246208131466828,
+                      6.246208131466828
+                    ],
+                    "recorded_sha_ok": [
+                      true,
+                      true
+                    ]
+                  },
+                  "style": {
+                    "sha256": [
+                      "99a44afe0a3b68995d9f162ae590ca567542946bbf2d1d8ac3addc4797b40ac3",
+                      "99a44afe0a3b68995d9f162ae590ca567542946bbf2d1d8ac3addc4797b40ac3"
+                    ],
+                    "bytes_equal": true,
+                    "tensors_equal": true,
+                    "best_epoch": [
+                      1,
+                      1
+                    ],
+                    "best_dev_loss": [
+                      6.615903340571214,
+                      6.615903340571214
+                    ],
+                    "recorded_sha_ok": [
+                      true,
+                      true
+                    ]
+                  },
+                  "genre": {
+                    "sha256": [
+                      "2efb9f5dae4d7f541f9f3363339558b4ec16d356ab31771e77250db7aa0f66ef",
+                      "2efb9f5dae4d7f541f9f3363339558b4ec16d356ab31771e77250db7aa0f66ef"
+                    ],
+                    "bytes_equal": true,
+                    "tensors_equal": true,
+                    "best_epoch": [
+                      15,
+                      15
+                    ],
+                    "best_dev_loss": [
+                      8.220256616155774,
+                      8.220256616155774
+                    ],
+                    "recorded_sha_ok": [
+                      true,
+                      true
+                    ]
+                  }
+                },
+                "runs": [
+                  "new",
+                  "r14"
+                ]
+              },
+              "r14_vs_r14_b": {
+                "equal": true,
+                "heads": {
+                  "emotion": {
+                    "sha256": [
+                      "cde9eb566650d87783a850a1349c70ec2a0ac8bc3844435eee66af5693b3884e",
+                      "cde9eb566650d87783a850a1349c70ec2a0ac8bc3844435eee66af5693b3884e"
+                    ],
+                    "bytes_equal": true,
+                    "tensors_equal": true,
+                    "best_epoch": [
+                      12,
+                      12
+                    ],
+                    "best_dev_loss": [
+                      6.246208131466828,
+                      6.246208131466828
+                    ],
+                    "recorded_sha_ok": [
+                      true,
+                      true
+                    ]
+                  },
+                  "style": {
+                    "sha256": [
+                      "99a44afe0a3b68995d9f162ae590ca567542946bbf2d1d8ac3addc4797b40ac3",
+                      "99a44afe0a3b68995d9f162ae590ca567542946bbf2d1d8ac3addc4797b40ac3"
+                    ],
+                    "bytes_equal": true,
+                    "tensors_equal": true,
+                    "best_epoch": [
+                      1,
+                      1
+                    ],
+                    "best_dev_loss": [
+                      6.615903340571214,
+                      6.615903340571214
+                    ],
+                    "recorded_sha_ok": [
+                      true,
+                      true
+                    ]
+                  },
+                  "genre": {
+                    "sha256": [
+                      "2efb9f5dae4d7f541f9f3363339558b4ec16d356ab31771e77250db7aa0f66ef",
+                      "2efb9f5dae4d7f541f9f3363339558b4ec16d356ab31771e77250db7aa0f66ef"
+                    ],
+                    "bytes_equal": true,
+                    "tensors_equal": true,
+                    "best_epoch": [
+                      15,
+                      15
+                    ],
+                    "best_dev_loss": [
+                      8.220256616155774,
+                      8.220256616155774
+                    ],
+                    "recorded_sha_ok": [
+                      true,
+                      true
+                    ]
+                  }
+                },
+                "runs": [
+                  "r14",
+                  "r14_b"
+                ]
+              }
+            }
+          },
+          "written": "2026-11-13 00:36"
+        }
+      },
+      "tries": 1
+    },
+    "i_c": {
+      "gate": "i_c",
+      "status": "pass",
+      "missing_parts": [],
+      "parts": {
+        "i_c": {
+          "gate": "i_c",
+          "status": "pass",
+          "tries": 1,
+          "details": {
+            "seeds": [
+              0
+            ],
+            "arm": "k11=40",
+            "devices": {
+              "val": "cuda",
+              "held": "cpu"
+            },
+            "stored_root": "/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/siglip1",
+            "out_root": "/data/SSD2/cosir_r29/20261112_siglip_only/gate_i_c/try1",
+            "r29_code_sha256": {
+              "r29_trainer.py": "0e61deda49c649f79c2a556682cf4d5491f465a21c8b3b87e198e509b6f4b372",
+              "r29_model.py": "00b96f402097725c45577618486c4b31f7c7af8a9eb818d6d56b59a49d06e2ab",
+              "r29_captions.py": "51b2d86eba6f9f0252d1b267dac2dd0cbac6a4e5649bba033c1e367654178db2"
+            },
+            "vs_stored": {
+              "equal": true,
+              "items": {
+                "val/emotion__s0/img": {
+                  "equal": true,
+                  "differing_values": 0,
+                  "shape": [
+                    6152,
+                    2048
+                  ],
+                  "max_abs_diff": 0.0
+                },
+                "val/emotion__s0/cap": {
+                  "equal": true,
+                  "differing_values": 0,
+                  "shape": [
+                    6152,
+                    2048
+                  ],
+                  "max_abs_diff": 0.0
+                },
+                "held/emotion__s0/img": {
+                  "equal": true,
+                  "differing_values": 0,
+                  "shape": [
+                    12281,
+                    2048
+                  ],
+                  "max_abs_diff": 0.0
+                },
+                "val/style__s0/img": {
+                  "equal": true,
+                  "differing_values": 0,
+                  "shape": [
+                    6152,
+                    2048
+                  ],
+                  "max_abs_diff": 0.0
+                },
+                "val/style__s0/cap": {
+                  "equal": true,
+                  "differing_values": 0,
+                  "shape": [
+                    6152,
+                    2048
+                  ],
+                  "max_abs_diff": 0.0
+                },
+                "held/style__s0/img": {
+                  "equal": true,
+                  "differing_values": 0,
+                  "shape": [
+                    12281,
+                    2048
+                  ],
+                  "max_abs_diff": 0.0
+                },
+                "val/genre__s0/img": {
+                  "equal": true,
+                  "differing_values": 0,
+                  "shape": [
+                    6152,
+                    2048
+                  ],
+                  "max_abs_diff": 0.0
+                },
+                "val/genre__s0/cap": {
+                  "equal": true,
+                  "differing_values": 0,
+                  "shape": [
+                    6152,
+                    2048
+                  ],
+                  "max_abs_diff": 0.0
+                },
+                "held/genre__s0/img": {
+                  "equal": true,
+                  "differing_values": 0,
+                  "shape": [
+                    12281,
+                    2048
+                  ],
+                  "max_abs_diff": 0.0
+                }
+              }
+            },
+            "vs_r14_export_code": {
+              "equal": true,
+              "items": {
+                "val/emotion__s0/img": {
+                  "equal": true,
+                  "differing_values": 0,
+                  "shape": [
+                    6152,
+                    2048
+                  ],
+                  "max_abs_diff": 0.0
+                },
+                "val/emotion__s0/cap": {
+                  "equal": true,
+                  "differing_values": 0,
+                  "shape": [
+                    6152,
+                    2048
+                  ],
+                  "max_abs_diff": 0.0
+                },
+                "held/emotion__s0/img": {
+                  "equal": true,
+                  "differing_values": 0,
+                  "shape": [
+                    12281,
+                    2048
+                  ],
+                  "max_abs_diff": 0.0
+                },
+                "val/style__s0/img": {
+                  "equal": true,
+                  "differing_values": 0,
+                  "shape": [
+                    6152,
+                    2048
+                  ],
+                  "max_abs_diff": 0.0
+                },
+                "val/style__s0/cap": {
+                  "equal": true,
+                  "differing_values": 0,
+                  "shape": [
+                    6152,
+                    2048
+                  ],
+                  "max_abs_diff": 0.0
+                },
+                "held/style__s0/img": {
+                  "equal": true,
+                  "differing_values": 0,
+                  "shape": [
+                    12281,
+                    2048
+                  ],
+                  "max_abs_diff": 0.0
+                },
+                "val/genre__s0/img": {
+                  "equal": true,
+                  "differing_values": 0,
+                  "shape": [
+                    6152,
+                    2048
+                  ],
+                  "max_abs_diff": 0.0
+                },
+                "val/genre__s0/cap": {
+                  "equal": true,
+                  "differing_values": 0,
+                  "shape": [
+                    6152,
+                    2048
+                  ],
+                  "max_abs_diff": 0.0
+                },
+                "held/genre__s0/img": {
+                  "equal": true,
+                  "differing_values": 0,
+                  "shape": [
+                    12281,
+                    2048
+                  ],
+                  "max_abs_diff": 0.0
+                }
+              }
+            }
+          },
+          "written": "2026-11-12 23:43"
+        },
+        "i_c_valpick": {
+          "gate": "i_c_valpick",
+          "status": "pass",
+          "tries": 3,
+          "details": {
+            "seed": 0,
+            "tolerance": 1e-06,
+            "max_abs_diff": 0.0,
+            "abs_diff": {
+              "ami/emotion": 0.0,
+              "ami/style": 0.0,
+              "ami/genre": 0.0,
+              "map/emotion": 0.0,
+              "map/style": 0.0,
+              "map/genre": 0.0
+            },
+            "cells": {
+              "ami/emotion": [
+                0.10263630134046597
+              ],
+              "map/emotion": [
+                0.26761598949318854
+              ],
+              "ami/style": [
+                0.4629750113112212
+              ],
+              "map/style": [
+                0.34909876906169934
+              ],
+              "ami/genre": [
+                0.5250533739544693
+              ],
+              "map/genre": [
+                0.6019655432369467
+              ]
+            },
+            "expected_seed0": {
+              "ami/emotion": 0.10263630134046597,
+              "ami/style": 0.4629750113112212,
+              "ami/genre": 0.5250533739544693,
+              "map/emotion": 0.26761598949318854,
+              "map/style": 0.34909876906169934,
+              "map/genre": 0.6019655432369467
+            },
+            "root": "/data/SSD2/cosir_r29/20261112_siglip_only/gate_i_c/try1",
+            "k0": {
+              "image": {
+                "m": 0.38629170813482466,
+                "r": 0.002978860218950219,
+                "best": 0.38786969161861545,
+                "lower": 0.38331284791587444,
+                "per_seed": [
+                  0.38489083139966523,
+                  0.3857966619005935,
+                  0.38597418779355475,
+                  0.3869271679616945,
+                  0.38786969161861545
+                ],
+                "cells": {
+                  "ami/emotion": [
+                    0.10263630134046597,
+                    0.10615163335189241,
+                    0.10509076257836336,
+                    0.1055985915020964,
+                    0.10235622934632149
+                  ],
+                  "map/emotion": [
+                    0.26761598949318854,
+                    0.2683000611405711,
+                    0.2680423713433565,
+                    0.2680554179051421,
+                    0.2661357005768298
+                  ],
+                  "ami/style": [
+                    0.4629750113112212,
+                    0.4530711619061287,
+                    0.45535580107738577,
+                    0.45377406333438874,
+                    0.46055360064584133
+                  ],
+                  "map/style": [
+                    0.34909876906169934,
+                    0.344844907334516,
+                    0.34441636592035857,
+                    0.34506114637838653,
+                    0.34748178187781387
+                  ],
+                  "ami/genre": [
+                    0.5250533739544693,
+                    0.5383713546244834,
+                    0.5377103585202241,
+                    0.5430057727900438,
+                    0.547162661277083
+                  ],
+                  "map/genre": [
+                    0.6019655432369467,
+                    0.6040408530459696,
+                    0.6052294673216402,
+                    0.6060680158601094,
+                    0.6035281759878033
+                  ]
+                }
+              },
+              "text": {
+                "m": 0.259351288425063,
+                "r": 0.0020107135605435533,
+                "best": 0.2606346548204899,
+                "lower": 0.25734057486451944,
+                "per_seed": [
+                  0.25957007345690253,
+                  0.2587331093021101,
+                  0.2606346548204899,
+                  0.2591946632858662,
+                  0.25862394125994637
+                ],
+                "cells": {
+                  "emotion/t2i": [
+                    0.26126904179775656,
+                    0.2627507370037354,
+                    0.26209099917860457,
+                    0.260940889085552,
+                    0.2632405889078388
+                  ],
+                  "emotion/i2t": [
+                    0.26095817660624027,
+                    0.2634017512340629,
+                    0.26447114308627495,
+                    0.26389005156133993,
+                    0.2635406276740386
+                  ],
+                  "emotion/t2t": [
+                    0.3363040558869889,
+                    0.332053842138827,
+                    0.3338706540631929,
+                    0.33107274667646236,
+                    0.3347159465211068
+                  ],
+                  "style/t2i": [
+                    0.1652546817753159,
+                    0.16426999062708736,
+                    0.16404193848446644,
+                    0.16531482691656166,
+                    0.16969457689746045
+                  ],
+                  "style/i2t": [
+                    0.13519630618597034,
+                    0.13610005051322083,
+                    0.13465059200850235,
+                    0.1357793317924094,
+                    0.13661212550644383
+                  ],
+                  "style/t2t": [
+                    0.10359280485806435,
+                    0.10378184640737269,
+                    0.10202183984942005,
+                    0.10373658258696655,
+                    0.10357300581048076
+                  ],
+                  "genre/t2i": [
+                    0.41808112993621444,
+                    0.41289193596175044,
+                    0.41933579787464964,
+                    0.4148126865356842,
+                    0.40794987044936576
+                  ],
+                  "genre/i2t": [
+                    0.38292123353251467,
+                    0.3824751793940161,
+                    0.38649052160476605,
+                    0.38423545968253164,
+                    0.3811164595194221
+                  ],
+                  "genre/t2t": [
+                    0.27255323053305675,
+                    0.270872650438918,
+                    0.27873840723453186,
+                    0.2729693947352884,
+                    0.2671722700533607
+                  ]
+                }
+              }
+            },
+            "image": {
+              "cells": {
+                "ami/emotion": [
+                  0.10263630134046597
+                ],
+                "map/emotion": [
+                  0.26761598949318854
+                ],
+                "ami/style": [
+                  0.4629750113112212
+                ],
+                "map/style": [
+                  0.34909876906169934
+                ],
+                "ami/genre": [
+                  0.5250533739544693
+                ],
+                "map/genre": [
+                  0.6019655432369467
+                ]
+              },
+              "per_seed": [
+                0.38489083139966523
+              ],
+              "mean": 0.38489083139966523,
+              "names_sha256": "1430d4b56e4a76dbe3e1c4d699e1db5c92967c5f2048b74b6cbcdf1589809e2e",
+              "files": {
+                "emotion/s0": "/data/SSD2/cosir_r29/20261112_siglip_only/gate_i_c/try1/val/k11=40/emotion__s0.npz",
+                "style/s0": "/data/SSD2/cosir_r29/20261112_siglip_only/gate_i_c/try1/val/k11=40/style__s0.npz",
+                "genre/s0": "/data/SSD2/cosir_r29/20261112_siglip_only/gate_i_c/try1/val/k11=40/genre__s0.npz"
+              }
+            }
+          },
+          "written": "2026-11-13 00:36"
+        }
+      },
+      "tries": 3
+    },
+    "ii": {
+      "gate": "ii",
+      "status": "pass",
+      "missing_parts": [],
+      "parts": {
+        "ii": {
+          "gate": "ii",
+          "status": "pass",
+          "tries": 1,
+          "details": {
+            "n_values": 135,
+            "tolerance": 1e-06,
+            "max_abs_diff_per_seed_map": 0.0,
+            "mismatched": [],
+            "picks": {
+              "emotion/t2i": {
+                "mine": "center_k10",
+                "r28": "center_k10"
+              },
+              "emotion/i2t": {
+                "mine": "center_k10",
+                "r28": "center_k10"
+              },
+              "emotion/t2t": {
+                "mine": "center_k10",
+                "r28": "center_k10"
+              },
+              "style/t2i": {
+                "mine": "center_k10",
+                "r28": "center_k10"
+              },
+              "style/i2t": {
+                "mine": "center_k10",
+                "r28": "center_k10"
+              },
+              "style/t2t": {
+                "mine": "center_k10",
+                "r28": "center_k10"
+              },
+              "genre/t2i": {
+                "mine": "center_k10",
+                "r28": "center_k10"
+              },
+              "genre/i2t": {
+                "mine": "center",
+                "r28": "center"
+              },
+              "genre/t2t": {
+                "mine": "center_k10",
+                "r28": "center_k10"
+              }
+            },
+            "picks_equal": true,
+            "score_device_note": "r28 scored on cuda; this scoring ran where `score` ran",
+            "replay": {
+              "device": "cpu",
+              "n_files": 15,
+              "min_share_equal": 0.9980177463883696,
+              "all_one_step": true,
+              "rule": "share equal in float16 >= 0.995, every other element one float16 step from the stored value",
+              "passed": true
+            }
+          },
+          "written": "2026-11-12 23:48"
+        }
+      },
+      "tries": 1
+    },
+    "iii": {
+      "gate": "iii",
+      "status": "pass",
+      "missing_parts": [],
+      "parts": {
+        "iii": {
+          "gate": "iii",
+          "status": "pass",
+          "tries": 1,
+          "details": {
+            "checks": {
+              "same_ids": true,
+              "qwen_ids_join_with_painting": true,
+              "painting_counts_equal": true,
+              "train_joins": true,
+              "val_joins": true,
+              "held_joins": true,
+              "roles_disjoint_and_cover_store": true,
+              "annotation_painting_equals_store": true,
+              "role_sizes_equal_ct_counts": true,
+              "train_val_painting_means_ok": true
+            },
+            "n_captions": 308723,
+            "n_paintings": 61402,
+            "roles": {
+              "train": 216107,
+              "val": 30872,
+              "held": 61744
+            },
+            "source": "siglip1",
+            "store_sha256": "a3c43025036c9150171c5891b870493032dfbd1f24f1d964caa4a85b0ea6a81b"
+          },
+          "written": "2026-11-12 22:52"
+        }
+      },
+      "tries": 1
+    },
+    "iv": {
+      "gate": "iv",
+      "status": "fail",
+      "missing_parts": [
+        "iv_hash"
+      ],
+      "parts": {
+        "iv_store": {
+          "gate": "iv_store",
+          "status": "pass",
+          "tries": 1,
+          "details": {
+            "store": {
+              "ok": true,
+              "n_nonfinite": 0,
+              "n_bad_norm": 0,
+              "max_norm_dev": 0.0002617835998535156,
+              "n_texts": 308723,
+              "n_truncated": 0,
+              "index_sha256": "1c97e1150eef8acd1e1af5f439f58cbcee833fdbcdf3366c93e4c155bd62eaac"
+            },
+            "replay": {
+              "n_texts": 100,
+              "min_cosine": 1.0,
+              "threshold": 0.999
+            },
+            "prefixed_replay": {
+              "n_texts": 100,
+              "min_cosine": 1.0,
+              "threshold": 0.999
+            }
+          },
+          "written": "2026-11-12 23:56"
+        }
+      },
+      "tries": 1
+    },
+    "v_image": {
+      "gate": "v_image",
+      "status": "pass",
+      "missing_parts": [],
+      "parts": {
+        "v_image": {
+          "details": {
+            "aspects": [
+              "emotion",
+              "style",
+              "genre"
+            ],
+            "cells": [
+              {
+                "diffs": {
+                  "comparator_value": 0.0,
+                  "d": 0.0,
+                  "hi": 0.0,
+                  "lo": 0.0,
+                  "r": 0.0,
+                  "value": 0.0
+                },
+                "id": "artelingo/siglip1/k11=40/emotion/ami9/plain",
+                "max_abs_diff": 0.0,
+                "ok": true,
+                "outcome": "WIN",
+                "record": "r17 SC1/artelingo/siglip1/emotion/ami/9/plain",
+                "recorded_outcome": "WIN"
+              },
+              {
+                "diffs": {
+                  "comparator_value": 0.0,
+                  "d": 0.0,
+                  "hi": 0.0,
+                  "lo": 0.0,
+                  "r": 0.0,
+                  "value": 0.0
+                },
+                "id": "artelingo/siglip1/k11=40/emotion/ami9/teacher",
+                "max_abs_diff": 0.0,
+                "ok": true,
+                "outcome": "WIN",
+                "record": "r17 SC3/artelingo/siglip1/emotion/ami/9/teacher",
+                "recorded_outcome": "WIN"
+              },
+              {
+                "diffs": {
+                  "comparator_value": 0.0,
+                  "d": 0.0,
+                  "hi": 0.0,
+                  "lo": 0.0,
+                  "r": 0.0,
+                  "value": 0.0
+                },
+                "id": "artelingo/siglip1/k11=40/style/ami27/plain",
+                "max_abs_diff": 0.0,
+                "ok": true,
+                "outcome": "WIN",
+                "record": "r17 SC1/artelingo/siglip1/style/ami/27/plain",
+                "recorded_outcome": "WIN"
+              },
+              {
+                "diffs": {
+                  "comparator_value": 0.0,
+                  "d": 0.0,
+                  "hi": 0.0,
+                  "lo": 0.0,
+                  "r": 0.0,
+                  "value": 0.0
+                },
+                "id": "artelingo/siglip1/k11=40/style/ami27/teacher",
+                "max_abs_diff": 0.0,
+                "ok": true,
+                "outcome": "WIN",
+                "record": "r17 SC3/artelingo/siglip1/style/ami/27/teacher",
+                "recorded_outcome": "WIN"
+              },
+              {
+                "diffs": {
+                  "comparator_value": 0.0,
+                  "d": 0.0,
+                  "hi": 0.0,
+                  "lo": 0.0,
+                  "r": 0.0,
+                  "value": 0.0
+                },
+                "id": "artelingo/siglip1/k11=40/genre/ami10/plain",
+                "max_abs_diff": 0.0,
+                "ok": true,
+                "outcome": "WIN",
+                "record": "r17 SC1/artelingo/siglip1/genre/ami/10/plain",
+                "recorded_outcome": "WIN"
+              },
+              {
+                "diffs": {
+                  "comparator_value": 0.0,
+                  "d": 0.0,
+                  "hi": 0.0,
+                  "lo": 0.0,
+                  "r": 0.0,
+                  "value": 0.0
+                },
+                "id": "artelingo/siglip1/k11=40/genre/ami10/teacher",
+                "max_abs_diff": 0.0,
+                "ok": true,
+                "outcome": "WIN",
+                "record": "r17 SC3/artelingo/siglip1/genre/ami/10/teacher",
+                "recorded_outcome": "WIN"
+              },
+              {
+                "diffs": {
+                  "comparator_value": 0.0,
+                  "d": 0.0,
+                  "hi": 0.0,
+                  "lo": 0.0,
+                  "r": 0.0,
+                  "value": 0.0
+                },
+                "id": "artelingo/siglip1/k11=40/emotion/map/plain",
+                "max_abs_diff": 0.0,
+                "ok": true,
+                "outcome": "WIN",
+                "record": "r17 SC7/artelingo/siglip1/emotion/map/-/plain",
+                "recorded_outcome": "WIN"
+              },
+              {
+                "diffs": {
+                  "comparator_value": 0.0,
+                  "d": 0.0,
+                  "hi": 0.0,
+                  "lo": 0.0,
+                  "r": 0.0,
+                  "value": 0.0
+                },
+                "id": "artelingo/siglip1/k11=40/style/map/plain",
+                "max_abs_diff": 0.0,
+                "ok": true,
+                "outcome": "BELOW",
+                "record": "r17 SC7/artelingo/siglip1/style/map/-/plain",
+                "recorded_outcome": "BELOW"
+              },
+              {
+                "diffs": {
+                  "comparator_value": 0.0,
+                  "d": 0.0,
+                  "hi": 0.0,
+                  "lo": 0.0,
+                  "r": 0.0,
+                  "value": 0.0
+                },
+                "id": "artelingo/siglip1/k11=40/genre/map/plain",
+                "max_abs_diff": 0.0,
+                "ok": true,
+                "outcome": "WIN",
+                "record": "r17 SC7/artelingo/siglip1/genre/map/-/plain",
+                "recorded_outcome": "WIN"
+              },
+              {
+                "diffs": {
+                  "comparator_value": 0.0,
+                  "d": 0.0,
+                  "hi": 0.0,
+                  "lo": 0.0,
+                  "r": 0.0,
+                  "value": 0.0
+                },
+                "id": "artelingo/siglip1/k11=40/emotion/map/teacher",
+                "max_abs_diff": 0.0,
+                "ok": true,
+                "outcome": "LEVEL",
+                "record": "r14 SC6 siglip1/emotion",
+                "recorded_outcome": "LEVEL"
+              },
+              {
+                "diffs": {
+                  "comparator_value": 0.0,
+                  "d": 0.0,
+                  "hi": 0.0,
+                  "lo": 0.0,
+                  "r": 0.0,
+                  "value": 0.0
+                },
+                "id": "artelingo/siglip1/k11=40/style/map/teacher",
+                "max_abs_diff": 0.0,
+                "ok": true,
+                "outcome": "WIN",
+                "record": "r14 SC6 siglip1/style",
+                "recorded_outcome": "WIN"
+              },
+              {
+                "diffs": {
+                  "comparator_value": 0.0,
+                  "d": 0.0,
+                  "hi": 0.0,
+                  "lo": 0.0,
+                  "r": 0.0,
+                  "value": 0.0
+                },
+                "id": "artelingo/siglip1/k11=40/genre/map/teacher",
+                "max_abs_diff": 0.0,
+                "ok": true,
+                "outcome": "WIN",
+                "record": "r14 SC6 siglip1/genre",
+                "recorded_outcome": "WIN"
+              }
+            ],
+            "draws": {
+              "ami": 2000,
+              "map": 10000
+            },
+            "intervals_checked": true,
+            "max_abs_diff": 0.0,
+            "picks": [
+              {
+                "diff": 0.0,
+                "name": "ami per_seed emotion s0",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "map R0 per_seed emotion s0",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "ami per_seed emotion s1",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "map R0 per_seed emotion s1",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "ami per_seed emotion s2",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "map R0 per_seed emotion s2",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "ami per_seed emotion s3",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "map R0 per_seed emotion s3",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "ami per_seed emotion s4",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "map R0 per_seed emotion s4",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "ami r emotion",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "map r emotion",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "untold crossfit map emotion",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "ami per_seed style s0",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "map R0 per_seed style s0",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "ami per_seed style s1",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "map R0 per_seed style s1",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "ami per_seed style s2",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "map R0 per_seed style s2",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "ami per_seed style s3",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "map R0 per_seed style s3",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "ami per_seed style s4",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "map R0 per_seed style s4",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "ami r style",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "map r style",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "untold crossfit map style",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "ami per_seed genre s0",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "map R0 per_seed genre s0",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "ami per_seed genre s1",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "map R0 per_seed genre s1",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "ami per_seed genre s2",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "map R0 per_seed genre s2",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "ami per_seed genre s3",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "map R0 per_seed genre s3",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "ami per_seed genre s4",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "map R0 per_seed genre s4",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "ami r genre",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "map r genre",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "untold crossfit map genre",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "untold score",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "untold kept",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table rows",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table center+k0 map emotion",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table center+k0 map style",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table center+k0 map genre",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table center+k0 score",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table center+k0 kept",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table center+k1 map emotion",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table center+k1 map style",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table center+k1 map genre",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table center+k1 score",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table center+k1 kept",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table center+k10 map emotion",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table center+k10 map style",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table center+k10 map genre",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table center+k10 score",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table center+k10 kept",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table center+k3 map emotion",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table center+k3 map style",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table center+k3 map genre",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table center+k3 score",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table center+k3 kept",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table center+k5 map emotion",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table center+k5 map style",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table center+k5 map genre",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table center+k5 score",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table center+k5 kept",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table none+k0 map emotion",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table none+k0 map style",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table none+k0 map genre",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table none+k0 score",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table none+k0 kept",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table none+k1 map emotion",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table none+k1 map style",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table none+k1 map genre",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table none+k1 score",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table none+k1 kept",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table none+k10 map emotion",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table none+k10 map style",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table none+k10 map genre",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table none+k10 score",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table none+k10 kept",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table none+k3 map emotion",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table none+k3 map style",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table none+k3 map genre",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table none+k3 score",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table none+k3 kept",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table none+k5 map emotion",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table none+k5 map style",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table none+k5 map genre",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table none+k5 score",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table none+k5 kept",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten1024+k0 map emotion",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten1024+k0 map style",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten1024+k0 map genre",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten1024+k0 score",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten1024+k0 kept",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten1024+k1 map emotion",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten1024+k1 map style",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten1024+k1 map genre",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten1024+k1 score",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten1024+k1 kept",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten1024+k10 map emotion",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten1024+k10 map style",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten1024+k10 map genre",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten1024+k10 score",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten1024+k10 kept",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten1024+k3 map emotion",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten1024+k3 map style",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten1024+k3 map genre",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten1024+k3 score",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten1024+k3 kept",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten1024+k5 map emotion",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten1024+k5 map style",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten1024+k5 map genre",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten1024+k5 score",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten1024+k5 kept",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten256+k0 map emotion",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten256+k0 map style",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten256+k0 map genre",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten256+k0 score",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten256+k0 kept",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten256+k1 map emotion",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten256+k1 map style",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten256+k1 map genre",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten256+k1 score",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten256+k1 kept",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten256+k10 map emotion",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten256+k10 map style",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten256+k10 map genre",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten256+k10 score",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten256+k10 kept",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten256+k3 map emotion",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten256+k3 map style",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten256+k3 map genre",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten256+k3 score",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten256+k3 kept",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten256+k5 map emotion",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten256+k5 map style",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten256+k5 map genre",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten256+k5 score",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten256+k5 kept",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten64+k0 map emotion",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten64+k0 map style",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten64+k0 map genre",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten64+k0 score",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten64+k0 kept",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten64+k1 map emotion",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten64+k1 map style",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten64+k1 map genre",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten64+k1 score",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten64+k1 kept",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten64+k10 map emotion",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten64+k10 map style",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten64+k10 map genre",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten64+k10 score",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten64+k10 kept",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten64+k3 map emotion",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten64+k3 map style",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten64+k3 map genre",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten64+k3 score",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten64+k3 kept",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten64+k5 map emotion",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten64+k5 map style",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten64+k5 map genre",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten64+k5 score",
+                "ok": true
+              },
+              {
+                "diff": 0.0,
+                "name": "cstar table whiten64+k5 kept",
+                "ok": true
+              }
+            ],
+            "picks_equal": {
+              "cstar": true,
+              "plain": true,
+              "teacher": true,
+              "untold": true
+            },
+            "recomputed_readouts": {
+              "cstar": "center+k10",
+              "plain": "center+k10",
+              "teacher": "center+k10",
+              "untold": "center+k10"
+            },
+            "seconds_cells": 715,
+            "seconds_validation": 1467,
+            "tol": 1e-09
+          },
+          "gate": "v_image",
+          "status": "pass",
+          "tries": 1,
+          "written": "2026-11-13 00:18"
+        }
+      },
+      "tries": 1
+    },
+    "v_text": {
+      "gate": "v_text",
+      "status": "pass",
+      "missing_parts": [],
+      "parts": {
+        "v_text": {
+          "gate": "v_text",
+          "status": "pass",
+          "tries": 2,
+          "details": {
+            "aspects": [
+              "emotion",
+              "style",
+              "genre"
+            ],
+            "draws": 10000,
+            "intervals_checked": true,
+            "tol": 1e-09,
+            "n_cells": 18,
+            "max_abs_diff": 5.551115123125783e-17,
+            "seconds": 25,
+            "cells": [
+              {
+                "id": "artelingo/qwen/r23_cstar/emotion/t2i/p1",
+                "comparator_row": "plain",
+                "max_abs_diff": 0.0,
+                "diffs": {
+                  "d": 0.0,
+                  "r": 0.0,
+                  "lo": 0.0,
+                  "hi": 0.0
+                },
+                "replayed": {
+                  "d": 0.04174279738258016,
+                  "r": 0.0022895336383411125,
+                  "lo": 0.04112096919995591,
+                  "hi": 0.04235307777799549
+                },
+                "recorded": {
+                  "d": 0.04174279738258016,
+                  "r": 0.0022895336383411125,
+                  "lo": 0.04112096919995591,
+                  "hi": 0.04235307777799549
+                },
+                "outcome": "WIN",
+                "recorded_outcome": "WIN",
+                "readouts_equal": true,
+                "ok": true,
+                "value_diff": 0.0,
+                "comparator_value_diff": 0.0,
+                "replayed_means": {
+                  "value": 0.26420160410910964,
+                  "comparator_value": 0.22245880672652948
+                },
+                "r28_means": {
+                  "value": 0.26420160410910964,
+                  "comparator_value": 0.22245880672652948
+                }
+              },
+              {
+                "id": "artelingo/qwen/r23_cstar/emotion/t2i/q1",
+                "comparator_row": "teacher",
+                "max_abs_diff": 0.0,
+                "diffs": {
+                  "d": 0.0,
+                  "r": 0.0,
+                  "lo": 0.0,
+                  "hi": 0.0
+                },
+                "replayed": {
+                  "d": -0.003613127041326325,
+                  "r": 0.0022895336383411125,
+                  "lo": -0.004178869316627075,
+                  "hi": -0.003053865175649451
+                },
+                "recorded": {
+                  "d": -0.003613127041326325,
+                  "r": 0.0022895336383411125,
+                  "lo": -0.004178869316627075,
+                  "hi": -0.003053865175649451
+                },
+                "outcome": "BELOW",
+                "recorded_outcome": "BELOW",
+                "readouts_equal": true,
+                "ok": true,
+                "value_diff": 0.0,
+                "comparator_value_diff": 0.0,
+                "replayed_means": {
+                  "value": 0.26420160410910964,
+                  "comparator_value": 0.26781473115043597
+                },
+                "r28_means": {
+                  "value": 0.26420160410910964,
+                  "comparator_value": 0.26781473115043597
+                }
+              },
+              {
+                "id": "artelingo/qwen/r23_cstar/emotion/i2t/p1",
+                "comparator_row": "plain",
+                "max_abs_diff": 0.0,
+                "diffs": {
+                  "d": 0.0,
+                  "r": 0.0,
+                  "lo": 0.0,
+                  "hi": 0.0
+                },
+                "replayed": {
+                  "d": 0.04726063791888746,
+                  "r": 0.0015835392804179338,
+                  "lo": 0.045427155185051526,
+                  "hi": 0.049055520498061014
+                },
+                "recorded": {
+                  "d": 0.04726063791888746,
+                  "r": 0.0015835392804179338,
+                  "lo": 0.045427155185051526,
+                  "hi": 0.049055520498061014
+                },
+                "outcome": "WIN",
+                "recorded_outcome": "WIN",
+                "readouts_equal": true,
+                "ok": true,
+                "value_diff": 5.551115123125783e-17,
+                "comparator_value_diff": 0.0,
+                "replayed_means": {
+                  "value": 0.28695315435756563,
+                  "comparator_value": 0.23969251643867817
+                },
+                "r28_means": {
+                  "value": 0.2869531543575656,
+                  "comparator_value": 0.23969251643867817
+                }
+              },
+              {
+                "id": "artelingo/qwen/r23_cstar/emotion/i2t/q1",
+                "comparator_row": "teacher",
+                "max_abs_diff": 0.0,
+                "diffs": {
+                  "d": 0.0,
+                  "r": 0.0,
+                  "lo": 0.0,
+                  "hi": 0.0
+                },
+                "replayed": {
+                  "d": -0.016579388557577512,
+                  "r": 0.0015835392804179338,
+                  "lo": -0.01866076319080343,
+                  "hi": -0.014545187580883561
+                },
+                "recorded": {
+                  "d": -0.016579388557577512,
+                  "r": 0.0015835392804179338,
+                  "lo": -0.01866076319080343,
+                  "hi": -0.014545187580883561
+                },
+                "outcome": "BELOW",
+                "recorded_outcome": "BELOW",
+                "readouts_equal": true,
+                "ok": true,
+                "value_diff": 5.551115123125783e-17,
+                "comparator_value_diff": 0.0,
+                "replayed_means": {
+                  "value": 0.28695315435756563,
+                  "comparator_value": 0.30353254291514314
+                },
+                "r28_means": {
+                  "value": 0.2869531543575656,
+                  "comparator_value": 0.30353254291514314
+                }
+              },
+              {
+                "id": "artelingo/qwen/r23_cstar/emotion/t2t/p1",
+                "comparator_row": "plain",
+                "max_abs_diff": 0.0,
+                "diffs": {
+                  "d": 0.0,
+                  "r": 0.0,
+                  "lo": 0.0,
+                  "hi": 0.0
+                },
+                "replayed": {
+                  "d": 0.09228835389809403,
+                  "r": 0.004365562632817288,
+                  "lo": 0.09036310434285437,
+                  "hi": 0.09391669925479557
+                },
+                "recorded": {
+                  "d": 0.09228835389809403,
+                  "r": 0.004365562632817288,
+                  "lo": 0.09036310434285437,
+                  "hi": 0.09391669925479557
+                },
+                "outcome": "WIN",
+                "recorded_outcome": "WIN",
+                "readouts_equal": true,
+                "ok": true,
+                "value_diff": 5.551115123125783e-17,
+                "comparator_value_diff": 0.0,
+                "replayed_means": {
+                  "value": 0.3457292531251721,
+                  "comparator_value": 0.2534408992270781
+                },
+                "r28_means": {
+                  "value": 0.34572925312517216,
+                  "comparator_value": 0.2534408992270781
+                }
+              },
+              {
+                "id": "artelingo/qwen/r23_cstar/emotion/t2t/q1",
+                "comparator_row": "teacher",
+                "max_abs_diff": 0.0,
+                "diffs": {
+                  "d": 0.0,
+                  "r": 0.0,
+                  "lo": 0.0,
+                  "hi": 0.0
+                },
+                "replayed": {
+                  "d": -0.03078036261780065,
+                  "r": 0.004365562632817288,
+                  "lo": -0.03252473089527328,
+                  "hi": -0.029437739248933083
+                },
+                "recorded": {
+                  "d": -0.03078036261780065,
+                  "r": 0.004365562632817288,
+                  "lo": -0.03252473089527328,
+                  "hi": -0.029437739248933083
+                },
+                "outcome": "BELOW",
+                "recorded_outcome": "BELOW",
+                "readouts_equal": true,
+                "ok": true,
+                "value_diff": 5.551115123125783e-17,
+                "comparator_value_diff": 0.0,
+                "replayed_means": {
+                  "value": 0.3457292531251721,
+                  "comparator_value": 0.37650961574297276
+                },
+                "r28_means": {
+                  "value": 0.34572925312517216,
+                  "comparator_value": 0.37650961574297276
+                }
+              },
+              {
+                "id": "artelingo/qwen/r23_cstar/style/t2i/p1",
+                "comparator_row": "plain",
+                "max_abs_diff": 0.0,
+                "diffs": {
+                  "d": 0.0,
+                  "r": 0.0,
+                  "lo": 0.0,
+                  "hi": 0.0
+                },
+                "replayed": {
+                  "d": 0.03812138582294147,
+                  "r": 0.0017992198418700367,
+                  "lo": 0.036835678331761865,
+                  "hi": 0.03941159758392712
+                },
+                "recorded": {
+                  "d": 0.03812138582294147,
+                  "r": 0.0017992198418700367,
+                  "lo": 0.036835678331761865,
+                  "hi": 0.03941159758392712
+                },
+                "outcome": "WIN",
+                "recorded_outcome": "WIN",
+                "readouts_equal": true,
+                "ok": true,
+                "value_diff": 2.7755575615628914e-17,
+                "comparator_value_diff": 0.0,
+                "replayed_means": {
+                  "value": 0.1724772992729384,
+                  "comparator_value": 0.13435591344999692
+                },
+                "r28_means": {
+                  "value": 0.17247729927293837,
+                  "comparator_value": 0.13435591344999692
+                }
+              },
+              {
+                "id": "artelingo/qwen/r23_cstar/style/t2i/q1",
+                "comparator_row": "teacher",
+                "max_abs_diff": 0.0,
+                "diffs": {
+                  "d": 0.0,
+                  "r": 0.0,
+                  "lo": 0.0,
+                  "hi": 0.0
+                },
+                "replayed": {
+                  "d": 0.015860434814094465,
+                  "r": 0.0017992198418700367,
+                  "lo": 0.014560047508619181,
+                  "hi": 0.017178585880520396
+                },
+                "recorded": {
+                  "d": 0.015860434814094465,
+                  "r": 0.0017992198418700367,
+                  "lo": 0.014560047508619181,
+                  "hi": 0.017178585880520396
+                },
+                "outcome": "WIN",
+                "recorded_outcome": "WIN",
+                "readouts_equal": true,
+                "ok": true,
+                "value_diff": 2.7755575615628914e-17,
+                "comparator_value_diff": 0.0,
+                "replayed_means": {
+                  "value": 0.1724772992729384,
+                  "comparator_value": 0.15661686445884393
+                },
+                "r28_means": {
+                  "value": 0.17247729927293837,
+                  "comparator_value": 0.15661686445884393
+                }
+              },
+              {
+                "id": "artelingo/qwen/r23_cstar/style/i2t/p1",
+                "comparator_row": "plain",
+                "max_abs_diff": 0.0,
+                "diffs": {
+                  "d": 0.0,
+                  "r": 0.0,
+                  "lo": 0.0,
+                  "hi": 0.0
+                },
+                "replayed": {
+                  "d": 0.02843587973079094,
+                  "r": 0.0010963156687638365,
+                  "lo": 0.02776822743462264,
+                  "hi": 0.029112621007165114
+                },
+                "recorded": {
+                  "d": 0.02843587973079094,
+                  "r": 0.0010963156687638365,
+                  "lo": 0.02776822743462264,
+                  "hi": 0.029112621007165114
+                },
+                "outcome": "WIN",
+                "recorded_outcome": "WIN",
+                "readouts_equal": true,
+                "ok": true,
+                "value_diff": 0.0,
+                "comparator_value_diff": 0.0,
+                "replayed_means": {
+                  "value": 0.13793638502585473,
+                  "comparator_value": 0.10950050529506379
+                },
+                "r28_means": {
+                  "value": 0.13793638502585473,
+                  "comparator_value": 0.10950050529506379
+                }
+              },
+              {
+                "id": "artelingo/qwen/r23_cstar/style/i2t/q1",
+                "comparator_row": "teacher",
+                "max_abs_diff": 0.0,
+                "diffs": {
+                  "d": 0.0,
+                  "r": 0.0,
+                  "lo": 0.0,
+                  "hi": 0.0
+                },
+                "replayed": {
+                  "d": 0.013684554173916022,
+                  "r": 0.0010963156687638365,
+                  "lo": 0.0131958572233398,
+                  "hi": 0.014175906442213544
+                },
+                "recorded": {
+                  "d": 0.013684554173916022,
+                  "r": 0.0010963156687638365,
+                  "lo": 0.0131958572233398,
+                  "hi": 0.014175906442213544
+                },
+                "outcome": "WIN",
+                "recorded_outcome": "WIN",
+                "readouts_equal": true,
+                "ok": true,
+                "value_diff": 0.0,
+                "comparator_value_diff": 0.0,
+                "replayed_means": {
+                  "value": 0.13793638502585473,
+                  "comparator_value": 0.12425183085193871
+                },
+                "r28_means": {
+                  "value": 0.13793638502585473,
+                  "comparator_value": 0.12425183085193871
+                }
+              },
+              {
+                "id": "artelingo/qwen/r23_cstar/style/t2t/p1",
+                "comparator_row": "plain",
+                "max_abs_diff": 0.0,
+                "diffs": {
+                  "d": 0.0,
+                  "r": 0.0,
+                  "lo": 0.0,
+                  "hi": 0.0
+                },
+                "replayed": {
+                  "d": 0.012721351521066154,
+                  "r": 0.001419255319081908,
+                  "lo": 0.012131017932520216,
+                  "hi": 0.013309586906516704
+                },
+                "recorded": {
+                  "d": 0.012721351521066154,
+                  "r": 0.001419255319081908,
+                  "lo": 0.012131017932520216,
+                  "hi": 0.013309586906516704
+                },
+                "outcome": "WIN",
+                "recorded_outcome": "WIN",
+                "readouts_equal": true,
+                "ok": true,
+                "value_diff": 1.3877787807814457e-17,
+                "comparator_value_diff": 0.0,
+                "replayed_means": {
+                  "value": 0.1090219124395355,
+                  "comparator_value": 0.09630056091846935
+                },
+                "r28_means": {
+                  "value": 0.10902191243953552,
+                  "comparator_value": 0.09630056091846935
+                }
+              },
+              {
+                "id": "artelingo/qwen/r23_cstar/style/t2t/q1",
+                "comparator_row": "teacher",
+                "max_abs_diff": 0.0,
+                "diffs": {
+                  "d": 0.0,
+                  "r": 0.0,
+                  "lo": 0.0,
+                  "hi": 0.0
+                },
+                "replayed": {
+                  "d": 0.011338145154076246,
+                  "r": 0.001419255319081908,
+                  "lo": 0.010738558404707145,
+                  "hi": 0.01194684392352729
+                },
+                "recorded": {
+                  "d": 0.011338145154076246,
+                  "r": 0.001419255319081908,
+                  "lo": 0.010738558404707145,
+                  "hi": 0.01194684392352729
+                },
+                "outcome": "WIN",
+                "recorded_outcome": "WIN",
+                "readouts_equal": true,
+                "ok": true,
+                "value_diff": 1.3877787807814457e-17,
+                "comparator_value_diff": 0.0,
+                "replayed_means": {
+                  "value": 0.1090219124395355,
+                  "comparator_value": 0.09768376728545926
+                },
+                "r28_means": {
+                  "value": 0.10902191243953552,
+                  "comparator_value": 0.09768376728545926
+                }
+              },
+              {
+                "id": "artelingo/qwen/r23_cstar/genre/t2i/p1",
+                "comparator_row": "plain",
+                "max_abs_diff": 0.0,
+                "diffs": {
+                  "d": 0.0,
+                  "r": 0.0,
+                  "lo": 0.0,
+                  "hi": 0.0
+                },
+                "replayed": {
+                  "d": 0.06572071880055058,
+                  "r": 0.0038192963196493346,
+                  "lo": 0.06375398839261683,
+                  "hi": 0.06758703655397844
+                },
+                "recorded": {
+                  "d": 0.06572071880055058,
+                  "r": 0.0038192963196493346,
+                  "lo": 0.06375398839261683,
+                  "hi": 0.06758703655397844
+                },
+                "outcome": "WIN",
+                "recorded_outcome": "WIN",
+                "readouts_equal": true,
+                "ok": true,
+                "value_diff": 5.551115123125783e-17,
+                "comparator_value_diff": 0.0,
+                "replayed_means": {
+                  "value": 0.4836447786811294,
+                  "comparator_value": 0.4179240598805788
+                },
+                "r28_means": {
+                  "value": 0.48364477868112943,
+                  "comparator_value": 0.4179240598805788
+                }
+              },
+              {
+                "id": "artelingo/qwen/r23_cstar/genre/t2i/q1",
+                "comparator_row": "teacher",
+                "max_abs_diff": 0.0,
+                "diffs": {
+                  "d": 0.0,
+                  "r": 0.0,
+                  "lo": 0.0,
+                  "hi": 0.0
+                },
+                "replayed": {
+                  "d": 0.04029052658664245,
+                  "r": 0.0038192963196493346,
+                  "lo": 0.03793944317110654,
+                  "hi": 0.04259492827494993
+                },
+                "recorded": {
+                  "d": 0.04029052658664245,
+                  "r": 0.0038192963196493346,
+                  "lo": 0.03793944317110654,
+                  "hi": 0.04259492827494993
+                },
+                "outcome": "WIN",
+                "recorded_outcome": "WIN",
+                "readouts_equal": true,
+                "ok": true,
+                "value_diff": 5.551115123125783e-17,
+                "comparator_value_diff": 0.0,
+                "replayed_means": {
+                  "value": 0.4836447786811294,
+                  "comparator_value": 0.4433542520944869
+                },
+                "r28_means": {
+                  "value": 0.48364477868112943,
+                  "comparator_value": 0.4433542520944869
+                }
+              },
+              {
+                "id": "artelingo/qwen/r23_cstar/genre/i2t/p1",
+                "comparator_row": "plain",
+                "max_abs_diff": 0.0,
+                "diffs": {
+                  "d": 0.0,
+                  "r": 0.0,
+                  "lo": 0.0,
+                  "hi": 0.0
+                },
+                "replayed": {
+                  "d": 0.05951034175276049,
+                  "r": 0.006283789432247111,
+                  "lo": 0.056954849346860424,
+                  "hi": 0.06219684620400492
+                },
+                "recorded": {
+                  "d": 0.05951034175276049,
+                  "r": 0.006283789432247111,
+                  "lo": 0.056954849346860424,
+                  "hi": 0.06219684620400492
+                },
+                "outcome": "WIN",
+                "recorded_outcome": "WIN",
+                "readouts_equal": true,
+                "ok": true,
+                "value_diff": 5.551115123125783e-17,
+                "comparator_value_diff": 0.0,
+                "replayed_means": {
+                  "value": 0.4028337575402008,
+                  "comparator_value": 0.3433234157874403
+                },
+                "r28_means": {
+                  "value": 0.40283375754020084,
+                  "comparator_value": 0.3433234157874403
+                }
+              },
+              {
+                "id": "artelingo/qwen/r23_cstar/genre/i2t/q1",
+                "comparator_row": "teacher",
+                "max_abs_diff": 0.0,
+                "diffs": {
+                  "d": 0.0,
+                  "r": 0.0,
+                  "lo": 0.0,
+                  "hi": 0.0
+                },
+                "replayed": {
+                  "d": 0.0062109284977605594,
+                  "r": 0.006283789432247111,
+                  "lo": 0.004109402135380041,
+                  "hi": 0.00861717183361386
+                },
+                "recorded": {
+                  "d": 0.0062109284977605594,
+                  "r": 0.006283789432247111,
+                  "lo": 0.004109402135380041,
+                  "hi": 0.00861717183361386
+                },
+                "outcome": "WIN",
+                "recorded_outcome": "WIN",
+                "readouts_equal": true,
+                "ok": true,
+                "value_diff": 5.551115123125783e-17,
+                "comparator_value_diff": 0.0,
+                "replayed_means": {
+                  "value": 0.4028337575402008,
+                  "comparator_value": 0.39662282904244023
+                },
+                "r28_means": {
+                  "value": 0.40283375754020084,
+                  "comparator_value": 0.39662282904244023
+                }
+              },
+              {
+                "id": "artelingo/qwen/r23_cstar/genre/t2t/p1",
+                "comparator_row": "plain",
+                "max_abs_diff": 0.0,
+                "diffs": {
+                  "d": 0.0,
+                  "r": 0.0,
+                  "lo": 0.0,
+                  "hi": 0.0
+                },
+                "replayed": {
+                  "d": 0.04267381442057827,
+                  "r": 0.013483723260436564,
+                  "lo": 0.03829232083102407,
+                  "hi": 0.047472089154895904
+                },
+                "recorded": {
+                  "d": 0.04267381442057827,
+                  "r": 0.013483723260436564,
+                  "lo": 0.03829232083102407,
+                  "hi": 0.047472089154895904
+                },
+                "outcome": "WIN",
+                "recorded_outcome": "WIN",
+                "readouts_equal": true,
+                "ok": true,
+                "value_diff": 5.551115123125783e-17,
+                "comparator_value_diff": 0.0,
+                "replayed_means": {
+                  "value": 0.3152138171058485,
+                  "comparator_value": 0.27254000268527023
+                },
+                "r28_means": {
+                  "value": 0.31521381710584856,
+                  "comparator_value": 0.27254000268527023
+                }
+              },
+              {
+                "id": "artelingo/qwen/r23_cstar/genre/t2t/q1",
+                "comparator_row": "teacher",
+                "max_abs_diff": 0.0,
+                "diffs": {
+                  "d": 0.0,
+                  "r": 0.0,
+                  "lo": 0.0,
+                  "hi": 0.0
+                },
+                "replayed": {
+                  "d": 0.016206992393151542,
+                  "r": 0.013483723260436564,
+                  "lo": 0.0118225985099417,
+                  "hi": 0.021070862111215734
+                },
+                "recorded": {
+                  "d": 0.016206992393151542,
+                  "r": 0.013483723260436564,
+                  "lo": 0.0118225985099417,
+                  "hi": 0.021070862111215734
+                },
+                "outcome": "WIN",
+                "recorded_outcome": "WIN",
+                "readouts_equal": true,
+                "ok": true,
+                "value_diff": 5.551115123125783e-17,
+                "comparator_value_diff": 0.0,
+                "replayed_means": {
+                  "value": 0.3152138171058485,
+                  "comparator_value": 0.29900682471269696
+                },
+                "r28_means": {
+                  "value": 0.31521381710584856,
+                  "comparator_value": 0.29900682471269696
+                }
+              }
+            ],
+            "p1_plain_check": {
+              "n_cells": 9,
+              "outcomes": {
+                "WIN": 9,
+                "LEVEL": 0,
+                "BELOW": 0
+              },
+              "max_abs_diff": 5.551115123125783e-17,
+              "comparator": "r23 siglip_so400m (head all) at r23 picks, against r28 plain_siglip1",
+              "cells": [
+                {
+                  "id": "artelingo/qwen/r23_cstar/emotion/t2i/p1",
+                  "comparator_row": "siglip_so400m",
+                  "value": 0.26420160410910964,
+                  "comparator_value": 0.21095791779139716,
+                  "r28_value": 0.26420160410910964,
+                  "r28_comparator_value": 0.21095791779139716,
+                  "value_diff": 0.0,
+                  "comparator_value_diff": 0.0,
+                  "d": 0.05324368631771248,
+                  "lo": 0.05248840707850493,
+                  "hi": 0.05398873149464327,
+                  "r": 0.0022895336383411125,
+                  "outcome": "WIN",
+                  "ok": true
+                },
+                {
+                  "id": "artelingo/qwen/r23_cstar/emotion/i2t/p1",
+                  "comparator_row": "siglip_so400m",
+                  "value": 0.28695315435756563,
+                  "comparator_value": 0.2202560332258782,
+                  "r28_value": 0.2869531543575656,
+                  "r28_comparator_value": 0.2202560332258782,
+                  "value_diff": 5.551115123125783e-17,
+                  "comparator_value_diff": 0.0,
+                  "d": 0.06669712113168744,
+                  "lo": 0.06458207796281701,
+                  "hi": 0.06878734093316456,
+                  "r": 0.0015835392804179338,
+                  "outcome": "WIN",
+                  "ok": true
+                },
+                {
+                  "id": "artelingo/qwen/r23_cstar/emotion/t2t/p1",
+                  "comparator_row": "siglip_so400m",
+                  "value": 0.3457292531251721,
+                  "comparator_value": 0.20610378417989492,
+                  "r28_value": 0.34572925312517216,
+                  "r28_comparator_value": 0.20610378417989492,
+                  "value_diff": 5.551115123125783e-17,
+                  "comparator_value_diff": 0.0,
+                  "d": 0.1396254689452772,
+                  "lo": 0.13752829663459656,
+                  "hi": 0.14149744603804415,
+                  "r": 0.004365562632817288,
+                  "outcome": "WIN",
+                  "ok": true
+                },
+                {
+                  "id": "artelingo/qwen/r23_cstar/style/t2i/p1",
+                  "comparator_row": "siglip_so400m",
+                  "value": 0.1724772992729384,
+                  "comparator_value": 0.15173477960063678,
+                  "r28_value": 0.17247729927293837,
+                  "r28_comparator_value": 0.15173477960063678,
+                  "value_diff": 2.7755575615628914e-17,
+                  "comparator_value_diff": 0.0,
+                  "d": 0.020742519672301618,
+                  "lo": 0.019437119108036787,
+                  "hi": 0.022054095568140704,
+                  "r": 0.0017992198418700367,
+                  "outcome": "WIN",
+                  "ok": true
+                },
+                {
+                  "id": "artelingo/qwen/r23_cstar/style/i2t/p1",
+                  "comparator_row": "siglip_so400m",
+                  "value": 0.13793638502585473,
+                  "comparator_value": 0.10743748450364694,
+                  "r28_value": 0.13793638502585473,
+                  "r28_comparator_value": 0.10743748450364694,
+                  "value_diff": 0.0,
+                  "comparator_value_diff": 0.0,
+                  "d": 0.030498900522207786,
+                  "lo": 0.029794770374027238,
+                  "hi": 0.031213561404019156,
+                  "r": 0.0010963156687638365,
+                  "outcome": "WIN",
+                  "ok": true
+                },
+                {
+                  "id": "artelingo/qwen/r23_cstar/style/t2t/p1",
+                  "comparator_row": "siglip_so400m",
+                  "value": 0.1090219124395355,
+                  "comparator_value": 0.09184162105072782,
+                  "r28_value": 0.10902191243953552,
+                  "r28_comparator_value": 0.09184162105072782,
+                  "value_diff": 1.3877787807814457e-17,
+                  "comparator_value_diff": 0.0,
+                  "d": 0.01718029138880768,
+                  "lo": 0.01656698948576738,
+                  "hi": 0.0177852595052194,
+                  "r": 0.001419255319081908,
+                  "outcome": "WIN",
+                  "ok": true
+                },
+                {
+                  "id": "artelingo/qwen/r23_cstar/genre/t2i/p1",
+                  "comparator_row": "siglip_so400m",
+                  "value": 0.4836447786811294,
+                  "comparator_value": 0.4188480776008872,
+                  "r28_value": 0.48364477868112943,
+                  "r28_comparator_value": 0.4188480776008872,
+                  "value_diff": 5.551115123125783e-17,
+                  "comparator_value_diff": 0.0,
+                  "d": 0.06479670108024216,
+                  "lo": 0.06262182522024658,
+                  "hi": 0.06689615876229105,
+                  "r": 0.0038192963196493346,
+                  "outcome": "WIN",
+                  "ok": true
+                },
+                {
+                  "id": "artelingo/qwen/r23_cstar/genre/i2t/p1",
+                  "comparator_row": "siglip_so400m",
+                  "value": 0.4028337575402008,
+                  "comparator_value": 0.3541266688183422,
+                  "r28_value": 0.40283375754020084,
+                  "r28_comparator_value": 0.3541266688183422,
+                  "value_diff": 5.551115123125783e-17,
+                  "comparator_value_diff": 0.0,
+                  "d": 0.04870708872185858,
+                  "lo": 0.04612218177368318,
+                  "hi": 0.05146727319511485,
+                  "r": 0.006283789432247111,
+                  "outcome": "WIN",
+                  "ok": true
+                },
+                {
+                  "id": "artelingo/qwen/r23_cstar/genre/t2t/p1",
+                  "comparator_row": "siglip_so400m",
+                  "value": 0.3152138171058485,
+                  "comparator_value": 0.25293334788643457,
+                  "r28_value": 0.31521381710584856,
+                  "r28_comparator_value": 0.25293334788643457,
+                  "value_diff": 5.551115123125783e-17,
+                  "comparator_value_diff": 0.0,
+                  "d": 0.062280469219413936,
+                  "lo": 0.05786263805334996,
+                  "hi": 0.06713696593778255,
+                  "r": 0.013483723260436564,
+                  "outcome": "WIN",
+                  "ok": true
+                }
+              ]
+            },
+            "candidate": "r23 cstar (Qwen3) files at r23 picks and ranges",
+            "comparators": "teacher (Q1 route) and plain (one-vector P1 route), r23 files at r23 picks"
+          },
+          "written": "2026-11-13 00:01"
+        }
+      },
+      "tries": 2
+    }
+  },
+  "written": "2026-11-13 00:36"
+}

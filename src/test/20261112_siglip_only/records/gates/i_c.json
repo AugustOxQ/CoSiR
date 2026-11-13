@@ -1,0 +1,195 @@
+{
+  "gate": "i_c",
+  "status": "pass",
+  "tries": 1,
+  "details": {
+    "seeds": [
+      0
+    ],
+    "arm": "k11=40",
+    "devices": {
+      "val": "cuda",
+      "held": "cpu"
+    },
+    "stored_root": "/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/siglip1",
+    "out_root": "/data/SSD2/cosir_r29/20261112_siglip_only/gate_i_c/try1",
+    "r29_code_sha256": {
+      "r29_trainer.py": "0e61deda49c649f79c2a556682cf4d5491f465a21c8b3b87e198e509b6f4b372",
+      "r29_model.py": "00b96f402097725c45577618486c4b31f7c7af8a9eb818d6d56b59a49d06e2ab",
+      "r29_captions.py": "51b2d86eba6f9f0252d1b267dac2dd0cbac6a4e5649bba033c1e367654178db2"
+    },
+    "vs_stored": {
+      "equal": true,
+      "items": {
+        "val/emotion__s0/img": {
+          "equal": true,
+          "differing_values": 0,
+          "shape": [
+            6152,
+            2048
+          ],
+          "max_abs_diff": 0.0
+        },
+        "val/emotion__s0/cap": {
+          "equal": true,
+          "differing_values": 0,
+          "shape": [
+            6152,
+            2048
+          ],
+          "max_abs_diff": 0.0
+        },
+        "held/emotion__s0/img": {
+          "equal": true,
+          "differing_values": 0,
+          "shape": [
+            12281,
+            2048
+          ],
+          "max_abs_diff": 0.0
+        },
+        "val/style__s0/img": {
+          "equal": true,
+          "differing_values": 0,
+          "shape": [
+            6152,
+            2048
+          ],
+          "max_abs_diff": 0.0
+        },
+        "val/style__s0/cap": {
+          "equal": true,
+          "differing_values": 0,
+          "shape": [
+            6152,
+            2048
+          ],
+          "max_abs_diff": 0.0
+        },
+        "held/style__s0/img": {
+          "equal": true,
+          "differing_values": 0,
+          "shape": [
+            12281,
+            2048
+          ],
+          "max_abs_diff": 0.0
+        },
+        "val/genre__s0/img": {
+          "equal": true,
+          "differing_values": 0,
+          "shape": [
+            6152,
+            2048
+          ],
+          "max_abs_diff": 0.0
+        },
+        "val/genre__s0/cap": {
+          "equal": true,
+          "differing_values": 0,
+          "shape": [
+            6152,
+            2048
+          ],
+          "max_abs_diff": 0.0
+        },
+        "held/genre__s0/img": {
+          "equal": true,
+          "differing_values": 0,
+          "shape": [
+            12281,
+            2048
+          ],
+          "max_abs_diff": 0.0
+        }
+      }
+    },
+    "vs_r14_export_code": {
+      "equal": true,
+      "items": {
+        "val/emotion__s0/img": {
+          "equal": true,
+          "differing_values": 0,
+          "shape": [
+            6152,
+            2048
+          ],
+          "max_abs_diff": 0.0
+        },
+        "val/emotion__s0/cap": {
+          "equal": true,
+          "differing_values": 0,
+          "shape": [
+            6152,
+            2048
+          ],
+          "max_abs_diff": 0.0
+        },
+        "held/emotion__s0/img": {
+          "equal": true,
+          "differing_values": 0,
+          "shape": [
+            12281,
+            2048
+          ],
+          "max_abs_diff": 0.0
+        },
+        "val/style__s0/img": {
+          "equal": true,
+          "differing_values": 0,
+          "shape": [
+            6152,
+            2048
+          ],
+          "max_abs_diff": 0.0
+        },
+        "val/style__s0/cap": {
+          "equal": true,
+          "differing_values": 0,
+          "shape": [
+            6152,
+            2048
+          ],
+          "max_abs_diff": 0.0
+        },
+        "held/style__s0/img": {
+          "equal": true,
+          "differing_values": 0,
+          "shape": [
+            12281,
+            2048
+          ],
+          "max_abs_diff": 0.0
+        },
+        "val/genre__s0/img": {
+          "equal": true,
+          "differing_values": 0,
+          "shape": [
+            6152,
+            2048
+          ],
+          "max_abs_diff": 0.0
+        },
+        "val/genre__s0/cap": {
+          "equal": true,
+          "differing_values": 0,
+          "shape": [
+            6152,
+            2048
+          ],
+          "max_abs_diff": 0.0
+        },
+        "held/genre__s0/img": {
+          "equal": true,
+          "differing_values": 0,
+          "shape": [
+            12281,
+            2048
+          ],
+          "max_abs_diff": 0.0
+        }
+      }
+    }
+  },
+  "written": "2026-11-12 23:43"
+}

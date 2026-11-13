@@ -1,0 +1,96 @@
+{
+  "gate": "v_photo",
+  "status": "pass",
+  "tries": 1,
+  "details": {
+    "units": {
+      "affection/map/plain": {
+        "cell": "affection/map/plain",
+        "rebuilt": 0.2545391741618377,
+        "recorded": 0.2545391741618377,
+        "diff": 0.0,
+        "ok": true,
+        "required": true,
+        "readout": "center+k10",
+        "source": "r14 verdicts.json SC5 siglip1 ret affection_test; r17 SC4 plain comp",
+        "literal": 0.2545391742
+      },
+      "affection/ami/plain": {
+        "cell": "affection/ami/plain",
+        "rebuilt": 0.0987800596578365,
+        "recorded": 0.0987800596578365,
+        "diff": 0.0,
+        "ok": true,
+        "required": false,
+        "source": "r14 verdicts.json SC5 siglip1 ret affection_test; r17 SC4 plain comp"
+      },
+      "affection/map/teacher": {
+        "cell": "affection/map/teacher",
+        "rebuilt": 0.2945474692032888,
+        "recorded": 0.2945474692032888,
+        "diff": 0.0,
+        "ok": true,
+        "required": true,
+        "readout": "center+k10",
+        "source": "r13 stage3/verdict.json rows.teacher_artwork; r17 SC4 teacher comp",
+        "literal": 0.2945474692
+      },
+      "affection/ami/teacher": {
+        "cell": "affection/ami/teacher",
+        "rebuilt": 0.15541834623867254,
+        "recorded": 0.15541834623867254,
+        "diff": 0.0,
+        "ok": true,
+        "required": false,
+        "source": "r13 stage3/verdict.json rows.teacher_artwork; r17 SC4 teacher comp"
+      },
+      "emoset/map/plain": {
+        "cell": "emoset/map/plain",
+        "rebuilt": 0.36385457787992487,
+        "recorded": 0.36385457787992487,
+        "diff": 0.0,
+        "ok": true,
+        "required": true,
+        "readout": "center+k10",
+        "source": "r28 photos.json cells.c",
+        "literal": 0.3638545779
+      },
+      "emoset/ami/plain": {
+        "cell": "emoset/ami/plain",
+        "rebuilt": 0.26726071878268004,
+        "recorded": 0.26726071878268004,
+        "diff": 0.0,
+        "ok": true,
+        "required": true,
+        "source": "r28 photos.json cells.c",
+        "literal": 0.2672607188
+      },
+      "emoset/map/teacher": {
+        "cell": "emoset/map/teacher",
+        "rebuilt": 0.4518753520653523,
+        "recorded": 0.4518753520653523,
+        "diff": 0.0,
+        "ok": true,
+        "required": true,
+        "readout": "center+k10",
+        "source": "r14 verdicts.json SC10 emoset_test; r17 SC4 qwen emoset teacher comp",
+        "literal": 0.4518753521
+      },
+      "emoset/ami/teacher": {
+        "cell": "emoset/ami/teacher",
+        "rebuilt": 0.39421017702005745,
+        "recorded": 0.39421017702005745,
+        "diff": 0.0,
+        "ok": true,
+        "required": false,
+        "source": "r14 verdicts.json SC10 emoset_test; r17 SC4 qwen emoset teacher comp"
+      }
+    },
+    "parked": [],
+    "required_ok": true,
+    "tol": 1e-09,
+    "seconds": 65,
+    "code_sha256": "be946768d663a867e1794df8cc27f18983a62b12acb1bf2978062180aa98e02f"
+  },
+  "written": "2026-11-13 02:28"
+}

@@ -1,0 +1,149 @@
+{
+  "gate": "i_a",
+  "status": "pass",
+  "tries": 1,
+  "details": {
+    "cuda_fallback": false,
+    "comparisons": {
+      "new_vs_r14": {
+        "equal": true,
+        "heads": {
+          "emotion": {
+            "sha256": [
+              "cde9eb566650d87783a850a1349c70ec2a0ac8bc3844435eee66af5693b3884e",
+              "cde9eb566650d87783a850a1349c70ec2a0ac8bc3844435eee66af5693b3884e"
+            ],
+            "bytes_equal": true,
+            "tensors_equal": true,
+            "best_epoch": [
+              12,
+              12
+            ],
+            "best_dev_loss": [
+              6.246208131466828,
+              6.246208131466828
+            ],
+            "recorded_sha_ok": [
+              true,
+              true
+            ]
+          },
+          "style": {
+            "sha256": [
+              "99a44afe0a3b68995d9f162ae590ca567542946bbf2d1d8ac3addc4797b40ac3",
+              "99a44afe0a3b68995d9f162ae590ca567542946bbf2d1d8ac3addc4797b40ac3"
+            ],
+            "bytes_equal": true,
+            "tensors_equal": true,
+            "best_epoch": [
+              1,
+              1
+            ],
+            "best_dev_loss": [
+              6.615903340571214,
+              6.615903340571214
+            ],
+            "recorded_sha_ok": [
+              true,
+              true
+            ]
+          },
+          "genre": {
+            "sha256": [
+              "2efb9f5dae4d7f541f9f3363339558b4ec16d356ab31771e77250db7aa0f66ef",
+              "2efb9f5dae4d7f541f9f3363339558b4ec16d356ab31771e77250db7aa0f66ef"
+            ],
+            "bytes_equal": true,
+            "tensors_equal": true,
+            "best_epoch": [
+              15,
+              15
+            ],
+            "best_dev_loss": [
+              8.220256616155774,
+              8.220256616155774
+            ],
+            "recorded_sha_ok": [
+              true,
+              true
+            ]
+          }
+        },
+        "runs": [
+          "new",
+          "r14"
+        ]
+      },
+      "r14_vs_r14_b": {
+        "equal": true,
+        "heads": {
+          "emotion": {
+            "sha256": [
+              "cde9eb566650d87783a850a1349c70ec2a0ac8bc3844435eee66af5693b3884e",
+              "cde9eb566650d87783a850a1349c70ec2a0ac8bc3844435eee66af5693b3884e"
+            ],
+            "bytes_equal": true,
+            "tensors_equal": true,
+            "best_epoch": [
+              12,
+              12
+            ],
+            "best_dev_loss": [
+              6.246208131466828,
+              6.246208131466828
+            ],
+            "recorded_sha_ok": [
+              true,
+              true
+            ]
+          },
+          "style": {
+            "sha256": [
+              "99a44afe0a3b68995d9f162ae590ca567542946bbf2d1d8ac3addc4797b40ac3",
+              "99a44afe0a3b68995d9f162ae590ca567542946bbf2d1d8ac3addc4797b40ac3"
+            ],
+            "bytes_equal": true,
+            "tensors_equal": true,
+            "best_epoch": [
+              1,
+              1
+            ],
+            "best_dev_loss": [
+              6.615903340571214,
+              6.615903340571214
+            ],
+            "recorded_sha_ok": [
+              true,
+              true
+            ]
+          },
+          "genre": {
+            "sha256": [
+              "2efb9f5dae4d7f541f9f3363339558b4ec16d356ab31771e77250db7aa0f66ef",
+              "2efb9f5dae4d7f541f9f3363339558b4ec16d356ab31771e77250db7aa0f66ef"
+            ],
+            "bytes_equal": true,
+            "tensors_equal": true,
+            "best_epoch": [
+              15,
+              15
+            ],
+            "best_dev_loss": [
+              8.220256616155774,
+              8.220256616155774
+            ],
+            "recorded_sha_ok": [
+              true,
+              true
+            ]
+          }
+        },
+        "runs": [
+          "r14",
+          "r14_b"
+        ]
+      }
+    }
+  },
+  "written": "2026-11-13 00:36"
+}
