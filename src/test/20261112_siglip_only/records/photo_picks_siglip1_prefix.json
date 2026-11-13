@@ -1,0 +1,150 @@
+{
+ "encoder": "siglip1",
+ "split": "val",
+ "written": "2026-11-13 21:46",
+ "code_sha256": "dee3dc91f0dc07270644d0e515c32eb724a3ad3a783b0232203c1a819ec42c4d",
+ "arm": "siglip1_prefix",
+ "sets": {
+  "affection": {
+   "k": 9,
+   "n_val": 4251,
+   "ami_range": {
+    "r": 0.007592828480245339,
+    "per_seed": {
+     "0": 0.1889491372671179,
+     "1": 0.18442348659262262,
+     "2": 0.19163400000545003,
+     "3": 0.188510711002426,
+     "4": 0.1840411715252047
+    },
+    "k": 9
+   },
+   "map_range": {
+    "r": 0.005820671511239828,
+    "per_seed": {
+     "0": 0.32092966921410193,
+     "1": 0.32062854827033405,
+     "2": 0.32313324677934163,
+     "3": 0.32284555697305817,
+     "4": 0.3173125752681018
+    }
+   },
+   "r_map": 0.005820671511239828,
+   "r_map_source": "own five-seed validation mAP range at R0",
+   "readout": {
+    "pick": "center+k10",
+    "val_scores": {
+     "none+k0": 0.32289462630442556,
+     "center+k0": 0.32676476082963085,
+     "whiten1024+k0": 0.21595306696873934,
+     "whiten256+k0": 0.22405099756759075,
+     "whiten64+k0": 0.2512965304751792,
+     "none+k1": 0.3250462098993418,
+     "none+k3": 0.32826005924216245,
+     "none+k5": 0.3293046834524257,
+     "none+k10": 0.3306366780652322,
+     "center+k1": 0.32993617467841646,
+     "center+k3": 0.33331386189198214,
+     "center+k5": 0.3349725725217191,
+     "center+k10": 0.33670165615512293,
+     "whiten1024+k1": 0.21772451280382796,
+     "whiten256+k1": 0.22643184438412867,
+     "whiten64+k1": 0.25553733811310864,
+     "whiten1024+k3": 0.21991490638394148,
+     "whiten256+k3": 0.2290789163156935,
+     "whiten64+k3": 0.26017184656170084,
+     "whiten1024+k5": 0.22139722701597883,
+     "whiten256+k5": 0.23075892105784082,
+     "whiten64+k5": 0.2626040942967568,
+     "whiten1024+k10": 0.2233075483421981,
+     "whiten256+k10": 0.23320074068582336,
+     "whiten64+k10": 0.266160436145525
+    }
+   },
+   "val_files": {
+    "0": "defa11401056afa72c8c6ff49f09b56ba389a886a3c45f35cabf8a838db1eddc",
+    "1": "c5fa23e244dab75a2a2c07846080e6723b3b7aaa75de0eeb9fb001b931830161",
+    "2": "d8d7ab190216eacf2af2bd1b836ce8db6fd4bc8a30bbbfae976a227ab59dafd1",
+    "3": "b35f842cf0a573888dc4cdffa311b97034bd87c0916680599903b1a74eca837e",
+    "4": "8ccf9700968f8b361195e9fbfeba164601c1878206228c60c918b86e1f24f955"
+   }
+  },
+  "emoset": {
+   "k": 8,
+   "n_val": 5770,
+   "ami_range": {
+    "r": 0.03093818353882133,
+    "per_seed": {
+     "0": 0.4427338328934196,
+     "1": 0.45002285477327647,
+     "2": 0.4253512927203222,
+     "3": 0.41908467123445514,
+     "4": 0.4362234985285454
+    },
+    "k": 8
+   },
+   "map_range": null,
+   "r_map": 0.0069460867449697705,
+   "r_map_source": "r14 stage2_emoset.json (/project/CoSiR/src/test/20261102_backbones_sweep/records/stage2_emoset.json): ranges.map.r (r_E,mAP)",
+   "readout": {
+    "pick": "center+k10",
+    "val_scores": {
+     "none+k0": 0.463020475668141,
+     "center+k0": 0.46870348734992007,
+     "whiten1024+k0": 0.1903722252725434,
+     "whiten256+k0": 0.2117136721377153,
+     "whiten64+k0": 0.28123930628159666,
+     "none+k1": 0.4739436709609793,
+     "none+k3": 0.48268331447166135,
+     "none+k5": 0.48642257889736157,
+     "none+k10": 0.490451992477551,
+     "center+k1": 0.48003400546217306,
+     "center+k3": 0.48862424177824837,
+     "center+k5": 0.4923856138700735,
+     "center+k10": 0.49659010243280327,
+     "whiten1024+k1": 0.1988692009597593,
+     "whiten256+k1": 0.22355870290317598,
+     "whiten64+k1": 0.2967737467763305,
+     "whiten1024+k3": 0.2090826325068979,
+     "whiten256+k3": 0.23663733676577658,
+     "whiten64+k3": 0.3115223934552506,
+     "whiten1024+k5": 0.21586933967359703,
+     "whiten256+k5": 0.24435837658877949,
+     "whiten64+k5": 0.3191190141481289,
+     "whiten1024+k10": 0.22519202426886845,
+     "whiten256+k10": 0.25514387243543535,
+     "whiten64+k10": 0.3295248611054486
+    }
+   },
+   "val_files": {
+    "0": "9d6670835c87d9ef11a693bd8b2ce032f3406f303db91e0b8cf03dbae50bab0c",
+    "1": "fad734dfe4734a993d0dab3c547af6214a4fb396e0733841e3f9c6ca6f11d67b",
+    "2": "3c483042d2370eab6c67087d34dc0615f53f619fa7551567d8714050c5e99f56",
+    "3": "ed548c4e6a364d80407b29d57f798556f731d057f7440b4790dce875b55389db",
+    "4": "e0a326fca09d1720ac72827b515d0b8cb58855194cb8f84f73c83d19079eb4a5"
+   }
+  }
+ },
+ "comparator_picks": {
+  "affection/plain": "center+k10",
+  "affection/teacher": "center+k10",
+  "emoset/plain": "center+k10",
+  "emoset/teacher": "center+k10"
+ },
+ "r_E": {
+  "value": 0.0069460867449697705,
+  "source": "r14 stage2_emoset.json (/project/CoSiR/src/test/20261102_backbones_sweep/records/stage2_emoset.json): ranges.map.r (r_E,mAP)"
+ },
+ "f1": {
+  "cap_source": "siglip1_prefix",
+  "cap_width": 1152,
+  "cap_store_sha256": "ee0cb34dcf666c22fedf445f08c833ba2b6b6cc53c8dd919a84b47ced752f68e",
+  "run_json_sha256": {
+   "0": "4039aeaa10a21586c52cdb7c02593765807c29e266f9fe47dba39272e2903c36",
+   "1": "b5e92b76b836fd13e573ffb34bc5bed64526379ffc4c27bc3dca4b6a6bad0085",
+   "2": "db0c65bfe3b2acd262cad4f97b4e7436398aaeb0e62b1367f3e869b7e7122582",
+   "3": "8543ab46bbd8f2a162031c77735fe89dd550984d72ae32c72ad6cd604fac3bd6",
+   "4": "239771a531ced30934e7c01fa556022e3fd0e3ba89c83202ccc99a9ff5d33d20"
+  }
+ }
+}
