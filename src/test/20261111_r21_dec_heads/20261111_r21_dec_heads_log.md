@@ -231,3 +231,10 @@ Spec: `docs/superpowers/specs/2026-11-11-r21-dec-heads-design.md`. Decision line
   +0.037, genre +0.047 / +0.051, style -0.024 / -0.031. Their AMI falls on all three (-0.012 / -0.007, -0.009 / -0.018,
   -0.025 / -0.016). At λ = 1 the 50-epoch runs get looser on emotion and style (CHI -50 to -119). Reading (agent): the
   split is not why the test changes are small; the short DEC in the kept state is; longer DEC tightens and lowers AMI.
+
+## Run chat 3, 2026-11-13 (from 01:59)
+
+- 01:59: **user**: "run now" (the r28 SigLIP job had ended; GPU and queue idle). The λ = 0 control started 02:00 through
+  `r21_queue_lam0.sh` (8 steps: train `dec-plain_l0_w5_S2` seeds 0 to 4, held exports, `table --name stage2_lam0` on the five
+  arms, `diag` on the same five; the 4-arm diag is copied to `scores/diag_before_lam0.*` first). Log:
+  `/data/SSD2/cosir_r21/20261111_dec_heads/logs/queue_lam0.log`.
