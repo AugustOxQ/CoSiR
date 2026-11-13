@@ -296,3 +296,7 @@ Spec: `docs/superpowers/specs/2026-11-11-r21-dec-heads-design.md`. Decision line
   decide chat, "r30 decide" (r27 was taken by the Table 3 rows round), with
   `docs/superpowers/handoffs/2026-11-13-r30-decide-handoff.md`; step 1 there shows the brief without our reading. The
   direct-contrast question (option a) goes with it.
+
+## Storage (2026-11-13, r30 decide)
+
+r21 build scratch, worktrees and local branches deleted with the user's yes; `full/` (12 GB) kept for r30 and the ablation row. Disk ledger: `/project/claude-config/storage/disk_ledger.md`.
