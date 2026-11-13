@@ -1,0 +1,199 @@
+{
+ "claim": "SC3",
+ "arm": "siglip1_prefix",
+ "encoder": "siglip1",
+ "scope": "ArtELingo test, encoder siglip1",
+ "written": "2026-11-13 06:19",
+ "n_cells": 15,
+ "most": 12,
+ "level": 1,
+ "inconclusive_above": false,
+ "report": "level 1",
+ "counts": {
+  "p1_win": 13,
+  "p1_inconclusive": 1,
+  "q1_win_or_level": 12,
+  "q1_win": 12,
+  "q1_level": 0,
+  "q1_inconclusive": 0
+ },
+ "sentence": "With no Qwen3 pass at test time, training adds over the plain embedding in 13 of 15 cells.",
+ "counted": {
+  "p1_win": [
+   "artelingo/emotion/ami",
+   "artelingo/emotion/map",
+   "artelingo/emotion/t2i",
+   "artelingo/emotion/i2t",
+   "artelingo/emotion/t2t",
+   "artelingo/style/ami",
+   "artelingo/style/t2i",
+   "artelingo/style/i2t",
+   "artelingo/style/t2t",
+   "artelingo/genre/ami",
+   "artelingo/genre/map",
+   "artelingo/genre/i2t",
+   "artelingo/genre/t2t"
+  ],
+  "q1_win_or_level": [
+   "artelingo/emotion/ami",
+   "artelingo/emotion/map",
+   "artelingo/style/ami",
+   "artelingo/style/map",
+   "artelingo/style/t2i",
+   "artelingo/style/i2t",
+   "artelingo/style/t2t",
+   "artelingo/genre/ami",
+   "artelingo/genre/map",
+   "artelingo/genre/t2i",
+   "artelingo/genre/i2t",
+   "artelingo/genre/t2t"
+  ],
+  "p1_inconclusive": [
+   "artelingo/genre/t2i"
+  ],
+  "q1_inconclusive": []
+ },
+ "cells": [
+  {
+   "cell": "artelingo/emotion/ami",
+   "p1": "WIN",
+   "p1_id": "artelingo/siglip1/siglip1_prefix/emotion/ami9/plain",
+   "q1": "WIN",
+   "q1_id": "artelingo/siglip1/siglip1_prefix/emotion/ami9/teacher",
+   "q1_claim": "above"
+  },
+  {
+   "cell": "artelingo/emotion/map",
+   "p1": "WIN",
+   "p1_id": "artelingo/siglip1/siglip1_prefix/emotion/map/plain",
+   "q1": "WIN",
+   "q1_id": "artelingo/siglip1/siglip1_prefix/emotion/map/teacher",
+   "q1_claim": "above"
+  },
+  {
+   "cell": "artelingo/emotion/t2i",
+   "p1": "WIN",
+   "p1_id": "artelingo/siglip1/siglip1_prefix/emotion/t2i/p1",
+   "q1": "BELOW",
+   "q1_id": "artelingo/siglip1/siglip1_prefix/emotion/t2i/q1",
+   "q1_claim": null
+  },
+  {
+   "cell": "artelingo/emotion/i2t",
+   "p1": "WIN",
+   "p1_id": "artelingo/siglip1/siglip1_prefix/emotion/i2t/p1",
+   "q1": "BELOW",
+   "q1_id": "artelingo/siglip1/siglip1_prefix/emotion/i2t/q1",
+   "q1_claim": null
+  },
+  {
+   "cell": "artelingo/emotion/t2t",
+   "p1": "WIN",
+   "p1_id": "artelingo/siglip1/siglip1_prefix/emotion/t2t/p1",
+   "q1": "BELOW",
+   "q1_id": "artelingo/siglip1/siglip1_prefix/emotion/t2t/q1",
+   "q1_claim": null
+  },
+  {
+   "cell": "artelingo/style/ami",
+   "p1": "WIN",
+   "p1_id": "artelingo/siglip1/siglip1_prefix/style/ami27/plain",
+   "q1": "WIN",
+   "q1_id": "artelingo/siglip1/siglip1_prefix/style/ami27/teacher",
+   "q1_claim": "above"
+  },
+  {
+   "cell": "artelingo/style/map",
+   "p1": "BELOW",
+   "p1_id": "artelingo/siglip1/siglip1_prefix/style/map/plain",
+   "q1": "WIN",
+   "q1_id": "artelingo/siglip1/siglip1_prefix/style/map/teacher",
+   "q1_claim": "above"
+  },
+  {
+   "cell": "artelingo/style/t2i",
+   "p1": "WIN",
+   "p1_id": "artelingo/siglip1/siglip1_prefix/style/t2i/p1",
+   "q1": "WIN",
+   "q1_id": "artelingo/siglip1/siglip1_prefix/style/t2i/q1",
+   "q1_claim": "above"
+  },
+  {
+   "cell": "artelingo/style/i2t",
+   "p1": "WIN",
+   "p1_id": "artelingo/siglip1/siglip1_prefix/style/i2t/p1",
+   "q1": "WIN",
+   "q1_id": "artelingo/siglip1/siglip1_prefix/style/i2t/q1",
+   "q1_claim": "above"
+  },
+  {
+   "cell": "artelingo/style/t2t",
+   "p1": "WIN",
+   "p1_id": "artelingo/siglip1/siglip1_prefix/style/t2t/p1",
+   "q1": "WIN",
+   "q1_id": "artelingo/siglip1/siglip1_prefix/style/t2t/q1",
+   "q1_claim": "above"
+  },
+  {
+   "cell": "artelingo/genre/ami",
+   "p1": "WIN",
+   "p1_id": "artelingo/siglip1/siglip1_prefix/genre/ami10/plain",
+   "q1": "WIN",
+   "q1_id": "artelingo/siglip1/siglip1_prefix/genre/ami10/teacher",
+   "q1_claim": "above"
+  },
+  {
+   "cell": "artelingo/genre/map",
+   "p1": "WIN",
+   "p1_id": "artelingo/siglip1/siglip1_prefix/genre/map/plain",
+   "q1": "WIN",
+   "q1_id": "artelingo/siglip1/siglip1_prefix/genre/map/teacher",
+   "q1_claim": "above"
+  },
+  {
+   "cell": "artelingo/genre/t2i",
+   "p1": "INCONCLUSIVE (recorded inconclusive)",
+   "p1_id": "artelingo/siglip1/siglip1_prefix/genre/t2i/p1",
+   "q1": "WIN",
+   "q1_id": "artelingo/siglip1/siglip1_prefix/genre/t2i/q1",
+   "q1_claim": "above"
+  },
+  {
+   "cell": "artelingo/genre/i2t",
+   "p1": "WIN",
+   "p1_id": "artelingo/siglip1/siglip1_prefix/genre/i2t/p1",
+   "q1": "WIN",
+   "q1_id": "artelingo/siglip1/siglip1_prefix/genre/i2t/q1",
+   "q1_claim": "above"
+  },
+  {
+   "cell": "artelingo/genre/t2t",
+   "p1": "WIN",
+   "p1_id": "artelingo/siglip1/siglip1_prefix/genre/t2t/p1",
+   "q1": "WIN",
+   "q1_id": "artelingo/siglip1/siglip1_prefix/genre/t2t/q1",
+   "q1_claim": "above"
+  }
+ ],
+ "sources": {
+  "image": "read",
+  "text": "read"
+ },
+ "cell_files": {
+  "image": {
+   "path": "/project/CoSiR/src/test/20261112_siglip_only/records/image_cells_siglip1_prefix.json",
+   "sha256": "061e56aec0dee3f4876d910cae458afb1c7c60ce86da584c167ec935ed17c3f8",
+   "n_cells": 12
+  },
+  "text": {
+   "path": "/project/CoSiR/src/test/20261112_siglip_only/records/text_cells_siglip1_prefix.json",
+   "sha256": "0c25384d4e7d82c7459353965567d97db57d9381646969ebc53a8102083db5ff",
+   "n_cells": 18
+  }
+ },
+ "gates": {
+  "v_image": "pass",
+  "v_text": "pass"
+ },
+ "parked_by": null
+}

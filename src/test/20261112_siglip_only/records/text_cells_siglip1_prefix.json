@@ -344,13 +344,26 @@
    "lo": 0.06413972809230659,
    "hi": 0.06826425624322217,
    "r": 0.0037556426479267713,
-   "outcome": "WIN",
+   "outcome": "INCONCLUSIVE",
    "n_draws": 10000,
    "n_queries": 49986,
    "n_units": 9949,
    "candidate_readout": "center_k10",
    "comparator_readout": "center_k10",
-   "p1_form": "plain"
+   "p1_form": "plain",
+   "outcome_before_c13": "WIN",
+   "c13": {
+    "status": "mismatch",
+    "item": "hi",
+    "ours": 0.06826425624322217,
+    "codex": 0.0682652749056199,
+    "diff": 1.0186623977254117e-06,
+    "tolerance": 1e-06,
+    "codex_outcome_by_rule": "WIN",
+    "cause": "per-query APs of two independent float32 forward passes differ in about 1,150 of 61,744 queries per seed (near-tied ranks); interval code agrees within 6e-17 on the same APs (records/c1_cause_check.json)",
+    "rule": "spec \u00a73.4: a re-derived value that differs by more than 1e-6 makes the cell inconclusive until the cause is fixed; the night chat never chooses a side",
+    "compare": "records/c1_compare.json"
+   }
   },
   {
    "id": "artelingo/siglip1/siglip1_prefix/genre/t2i/q1",
@@ -484,5 +497,6 @@
    "candidate_readout": "center_k10",
    "comparator_readout": "center_k10"
   }
- ]
+ ],
+ "c13_note": "one cell marked INCONCLUSIVE after the C13 comparison (run 2, 2026-11-13 06:20); its numbers are unchanged; the record as the scorer wrote it is commit 45d6381f"
 }

@@ -79,3 +79,16 @@ mode. Outputs `/data/SSD2/cosir_r29/20261112_siglip_only/` (stage logs in its `l
   (near-tied captions change rank). Cell means differ by 6e-8; one bootstrap percentile moves by 1.02e-6. No bug to fix,
   and the night chat does not choose a side or widen the tolerance: the cell is INCONCLUSIVE in the ladder (§3.4), with
   both sides' WIN kept in the record. It cannot change the SC3 level (below).
+- 06:22 SC3 ladder (`records/SC3_siglip1_prefix.json`): level 1, "training adds over the plain embedding in 13 of 15
+  cells". P1: 13 WIN, style image mAP BELOW (K*'s joined three-head vector 0.2872 against plain SigLIP 1 0.2962, d
+  -0.0090 [-0.0107, -0.0074]), genre text to image INCONCLUSIVE (C13, above). Q1: 12 of 15 WIN; the three emotion text
+  cells BELOW (t2i -0.0060, i2t -0.0229, t2t -0.0493). Level 2 fails, so level 3 does not hold. Counting the inconclusive
+  cell as a WIN gives 14 of 15, the same level.
+- 06:23 Validation diagnostics (`records/diagnostics_val.json`): (a) K* minus K0, image group cells -0.0009 to +0.0080
+  (mean +0.0019), text cells -0.0245 (emotion t2t) to +0.0020 (mean -0.0045). (b) best epochs as K0's (style 1 to 3,
+  genre 14 to 18, emotion 6 to 18). (c) caption tower over its own SigLIP 1 input, t2t r0: emotion +0.119, style +0.018,
+  genre +0.057. (e) local minus node402 at seed 0 (gate (i)(a), Qwen3 caption input): image mean +0.0025 (genre AMI
+  +0.0184), text mean -0.0001.
+- 06:25 Report alternative (`r29_alt_told_vs_p1.py`, `records/alt_told_vs_p1.json`; exploration, decides nothing):
+  image mAP against plain SigLIP 1 with K*'s own aspect head instead of the joined vector: WIN in all three (style
+  +0.0588 [+0.0565, +0.0611]).
