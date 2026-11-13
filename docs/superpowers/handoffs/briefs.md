@@ -2376,3 +2376,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-13-r29-build-6-handoff.md
 - New chat: tab 'r29 build 6', session 6cccc33b-92b2-4a17-9546-c0172afc18a6
 
+[brief] CoSiR: r29 build 6 -> r29 build 7 (2026-11-13 03:45 Amsterdam)
+- Done: tickets 11 and 13 merged (gates vi and vii_photo pass); suite 703 passed; final review (2 parts): pass after fixes; fix wave A.
+- State: integration 2ede24ee (pushed); fix wave A on r29/final-fix 47bb8e94 (pushed, not merged).
+- Next: fix wave B (Table 8 for a prefixed K*, plus part 2's findings), one scoped re-review of A and B, gate (vii) ablation try 3, merge, run chat.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-13-r29-build-7-handoff.md
+- New chat: tab 'r29 build 7', session c77897ec-0ce7-4f29-9cc4-fcf046bfe833
+
