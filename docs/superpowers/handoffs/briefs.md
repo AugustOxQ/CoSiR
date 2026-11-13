@@ -2408,3 +2408,12 @@
 - Handoff: docs/superpowers/handoffs/2026-11-13-r30-decide-handoff.md
 - New chat: tab 'r30 decide', session 3342c361-e970-4b68-9d8d-39be9b6cd28b
 
+[brief] CoSiR: r29 run -> r29 run 2 (2026-11-13 05:59 Amsterdam)
+- Done: stage 1a, SC1 (K* = prefixed caption, by 0.0000167), stage 1b, SC2, Table 8; Codex re-derived SC1 and SC2.
+- State: SC2 fails (level 0): text group 0.2549 against the bound 0.2573; image group 0.3882 is above K0's best seed.
+  So K* is an extra row and stage 2 does not run (D3).
+- Next: stage 1c (runs on a fail, D9), Codex's held re-derivation, the SC3 ladder, diagnostics, numbers sheet, reports.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-13-r29-run-2-handoff.md
+- New chat: tab 'r29 run 2', session 7f5070e3-83f0-4184-a768-35a978d343e2
+
