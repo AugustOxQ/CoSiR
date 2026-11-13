@@ -7,9 +7,10 @@ encoded by SigLIP 1 (width 1,152) in K*'s caption form (D16), instead of Qwen3's
 emotion checkpoint `OUT/cstar/siglip1/weights/<K* arm>/emotion__s<s>.pt`. Nothing of r13 or r14 is edited: the changes are
 `unittest.mock.patch`es that unwind on success or failure (as `r29_trainer`, `r28_trainer`). Where each sits:
 
-  * the model: `bs_photo.build_emotion` (and so `bs_photo.infer` of the exports) builds the caption trunk at 1,152 through
-    `r29_model.build_model`; `bs_photo._tensors` checks the caption array at 1,152. At width 2,048 (the Qwen3 caption
-    input, used by gate (vii) only) nothing is patched: r14's own objects;
+  * the model: `bs_photo.build_emotion` (and so `bs_photo.infer` of the exports) builds the caption trunk at the caption
+    width through `r29_model.build_model`; `bs_photo._tensors` checks the caption array at that width. These two patches
+    are installed at every width, also at 2,048 (the Qwen3 caption input, which gate (vii) uses): there they must
+    reproduce r14's objects exactly, and the gate can fail if they do not;
   * the start point: `bs_photo.start_root` is K*'s arm folder; `pf_train.checked_load` first asserts the start
     checkpoint's sidecar (`cap_width`, `cap_source`, `cap_store_sha256`, `width`) against this model;
   * the run record: `run.json` gets `cap_source`, `cap_width`, `cap_store_sha256` (the Affection store's index hash),
@@ -27,8 +28,9 @@ HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 PYTH
   r29_photo store     [--device cuda] [--out DIR]     build the store in K*'s form and write records/gates/viii_affection.json
   r29_photo gate-viii [--store DIR]                    check an existing store again (one more try)
   r29_photo gate-vii  [--device cpu] [--n-fit N]       photo trainer against r14's on a fixed batch: records/gates/vii_trainer.json
-  r29_photo train     [--seeds ..] [--device cuda]     F1, seeds from K*'s checkpoints (refuses unless pass_rule.json says pass)
-  r29_photo export    [--seeds ..] [--splits val test] F1's Affection exports
+  r29_photo train     [--seeds ..] [--device cuda]     F1, seeds from K*'s checkpoints (refuses unless pass_rule.json says pass
+                                                       and gate (viii) passed on this very store)
+  r29_photo export    [--dataset affection|emoset] [--seeds ..] [--splits val test]   F1's exports (r14's photo layout)
   r29_photo smoke     [--kstar siglip1] [--device cuda] a small end-to-end run under SMOKE_OUT/t12 (writes no records)
 """
 import argparse
@@ -70,7 +72,6 @@ GATE_VII = 'vii_trainer'
 MAX_TRIES = 3
 SMOKE_ROOT = P.SMOKE_OUT / 't12'
 assert BP.P.ENCODERS[ENC]['width'] == IMG_WIDTH
-_BUILD_EMOTION = BP.build_emotion                          # r14's, kept for width 2,048 and for unwinding
 
 
 def code_sha():
@@ -84,6 +85,19 @@ def store_hash(folder):
 
 def _json(path):
     return json.loads(Path(path).read_text())
+
+
+def prior_tries(path):
+    """Tries a gate file already records (0 when there is none); the fourth try is refused here and by
+    `r29_captions.write_gate_record`, which alone counts a try (a writer here never adds one)."""
+    prior = _json(path)['tries'] if Path(path).exists() else 0
+    assert prior < MAX_TRIES, f'gate {Path(path).stem} exhausted its three tries'
+    return prior
+
+
+def gate_status(passed, prior):
+    """The shared rule: `pass`; a failure writes `fail` before try 3 and `parked` at try 3 (`prior` = earlier tries)."""
+    return 'pass' if passed else ('parked' if prior == 2 else 'fail')
 
 
 # ------------------------------------------------------------------------------------------------------- guards
@@ -147,9 +161,8 @@ def gate_viii(store, reference, *, form, record_folder=None, allow_smoke=False):
     (`record_folder`, default records/gates); at most three tries."""
     folder = Path(P.GATES if record_folder is None else record_folder)
     path = folder / f'{GATE_VIII}.json'
-    tries = _json(path)['tries'] + 1 if path.exists() else 1
-    assert tries <= MAX_TRIES, f'gate {GATE_VIII} exhausted its three tries'
-    details, status = dict(form=form, store=str(store)), 'fail'
+    prior = prior_tries(path)
+    details, passed = dict(form=form, store=str(store)), False
     try:
         check = X.check_store(store, reference, expected_prefix=P.PREFIX if form == 'prefixed' else None,
                               allow_smoke=allow_smoke, scheme='affection')
@@ -164,13 +177,12 @@ def gate_viii(store, reference, *, form, record_folder=None, allow_smoke=False):
                        max_norm_dev=check.get('max_norm_dev'),
                        truncation_flag=None if n == 0 else
                        f'{n} of {check["n_texts"]} explanations are over {index["truncation_limit"]} tokens: cut, counted, kept (D14)')
-        status = 'pass'
+        passed = True
     except Exception as error:
         details['error'] = f'{type(error).__name__}: {error}'
         raise
-    finally:
-        C.write_gate_record(folder, dict(status=status, details=details), gate=GATE_VIII)
-        # `write_gate_record` counted the file's earlier runs itself: it agrees with `tries`
+    finally:         # the record is written on a failure too; `write_gate_record` counts the try (not this function)
+        C.write_gate_record(folder, dict(status=gate_status(passed, prior), details=details), gate=GATE_VIII)
     return _json(path)
 
 
@@ -218,10 +230,10 @@ def load_data(source, store=STORE):
 
 # ------------------------------------------------------------------------------------------------ the trainer patches
 def build_emotion(device, width, cap_width, seed=None):
-    """`bs_photo.build_emotion(device, width, seed)` with the caption trunk's first layer taking `cap_width`. At 2,048 it
-    is r14's call itself."""
-    if cap_width == P.OUTPUT_WIDTH:
-        return _BUILD_EMOTION(device, width, seed)
+    """`bs_photo.build_emotion(device, width, seed)` with the caption trunk's first layer taking `cap_width`. For an image
+    width other than 2,048 r14's own call is `rb_student.build_model(row, aspects, device, width=width)`, which
+    `M.build_model` returns itself at `cap_width` 2,048; so at 2,048 this function is r14's, run through this code."""
+    assert width != P.OUTPUT_WIDTH, 'F1 builds the image trunk at its encoder width (r14 builds the Qwen width itself)'
     row, _ = BP.loss_recipe(0.25)
     if seed is not None:
         np.random.seed(seed)
@@ -289,9 +301,8 @@ def caption_patches(source, cap_info=None):
         return run
 
     with ExitStack() as stack:
-        if cap_width != P.OUTPUT_WIDTH:         # at 2,048 r14's own objects
-            stack.enter_context(patch.object(BP, 'build_emotion', build))
-            stack.enter_context(patch.object(BP, '_tensors', _tensors(cap_width)))
+        stack.enter_context(patch.object(BP, 'build_emotion', build))       # at every width, 2,048 included (gate (vii))
+        stack.enter_context(patch.object(BP, '_tensors', _tensors(cap_width)))
         if source != 'qwen':
             stack.enter_context(patch.object(BP, 'start_root', start_root))
             stack.enter_context(patch.object(BP.pf_train, 'checked_load', checked_load))
@@ -329,7 +340,8 @@ def _trainer_side(fit, val, graph, settings, width, device, seed, cstar_root):
 
 
 def compare_trainers(fit, val, graph, settings, width, device, *, seed, cstar_root):
-    """Gate (vii), trainer part: r14's photo trainer (unpatched) and this module's with the Qwen3 caption input, on the same
+    """Gate (vii), trainer part: r14's photo trainer (unpatched) and this module's with the Qwen3 caption input, i.e. with
+    `caption_patches('qwen')` installed at caption width 2,048 (the patched model build and tensor check run), on the same
     arrays, graph pairs, start and seed: model state at the start, loss and gradients on a fixed batch, the trained state
     and the training history, each exactly equal. Returns {check: bool}."""
     a = _trainer_side(fit, val, graph, settings, width, device, seed, cstar_root)
@@ -342,9 +354,11 @@ def compare_trainers(fit, val, graph, settings, width, device, *, seed, cstar_ro
 
 
 def write_gate_vii(results, details, folder=None):
-    status = 'pass' if results and all(results.values()) else 'fail'
-    return C.write_gate_record(P.GATES if folder is None else folder,
-                               dict(status=status, details=dict(details, results=results)), gate=GATE_VII)
+    """`vii_trainer.json`: pass; a failure is `fail` before try 3 and `parked` at try 3. `write_gate_record` counts the try."""
+    folder = Path(P.GATES if folder is None else folder)
+    prior = prior_tries(folder / f'{GATE_VII}.json')
+    status = gate_status(bool(results) and all(results.values()), prior)
+    return C.write_gate_record(folder, dict(status=status, details=dict(details, results=results)), gate=GATE_VII)
 
 
 def random_pairs(n, count, seed):
@@ -359,9 +373,8 @@ def gate_vii(device='cpu', n_fit=1024, n_val=256, write=True):
     image, Qwen3 caption mean, instructed teacher), random fixed pairs, K0's SigLIP 1 seed-0 emotion checkpoint as the start
     (r14's own start point), r13's final settings for exactly one epoch, on `device` (CPU by default: no CUDA
     nondeterminism in the comparison)."""
-    folder = P.GATES
-    if write and (folder / f'{GATE_VII}.json').exists():
-        assert _json(folder / f'{GATE_VII}.json')['tries'] < MAX_TRIES, f'gate {GATE_VII} exhausted its three tries'
+    if write:
+        prior_tries(P.GATES / f'{GATE_VII}.json')        # refuse a fourth try before the work
     fk, vk = PD.fit_keys()[:n_fit], PD.keys('val')[:n_val]
     part = lambda keys: dict(keys=keys, I=BP.images('affection', ENC, keys), D=PD._default_texts(keys),   # noqa: E731
                              T=PD._teacher_images(keys))
@@ -378,31 +391,78 @@ def gate_vii(device='cpu', n_fit=1024, n_val=256, write=True):
 
 
 # ----------------------------------------------------------------------------------------------- train, export
-def train_arm(kstar, seeds, device, root, *, data=None, graphs=None, max_epochs=None, cap_info=None, smoke=False):
+def require_store(kstar, store=None, gate_folder=None, *, allow_smoke=False):
+    """F1 trains on the Affection store only if gate (viii) passed on that very store: `viii_affection.json` says pass and
+    its recorded index hash is the store's now; the store is read through ticket 02's seal checks (`X._read`: smoke flag,
+    complete, gate ok, index hash, shapes), its backbone is SigLIP 1 (SigLIP 2 is also 1,152 wide), and its stored prefix is
+    K*'s form (`kstar_form` of `prefix_pick.json`, the form of `kstar`). Returns the store's index."""
+    assert kstar in FORMS, kstar
+    store = Path(STORE if store is None else store)
+    path = Path(P.GATES if gate_folder is None else gate_folder) / f'{GATE_VIII}.json'
+    assert path.is_file(), f'{path}: gate (viii) not run (a failed (viii) parks F1, §3.5)'
+    record = _json(path)
+    assert record['status'] == 'pass', f'{path}: gate (viii) status {record["status"]!r}, not pass (F1 is parked)'
+    assert record['details']['index_sha256'] == store_hash(store), f'{path}: recorded index hash is not the store\'s'
+    index, _, _ = X._read(store, allow_smoke=allow_smoke, scheme='affection')
+    assert index['backbone'] == X.extractor.SIGLIP1, f'store backbone {index["backbone"]!r} is not SigLIP 1'
+    prefix = X.stored_prefix(index['backbone'], P.PREFIX if FORMS[kstar] == 'prefixed' else '')
+    assert index.get('prefix', '') == prefix, f'store prefix {index.get("prefix")!r} is not K*\'s {FORMS[kstar]} form'
+    assert record['details']['form'] == FORMS[kstar], f'gate (viii) was run for the {record["details"]["form"]} form'
+    return index
+
+
+def check_existing_runs(kstar, seeds, root, cap_info):
+    """A seed with a `run.json` is reused by r14's loop only when it was trained on this caption source, K*'s form and the
+    same store (`cap_source`, `kstar_form`, `cap_store_sha256`); otherwise refuse (move it aside), also a run without the
+    fields (an old or interrupted run)."""
+    for seed in seeds:
+        path = BP.run_dir(ENC, BP.REF, seed, root) / 'run.json'
+        if path.is_file():
+            run, want = _json(path), dict(cap_source=kstar, kstar_form=cap_info['kstar_form'],
+                                          cap_store_sha256=cap_info['cap_store_sha256'])
+            got = {k: run.get(k) for k in want}
+            assert got == want, f'{path}: trained on {got}, not on {want}; move it aside'
+
+
+def train_arm(kstar, seeds, device, root, *, data=None, graphs=None, max_epochs=None, cap_info=None, smoke=False,
+              store=None, gate_folder=None):
     """F1's photo models for `seeds`, start K*'s checkpoints under `<root>/cstar/siglip1/weights/<kstar>/`; r14's layout
-    under `root`. Refuses unless the pass rule says pass (a smoke, under the smoke folder only, is exempt)."""
+    under `root`. Refuses unless the pass rule says pass, `kstar` is the one of `prefix_pick.json`, and gate (viii) passed on
+    the store (`require_store`). A smoke (under the smoke folder only, on its own store and gate record) is exempt from the
+    pass rule and the pick."""
     assert kstar in FORMS, kstar
     if not smoke:
         require_pass()
+        assert read_prefix_pick()['kstar'] == kstar, 'kstar is not the one of prefix_pick.json'
     root = T.check_root(root, smoke)
+    store = Path(STORE if store is None else store)
+    require_store(kstar, store, gate_folder, allow_smoke=smoke)
     if data is None:
-        data = load_data(kstar)
+        data = load_data(kstar, store)
     fit, val, fit_q, val_q = data
     if cap_info is None:
-        cap_info = dict(cap_store_sha256=store_hash(STORE), cap_sha256=dict(fit=rs_vh.array_sha(fit['D']),
+        cap_info = dict(cap_store_sha256=store_hash(store), cap_sha256=dict(fit=rs_vh.array_sha(fit['D']),
                                                                              val=rs_vh.array_sha(val['D'])))
+    cap_info = {'kstar_form': FORMS[kstar], **cap_info}
+    check_existing_runs(kstar, seeds, root, cap_info)
     graphs = graphs if graphs is not None else BP.Graphs(fit_q, val_q, root)
     with caption_patches(kstar, cap_info):
         return BP.train(ENC, [BP.REF], list(seeds), device, keep='all', root=root, max_epochs=max_epochs, data=data,
                         graphs=graphs, cstar_root=root / 'cstar' / ENC)
 
 
-def export_arm(kstar, seeds, splits, root, device=None):
-    """r14's Affection export of the photo models (arm `photo_siglip1`) at the caption width of `kstar`."""
+def export_arm(kstar, seeds, splits, root, dataset='affection'):
+    """r14's photo export (arm `photo_siglip1`) of F1's checkpoints at the caption width of `kstar`, in r14's layout
+    `<root>/exports/<dataset>/photo_siglip1/<split>__s<seed>.npz`. `affection`: r13's val and test photos (SigLIP 1 default
+    image rows of the Affection store, read by key). `emoset`: r14's photo export of EmoSet (part c): the val and test
+    images of the EmoSet split files (`bs_extract.read_split_entries`, root `P.EMOSET_ROOT` = /data/SSD/emoset), their SigLIP
+    1 default image rows read by key from r14's store `<pre_extract>/emoset/siglip_so400m` (`bs_stores`); ticket 13's EmoSet
+    cells read these. Refuses unless the pass rule says pass."""
+    assert dataset in BP.SPLITS, dataset
     require_pass()
     root = T.check_root(root)
     with caption_patches(kstar):
-        return BP.export_arm('affection', f'photo_{ENC}', splits, list(seeds), root=root)
+        return BP.export_arm(dataset, f'photo_{ENC}', splits, list(seeds), root=root)
 
 
 # ------------------------------------------------------------------------------------------------------- smoke
@@ -463,7 +523,7 @@ def smoke(kstar='siglip1', device='cuda', n_fit=6000, n_val=1500, root=SMOKE_ROO
     cap = dict(cap_store_sha256=store_hash(store), cap_sha256=dict(fit=rs_vh.array_sha(fit['D']),
                                                                     val=rs_vh.array_sha(val['D'])))
     out = train_arm(kstar, [0], device, root, data=(fit, val, fit, val), graphs=SmokeGraphs(n_fit, n_val, root),
-                    max_epochs=2, cap_info=cap, smoke=True)
+                    max_epochs=2, cap_info=cap, smoke=True, store=store, gate_folder=root / 'records/gates')
     run = out[(BP.REF, 0)].record
     ckpt = root / f'photo/{ENC}/s0/emotion.pt'
     with caption_patches(kstar):
@@ -499,6 +559,7 @@ def main(argv=None):
             p.add_argument('--device', default='cuda')
         else:
             p.add_argument('--splits', nargs='+', choices=['val', 'test'], default=['val', 'test'])
+            p.add_argument('--dataset', choices=sorted(BP.SPLITS), default='affection')
     p = sub.add_parser('smoke')
     p.add_argument('--kstar', choices=sorted(FORMS), default='siglip1')
     p.add_argument('--device', default='cuda')
@@ -510,7 +571,7 @@ def main(argv=None):
         require_pass()
         train_arm(read_prefix_pick()['kstar'], a.seeds, a.device, a.root)
     elif a.cmd == 'export':
-        for path in export_arm(read_prefix_pick()['kstar'], a.seeds, a.splits, a.root):
+        for path in export_arm(read_prefix_pick()['kstar'], a.seeds, a.splits, a.root, a.dataset):
             print(path)
     elif a.cmd == 'gate-vii':
         gate_vii(a.device, a.n_fit, write=not a.no_record)
