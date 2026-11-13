@@ -292,3 +292,7 @@ Spec: `docs/superpowers/specs/2026-11-11-r21-dec-heads-design.md`. Decision line
 - 04:15: one fix wave: the user-read report rewritten on all points (tightness per aspect as a list, the control explained,
   caveats added, glossary extended), humanizer pass; the full report's "What ran" now describes c* (the one fact the
   fidelity check found missing there). No re-check (reference: one fix wave).
+- 04:15: r21 step 9 done: both reports committed and pushed (83be1cb5, 5d9237fc). The run chat opens the next loop's
+  decide chat, "r30 decide" (r27 was taken by the Table 3 rows round), with
+  `docs/superpowers/handoffs/2026-11-13-r30-decide-handoff.md`; step 1 there shows the brief without our reading. The
+  direct-contrast question (option a) goes with it.
