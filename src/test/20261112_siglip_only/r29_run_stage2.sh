@@ -19,6 +19,7 @@
 #   Ablation, 5 seeds per removal: 40m. r28: instructed_graphs run seconds 498.3, 500.2, 422.9, 432.2, 440.4 (sum 2294 s =
 #       38.2 min; r29_facts.md §8); the other three removals have no recorded time, spec §9 says about 7.5 minutes a run.
 #   Ablation scoring (r29_ablation.py score): 20m. r28 ablation/score.log: 16.09 minutes (CPU queue).
+#   SC9: two CPU image-group scorings, about 30 minutes each (spec §9); 45m as for the other CPU scorings.
 #   Image picks and cells (CPU): 45m. No direct timing; gate (v) image, which replays picks and cells, took 2183 s
 #       (logs/gate_v_image.log). MMArt export and picks and cells, photo picks and cells: no source, same 45m bound; 20m export.
 source "$(dirname "${BASH_SOURCE[0]}")/r29_run_common.sh"
@@ -37,6 +38,8 @@ SUF=''; [[ $FORM == prefixed ]] && SUF=_prefix
 echo "K* = $K ($FORM)"
 AB=$OUT/ablation/siglip1/$K
 
+declare -A GROUP_PIDS
+
 # ---------------------------------------------------------------- E2 and E3 (ticket 10)
 for E in siglip2 clip_l14; do
   case $E in siglip2) SRC=siglip2$SUF; XENC=siglip2_so400m;; clip_l14) SRC=clipl14$SUF; XENC=clip_l14;; esac
@@ -53,9 +56,13 @@ for E in siglip2 clip_l14; do
     train_retry "$SRC" done_k "$OUT/cstar/$E/weights/$SRC" 40m "train-$E" "0 1 2 3 4" -- "${PYC[@]}" r29_encoders.py train \
       --encoder "$E" --seeds @SEEDS@ || continue
     q gpu short "export-val-$E" -- "${PYC[@]}" r29_encoders.py export --encoder "$E" --kind val || continue
+    if ! have "records/image_groups_$SRC.json"; then
+      q cpu 45m "image-groups-$E" -- "${PYC[@]}" r29_decide.py image-groups --encoder "$E" &
+      GROUP_PIDS[$E]=$!
+    fi
     q cpu 45m "picks-$E" -- "${PYC[@]}" r29_encoders.py picks --encoder "$E"
   else
-    need_committed "cells-$E" "records/image_picks_$SRC.json" || continue
+    need_committed "cells-$E" "records/image_picks_$SRC.json" records/encoder_pick.json || continue
     q gpu short "export-held-$E" -- "${PYC[@]}" r29_encoders.py export --encoder "$E" --kind held || continue
     q cpu 45m "cells-$E" -- "${PYC[@]}" r29_encoders.py cells --encoder "$E"
   fi
@@ -121,5 +128,25 @@ else
   done
   [[ $PART == b ]] && q cpu 20m ablation-score -- "${PYC[@]}" r29_ablation.py score
 fi
-echo "NEXT (run chat, not this script): $([[ $PART == a ]] && echo 'commit the pick records (image_picks_*, mmart_picks_*, photo picks), then r29_run_stage2.sh b' || echo 'Codex re-derives every pick, range and cell; then the ladders (SC4 per encoder, SC5, SC6), the ablation sheet')"
+if [[ $PART == a ]]; then
+  for E in siglip2 clip_l14; do
+    if [[ -n ${GROUP_PIDS[$E]:-} ]] && ! wait "${GROUP_PIDS[$E]}"; then FAILS+=("image-groups-$E"); fi
+  done
+  SC9_OK=1
+  for E in siglip2 clip_l14; do
+    case $E in siglip2) SRC=siglip2$SUF;; clip_l14) SRC=clipl14$SUF;; esac
+    if [[ ! -f records/image_groups_$SRC.json ]] && (( ! DRY )); then
+      FAILS+=("sc9: encoder-pick not run (records/image_groups_$SRC.json missing)")
+      SC9_OK=0
+    fi
+    if [[ $(gate_status "sc9_replay_$E") == pass ]]; then
+      echo "skip (gate sc9_replay_$E already pass)"; SKIPPED+=("records/gates/sc9_replay_$E.json")
+    elif ! q cpu 45m "sc9-replay-$E" -- "${PYC[@]}" r29_decide.py sc9-replay --encoder "$E"; then
+      FAILS+=("sc9: encoder-pick not run (sc9-replay-$E failed)")
+      SC9_OK=0
+    fi
+  done
+  if ((SC9_OK)); then have records/encoder_pick.json || q cpu 45m encoder-pick -- "${PYC[@]}" r29_decide.py encoder-pick; fi
+fi
+echo "NEXT (run chat, not this script): $([[ $PART == a ]] && echo 'commit the pick records (image_picks_*, mmart_picks_*, photo picks, encoder_pick.json); Codex re-derives encoder_pick.json (C13) before r29_run_stage2.sh b' || echo 'Codex re-derives every pick, range and cell; then the ladders (SC4 per encoder, SC5, SC6), the ablation sheet')"
 summary "stage 2$PART"
