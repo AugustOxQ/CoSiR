@@ -1,0 +1,76 @@
+{
+  "arm": "gate_i_a_new",
+  "seeds": [
+    0
+  ],
+  "image": {
+    "cells": {
+      "ami/emotion": [
+        0.10340192187609205
+      ],
+      "map/emotion": [
+        0.26797455786734464
+      ],
+      "ami/style": [
+        0.45812292709032526
+      ],
+      "map/style": [
+        0.3495532405390488
+      ],
+      "ami/genre": [
+        0.5434566261387885
+      ],
+      "map/genre": [
+        0.6020008344252805
+      ]
+    },
+    "per_seed": [
+      0.3874183513228133
+    ],
+    "mean": 0.3874183513228133,
+    "names_sha256": "1430d4b56e4a76dbe3e1c4d699e1db5c92967c5f2048b74b6cbcdf1589809e2e",
+    "files": {
+      "emotion/s0": "/data/SSD2/cosir_r29/20261112_siglip_only/gate_i_a/new/train/qwen/R6-5/emotion__Gres__s0.npz",
+      "style/s0": "/data/SSD2/cosir_r29/20261112_siglip_only/gate_i_a/new/train/qwen/R6-5/style__Fres05__s0.npz",
+      "genre/s0": "/data/SSD2/cosir_r29/20261112_siglip_only/gate_i_a/new/train/qwen/R6-5/genre__R0o__s0.npz"
+    }
+  },
+  "text": {
+    "per_seed": [
+      0.25946457603878176
+    ],
+    "cells": {
+      "emotion/t2i": [
+        0.261128440369285
+      ],
+      "emotion/i2t": [
+        0.26213880735800704
+      ],
+      "emotion/t2t": [
+        0.33534425704270704
+      ],
+      "style/t2i": [
+        0.16502293259828474
+      ],
+      "style/i2t": [
+        0.13527118638032196
+      ],
+      "style/t2t": [
+        0.10353738898874687
+      ],
+      "genre/t2i": [
+        0.41630561523247855
+      ],
+      "genre/i2t": [
+        0.38379146864697816
+      ],
+      "genre/t2t": [
+        0.2726410877322271
+      ]
+    },
+    "mean": 0.25946457603878176
+  },
+  "root": "/data/SSD2/cosir_r29/20261112_siglip_only/gate_i_a/new",
+  "readout": "r0",
+  "written": "2026-11-13 04:06"
+}
