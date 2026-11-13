@@ -45,3 +45,12 @@ rederive/sc2_rederived.json: {kstar, per_seed: {image: [5], text: [5]}, mean: {i
 ami_rows: "<which rows enter AMI and why>", notes: [every choice the rule left open]}. Full precision. Script
 rederive/r29rd_sc2.py (it may import your own r29rd_sc1.py). Final message: the two means, the level, the status, the
 per-seed values, the AMI row choice, the forward check, the run time or the full command.
+
+## Timing and a self-check
+K*'s seeds 1 to 4 are training now; their validation exports (val/<K*>/...) appear in about an hour. Build the script
+now. Test the image cells first on K0, the frozen comparator: r14's training-time validation files
+/data/SSD2/cosir_r14/20261102_backbones_sweep/outputs/cstar/siglip1/train/k11=40/R6-5/<aspect>__<graph>__s<seed>.npz
+(key `img`, seeds 0 to 4), against r28's recorded K0 per-seed cells in
+/project/CoSiR/src/test/20261112_siglip_main/records/valpick.json (encoder siglip1). They should agree within 1e-6;
+report the largest difference per cell type. Then test the text part on K*'s seed 0 if its weights exist. End with the
+full command for all five seeds (the controller runs it under the CPU queue once the exports exist).

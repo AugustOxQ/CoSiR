@@ -1,0 +1,67 @@
+Next job in the same round (CoSiR r29): re-derive stage 1c in separate code: K*'s validation read-out picks and seed
+ranges, the 15 ArtELingo test cells against P1 and against Q1 (30 cells: value, comparator value, difference, 95%
+interval, LEVEL unit r, outcome), and the SC3 level. K* = siglip1_prefix (your SC1 derivation); P1's form = plain.
+
+## Work rules (as before)
+Work only in /project/CoSiR/src/test/20261112_siglip_only/rederive/. Delete nothing (list what you would remove); no
+commits; no .ccg records. No single command over about 4 minutes; 8 threads. Do not use the GPU yourself; give the
+script a `--device cuda` option so the controller can run the heavy parts on the GPU through its queue.
+
+## IMPORTANT: no test numbers yet
+Develop and test on ArtELingo VALIDATION only (subsets are fine). Do not compute any ArtELingo test (held) number
+yourself: the rule needs our picks committed before any test number of this piece exists. Your script's held part runs
+only in the controller's full run. Test the held code paths on K0's frozen files (the replays below), not on K*.
+
+## Forbidden (ours)
+- /project/CoSiR/src/test/20261112_siglip_only/records/** (all of it), /data/SSD2/cosir_r29/20261112_siglip_only/text/**,
+  /data/SSD2/cosir_r29/20261112_siglip_only/image_cells/**, and this round's code r29_text.py, r29_text_cells.py,
+  r29_image_cells.py, r29_ladder.py, r29_decide.py.
+- The older rounds' scoring modules that our code imports: ns_clu, ns_clu_cells, ns_ret, ns_picks, ns_metrics, ns_data,
+  rt_metrics, rt_stats, rt_run, rt_data, bs_artret, tcl_outcome, tcl_metrics, tcl_score, tcl_stage1, r28_text,
+  r28_valpick (docstrings only).
+## Allowed
+- The older rounds' independent C13 modules, written for the same cell types, to read and adapt (copy functions into
+  your folder; do not import them from their rounds): r17 /project/CoSiR/src/test/20261103_new_scores/ns_c13.py (AMI
+  cells, SC1 / SC3; image mAP against plain, SC7), r14 /project/CoSiR/src/test/20261102_backbones_sweep/bs_c13.py and
+  bs_c13_partb.py (image mAP against the teacher, r11's read-out rule), r23
+  /project/CoSiR/src/test/20261106_text_claim/tcl_c13.py (text cells).
+- The older rounds' frozen records and per-unit files for the comparators (r11, r14, r17, r23 records and output
+  folders), the specs, the stores, src/data/, r29_model.py, r29_captions.py.
+- K*'s weights /data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip1/weights/siglip1_prefix/<aspect>__s<seed>.pt and
+  its exports (model outputs, the rule's inputs): validation
+  /data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip1/val/siglip1_prefix/<aspect>__s<seed>.npz, test (held, written
+  later by our 1c) .../cstar/siglip1/held/siglip1_prefix/<aspect>__s<seed>.npz. Check your own forward pass against them
+  at float16 resolution, as in SC2.
+
+## The rule
+Spec /project/CoSiR/docs/superpowers/specs/2026-11-12-siglip-only-adapter-design.md: §3.4 ("Test cells" and its table,
+rows ArtELingo AMI, ArtELingo image mAP, ArtELingo text; "Cells per claim test"; "P1's caption form"), §6 row SC3 and the
+"Inconclusive" bullet (D22), D12, D18, D20. Each cell type keeps the protocol of the round that made its paper cell:
+- AMI at the class counts (9 / 27 / 10): no read-out pick; k-means as r17; r = K*'s five-seed range of validation AMI at
+  the class count; P1 values = r17 SC1 (SigLIP 1 plain), Q1 = r17 SC3 teacher; interval r17 (2,000 draws, rows then
+  seeds).
+- Image mAP: read-out pick by r11's rule as r14 used it for c*, in units of K*'s range of validation mAP at R0; P1 =
+  r17 SC7 (SigLIP 1 plain), Q1 = r11 stage 5 `instructed` per-query files at r11's pick; intervals as those rounds
+  (r11: 10,000 draws, queries and seeds). Find which candidate embedding each comparison uses (r17 SC7 and r14 differ:
+  read their specs and C13 modules) and say so.
+- Text, nine cells (3 aspects x t2i, i2t, t2t): read-out pick by r23's rule (highest five-seed validation mean among r0,
+  center, center_k10; ties to the first in that order); r = K*'s range at its pick; P1 = r23's SigLIP 1 side row at
+  r23's pick (plain form); Q1 = r23's teacher rows at r23's pick; interval r23 (10,000 draws, painting unit, shared seed
+  draw). K*'s text rows come from your own forward pass of K*'s caption tower over the prefixed store (as SC1).
+- Outcome: WIN when the lower bound > 0; LEVEL when not WIN and lower bound > -r; else BELOW.
+- SC3: level 1 if WIN over P1 in >= 12 of 15; level 2 if WIN over P1 in all 15; level 3 if level 2 and WIN or LEVEL over
+  Q1 in >= 12 of 15; else 0.
+
+## Self-checks before the full run
+Replay on K0 (r14's SigLIP 1 c*, frozen) where the older rounds recorded cells: r17's SigLIP 1 SC1, SC3 and SC7
+ArtELingo cells and r14's teacher mAP cells from K0's held exports; r23's text cells on the Qwen3 c* files r23 scored.
+Report the largest difference per cell type (the gate tolerance was 1e-9; say what you reach).
+
+## Output
+rederive/c1_rederived.json: {picks: {text: {aspect/direction: {pick, means per read-out, range}}, image_map: {aspect:
+{pick, range}}, ami_range: {aspect: r}}, cells: [30 entries: id <type>/<aspect>[/<direction>]/<p1|q1>, value,
+comparator_value, d, lo, hi, r, outcome, n_queries or n_rows], sc3: {wins_p1, wins_or_level_q1, level}, forward_check,
+replays: {...}, notes: [every choice the rule left open]}. Full precision. Script rederive/r29rd_c1.py (it may import
+your r29rd_sc1.py and r29rd_sc2.py) with a runner rederive/r29rd_run_c1.sh taking a device option, split into separate
+commands (validation picks; held cells) when that helps the queue. Final message: what passed in the replays, the
+expected run time of each command on CPU and on the GPU, and the commands.

@@ -24,3 +24,8 @@ mode. Outputs `/data/SSD2/cosir_r29/20261112_siglip_only/` (stage logs in its `l
   exact tie goes to plain). P1 form (D20): plain, 0.1801105675 against prefixed 0.1794144870.
 - 04:37 Codex's re-derivation (`rederive/r29rd_sc1.py`, own forward pass, own AP; 924 s on the CPU queue) gives the same
   pick and P1 form; every one of the 36 cells within 2.9e-8 of ours, groups within 1.7e-9 (tolerance 1e-6). SC1 holds.
+- 04:36 Stage 1b started (`logs/run_stage1b.log`): K* seeds 1 to 4, validation exports and scores, picks, groups.
+- 04:46 Codex (same session, resumed) built `rederive/r29rd_sc2.py`; on K0's 15 frozen validation exports it gives
+  r28's recorded cells (AMI difference 0, mAP within 5.0e-8). The full SC2 run waits for 1b's exports.
+- 04:48 Codex (same session) builds the 1c re-derivation (`codex_logs/c1_rederive_brief.txt`): validation only until
+  our picks are committed; its held part runs in the controller's queue after the SC2 commit.
