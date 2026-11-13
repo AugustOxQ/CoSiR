@@ -1,0 +1,16 @@
+siglip1_prefix emotion/s0: image/text/forward done
+siglip1_prefix style/s0: image/text/forward done
+siglip1_prefix genre/s0: image/text/forward done
+siglip1_prefix emotion/s1: image/text/forward done
+siglip1_prefix style/s1: image/text/forward done
+siglip1_prefix genre/s1: image/text/forward done
+siglip1_prefix emotion/s2: image/text/forward done
+siglip1_prefix style/s2: image/text/forward done
+siglip1_prefix genre/s2: image/text/forward done
+siglip1_prefix emotion/s3: image/text/forward done
+siglip1_prefix style/s3: image/text/forward done
+siglip1_prefix genre/s3: image/text/forward done
+siglip1_prefix emotion/s4: image/text/forward done
+siglip1_prefix style/s4: image/text/forward done
+siglip1_prefix genre/s4: image/text/forward done
+SC2 means={'image': 0.3882157208403234, 'text': 0.25485658944516015}, level=0, status=fail, seconds=1873.532

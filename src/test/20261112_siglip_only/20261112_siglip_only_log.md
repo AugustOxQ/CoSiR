@@ -39,3 +39,14 @@ mode. Outputs `/data/SSD2/cosir_r29/20261112_siglip_only/` (stage logs in its `l
 - 05:28 Table 8 (`r29_run_stage1.sh t8`, `logs/run_stage1t8.log`, 0.41 min GPU): SigLIP 1 text pass on K*'s caption
   form (prefixed) 1.138 ms per caption (repeats 1.132 to 1.145) against the Qwen3 pass 3.616 ms (r28); the three caption
   towers 0.017 ms. One CPU job (Codex's SC2 run, 8 threads) ran beside it.
+- 05:42 Codex built `rederive/r29rd_c1.py` (1c: picks, ranges, 30 cells; from r17, r14 and r23's C13 modules).
+  05:43 to 05:54 its replays and validation picks ran on the queue: replays of frozen older-round cells within 1e-6 (AMI
+  2.5e-14, image mAP 3.6e-7, text 6.3e-7); picks in `rederive/r29rd_c1_picks.json`.
+- 05:56 Codex's cache (25 GB) moved from the system disk to `/data/SSD2/cosir_r29/20261112_siglip_only/rd_c1_cache`;
+  the link `rederive/r29rd_c1_cache` keeps the script's path (gitignored). On `.scratch/pending_deletions.md`.
+- 06:08 Codex's SC2 re-derivation (`rederive/sc2_rederived.json`): level 0, fail, as ours. Per-seed groups within
+  1.6e-8, cells within 7.8e-8, K0's m, r, best and lower identical (tolerance 1e-6). AMI clusters all 6,152 paintings and
+  masks unlabelled rows at scoring (r17 §3.3). Its forward pass equals the stored exports in 99.8% of float16 elements.
+  SC2 holds: K* is an extra row (D3); stage 2 does not run.
+- 06:10 Cut: this chat passed 200k tokens. "r29 run 2" goes on with stage 1c
+  (`docs/superpowers/handoffs/2026-11-13-r29-run-2-handoff.md`).

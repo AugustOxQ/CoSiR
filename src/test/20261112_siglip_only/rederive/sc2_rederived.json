@@ -1,0 +1,306 @@
+{
+  "kstar": "siglip1_prefix",
+  "per_seed": {
+    "image": [
+      0.39002191762602184,
+      0.3892662063582939,
+      0.3861508386346626,
+      0.39054809630322646,
+      0.3850915452794123
+    ],
+    "text": [
+      0.25528267086285944,
+      0.2549956595951006,
+      0.25576408817019897,
+      0.253929692132202,
+      0.2543108364654396
+    ]
+  },
+  "mean": {
+    "image": 0.3882157208403234,
+    "text": 0.25485658944516015
+  },
+  "cells": {
+    "image": {
+      "ami/emotion": [
+        0.10776039453588589,
+        0.10225107578356014,
+        0.09688306761130165,
+        0.10786021778612659,
+        0.10467271732980048
+      ],
+      "map/emotion": [
+        0.2682913633748693,
+        0.2679840639580032,
+        0.26679447082781027,
+        0.2678670417235826,
+        0.26813736084560225
+      ],
+      "ami/style": [
+        0.4642202034306224,
+        0.4659512036726708,
+        0.4579571744362249,
+        0.46006586693663193,
+        0.45871949668047174
+      ],
+      "map/style": [
+        0.34816350017439546,
+        0.3443582688834861,
+        0.3447567320443746,
+        0.3448316064194731,
+        0.3444246882814956
+      ],
+      "ami/genre": [
+        0.5489603031228231,
+        0.5513918337364591,
+        0.5448613499496843,
+        0.5562320699574308,
+        0.5300903579905278
+      ],
+      "map/genre": [
+        0.602735741117535,
+        0.603660792115584,
+        0.6056522369385798,
+        0.6064317749961137,
+        0.6045046505485759
+      ]
+    },
+    "text": {
+      "emotion/t2i": [
+        0.2597171851296228,
+        0.25959126377012515,
+        0.25852030932349057,
+        0.2573091907555626,
+        0.2593310009761495
+      ],
+      "emotion/i2t": [
+        0.25833072003267044,
+        0.2571836784985631,
+        0.2573806033725723,
+        0.25943214080086746,
+        0.25840024159120156
+      ],
+      "emotion/t2t": [
+        0.30810164185856453,
+        0.31162585910118074,
+        0.30754597594736766,
+        0.31010862978566606,
+        0.3080911954587349
+      ],
+      "style/t2i": [
+        0.16087011262968523,
+        0.16310140880927107,
+        0.16020679042473723,
+        0.15864572819868203,
+        0.16085965051062753
+      ],
+      "style/i2t": [
+        0.1320999467981277,
+        0.13312863138057426,
+        0.13401247299175117,
+        0.1312967486853498,
+        0.13193839731751822
+      ],
+      "style/t2t": [
+        0.10115830579148337,
+        0.102233639411184,
+        0.1019521674360012,
+        0.10047840191609056,
+        0.09975991368412462
+      ],
+      "genre/t2i": [
+        0.4156168530330695,
+        0.4150029645326306,
+        0.41994043901166245,
+        0.41440685125931787,
+        0.4162365556683974
+      ],
+      "genre/i2t": [
+        0.38479834703340643,
+        0.3805661673871608,
+        0.38426021910452135,
+        0.38238633599483607,
+        0.3803898506109746
+      ],
+      "genre/t2t": [
+        0.27685092545910484,
+        0.272527323465216,
+        0.2780578159196864,
+        0.2713032017934455,
+        0.2737907223712283
+      ]
+    }
+  },
+  "k0": {
+    "image": {
+      "m": 0.38629170813482466,
+      "r": 0.002978860218950219,
+      "best": 0.38786969161861545,
+      "lower": 0.38331284791587444
+    },
+    "text": {
+      "m": 0.259351288425063,
+      "r": 0.0020107135605435533,
+      "best": 0.2606346548204899,
+      "lower": 0.25734057486451944
+    }
+  },
+  "level": 0,
+  "status": "fail",
+  "forward_check": {
+    "cells": {
+      "emotion/s0": {
+        "elements": 12599296,
+        "equal_elements": 12579719,
+        "share_equal": 0.9984461830248293,
+        "max_abs_diff": 6.103515625e-05,
+        "rows": 6152,
+        "equal_rows": 270,
+        "max_abs_diff_before_quantisation": 5.552172660827637e-05
+      },
+      "style/s0": {
+        "elements": 12599296,
+        "equal_elements": 12579180,
+        "share_equal": 0.9984034028567945,
+        "max_abs_diff": 6.103515625e-05,
+        "rows": 6152,
+        "equal_rows": 259,
+        "max_abs_diff_before_quantisation": 6.070733070373535e-05
+      },
+      "genre/s0": {
+        "elements": 12599296,
+        "equal_elements": 12582470,
+        "share_equal": 0.9986645285577861,
+        "max_abs_diff": 6.103515625e-05,
+        "rows": 6152,
+        "equal_rows": 378,
+        "max_abs_diff_before_quantisation": 5.428493022918701e-05
+      },
+      "emotion/s1": {
+        "elements": 12599296,
+        "equal_elements": 12575489,
+        "share_equal": 0.9981104499806973,
+        "max_abs_diff": 6.103515625e-05,
+        "rows": 6152,
+        "equal_rows": 150,
+        "max_abs_diff_before_quantisation": 6.0170888900756836e-05
+      },
+      "style/s1": {
+        "elements": 12599296,
+        "equal_elements": 12579392,
+        "share_equal": 0.9984202291937582,
+        "max_abs_diff": 6.103515625e-05,
+        "rows": 6152,
+        "equal_rows": 257,
+        "max_abs_diff_before_quantisation": 6.0811638832092285e-05
+      },
+      "genre/s1": {
+        "elements": 12599296,
+        "equal_elements": 12582401,
+        "share_equal": 0.9986590520613216,
+        "max_abs_diff": 6.103515625e-05,
+        "rows": 6152,
+        "equal_rows": 360,
+        "max_abs_diff_before_quantisation": 5.9276819229125977e-05
+      },
+      "emotion/s2": {
+        "elements": 12599296,
+        "equal_elements": 12579546,
+        "share_equal": 0.998432452098911,
+        "max_abs_diff": 6.103515625e-05,
+        "rows": 6152,
+        "equal_rows": 276,
+        "max_abs_diff_before_quantisation": 5.9232115745544434e-05
+      },
+      "style/s2": {
+        "elements": 12599296,
+        "equal_elements": 12579176,
+        "share_equal": 0.9984030853787387,
+        "max_abs_diff": 6.103515625e-05,
+        "rows": 6152,
+        "equal_rows": 267,
+        "max_abs_diff_before_quantisation": 6.076693534851074e-05
+      },
+      "genre/s2": {
+        "elements": 12599296,
+        "equal_elements": 12582830,
+        "share_equal": 0.9986931015828185,
+        "max_abs_diff": 6.103515625e-05,
+        "rows": 6152,
+        "equal_rows": 441,
+        "max_abs_diff_before_quantisation": 4.57763671875e-05
+      },
+      "emotion/s3": {
+        "elements": 12599296,
+        "equal_elements": 12574959,
+        "share_equal": 0.9980683841382884,
+        "max_abs_diff": 6.103515625e-05,
+        "rows": 6152,
+        "equal_rows": 134,
+        "max_abs_diff_before_quantisation": 6.07222318649292e-05
+      },
+      "style/s3": {
+        "elements": 12599296,
+        "equal_elements": 12580488,
+        "share_equal": 0.9985072181810793,
+        "max_abs_diff": 6.103515625e-05,
+        "rows": 6152,
+        "equal_rows": 318,
+        "max_abs_diff_before_quantisation": 6.058812141418457e-05
+      },
+      "genre/s3": {
+        "elements": 12599296,
+        "equal_elements": 12582566,
+        "share_equal": 0.9986721480311281,
+        "max_abs_diff": 6.103515625e-05,
+        "rows": 6152,
+        "equal_rows": 405,
+        "max_abs_diff_before_quantisation": 6.0871243476867676e-05
+      },
+      "emotion/s4": {
+        "elements": 12599296,
+        "equal_elements": 12575589,
+        "share_equal": 0.9981183869320952,
+        "max_abs_diff": 6.103515625e-05,
+        "rows": 6152,
+        "equal_rows": 146,
+        "max_abs_diff_before_quantisation": 6.027519702911377e-05
+      },
+      "style/s4": {
+        "elements": 12599296,
+        "equal_elements": 12580650,
+        "share_equal": 0.9985200760423439,
+        "max_abs_diff": 6.103515625e-05,
+        "rows": 6152,
+        "equal_rows": 320,
+        "max_abs_diff_before_quantisation": 6.102025508880615e-05
+      },
+      "genre/s4": {
+        "elements": 12599296,
+        "equal_elements": 12580977,
+        "share_equal": 0.9985460298734151,
+        "max_abs_diff": 6.103515625e-05,
+        "rows": 6152,
+        "equal_rows": 333,
+        "max_abs_diff_before_quantisation": 5.930662155151367e-05
+      }
+    },
+    "elements": 188989440,
+    "equal_elements": 188695432,
+    "share_equal": 0.9984443151956004,
+    "max_abs_diff": 6.103515625e-05,
+    "max_abs_diff_before_quantisation": 6.102025508880615e-05
+  },
+  "ami_rows": "Cluster all 6,152 validation paintings, including unlabelled genre rows; mask negative labels only when scoring AMI (genre: 4,960 scored rows). r17, 2026-11-03-new-scores-design.md \u00a73.3 explicitly prescribes this population. The r28 valpick docstring specifies float16-to-float32 rows without further normalization.",
+  "notes": [
+    "For AMI the explicit SC2/r28 input convention (stored float16 to float32, no L2) controls the generic r17 unit-row wording; r17 controls clustering all rows before masking labels.",
+    "MiniBatchKMeans uses exactly the specified n_clusters, n_init=3, batch_size=4096 and random_state=0/1/2, with other parameters at installed sklearn defaults; eight numerical-library threads. AMI uses sklearn arithmetic normalization.",
+    "Image mAP casts stored float16 to float32 then L2-normalises once, removes unlabelled paintings from queries and gallery, excludes the query itself, and breaks exact cosine ties by sorted painting order. AP and means are float64.",
+    "Text cells reuse our SC1 individual-caption input, forward, labels and AP logic; no centering/expansion, no float16 output quantisation for text retrieval.",
+    "Painting plurality ties use alphabetical emotion order and all nine emotion classes including something else; genre CSV conflicts/missing entries are unlabelled.",
+    "Image cells always use stored validation img rows. The forward diagnostic quantises our independently computed image outputs to float16 and compares elements in float32, reporting exact-equality share and largest difference; no unstated equality-share acceptance threshold is invented.",
+    "K0 means/ranges/best are frozen r28 record values: image m is the recorded score, text m is the mean of nine recorded r0 means; ranges/best use per-seed group means. No rounded spec threshold is used in a decision.",
+    "CPU forward batches are 1024 and ranking batches 128. Subset checks sample query positions with default_rng(0), keeping full galleries; the full run samples nothing.",
+    "The selected prefix store metadata spells represent the caption: in lowercase while the prose capitalizes it; use the specified stored rows unchanged, as in SC1."
+  ]
+}

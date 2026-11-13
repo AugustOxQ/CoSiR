@@ -1,0 +1,164 @@
+{
+  "replays": {
+    "image_map": {
+      "rows": [
+        {
+          "id": "image_map/emotion/p1",
+          "stats": {
+            "value": 0.26057447680032325,
+            "comparator_value": 0.24523517829806704,
+            "d": 0.01533929850225621,
+            "lo": 0.014667186304882033,
+            "hi": 0.016034931648180574,
+            "n_queries": 12281,
+            "n_units": 12281
+          },
+          "abs_diff": {
+            "value": 9.928886229859657e-08,
+            "comparator_value": 1.1101085883868933e-09,
+            "d": 9.817875371020968e-08,
+            "lo": 3.5510008164832407e-07,
+            "hi": 5.0469730686342196e-09
+          },
+          "max_abs_diff": 3.5510008164832407e-07,
+          "full_interval": true
+        },
+        {
+          "id": "image_map/emotion/q1",
+          "stats": {
+            "value": 0.2687972420925629,
+            "comparator_value": 0.2684206728949585,
+            "d": 0.0003765691976043706,
+            "lo": -0.0005481276744347674,
+            "hi": 0.0012874029220642192,
+            "n_queries": 12281,
+            "n_units": 12281
+          },
+          "abs_diff": {
+            "value": 4.806400832890745e-10,
+            "comparator_value": 0.0,
+            "d": 4.806400832890745e-10,
+            "lo": 1.1648744579605824e-09,
+            "hi": 6.465989679446671e-11
+          },
+          "max_abs_diff": 1.1648744579605824e-09,
+          "full_interval": true
+        },
+        {
+          "id": "image_map/style/p1",
+          "stats": {
+            "value": 0.28771262560392963,
+            "comparator_value": 0.29621971701644,
+            "d": -0.008507091412510381,
+            "lo": -0.010119296046920852,
+            "hi": -0.006895024820315681,
+            "n_queries": 12281,
+            "n_units": 12281
+          },
+          "abs_diff": {
+            "value": 1.40101466261644e-07,
+            "comparator_value": 7.696879800178635e-09,
+            "d": 1.4779834606182263e-07,
+            "lo": 3.176347836836291e-08,
+            "hi": 2.665901129971643e-08
+          },
+          "max_abs_diff": 1.4779834606182263e-07,
+          "full_interval": true
+        },
+        {
+          "id": "image_map/style/q1",
+          "stats": {
+            "value": 0.3554564435934525,
+            "comparator_value": 0.32171685368804037,
+            "d": 0.03373958990541215,
+            "lo": 0.03194284711203371,
+            "hi": 0.035667698349282705,
+            "n_queries": 12281,
+            "n_units": 12281
+          },
+          "abs_diff": {
+            "value": 1.258204895826509e-07,
+            "comparator_value": 0.0,
+            "d": 1.258204895826509e-07,
+            "lo": 2.567516129356462e-07,
+            "hi": 1.218706106378975e-07
+          },
+          "max_abs_diff": 2.567516129356462e-07,
+          "full_interval": true
+        },
+        {
+          "id": "image_map/genre/p1",
+          "stats": {
+            "value": 0.5482196174414897,
+            "comparator_value": 0.5035387008354133,
+            "d": 0.044680916606076426,
+            "lo": 0.04201945307951337,
+            "hi": 0.047286849064894255,
+            "n_queries": 9949,
+            "n_units": 9949
+          },
+          "abs_diff": {
+            "value": 1.4103726109215842e-07,
+            "comparator_value": 7.494193043910968e-10,
+            "d": 1.4178668039654951e-07,
+            "lo": 1.065137529981941e-07,
+            "hi": 8.440903274953282e-09
+          },
+          "max_abs_diff": 1.4178668039654951e-07,
+          "full_interval": true
+        },
+        {
+          "id": "image_map/genre/q1",
+          "stats": {
+            "value": 0.6227075908035719,
+            "comparator_value": 0.6124437089715543,
+            "d": 0.01026388183201754,
+            "lo": 0.008328684593021543,
+            "hi": 0.012143753201602854,
+            "n_queries": 9949,
+            "n_units": 9949
+          },
+          "abs_diff": {
+            "value": 5.51381580393695e-08,
+            "comparator_value": 0.0,
+            "d": 5.51381580393695e-08,
+            "lo": 3.755849497730224e-09,
+            "hi": 4.3361233856981096e-08
+          },
+          "max_abs_diff": 5.51381580393695e-08,
+          "full_interval": true
+        }
+      ],
+      "max_abs_diff": 3.5510008164832407e-07,
+      "scoring_max_abs_diff": 0.0,
+      "full_intervals": true,
+      "full_scoring": true,
+      "aspects": [
+        "emotion",
+        "style",
+        "genre"
+      ],
+      "interval_gate_1e9": false,
+      "scoring_gate_1e9": false
+    }
+  },
+  "source_sha256": "40a710f407efb154a42bbdc83f2b073dbce933c6123c1267c9fa7da4343a18e3",
+  "device": "cuda",
+  "elapsed_seconds": 58.9908205550164,
+  "query_limit": 0,
+  "notes": [
+    "P1 image mAP uses the r17 SC7 untold candidate: unit-normalise emotion/style/genre heads, concatenate in that order, divide by float32 sqrt(3). Q1 image mAP uses the r14 told aspect head. They have separate arm-level cross-fit read-out picks; image_map[aspect].pick is told/Q1 and .p1_pick is untold/P1.",
+    "Both image-map pick paths use each told aspect head's five-seed R0 validation mAP range as the LEVEL/selection unit. The common arm-level pick is repeated per aspect in the requested output structure.",
+    "AMI clusters every painting before masking negative labels at scoring, including in row resampling. Stored candidate float16 rows are promoted to float32 without another L2, as r28/r29 specify. Plain/teacher store inputs are unit-normalised as in the r17 comparator protocol.",
+    "Image mAP uses labelled queries/gallery only; fits use all fit paintings without labels. Validation parity halves are defined before label masking; average the two half means equally. Fit the final picked map on all validation rows.",
+    "Image menu: none, center, PCA-whiten64/256/1024 (capped at width), each crossed with k=0/1/3/5/10. Covariance is float64 with n-1 divisor, eigenvalues descending, epsilon=1e-6*largest eigenvalue; maps and ranking rows are float32. Equal-variance eigenvector sign choices cancel in cosine.",
+    "Image selection uses mean gain in told R0 range units, guard against losses greater than that range, the r11 0.001 tie band and R0/no-expansion/none-center-whiten/smaller-k/larger-dimension order. A 1e-12 comparison epsilon follows the permitted r17 independent derivation; zero ranges invalidate the selection rather than divide by zero.",
+    "Text means are fit on all validation text/image output rows in float64 then cast to float32. Centering and expansion rank all gallery rows; unlabelled rows leave only AP. The own caption sample ID leaves t2t gallery, paired paintings remain cross-modal. Text APs are retained as float32 to match r23 per-unit files, with float64 means and intervals; SC1 kept double AP before its mean.",
+    "Exact cosine ties keep ascending gallery row order: image painting names, caption extraction sample IDs. Painting plurality ties take the alphabetically first of all nine emotions; unknown/conflicting genre is -1.",
+    "Each comparison has a fresh default_rng(0). AMI samples every painting row then five candidate seeds, with three k-means states averaged per seed, 2000 draws. Image mAP samples labelled queries then shared seeds, 10000 draws. Text samples sorted painting units with scored queries then shared seeds; repeats weight query sums and counts, 10000 draws. Percentiles use numpy linear interpolation.",
+    "Forward diagnostics compare our image tower with stored exports after float16 rounding; image cells use the stored rows. CUDA is controller-only, TF32 disabled; AMI/k-means/bootstraps stay on CPU with at most eight worker threads/processes.",
+    "Read-out picks and ranges must be committed by the controller before the held command. --picks-committed is an explicit assertion of that precondition; the held report pins our validation-picks SHA256. This program makes no commits and reads no forbidden pick record.",
+    "A missing or uncertified replay marks its affected comparison INCONCLUSIVE; it contributes neither WIN nor LEVEL. SC3 reports the level supported by decided cells and whether inconclusive cells could raise it, per D22. Replay reports distinguish full interval checks from sampled K0 forward/ranking checks.",
+    "The specified prefixed store metadata uses lowercase represent the caption:; use its supplied rows unchanged. P1 caption form is plain as fixed in the task; its own r23 validation pick is used per cell."
+  ]
+}

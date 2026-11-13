@@ -1,0 +1,160 @@
+{
+  "arm": "siglip1_prefix",
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "image": {
+    "cells": {
+      "ami/emotion": [
+        0.10776039453588589,
+        0.10225107578356014,
+        0.09688306761130165,
+        0.10786021778612659,
+        0.10467271732980048
+      ],
+      "map/emotion": [
+        0.26829136649765306,
+        0.2679840665896175,
+        0.26679445351639186,
+        0.2678670416437719,
+        0.2681373530035111
+      ],
+      "ami/style": [
+        0.4642202034306224,
+        0.4659512036726708,
+        0.4579571744362249,
+        0.46006586693663193,
+        0.45871949668047174
+      ],
+      "map/style": [
+        0.34816344320139725,
+        0.3443582438730726,
+        0.3447566542735032,
+        0.34483160100005467,
+        0.3444247356741718
+      ],
+      "ami/genre": [
+        0.5489603031228231,
+        0.5513918337364591,
+        0.5448613499496843,
+        0.5562320699574308,
+        0.5300903579905278
+      ],
+      "map/genre": [
+        0.6027357457734217,
+        0.6036607938105385,
+        0.6056522373826035,
+        0.6064317626102348,
+        0.6045046509208566
+      ]
+    },
+    "per_seed": [
+      0.39002190942696724,
+      0.3892662029109865,
+      0.3861508228616182,
+      0.3905480933223751,
+      0.38509155193322325
+    ],
+    "mean": 0.38821571609103406,
+    "names_sha256": "1430d4b56e4a76dbe3e1c4d699e1db5c92967c5f2048b74b6cbcdf1589809e2e",
+    "files": {
+      "emotion/s0": "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip1/val/siglip1_prefix/emotion__s0.npz",
+      "emotion/s1": "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip1/val/siglip1_prefix/emotion__s1.npz",
+      "emotion/s2": "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip1/val/siglip1_prefix/emotion__s2.npz",
+      "emotion/s3": "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip1/val/siglip1_prefix/emotion__s3.npz",
+      "emotion/s4": "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip1/val/siglip1_prefix/emotion__s4.npz",
+      "style/s0": "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip1/val/siglip1_prefix/style__s0.npz",
+      "style/s1": "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip1/val/siglip1_prefix/style__s1.npz",
+      "style/s2": "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip1/val/siglip1_prefix/style__s2.npz",
+      "style/s3": "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip1/val/siglip1_prefix/style__s3.npz",
+      "style/s4": "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip1/val/siglip1_prefix/style__s4.npz",
+      "genre/s0": "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip1/val/siglip1_prefix/genre__s0.npz",
+      "genre/s1": "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip1/val/siglip1_prefix/genre__s1.npz",
+      "genre/s2": "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip1/val/siglip1_prefix/genre__s2.npz",
+      "genre/s3": "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip1/val/siglip1_prefix/genre__s3.npz",
+      "genre/s4": "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip1/val/siglip1_prefix/genre__s4.npz"
+    }
+  },
+  "text": {
+    "per_seed": [
+      0.2552826721146161,
+      0.2549956563799609,
+      0.25576408770260883,
+      0.2539296905783046,
+      0.25431082698966984
+    ],
+    "cells": {
+      "emotion/t2i": [
+        0.2597171561332141,
+        0.2595912592023566,
+        0.25852031088558447,
+        0.2573091956980123,
+        0.25933099479759514
+      ],
+      "emotion/i2t": [
+        0.2583307245514938,
+        0.25718368364692396,
+        0.25738060223928716,
+        0.25943213986276475,
+        0.2584002393925192
+      ],
+      "emotion/t2t": [
+        0.3081016366600621,
+        0.31162585372335233,
+        0.30754597885873247,
+        0.31010862867430916,
+        0.3080911957658224
+      ],
+      "style/t2i": [
+        0.16087013724647742,
+        0.16310140087523248,
+        0.16020676102296993,
+        0.15864572306824723,
+        0.1608596372892983
+      ],
+      "style/i2t": [
+        0.13209994477207768,
+        0.13312859675671085,
+        0.1340124743777298,
+        0.13129672474898937,
+        0.1319383321166758
+      ],
+      "style/t2t": [
+        0.10115831296198173,
+        0.10223364229552048,
+        0.10195220423871769,
+        0.10047839967765426,
+        0.09975990765827152
+      ],
+      "genre/t2i": [
+        0.41561687503154937,
+        0.4150029570764684,
+        0.41994042985896035,
+        0.4144068531579608,
+        0.4162365575718831
+      ],
+      "genre/i2t": [
+        0.38479834179724415,
+        0.3805661870106574,
+        0.3842602149635974,
+        0.3823863457054681,
+        0.380389854378788
+      ],
+      "genre/t2t": [
+        0.2768509198774443,
+        0.272527326832426,
+        0.27805781287789993,
+        0.2713032046113354,
+        0.27379072393617554
+      ]
+    },
+    "mean": 0.254856586753032
+  },
+  "root": "/data/SSD2/cosir_r29/20261112_siglip_only/cstar/siglip1",
+  "readout": "r0",
+  "written": "2026-11-13 05:05"
+}

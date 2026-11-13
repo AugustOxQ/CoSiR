@@ -232,3 +232,6 @@ src/test/20261109_r20_figures/outputs
 !src/test/20261109_r20_figures/r20_sanity.json
 # paper sec4: the qualitative figure round outputs folder is a link to /data/SSD2
 src/test/20261111_qual_figure/outputs
+
+# r29 Codex re-derivation cache (a link to /data/SSD2/cosir_r29/20261112_siglip_only/rd_c1_cache)
+src/test/20261112_siglip_only/rederive/r29rd_c1_cache
