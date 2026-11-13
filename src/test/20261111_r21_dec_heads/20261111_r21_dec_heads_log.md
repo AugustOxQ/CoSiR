@@ -258,3 +258,11 @@ Spec: `docs/superpowers/specs/2026-11-11-r21-dec-heads-design.md`. Decision line
   adds the λ = 0 row): the λ = 0 arm is looser than c* on all three aspects (style CHI -104, 0 of 5 seeds tighter; SI -0.009,
   -0.020, -0.026). Reading (agent; the user's reading comes first at step 1): the later kept epoch alone moves neither AMI nor
   mAP and makes clusters a little looser, so the style AMI and mAP gains and the genre mAP gain come from the DEC term.
+- 03:59: **D16 PASS for the λ = 0 row**: `r21_d16.py derive --arms dec-plain_l0_w5_S2 --out d16/lam0` (11 min, one CPU slot;
+  same picks file SHA-256), compared by the controller with `r21_d16_compare_lam0.py` against `scores/stage2_lam0.json`:
+  9 cells, 135 numbers, 9 words; max |diff| 1.4e-16, 0 failed, 0 missing; tolerance 1e-6 (`d16/lam0/compare.json`).
+- 03:55: figures redrawn with the λ = 0 panels (`compute` 1 min, CPU queue); the λ = 0 silhouette means equal `diag.json`
+  (|diff| 0). Claude's look review of all six PNGs: no defects. Seed 0, genre: the λ = 0 control loses much of c*'s
+  high-silhouette group (mean 0.160 against 0.235); the DEC forms keep more of it.
+- 04:00: step 9 started: auto report draft by Codex `gpt-6.1-sol` medium (brief `.scratch/r21-dec-heads/report/task.txt`).
+  The direct contrast "DEC arm minus λ = 0" is still the user's open question (asked 02:10); the report lists it as option a.
