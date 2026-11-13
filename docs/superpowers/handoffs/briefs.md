@@ -2474,3 +2474,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-13-paper-plan-7-handoff.md
 - New chat: tab 'paper plan 7', session b0f38334-b76b-4aad-ba62-093f0f43f25f
 
+[brief] CoSiR: r31 run -> r31 run 2 (2026-11-13 17:53 Amsterdam)
+- Done: Codex built the stage 2 C13 re-derivation code (E2/E3 and SC9, MMArt and photo, ablation); ablation replay exact on all 24 r28 cells.
+- State: part a not started; two Codex replays (E2/E3, MMArt/photo) run on the CPU queue; GPU check passed 17:52.
+- Next: `r29_run_stage2.sh a --amendment A1` at 19:00 or later; Codex `val` re-derivations as the records appear.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-13-r31-run-2-handoff.md
+- New chat: tab 'r31 run 2', session 860f785a-fbcc-4299-8acd-da7a016a2571
+
