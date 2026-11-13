@@ -323,6 +323,8 @@ def _encoders(arg):
 
 
 def main(argv=None):
+    import os
+    os.environ.setdefault('CUBLAS_WORKSPACE_CONFIG', ':4096:8')    # bs_cstar.train asserts it for CUDA runs (as r29_trainer.main)
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest='cmd', required=True)
     for name in ('stores', 'train', 'export', 'picks', 'cells', 'ladder', 'beside', 'smoke'):

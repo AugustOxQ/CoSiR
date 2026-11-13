@@ -543,6 +543,8 @@ def smoke(kstar='siglip1', device='cuda', n_fit=6000, n_val=1500, root=SMOKE_ROO
 
 # ------------------------------------------------------------------------------------------------------------ CLI
 def main(argv=None):
+    import os
+    os.environ.setdefault('CUBLAS_WORKSPACE_CONFIG', ':4096:8')    # r14's photo runs had it (bs_node sets it at import); as r29_trainer.main
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest='cmd', required=True)
     p = sub.add_parser('store')
