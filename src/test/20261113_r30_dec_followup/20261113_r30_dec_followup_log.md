@@ -39,6 +39,6 @@ A small loop (exploration) from saved r21 outputs, seed 0. Decided in the "r30 d
 
 ## Run
 
-- `r30_queue.sh` (background, started 16:47): waits until a job labelled `r29:*` or `r31:*` (r31 runs r29's runner)
+- `r30_queue.sh` (background, started 16:42): waits until a job labelled `r29:*` or `r31:*` (r31 runs r29's runner)
   has been seen in `res-queue` and then none for 60 minutes in a row; gives up when none is seen by 2026-11-14 11:00.
   Then `umap`, `valence`, `plot`, each `res-queue cpu --short --label r30:<step>`. Logs: `<outputs>/logs/`.
