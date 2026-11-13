@@ -160,3 +160,16 @@ mode. Outputs `/data/SSD2/cosir_r29/20261112_siglip_only/` (stage logs in its `l
   19:24. The full s2mp replay reruns on the new source (`rederive/r29rd_s2mp_replay_v2.json`, CPU queue, about 75 min).
 - 19:27 Cut to chat "r31 run 3" (context past 200k), part a running (E2 training); handoff
   `docs/superpowers/handoffs/2026-11-13-r31-run-3-handoff.md`.
+
+### Chat "r31 run 3"
+
+- 19:27 Chat start (handoff `2026-11-13-r31-run-3-handoff.md`). Part a runs (E2 training from 19:09, seed 2); the s2mp
+  v2 replay runs on the CPU queue (from 19:24). Gate (viii) `siglip2_prefix` and E2's void crash record committed
+  (91d1fb00).
+- 19:40 E2 training done (30.5 min, exit 0); validation export 0.3 min; image groups (mean 0.3838 over five seeds,
+  bb76a4f7); picks 23.2 min (all four read-outs `center+k10`, fe056835). 20:03 E3: gate (viii) `clipl14_prefix` pass at
+  try 1 (25a8d459); training 20:04 to 20:31 (27.2 min); image groups mean 0.3762 (aee2c49a); picks from 20:31.
+- 20:39 The s2mp v2 replay (fixed source) done (75.4 min, exit 0): all 21 families pass, full scope (both pieces, five
+  seeds, 2,000 and 10,000 draws, full queries); largest differences 1.8e-14 (MMArt validation AMI), every mAP and pick
+  family within 2.2e-16. Its `complete` field is null (the replay mode does not set it); the per-family block is the
+  verdict. Committed as `rederive/r29rd_s2mp_replay_v2.json`; the s2mp `held` runs take it as `--replay-json`.
