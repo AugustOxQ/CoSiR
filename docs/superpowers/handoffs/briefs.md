@@ -2458,3 +2458,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-13-r31-run-handoff.md
 - New chat: tab 'r31 run', session ca87e2de-e863-4ca2-8a8f-410fc25baa38
 
+[brief] CoSiR: paper plan 5 -> paper plan 6 (2026-11-13 17:06 Amsterdam)
+- Done: Table 5 on SigLIP 1 (REPO `a616b3b`); 4.1 genre clause marked TODO; Figures 3 and 4 on SigLIP 1 in REPO (`424d61a`).
+- State: default model fixed: Qwen3 text + SigLIP 1 image (user and co-authors, 2026-11-13).
+- Next: ask the user which open item comes first; the 4.2 points that waited for r29 are the likely start.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-13-paper-plan-6-handoff.md
+- New chat: tab 'paper plan 6', session c96dfbaa-74c7-4d70-9d67-e728077d1db7
+
