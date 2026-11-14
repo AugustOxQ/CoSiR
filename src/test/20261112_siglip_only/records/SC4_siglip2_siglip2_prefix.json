@@ -1,0 +1,109 @@
+{
+ "claim": "SC4",
+ "arm": "siglip2_prefix",
+ "encoder": "siglip2",
+ "scope": "ArtELingo test, encoder siglip2",
+ "written": "2026-11-14 01:27",
+ "n_cells": 6,
+ "most": 5,
+ "level": 3,
+ "inconclusive_above": false,
+ "report": "level 3",
+ "counts": {
+  "p1_win": 6,
+  "p1_inconclusive": 0,
+  "q1_win_or_level": 6,
+  "q1_win": 5,
+  "q1_level": 1,
+  "q1_inconclusive": 0
+ },
+ "sentence": "With no Qwen3 pass at test time, training adds over the plain embedding in every cell and it is level with or above the instructed Qwen3 in 6 of 6 cells.",
+ "counted": {
+  "p1_win": [
+   "artelingo/emotion/ami",
+   "artelingo/emotion/map",
+   "artelingo/style/ami",
+   "artelingo/style/map",
+   "artelingo/genre/ami",
+   "artelingo/genre/map"
+  ],
+  "q1_win_or_level": [
+   "artelingo/emotion/ami",
+   "artelingo/emotion/map",
+   "artelingo/style/ami",
+   "artelingo/style/map",
+   "artelingo/genre/ami",
+   "artelingo/genre/map"
+  ],
+  "p1_inconclusive": [],
+  "q1_inconclusive": []
+ },
+ "cells": [
+  {
+   "cell": "artelingo/emotion/ami",
+   "p1": "WIN",
+   "p1_id": "artelingo/siglip2/siglip2_prefix/emotion/ami9/plain",
+   "q1": "WIN",
+   "q1_id": "artelingo/siglip2/siglip2_prefix/emotion/ami9/teacher",
+   "q1_claim": "above"
+  },
+  {
+   "cell": "artelingo/emotion/map",
+   "p1": "WIN",
+   "p1_id": "artelingo/siglip2/siglip2_prefix/emotion/map/plain",
+   "q1": "LEVEL",
+   "q1_id": "artelingo/siglip2/siglip2_prefix/emotion/map/teacher",
+   "q1_claim": "level with"
+  },
+  {
+   "cell": "artelingo/style/ami",
+   "p1": "WIN",
+   "p1_id": "artelingo/siglip2/siglip2_prefix/style/ami27/plain",
+   "q1": "WIN",
+   "q1_id": "artelingo/siglip2/siglip2_prefix/style/ami27/teacher",
+   "q1_claim": "above"
+  },
+  {
+   "cell": "artelingo/style/map",
+   "p1": "WIN",
+   "p1_id": "artelingo/siglip2/siglip2_prefix/style/map/plain",
+   "q1": "WIN",
+   "q1_id": "artelingo/siglip2/siglip2_prefix/style/map/teacher",
+   "q1_claim": "above"
+  },
+  {
+   "cell": "artelingo/genre/ami",
+   "p1": "WIN",
+   "p1_id": "artelingo/siglip2/siglip2_prefix/genre/ami10/plain",
+   "q1": "WIN",
+   "q1_id": "artelingo/siglip2/siglip2_prefix/genre/ami10/teacher",
+   "q1_claim": "above"
+  },
+  {
+   "cell": "artelingo/genre/map",
+   "p1": "WIN",
+   "p1_id": "artelingo/siglip2/siglip2_prefix/genre/map/plain",
+   "q1": "WIN",
+   "q1_id": "artelingo/siglip2/siglip2_prefix/genre/map/teacher",
+   "q1_claim": "above"
+  }
+ ],
+ "sources": {
+  "image": "read"
+ },
+ "cell_files": {
+  "image": {
+   "path": "/project/CoSiR/src/test/20261112_siglip_only/records/image_cells_siglip2_prefix.json",
+   "sha256": "afe4b6a74ca9caf96674b439586adbf25c0e133e59c24a9bebd38d8f888169d0",
+   "n_cells": 12
+  }
+ },
+ "gates": {
+  "v_image": "pass",
+  "v_text": "pass",
+  "viii_siglip2_prefix": "pass"
+ },
+ "parked_by": null,
+ "amendment": "A1",
+ "amendment_line": "stage 2 ran on the fail under A1"
+}

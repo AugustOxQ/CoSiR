@@ -233,3 +233,5 @@ mode. Outputs `/data/SSD2/cosir_r29/20261112_siglip_only/` (stage logs in its `l
   e2e3`: pass, 192 fields, largest difference 2.8e-14, no mismatch. Information only: the genre mAP cells' count field
   differs (ours 12,281, Codex 9,949) because the script pairs our `n_rows` (held paintings) with Codex's query count;
   our `n_queries` is 9,949, equal to Codex's.
+- 01:27 SC4 ladders with `R29_AMENDMENT=A1`: E2 (SigLIP 2) level 3 and E3 (CLIP L/14) level 3, each P1 WIN 6/6 and Q1
+  WIN or LEVEL 6/6. Codex's `s2e_held.json` gives the same levels and counts (information).
