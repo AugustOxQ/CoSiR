@@ -202,3 +202,14 @@ mode. Outputs `/data/SSD2/cosir_r29/20261112_siglip_only/` (stage logs in its `l
   `s2mp_val.json`), `s2e` (from 00:35).
 - 01:06 C13 comparison `--phase held --pieces mmart`: pass, 96 fields, largest difference 1.7e-14, no mismatch (Codex:
   12 cells, 11 WIN and 1 LEVEL; SC5 level 3, as information).
+- 01:07 Photo test exports (Affection, EmoSet) and test cells 5.2 min (40dcccba). Codex `s2mp held --piece photo` from
+  01:07. 01:12 Ablation held exports (four removals, 0.3 min each). Codex `s2abl held` (all four rows) from 01:13.
+- 01:13 Part b done; one failed step, `ablation-score` (exit 1 at start, 0.1 min; no crash record written): r29_ablation's
+  `require_gate` asserts that gate (vii)'s recorded `code_sha256` equals the current code hashes ("ablation code changed;
+  rerun gate-vii"). Cause: r31 ticket 01 (1427d43e, 16:11) changed `r29_ablation.py` and `r29_trainer.py` after the gate's
+  try-3 pass (2026-11-13 04:04): only the A1 stage 2 guard (`require_pass` through `P.stage2_gate`) and the A1 marks on
+  the record; no number path. Gate (vii) cannot be rerun as written: its record is at try 3, and `gate_vii` and
+  `write_gate_record` refuse a fourth try (§3.5). A wiring bug of the r31 build, not a crash (D21). Fix planned for
+  chat "r31 run 4" (handoff `2026-11-14-r31-run-4-handoff.md`): a recheck of gate (vii) on the current code, own record.
+- 01:15 GPU check passed (driver 595.99.02; kernel module and library match). Cut to chat "r31 run 4" (context past
+  200k). Codex's `s2e`, `s2mp photo` and `s2abl` held runs go on as children of this tab.
