@@ -245,3 +245,9 @@ mode. Outputs `/data/SSD2/cosir_r29/20261112_siglip_only/` (stage logs in its `l
   AMI means, not per-seed values; its mean checks pass. Every held C13 piece (e2e3, mmart, photo, ablation) passes.
 - 01:48 Numbers sheet `paper_cells.md` rewritten (`r29_ladder.py sheet`, A1): SC4, SC5, SC6, Table 5 (ablation) and
   SC9 filled; no stage 2 piece "not run".
+- 01:49 to 02:05 Codex report job (gpt-6.1-sol, medium; log `codex_logs/stage2_reports_draft.log`, thread
+  01a1d787-a44a-7180-92b9-02456deec6e4): drafts of the auto report `2027-01-19_siglip_only_stage2.md` and the
+  user-read report `2026-11-14_siglip_only_stage2.md`. Numbers traced to records; a first read finds the brief too
+  long (the 12-row ablation table) and several cryptic lines. Committed as drafts, claim review pending.
+- 02:06 GPU check passed (driver 595.99.02; kernel module and library match). Cut to chat "r31 run 5" (context past
+  200k); handoff `2026-11-14-r31-run-5-handoff.md`.
