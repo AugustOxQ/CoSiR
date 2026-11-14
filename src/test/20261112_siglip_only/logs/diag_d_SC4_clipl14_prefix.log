@@ -1,0 +1,4 @@
+res-queue: enqueued cpu short position 1, 0 ahead, estimated start 01:38
+res-queue: start cpu 01:38
+diag (d) SC4 clipl14_prefix: 6 cells -> /project/CoSiR/src/test/20261112_siglip_only/records/diag_d_SC4_clip_l14_clipl14_prefix.json (506s)
+res-queue: end cpu exit 0, 8.46 minutes run

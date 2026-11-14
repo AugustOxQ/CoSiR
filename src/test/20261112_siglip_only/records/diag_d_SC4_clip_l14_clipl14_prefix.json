@@ -1,0 +1,76 @@
+{
+ "claim": "SC4",
+ "arm": "clipl14_prefix",
+ "encoder": "clip_l14",
+ "ladder_record": "/project/CoSiR/src/test/20261112_siglip_only/records/SC4_clip_l14_clipl14_prefix.json",
+ "ladder_level": 3,
+ "written": "2026-11-14 01:46",
+ "cells": [
+  {
+   "cell": "artelingo/emotion/ami",
+   "k_star": 0.09556468966274044,
+   "k0": 0.09811910474896496,
+   "k0_source": "r17/verdicts.json :: id=SC1/artelingo/clip_l14/emotion/ami/9/plain => cand",
+   "d": -0.002554415086224518,
+   "lo": -0.0055642009430665,
+   "hi": 0.0009508723333171867,
+   "n_draws": 2000,
+   "protocol": "r17 paired_cell, comparator seeded (apart)"
+  },
+  {
+   "cell": "artelingo/emotion/map",
+   "k_star": 0.2668529618704714,
+   "k0": 0.2670906500532171,
+   "k0_source": "r14/verdicts.json :: SC6 clip_l14/emotion/ret candidate_value",
+   "d": -0.0002376881827456656,
+   "lo": -0.00119600111168386,
+   "hi": 0.0007438581321591998,
+   "n_draws": 10000,
+   "protocol": "r17 paired_ret, comp_seeds apart"
+  },
+  {
+   "cell": "artelingo/style/ami",
+   "k_star": 0.4219807439290356,
+   "k0": 0.42220905757438976,
+   "k0_source": "r17/verdicts.json :: id=SC1/artelingo/clip_l14/style/ami/27/plain => cand",
+   "d": -0.000228313645354139,
+   "lo": -0.0037963534446268502,
+   "hi": 0.003541566957932594,
+   "n_draws": 2000,
+   "protocol": "r17 paired_cell, comparator seeded (apart)"
+  },
+  {
+   "cell": "artelingo/style/map",
+   "k_star": 0.3360433996544309,
+   "k0": 0.3349711143913246,
+   "k0_source": "r14/verdicts.json :: SC6 clip_l14/style/ret candidate_value",
+   "d": 0.0010722852631063207,
+   "lo": -0.0002649654693599221,
+   "hi": 0.002624973172898351,
+   "n_draws": 10000,
+   "protocol": "r17 paired_ret, comp_seeds apart"
+  },
+  {
+   "cell": "artelingo/genre/ami",
+   "k_star": 0.5155512239254054,
+   "k0": 0.5155098058137793,
+   "k0_source": "r17/verdicts.json :: id=SC1/artelingo/clip_l14/genre/ami/10/plain => cand",
+   "d": 4.141811162616804e-05,
+   "lo": -0.007512241320618884,
+   "hi": 0.007709835127786389,
+   "n_draws": 2000,
+   "protocol": "r17 paired_cell, comparator seeded (apart)"
+  },
+  {
+   "cell": "artelingo/genre/map",
+   "k_star": 0.6175607471028919,
+   "k0": 0.6177380783984918,
+   "k0_source": "r14/verdicts.json :: SC6 clip_l14/genre/ret candidate_value",
+   "d": -0.0001773312955999362,
+   "lo": -0.0009457111932485995,
+   "hi": 0.0006321300333117394,
+   "n_draws": 10000,
+   "protocol": "r17 paired_ret, comp_seeds apart"
+  }
+ ]
+}
