@@ -72,3 +72,15 @@ A small loop (exploration) from saved r21 outputs, seed 0. Decided in the "r30 d
   part (people paintings carry more negative captions); the split's valence AMI is 0.046 against 0.040 for c*, and its
   genre AMI is 0.33.
 - 02:52: figure `r30_islands_fig.py` -> `islands_emotion.png` (r21's own emotion UMAPs on validation, c* and long DEC, coloured by genre and by positive caption share); copied to the report assets `docs/reports/assets/2027-01-20_dec_emotion_split/` (with the three shared maps and r21's emotion UMAP) and `docs/user_read/assets/2026-11-14_dec_emotion_split/`.
+
+## Reports (step 9), 2026-11-14
+
+- 02:55 to 03:15: auto report [2027-01-20_dec_emotion_split](../../../docs/reports/auto/percept/2027-01-20_dec_emotion_split.md)
+  (Codex `gpt-6.1-sol` medium draft, Claude review and claim review: five brief numbers recomputed from the JSON files,
+  all match) and user-read report [2026-11-14_dec_emotion_split](../../../docs/user_read/2026-11-14_dec_emotion_split.md)
+  (fidelity check `gpt-6.1-terra` medium: no number errors, two fixes; cold read `gpt-6-luna` medium, the first try made
+  no tool call and was rerun with the text inline; one fix wave).
+- Correction to the add-on above: the 5.7 UMAP units come from sampled point pairs (Codex read the code), so they are an
+  upper bound on the closest distance, not an exact minimum.
+- Agent choices: under k-means state 0 alone, validation valence AMI is 0.0430 (c*) against 0.0459 (long DEC), genre
+  0.3010 against 0.3255; the reading holds. Raw-row k-means and another tie rule are not checked.
