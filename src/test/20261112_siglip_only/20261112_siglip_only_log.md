@@ -228,3 +228,8 @@ mode. Outputs `/data/SSD2/cosir_r29/20261112_siglip_only/` (stage logs in its `l
 - 01:26 Gate (vii) recheck (`records/gates/vii_ablation_recheck.json`): pass at try 1 (2.8 min): fixed-batch trainer
   test pass; full frozen K0 replay within 1e-9 (emotion AMI 0.0985, style 0.4408, genre 0.5279); changed files listed
   r29_ablation.py and r29_trainer.py. `vii_ablation.json` unchanged.
+- 01:26 SC7 scoring (`r29_ablation.py score`, A1) on the CPU queue (`logs/ablation_score.log`).
+- 01:27 Codex's `s2e held` done (46.0 min, exit 0; complete, no inconclusive cell). C13 comparison `--phase held --pieces
+  e2e3`: pass, 192 fields, largest difference 2.8e-14, no mismatch. Information only: the genre mAP cells' count field
+  differs (ours 12,281, Codex 9,949) because the script pairs our `n_rows` (held paintings) with Codex's query count;
+  our `n_queries` is 9,949, equal to Codex's.

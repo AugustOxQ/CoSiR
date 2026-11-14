@@ -5395,6 +5395,1703 @@
      "/project/CoSiR/src/test/20261112_siglip_only/rederive/s2mp_held.json": "0ddda76f52a50cdc8ef3ccecde0d0a1807a9b254df69568934ee4eb47ed154ae"
     },
     "written": "2026-11-14 01:18"
+   },
+   "e2e3": {
+    "status": "pass",
+    "n_compared": 192,
+    "max_abs_diff": 2.8310687127941492e-14,
+    "mismatches": [],
+    "unpaired": [],
+    "info": [
+     {
+      "item": "cell emotion/ami/plain n",
+      "ours": 12281,
+      "codex": 12281,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell emotion/ami/plain n_draws",
+      "ours": 2000,
+      "codex": 2000,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell emotion/ami/q1 n",
+      "ours": 12281,
+      "codex": 12281,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell emotion/ami/q1 n_draws",
+      "ours": 2000,
+      "codex": 2000,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell emotion/map/plain n",
+      "ours": 12281,
+      "codex": 12281,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell emotion/map/plain n_draws",
+      "ours": 10000,
+      "codex": 10000,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell emotion/map/q1 n",
+      "ours": 12281,
+      "codex": 12281,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell emotion/map/q1 n_draws",
+      "ours": 10000,
+      "codex": 10000,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell style/ami/plain n",
+      "ours": 12281,
+      "codex": 12281,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell style/ami/plain n_draws",
+      "ours": 2000,
+      "codex": 2000,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell style/ami/q1 n",
+      "ours": 12281,
+      "codex": 12281,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell style/ami/q1 n_draws",
+      "ours": 2000,
+      "codex": 2000,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell style/map/plain n",
+      "ours": 12281,
+      "codex": 12281,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell style/map/plain n_draws",
+      "ours": 10000,
+      "codex": 10000,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell style/map/q1 n",
+      "ours": 12281,
+      "codex": 12281,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell style/map/q1 n_draws",
+      "ours": 10000,
+      "codex": 10000,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell genre/ami/plain n",
+      "ours": 12281,
+      "codex": 12281,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell genre/ami/plain n_draws",
+      "ours": 2000,
+      "codex": 2000,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell genre/ami/q1 n",
+      "ours": 12281,
+      "codex": 12281,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell genre/ami/q1 n_draws",
+      "ours": 2000,
+      "codex": 2000,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell genre/map/plain n",
+      "ours": 12281,
+      "codex": 9949,
+      "diff": 2332,
+      "equal": false
+     },
+     {
+      "item": "cell genre/map/plain n_draws",
+      "ours": 10000,
+      "codex": 10000,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell genre/map/q1 n",
+      "ours": 12281,
+      "codex": 9949,
+      "diff": 2332,
+      "equal": false
+     },
+     {
+      "item": "cell genre/map/q1 n_draws",
+      "ours": 10000,
+      "codex": 10000,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "ladder/SC4/siglip2",
+      "ours": "absent",
+      "codex": "present",
+      "equal": null
+     },
+     {
+      "item": "cell emotion/ami/plain n",
+      "ours": 12281,
+      "codex": 12281,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell emotion/ami/plain n_draws",
+      "ours": 2000,
+      "codex": 2000,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell emotion/ami/q1 n",
+      "ours": 12281,
+      "codex": 12281,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell emotion/ami/q1 n_draws",
+      "ours": 2000,
+      "codex": 2000,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell emotion/map/plain n",
+      "ours": 12281,
+      "codex": 12281,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell emotion/map/plain n_draws",
+      "ours": 10000,
+      "codex": 10000,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell emotion/map/q1 n",
+      "ours": 12281,
+      "codex": 12281,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell emotion/map/q1 n_draws",
+      "ours": 10000,
+      "codex": 10000,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell style/ami/plain n",
+      "ours": 12281,
+      "codex": 12281,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell style/ami/plain n_draws",
+      "ours": 2000,
+      "codex": 2000,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell style/ami/q1 n",
+      "ours": 12281,
+      "codex": 12281,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell style/ami/q1 n_draws",
+      "ours": 2000,
+      "codex": 2000,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell style/map/plain n",
+      "ours": 12281,
+      "codex": 12281,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell style/map/plain n_draws",
+      "ours": 10000,
+      "codex": 10000,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell style/map/q1 n",
+      "ours": 12281,
+      "codex": 12281,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell style/map/q1 n_draws",
+      "ours": 10000,
+      "codex": 10000,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell genre/ami/plain n",
+      "ours": 12281,
+      "codex": 12281,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell genre/ami/plain n_draws",
+      "ours": 2000,
+      "codex": 2000,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell genre/ami/q1 n",
+      "ours": 12281,
+      "codex": 12281,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell genre/ami/q1 n_draws",
+      "ours": 2000,
+      "codex": 2000,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell genre/map/plain n",
+      "ours": 12281,
+      "codex": 9949,
+      "diff": 2332,
+      "equal": false
+     },
+     {
+      "item": "cell genre/map/plain n_draws",
+      "ours": 10000,
+      "codex": 10000,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell genre/map/q1 n",
+      "ours": 12281,
+      "codex": 9949,
+      "diff": 2332,
+      "equal": false
+     },
+     {
+      "item": "cell genre/map/q1 n_draws",
+      "ours": 10000,
+      "codex": 10000,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "ladder/SC4/clip_l14",
+      "ours": "absent",
+      "codex": "present",
+      "equal": null
+     }
+    ],
+    "codex_status": {
+     "complete": true,
+     "kind": "held",
+     "picks_sha256": "a0bd2a07191546c3eb8126a365dbe4bc959e28da641847ea37467341e0bd8bf7",
+     "inconclusive": {
+      "siglip2": {},
+      "clip_l14": {}
+     }
+    },
+    "items": [
+     {
+      "item": "cell emotion/ami/plain value",
+      "ours": 0.1009919634392902,
+      "codex": 0.10099196343928227,
+      "diff": 7.93809462606987e-15
+     },
+     {
+      "item": "cell emotion/ami/plain comparator_value",
+      "ours": 0.05381561885091041,
+      "codex": 0.0538156188508996,
+      "diff": 1.0803857808383555e-14
+     },
+     {
+      "item": "cell emotion/ami/plain d",
+      "ours": 0.0471763445883798,
+      "codex": 0.047176344588382664,
+      "diff": 2.8657631823136853e-15
+     },
+     {
+      "item": "cell emotion/ami/plain lo",
+      "ours": 0.04292728405076319,
+      "codex": 0.042927284050765596,
+      "diff": 2.4077961846558082e-15
+     },
+     {
+      "item": "cell emotion/ami/plain hi",
+      "ours": 0.05115983029252792,
+      "codex": 0.05115983029253113,
+      "diff": 3.2057689836051395e-15
+     },
+     {
+      "item": "cell emotion/ami/plain r",
+      "ours": 0.01109507519343314,
+      "codex": 0.01109507519343314,
+      "diff": 0.0
+     },
+     {
+      "item": "cell emotion/ami/q1 value",
+      "ours": 0.1009919634392902,
+      "codex": 0.10099196343928227,
+      "diff": 7.93809462606987e-15
+     },
+     {
+      "item": "cell emotion/ami/q1 comparator_value",
+      "ours": 0.08887516573447074,
+      "codex": 0.08887516573446036,
+      "diff": 1.0380585280245214e-14
+     },
+     {
+      "item": "cell emotion/ami/q1 d",
+      "ours": 0.012116797704819465,
+      "codex": 0.012116797704821908,
+      "diff": 2.4424906541753444e-15
+     },
+     {
+      "item": "cell emotion/ami/q1 lo",
+      "ours": 0.008457403592508737,
+      "codex": 0.00845740359250783,
+      "diff": 9.072603779358701e-16
+     },
+     {
+      "item": "cell emotion/ami/q1 hi",
+      "ours": 0.015557454610649148,
+      "codex": 0.015557454610645706,
+      "diff": 3.4416913763379853e-15
+     },
+     {
+      "item": "cell emotion/ami/q1 r",
+      "ours": 0.01109507519343314,
+      "codex": 0.01109507519343314,
+      "diff": 0.0
+     },
+     {
+      "item": "cell emotion/map/plain value",
+      "ours": 0.26118035988070193,
+      "codex": 0.26118035988070193,
+      "diff": 0.0
+     },
+     {
+      "item": "cell emotion/map/plain comparator_value",
+      "ours": 0.2442894595520592,
+      "codex": 0.2442894595520592,
+      "diff": 0.0
+     },
+     {
+      "item": "cell emotion/map/plain d",
+      "ours": 0.01689090032864274,
+      "codex": 0.01689090032864274,
+      "diff": 0.0
+     },
+     {
+      "item": "cell emotion/map/plain lo",
+      "ours": 0.016191914017459837,
+      "codex": 0.01619191401745992,
+      "diff": 8.326672684688674e-17
+     },
+     {
+      "item": "cell emotion/map/plain hi",
+      "ours": 0.017603279781576678,
+      "codex": 0.017603279781576678,
+      "diff": 0.0
+     },
+     {
+      "item": "cell emotion/map/plain r",
+      "ours": 0.002625479943521969,
+      "codex": 0.002625479943521969,
+      "diff": 0.0
+     },
+     {
+      "item": "cell emotion/map/q1 value",
+      "ours": 0.2694717882148648,
+      "codex": 0.2694717882148647,
+      "diff": 5.551115123125783e-17
+     },
+     {
+      "item": "cell emotion/map/q1 comparator_value",
+      "ours": 0.2684206728949585,
+      "codex": 0.2684206728949585,
+      "diff": 0.0
+     },
+     {
+      "item": "cell emotion/map/q1 d",
+      "ours": 0.0010511153199062595,
+      "codex": 0.001051115319906204,
+      "diff": 5.551115123125783e-17
+     },
+     {
+      "item": "cell emotion/map/q1 lo",
+      "ours": -5.891552447051805e-05,
+      "codex": -5.891552447057079e-05,
+      "diff": 5.2739659427841756e-17
+     },
+     {
+      "item": "cell emotion/map/q1 hi",
+      "ours": 0.0021126538584188364,
+      "codex": 0.0021126538584188364,
+      "diff": 0.0
+     },
+     {
+      "item": "cell emotion/map/q1 r",
+      "ours": 0.002625479943521969,
+      "codex": 0.002625479943521969,
+      "diff": 0.0
+     },
+     {
+      "item": "cell style/ami/plain value",
+      "ours": 0.4387632250641368,
+      "codex": 0.4387632250641146,
+      "diff": 2.220446049250313e-14
+     },
+     {
+      "item": "cell style/ami/plain comparator_value",
+      "ours": 0.3234994207871174,
+      "codex": 0.3234994207870891,
+      "diff": 2.8310687127941492e-14
+     },
+     {
+      "item": "cell style/ami/plain d",
+      "ours": 0.11526380427701938,
+      "codex": 0.11526380427702548,
+      "diff": 6.106226635438361e-15
+     },
+     {
+      "item": "cell style/ami/plain lo",
+      "ours": 0.10953109724384823,
+      "codex": 0.10953109724385413,
+      "diff": 5.898059818321144e-15
+     },
+     {
+      "item": "cell style/ami/plain hi",
+      "ours": 0.11942008055598857,
+      "codex": 0.11942008055600346,
+      "diff": 1.4890866317784912e-14
+     },
+     {
+      "item": "cell style/ami/plain r",
+      "ours": 0.01871820045976752,
+      "codex": 0.01871820045976752,
+      "diff": 0.0
+     },
+     {
+      "item": "cell style/ami/q1 value",
+      "ours": 0.4387632250641368,
+      "codex": 0.4387632250641146,
+      "diff": 2.220446049250313e-14
+     },
+     {
+      "item": "cell style/ami/q1 comparator_value",
+      "ours": 0.40631483434115134,
+      "codex": 0.4063148343411264,
+      "diff": 2.4924506902834764e-14
+     },
+     {
+      "item": "cell style/ami/q1 d",
+      "ours": 0.03244839072298544,
+      "codex": 0.03244839072298816,
+      "diff": 2.7200464103316335e-15
+     },
+     {
+      "item": "cell style/ami/q1 lo",
+      "ours": 0.027681042967605957,
+      "codex": 0.02768104296761331,
+      "diff": 7.351758091189708e-15
+     },
+     {
+      "item": "cell style/ami/q1 hi",
+      "ours": 0.03607013203105355,
+      "codex": 0.03607013203105656,
+      "diff": 3.00454106039183e-15
+     },
+     {
+      "item": "cell style/ami/q1 r",
+      "ours": 0.01871820045976752,
+      "codex": 0.01871820045976752,
+      "diff": 0.0
+     },
+     {
+      "item": "cell style/map/plain value",
+      "ours": 0.2830286025935123,
+      "codex": 0.2830286025935123,
+      "diff": 0.0
+     },
+     {
+      "item": "cell style/map/plain comparator_value",
+      "ours": 0.25762520825958124,
+      "codex": 0.25762520825958124,
+      "diff": 0.0
+     },
+     {
+      "item": "cell style/map/plain d",
+      "ours": 0.025403394333931073,
+      "codex": 0.025403394333931073,
+      "diff": 0.0
+     },
+     {
+      "item": "cell style/map/plain lo",
+      "ours": 0.023939616877195848,
+      "codex": 0.023939616877195848,
+      "diff": 0.0
+     },
+     {
+      "item": "cell style/map/plain hi",
+      "ours": 0.026879225485605788,
+      "codex": 0.026879225485605843,
+      "diff": 5.551115123125783e-17
+     },
+     {
+      "item": "cell style/map/plain r",
+      "ours": 0.0035644238277711127,
+      "codex": 0.0035644238277711127,
+      "diff": 0.0
+     },
+     {
+      "item": "cell style/map/q1 value",
+      "ours": 0.34770616547797883,
+      "codex": 0.3477061654779789,
+      "diff": 5.551115123125783e-17
+     },
+     {
+      "item": "cell style/map/q1 comparator_value",
+      "ours": 0.32171685368804037,
+      "codex": 0.32171685368804037,
+      "diff": 0.0
+     },
+     {
+      "item": "cell style/map/q1 d",
+      "ours": 0.025989311789938463,
+      "codex": 0.02598931178993852,
+      "diff": 5.551115123125783e-17
+     },
+     {
+      "item": "cell style/map/q1 lo",
+      "ours": 0.0244153477016992,
+      "codex": 0.024415347701699255,
+      "diff": 5.551115123125783e-17
+     },
+     {
+      "item": "cell style/map/q1 hi",
+      "ours": 0.0276288514669293,
+      "codex": 0.0276288514669293,
+      "diff": 0.0
+     },
+     {
+      "item": "cell style/map/q1 r",
+      "ours": 0.0035644238277711127,
+      "codex": 0.0035644238277711127,
+      "diff": 0.0
+     },
+     {
+      "item": "cell genre/ami/plain value",
+      "ours": 0.5266061164108405,
+      "codex": 0.5266061164108374,
+      "diff": 3.1086244689504383e-15
+     },
+     {
+      "item": "cell genre/ami/plain comparator_value",
+      "ours": 0.35489702736518125,
+      "codex": 0.3548970273651774,
+      "diff": 3.83026943495679e-15
+     },
+     {
+      "item": "cell genre/ami/plain d",
+      "ours": 0.1717090890456593,
+      "codex": 0.17170908904566,
+      "diff": 7.216449660063518e-16
+     },
+     {
+      "item": "cell genre/ami/plain lo",
+      "ours": 0.16202291846120856,
+      "codex": 0.16202291846121056,
+      "diff": 1.9984014443252818e-15
+     },
+     {
+      "item": "cell genre/ami/plain hi",
+      "ours": 0.1815773417349262,
+      "codex": 0.18157734173492704,
+      "diff": 8.326672684688674e-16
+     },
+     {
+      "item": "cell genre/ami/plain r",
+      "ours": 0.0181369510832865,
+      "codex": 0.0181369510832865,
+      "diff": 0.0
+     },
+     {
+      "item": "cell genre/ami/q1 value",
+      "ours": 0.5266061164108405,
+      "codex": 0.5266061164108374,
+      "diff": 3.1086244689504383e-15
+     },
+     {
+      "item": "cell genre/ami/q1 comparator_value",
+      "ours": 0.5014662806033519,
+      "codex": 0.5014662806033504,
+      "diff": 1.4432899320127035e-15
+     },
+     {
+      "item": "cell genre/ami/q1 d",
+      "ours": 0.025139835807488686,
+      "codex": 0.02513983580748702,
+      "diff": 1.6653345369377348e-15
+     },
+     {
+      "item": "cell genre/ami/q1 lo",
+      "ours": 0.016810982498963383,
+      "codex": 0.0168109824989641,
+      "diff": 7.181755190543981e-16
+     },
+     {
+      "item": "cell genre/ami/q1 hi",
+      "ours": 0.03367673065839495,
+      "codex": 0.03367673065839393,
+      "diff": 1.0200174038743626e-15
+     },
+     {
+      "item": "cell genre/ami/q1 r",
+      "ours": 0.0181369510832865,
+      "codex": 0.0181369510832865,
+      "diff": 0.0
+     },
+     {
+      "item": "cell genre/map/plain value",
+      "ours": 0.5489248724601337,
+      "codex": 0.5489248724601337,
+      "diff": 0.0
+     },
+     {
+      "item": "cell genre/map/plain comparator_value",
+      "ours": 0.4967895502942517,
+      "codex": 0.4967895502942517,
+      "diff": 0.0
+     },
+     {
+      "item": "cell genre/map/plain d",
+      "ours": 0.05213532216588196,
+      "codex": 0.05213532216588196,
+      "diff": 0.0
+     },
+     {
+      "item": "cell genre/map/plain lo",
+      "ours": 0.04963928110415006,
+      "codex": 0.04963928110414995,
+      "diff": 1.0408340855860843e-16
+     },
+     {
+      "item": "cell genre/map/plain hi",
+      "ours": 0.0547084662989099,
+      "codex": 0.05470846629890991,
+      "diff": 6.938893903907228e-18
+     },
+     {
+      "item": "cell genre/map/plain r",
+      "ours": 0.0023802685960839787,
+      "codex": 0.0023802685960839787,
+      "diff": 0.0
+     },
+     {
+      "item": "cell genre/map/q1 value",
+      "ours": 0.6220561271864096,
+      "codex": 0.6220561271864096,
+      "diff": 0.0
+     },
+     {
+      "item": "cell genre/map/q1 comparator_value",
+      "ours": 0.6124437089715543,
+      "codex": 0.6124437089715543,
+      "diff": 0.0
+     },
+     {
+      "item": "cell genre/map/q1 d",
+      "ours": 0.009612418214855256,
+      "codex": 0.009612418214855256,
+      "diff": 0.0
+     },
+     {
+      "item": "cell genre/map/q1 lo",
+      "ours": 0.00794904666052464,
+      "codex": 0.007949046660524529,
+      "diff": 1.1102230246251565e-16
+     },
+     {
+      "item": "cell genre/map/q1 hi",
+      "ours": 0.011322916040336023,
+      "codex": 0.011322916040335806,
+      "diff": 2.1684043449710089e-16
+     },
+     {
+      "item": "cell genre/map/q1 r",
+      "ours": 0.0023802685960839787,
+      "codex": 0.0023802685960839787,
+      "diff": 0.0
+     },
+     {
+      "item": "cell emotion/ami/plain value",
+      "ours": 0.09556468966274044,
+      "codex": 0.09556468966273089,
+      "diff": 9.547918011776346e-15
+     },
+     {
+      "item": "cell emotion/ami/plain comparator_value",
+      "ours": 0.06251691071278269,
+      "codex": 0.06251691071277653,
+      "diff": 6.161737786669619e-15
+     },
+     {
+      "item": "cell emotion/ami/plain d",
+      "ours": 0.03304777894995775,
+      "codex": 0.033047778949954365,
+      "diff": 3.3861802251067274e-15
+     },
+     {
+      "item": "cell emotion/ami/plain lo",
+      "ours": 0.02882921416409244,
+      "codex": 0.028829214164092246,
+      "diff": 1.942890293094024e-16
+     },
+     {
+      "item": "cell emotion/ami/plain hi",
+      "ours": 0.03744140910991875,
+      "codex": 0.03744140910991972,
+      "diff": 9.71445146547012e-16
+     },
+     {
+      "item": "cell emotion/ami/plain r",
+      "ours": 0.008892996652255888,
+      "codex": 0.008892996652255888,
+      "diff": 0.0
+     },
+     {
+      "item": "cell emotion/ami/q1 value",
+      "ours": 0.09556468966274044,
+      "codex": 0.09556468966273089,
+      "diff": 9.547918011776346e-15
+     },
+     {
+      "item": "cell emotion/ami/q1 comparator_value",
+      "ours": 0.08887516573447074,
+      "codex": 0.08887516573446036,
+      "diff": 1.0380585280245214e-14
+     },
+     {
+      "item": "cell emotion/ami/q1 d",
+      "ours": 0.0066895239282697,
+      "codex": 0.006689523928270533,
+      "diff": 8.326672684688674e-16
+     },
+     {
+      "item": "cell emotion/ami/q1 lo",
+      "ours": 0.002710729709439621,
+      "codex": 0.0027107297094374695,
+      "diff": 2.151490791080235e-15
+     },
+     {
+      "item": "cell emotion/ami/q1 hi",
+      "ours": 0.010925454131919232,
+      "codex": 0.010925454131917523,
+      "diff": 1.708702623837155e-15
+     },
+     {
+      "item": "cell emotion/ami/q1 r",
+      "ours": 0.008892996652255888,
+      "codex": 0.008892996652255888,
+      "diff": 0.0
+     },
+     {
+      "item": "cell emotion/map/plain value",
+      "ours": 0.25963263698985656,
+      "codex": 0.25963263698985656,
+      "diff": 0.0
+     },
+     {
+      "item": "cell emotion/map/plain comparator_value",
+      "ours": 0.2478970809618243,
+      "codex": 0.2478970809618243,
+      "diff": 0.0
+     },
+     {
+      "item": "cell emotion/map/plain d",
+      "ours": 0.011735556028032251,
+      "codex": 0.011735556028032251,
+      "diff": 0.0
+     },
+     {
+      "item": "cell emotion/map/plain lo",
+      "ours": 0.011100415218466112,
+      "codex": 0.01110041521846606,
+      "diff": 5.204170427930421e-17
+     },
+     {
+      "item": "cell emotion/map/plain hi",
+      "ours": 0.012380224169820014,
+      "codex": 0.012380224169819905,
+      "diff": 1.0928757898653885e-16
+     },
+     {
+      "item": "cell emotion/map/plain r",
+      "ours": 0.0040623115089230555,
+      "codex": 0.0040623115089230555,
+      "diff": 0.0
+     },
+     {
+      "item": "cell emotion/map/q1 value",
+      "ours": 0.2668529618704714,
+      "codex": 0.2668529618704714,
+      "diff": 0.0
+     },
+     {
+      "item": "cell emotion/map/q1 comparator_value",
+      "ours": 0.2684206728949585,
+      "codex": 0.2684206728949585,
+      "diff": 0.0
+     },
+     {
+      "item": "cell emotion/map/q1 d",
+      "ours": -0.0015677110244871062,
+      "codex": -0.0015677110244871062,
+      "diff": 0.0
+     },
+     {
+      "item": "cell emotion/map/q1 lo",
+      "ours": -0.0027457767621426265,
+      "codex": -0.00274577676214252,
+      "diff": 1.0668549377257364e-16
+     },
+     {
+      "item": "cell emotion/map/q1 hi",
+      "ours": -0.00039714842453436984,
+      "codex": -0.0003971484245343171,
+      "diff": 5.274643569141979e-17
+     },
+     {
+      "item": "cell emotion/map/q1 r",
+      "ours": 0.0040623115089230555,
+      "codex": 0.0040623115089230555,
+      "diff": 0.0
+     },
+     {
+      "item": "cell style/ami/plain value",
+      "ours": 0.4219807439290356,
+      "codex": 0.421980743929015,
+      "diff": 2.0594637106796654e-14
+     },
+     {
+      "item": "cell style/ami/plain comparator_value",
+      "ours": 0.36266107102886536,
+      "codex": 0.3626610710288407,
+      "diff": 2.4646951146678475e-14
+     },
+     {
+      "item": "cell style/ami/plain d",
+      "ours": 0.05931967290017026,
+      "codex": 0.059319672900174314,
+      "diff": 4.052314039881821e-15
+     },
+     {
+      "item": "cell style/ami/plain lo",
+      "ours": 0.05426504361652004,
+      "codex": 0.05426504361651553,
+      "diff": 4.5102810375396984e-15
+     },
+     {
+      "item": "cell style/ami/plain hi",
+      "ours": 0.06405239377119178,
+      "codex": 0.06405239377119597,
+      "diff": 4.191091917959966e-15
+     },
+     {
+      "item": "cell style/ami/plain r",
+      "ours": 0.011248113527391967,
+      "codex": 0.011248113527391967,
+      "diff": 0.0
+     },
+     {
+      "item": "cell style/ami/q1 value",
+      "ours": 0.4219807439290356,
+      "codex": 0.421980743929015,
+      "diff": 2.0594637106796654e-14
+     },
+     {
+      "item": "cell style/ami/q1 comparator_value",
+      "ours": 0.40631483434115134,
+      "codex": 0.4063148343411264,
+      "diff": 2.4924506902834764e-14
+     },
+     {
+      "item": "cell style/ami/q1 d",
+      "ours": 0.015665909587884275,
+      "codex": 0.015665909587888605,
+      "diff": 4.3298697960381105e-15
+     },
+     {
+      "item": "cell style/ami/q1 lo",
+      "ours": 0.010893168086537718,
+      "codex": 0.010893168086533445,
+      "diff": 4.272623921330876e-15
+     },
+     {
+      "item": "cell style/ami/q1 hi",
+      "ours": 0.020343230098238636,
+      "codex": 0.020343230098244736,
+      "diff": 6.099287741534454e-15
+     },
+     {
+      "item": "cell style/ami/q1 r",
+      "ours": 0.011248113527391967,
+      "codex": 0.011248113527391967,
+      "diff": 0.0
+     },
+     {
+      "item": "cell style/map/plain value",
+      "ours": 0.27575723272583774,
+      "codex": 0.27575723272583774,
+      "diff": 0.0
+     },
+     {
+      "item": "cell style/map/plain comparator_value",
+      "ours": 0.2732315215072776,
+      "codex": 0.2732315215072776,
+      "diff": 0.0
+     },
+     {
+      "item": "cell style/map/plain d",
+      "ours": 0.002525711218560156,
+      "codex": 0.002525711218560156,
+      "diff": 0.0
+     },
+     {
+      "item": "cell style/map/plain lo",
+      "ours": 0.0013339648506680748,
+      "codex": 0.0013339648506680735,
+      "diff": 1.3010426069826053e-18
+     },
+     {
+      "item": "cell style/map/plain hi",
+      "ours": 0.0037281079552133507,
+      "codex": 0.003728107955213463,
+      "diff": 1.1232334506949826e-16
+     },
+     {
+      "item": "cell style/map/plain r",
+      "ours": 0.002858378587816901,
+      "codex": 0.002858378587816901,
+      "diff": 0.0
+     },
+     {
+      "item": "cell style/map/q1 value",
+      "ours": 0.3360433996544309,
+      "codex": 0.3360433996544309,
+      "diff": 0.0
+     },
+     {
+      "item": "cell style/map/q1 comparator_value",
+      "ours": 0.32171685368804037,
+      "codex": 0.32171685368804037,
+      "diff": 0.0
+     },
+     {
+      "item": "cell style/map/q1 d",
+      "ours": 0.014326545966390547,
+      "codex": 0.014326545966390547,
+      "diff": 0.0
+     },
+     {
+      "item": "cell style/map/q1 lo",
+      "ours": 0.012717293849648918,
+      "codex": 0.012717293849648972,
+      "diff": 5.377642775528102e-17
+     },
+     {
+      "item": "cell style/map/q1 hi",
+      "ours": 0.0159578331482939,
+      "codex": 0.015957833148294007,
+      "diff": 1.0755285551056204e-16
+     },
+     {
+      "item": "cell style/map/q1 r",
+      "ours": 0.002858378587816901,
+      "codex": 0.002858378587816901,
+      "diff": 0.0
+     },
+     {
+      "item": "cell genre/ami/plain value",
+      "ours": 0.5155512239254054,
+      "codex": 0.515551223925402,
+      "diff": 3.4416913763379853e-15
+     },
+     {
+      "item": "cell genre/ami/plain comparator_value",
+      "ours": 0.3967618124688774,
+      "codex": 0.3967618124688716,
+      "diff": 5.773159728050814e-15
+     },
+     {
+      "item": "cell genre/ami/plain d",
+      "ours": 0.11878941145652805,
+      "codex": 0.11878941145653038,
+      "diff": 2.3314683517128287e-15
+     },
+     {
+      "item": "cell genre/ami/plain lo",
+      "ours": 0.10993944951437719,
+      "codex": 0.10993944951437667,
+      "diff": 5.134781488891349e-16
+     },
+     {
+      "item": "cell genre/ami/plain hi",
+      "ours": 0.12767063362327172,
+      "codex": 0.12767063362327027,
+      "diff": 1.4432899320127035e-15
+     },
+     {
+      "item": "cell genre/ami/plain r",
+      "ours": 0.02616385159556789,
+      "codex": 0.02616385159556789,
+      "diff": 0.0
+     },
+     {
+      "item": "cell genre/ami/q1 value",
+      "ours": 0.5155512239254054,
+      "codex": 0.515551223925402,
+      "diff": 3.4416913763379853e-15
+     },
+     {
+      "item": "cell genre/ami/q1 comparator_value",
+      "ours": 0.5014662806033519,
+      "codex": 0.5014662806033504,
+      "diff": 1.4432899320127035e-15
+     },
+     {
+      "item": "cell genre/ami/q1 d",
+      "ours": 0.014084943322053567,
+      "codex": 0.014084943322051569,
+      "diff": 1.9984014443252818e-15
+     },
+     {
+      "item": "cell genre/ami/q1 lo",
+      "ours": 0.005945768362745634,
+      "codex": 0.005945768362745706,
+      "diff": 7.19910242530375e-17
+     },
+     {
+      "item": "cell genre/ami/q1 hi",
+      "ours": 0.02199799249087693,
+      "codex": 0.021997992490876056,
+      "diff": 8.743006318923108e-16
+     },
+     {
+      "item": "cell genre/ami/q1 r",
+      "ours": 0.02616385159556789,
+      "codex": 0.02616385159556789,
+      "diff": 0.0
+     },
+     {
+      "item": "cell genre/map/plain value",
+      "ours": 0.5443436170338308,
+      "codex": 0.5443436170338309,
+      "diff": 1.1102230246251565e-16
+     },
+     {
+      "item": "cell genre/map/plain comparator_value",
+      "ours": 0.4980805537137537,
+      "codex": 0.4980805537137537,
+      "diff": 0.0
+     },
+     {
+      "item": "cell genre/map/plain d",
+      "ours": 0.046263063320077125,
+      "codex": 0.046263063320077236,
+      "diff": 1.1102230246251565e-16
+     },
+     {
+      "item": "cell genre/map/plain lo",
+      "ours": 0.04401833050661517,
+      "codex": 0.04401833050661506,
+      "diff": 1.1102230246251565e-16
+     },
+     {
+      "item": "cell genre/map/plain hi",
+      "ours": 0.0484632764802899,
+      "codex": 0.0484632764802899,
+      "diff": 0.0
+     },
+     {
+      "item": "cell genre/map/plain r",
+      "ours": 0.0011925464722043477,
+      "codex": 0.0011925464722043477,
+      "diff": 0.0
+     },
+     {
+      "item": "cell genre/map/q1 value",
+      "ours": 0.6175607471028919,
+      "codex": 0.6175607471028919,
+      "diff": 0.0
+     },
+     {
+      "item": "cell genre/map/q1 comparator_value",
+      "ours": 0.6124437089715543,
+      "codex": 0.6124437089715543,
+      "diff": 0.0
+     },
+     {
+      "item": "cell genre/map/q1 d",
+      "ours": 0.00511703813133757,
+      "codex": 0.00511703813133757,
+      "diff": 0.0
+     },
+     {
+      "item": "cell genre/map/q1 lo",
+      "ours": 0.003338780616392159,
+      "codex": 0.00333878061639227,
+      "diff": 1.1102230246251565e-16
+     },
+     {
+      "item": "cell genre/map/q1 hi",
+      "ours": 0.0069115851899462415,
+      "codex": 0.006911585189946247,
+      "diff": 5.204170427930421e-18
+     },
+     {
+      "item": "cell genre/map/q1 r",
+      "ours": 0.0011925464722043477,
+      "codex": 0.0011925464722043477,
+      "diff": 0.0
+     }
+    ],
+    "cells": [
+     {
+      "cell": "emotion/ami/plain",
+      "ours_id": "artelingo/siglip2/siglip2_prefix/emotion/ami9/plain",
+      "codex_id": "siglip2/ami/emotion/plain",
+      "ours_outcome": "WIN",
+      "codex_outcome_field": "WIN",
+      "diffs": {
+       "value": 7.93809462606987e-15,
+       "comparator_value": 1.0803857808383555e-14,
+       "d": 2.8657631823136853e-15,
+       "lo": 2.4077961846558082e-15,
+       "hi": 3.2057689836051395e-15,
+       "r": 0.0
+      },
+      "max_diff": 1.0803857808383555e-14,
+      "codex_outcome_rule": "WIN",
+      "ours_outcome_rule": "WIN"
+     },
+     {
+      "cell": "emotion/ami/q1",
+      "ours_id": "artelingo/siglip2/siglip2_prefix/emotion/ami9/teacher",
+      "codex_id": "siglip2/ami/emotion/q1",
+      "ours_outcome": "WIN",
+      "codex_outcome_field": "WIN",
+      "diffs": {
+       "value": 7.93809462606987e-15,
+       "comparator_value": 1.0380585280245214e-14,
+       "d": 2.4424906541753444e-15,
+       "lo": 9.072603779358701e-16,
+       "hi": 3.4416913763379853e-15,
+       "r": 0.0
+      },
+      "max_diff": 1.0380585280245214e-14,
+      "codex_outcome_rule": "WIN",
+      "ours_outcome_rule": "WIN"
+     },
+     {
+      "cell": "emotion/map/plain",
+      "ours_id": "artelingo/siglip2/siglip2_prefix/emotion/map/plain",
+      "codex_id": "siglip2/map/emotion/plain",
+      "ours_outcome": "WIN",
+      "codex_outcome_field": "WIN",
+      "diffs": {
+       "value": 0.0,
+       "comparator_value": 0.0,
+       "d": 0.0,
+       "lo": 8.326672684688674e-17,
+       "hi": 0.0,
+       "r": 0.0
+      },
+      "max_diff": 8.326672684688674e-17,
+      "codex_outcome_rule": "WIN",
+      "ours_outcome_rule": "WIN",
+      "codex_candidate_readout": "center+k10",
+      "codex_comparator_readout": "center+k10"
+     },
+     {
+      "cell": "emotion/map/q1",
+      "ours_id": "artelingo/siglip2/siglip2_prefix/emotion/map/teacher",
+      "codex_id": "siglip2/map/emotion/q1",
+      "ours_outcome": "LEVEL",
+      "codex_outcome_field": "LEVEL",
+      "diffs": {
+       "value": 5.551115123125783e-17,
+       "comparator_value": 0.0,
+       "d": 5.551115123125783e-17,
+       "lo": 5.2739659427841756e-17,
+       "hi": 0.0,
+       "r": 0.0
+      },
+      "max_diff": 5.551115123125783e-17,
+      "codex_outcome_rule": "LEVEL",
+      "ours_outcome_rule": "LEVEL",
+      "codex_candidate_readout": "center+k10",
+      "codex_comparator_readout": "center+k10"
+     },
+     {
+      "cell": "style/ami/plain",
+      "ours_id": "artelingo/siglip2/siglip2_prefix/style/ami27/plain",
+      "codex_id": "siglip2/ami/style/plain",
+      "ours_outcome": "WIN",
+      "codex_outcome_field": "WIN",
+      "diffs": {
+       "value": 2.220446049250313e-14,
+       "comparator_value": 2.8310687127941492e-14,
+       "d": 6.106226635438361e-15,
+       "lo": 5.898059818321144e-15,
+       "hi": 1.4890866317784912e-14,
+       "r": 0.0
+      },
+      "max_diff": 2.8310687127941492e-14,
+      "codex_outcome_rule": "WIN",
+      "ours_outcome_rule": "WIN"
+     },
+     {
+      "cell": "style/ami/q1",
+      "ours_id": "artelingo/siglip2/siglip2_prefix/style/ami27/teacher",
+      "codex_id": "siglip2/ami/style/q1",
+      "ours_outcome": "WIN",
+      "codex_outcome_field": "WIN",
+      "diffs": {
+       "value": 2.220446049250313e-14,
+       "comparator_value": 2.4924506902834764e-14,
+       "d": 2.7200464103316335e-15,
+       "lo": 7.351758091189708e-15,
+       "hi": 3.00454106039183e-15,
+       "r": 0.0
+      },
+      "max_diff": 2.4924506902834764e-14,
+      "codex_outcome_rule": "WIN",
+      "ours_outcome_rule": "WIN"
+     },
+     {
+      "cell": "style/map/plain",
+      "ours_id": "artelingo/siglip2/siglip2_prefix/style/map/plain",
+      "codex_id": "siglip2/map/style/plain",
+      "ours_outcome": "WIN",
+      "codex_outcome_field": "WIN",
+      "diffs": {
+       "value": 0.0,
+       "comparator_value": 0.0,
+       "d": 0.0,
+       "lo": 0.0,
+       "hi": 5.551115123125783e-17,
+       "r": 0.0
+      },
+      "max_diff": 5.551115123125783e-17,
+      "codex_outcome_rule": "WIN",
+      "ours_outcome_rule": "WIN",
+      "codex_candidate_readout": "center+k10",
+      "codex_comparator_readout": "center+k10"
+     },
+     {
+      "cell": "style/map/q1",
+      "ours_id": "artelingo/siglip2/siglip2_prefix/style/map/teacher",
+      "codex_id": "siglip2/map/style/q1",
+      "ours_outcome": "WIN",
+      "codex_outcome_field": "WIN",
+      "diffs": {
+       "value": 5.551115123125783e-17,
+       "comparator_value": 0.0,
+       "d": 5.551115123125783e-17,
+       "lo": 5.551115123125783e-17,
+       "hi": 0.0,
+       "r": 0.0
+      },
+      "max_diff": 5.551115123125783e-17,
+      "codex_outcome_rule": "WIN",
+      "ours_outcome_rule": "WIN",
+      "codex_candidate_readout": "center+k10",
+      "codex_comparator_readout": "center+k10"
+     },
+     {
+      "cell": "genre/ami/plain",
+      "ours_id": "artelingo/siglip2/siglip2_prefix/genre/ami10/plain",
+      "codex_id": "siglip2/ami/genre/plain",
+      "ours_outcome": "WIN",
+      "codex_outcome_field": "WIN",
+      "diffs": {
+       "value": 3.1086244689504383e-15,
+       "comparator_value": 3.83026943495679e-15,
+       "d": 7.216449660063518e-16,
+       "lo": 1.9984014443252818e-15,
+       "hi": 8.326672684688674e-16,
+       "r": 0.0
+      },
+      "max_diff": 3.83026943495679e-15,
+      "codex_outcome_rule": "WIN",
+      "ours_outcome_rule": "WIN"
+     },
+     {
+      "cell": "genre/ami/q1",
+      "ours_id": "artelingo/siglip2/siglip2_prefix/genre/ami10/teacher",
+      "codex_id": "siglip2/ami/genre/q1",
+      "ours_outcome": "WIN",
+      "codex_outcome_field": "WIN",
+      "diffs": {
+       "value": 3.1086244689504383e-15,
+       "comparator_value": 1.4432899320127035e-15,
+       "d": 1.6653345369377348e-15,
+       "lo": 7.181755190543981e-16,
+       "hi": 1.0200174038743626e-15,
+       "r": 0.0
+      },
+      "max_diff": 3.1086244689504383e-15,
+      "codex_outcome_rule": "WIN",
+      "ours_outcome_rule": "WIN"
+     },
+     {
+      "cell": "genre/map/plain",
+      "ours_id": "artelingo/siglip2/siglip2_prefix/genre/map/plain",
+      "codex_id": "siglip2/map/genre/plain",
+      "ours_outcome": "WIN",
+      "codex_outcome_field": "WIN",
+      "diffs": {
+       "value": 0.0,
+       "comparator_value": 0.0,
+       "d": 0.0,
+       "lo": 1.0408340855860843e-16,
+       "hi": 6.938893903907228e-18,
+       "r": 0.0
+      },
+      "max_diff": 1.0408340855860843e-16,
+      "codex_outcome_rule": "WIN",
+      "ours_outcome_rule": "WIN",
+      "codex_candidate_readout": "center+k10",
+      "codex_comparator_readout": "center+k10"
+     },
+     {
+      "cell": "genre/map/q1",
+      "ours_id": "artelingo/siglip2/siglip2_prefix/genre/map/teacher",
+      "codex_id": "siglip2/map/genre/q1",
+      "ours_outcome": "WIN",
+      "codex_outcome_field": "WIN",
+      "diffs": {
+       "value": 0.0,
+       "comparator_value": 0.0,
+       "d": 0.0,
+       "lo": 1.1102230246251565e-16,
+       "hi": 2.1684043449710089e-16,
+       "r": 0.0
+      },
+      "max_diff": 2.1684043449710089e-16,
+      "codex_outcome_rule": "WIN",
+      "ours_outcome_rule": "WIN",
+      "codex_candidate_readout": "center+k10",
+      "codex_comparator_readout": "center+k10"
+     },
+     {
+      "cell": "emotion/ami/plain",
+      "ours_id": "artelingo/clip_l14/clipl14_prefix/emotion/ami9/plain",
+      "codex_id": "clip_l14/ami/emotion/plain",
+      "ours_outcome": "WIN",
+      "codex_outcome_field": "WIN",
+      "diffs": {
+       "value": 9.547918011776346e-15,
+       "comparator_value": 6.161737786669619e-15,
+       "d": 3.3861802251067274e-15,
+       "lo": 1.942890293094024e-16,
+       "hi": 9.71445146547012e-16,
+       "r": 0.0
+      },
+      "max_diff": 9.547918011776346e-15,
+      "codex_outcome_rule": "WIN",
+      "ours_outcome_rule": "WIN"
+     },
+     {
+      "cell": "emotion/ami/q1",
+      "ours_id": "artelingo/clip_l14/clipl14_prefix/emotion/ami9/teacher",
+      "codex_id": "clip_l14/ami/emotion/q1",
+      "ours_outcome": "WIN",
+      "codex_outcome_field": "WIN",
+      "diffs": {
+       "value": 9.547918011776346e-15,
+       "comparator_value": 1.0380585280245214e-14,
+       "d": 8.326672684688674e-16,
+       "lo": 2.151490791080235e-15,
+       "hi": 1.708702623837155e-15,
+       "r": 0.0
+      },
+      "max_diff": 1.0380585280245214e-14,
+      "codex_outcome_rule": "WIN",
+      "ours_outcome_rule": "WIN"
+     },
+     {
+      "cell": "emotion/map/plain",
+      "ours_id": "artelingo/clip_l14/clipl14_prefix/emotion/map/plain",
+      "codex_id": "clip_l14/map/emotion/plain",
+      "ours_outcome": "WIN",
+      "codex_outcome_field": "WIN",
+      "diffs": {
+       "value": 0.0,
+       "comparator_value": 0.0,
+       "d": 0.0,
+       "lo": 5.204170427930421e-17,
+       "hi": 1.0928757898653885e-16,
+       "r": 0.0
+      },
+      "max_diff": 1.0928757898653885e-16,
+      "codex_outcome_rule": "WIN",
+      "ours_outcome_rule": "WIN",
+      "codex_candidate_readout": "center+k10",
+      "codex_comparator_readout": "center+k10"
+     },
+     {
+      "cell": "emotion/map/q1",
+      "ours_id": "artelingo/clip_l14/clipl14_prefix/emotion/map/teacher",
+      "codex_id": "clip_l14/map/emotion/q1",
+      "ours_outcome": "LEVEL",
+      "codex_outcome_field": "LEVEL",
+      "diffs": {
+       "value": 0.0,
+       "comparator_value": 0.0,
+       "d": 0.0,
+       "lo": 1.0668549377257364e-16,
+       "hi": 5.274643569141979e-17,
+       "r": 0.0
+      },
+      "max_diff": 1.0668549377257364e-16,
+      "codex_outcome_rule": "LEVEL",
+      "ours_outcome_rule": "LEVEL",
+      "codex_candidate_readout": "center+k10",
+      "codex_comparator_readout": "center+k10"
+     },
+     {
+      "cell": "style/ami/plain",
+      "ours_id": "artelingo/clip_l14/clipl14_prefix/style/ami27/plain",
+      "codex_id": "clip_l14/ami/style/plain",
+      "ours_outcome": "WIN",
+      "codex_outcome_field": "WIN",
+      "diffs": {
+       "value": 2.0594637106796654e-14,
+       "comparator_value": 2.4646951146678475e-14,
+       "d": 4.052314039881821e-15,
+       "lo": 4.5102810375396984e-15,
+       "hi": 4.191091917959966e-15,
+       "r": 0.0
+      },
+      "max_diff": 2.4646951146678475e-14,
+      "codex_outcome_rule": "WIN",
+      "ours_outcome_rule": "WIN"
+     },
+     {
+      "cell": "style/ami/q1",
+      "ours_id": "artelingo/clip_l14/clipl14_prefix/style/ami27/teacher",
+      "codex_id": "clip_l14/ami/style/q1",
+      "ours_outcome": "WIN",
+      "codex_outcome_field": "WIN",
+      "diffs": {
+       "value": 2.0594637106796654e-14,
+       "comparator_value": 2.4924506902834764e-14,
+       "d": 4.3298697960381105e-15,
+       "lo": 4.272623921330876e-15,
+       "hi": 6.099287741534454e-15,
+       "r": 0.0
+      },
+      "max_diff": 2.4924506902834764e-14,
+      "codex_outcome_rule": "WIN",
+      "ours_outcome_rule": "WIN"
+     },
+     {
+      "cell": "style/map/plain",
+      "ours_id": "artelingo/clip_l14/clipl14_prefix/style/map/plain",
+      "codex_id": "clip_l14/map/style/plain",
+      "ours_outcome": "WIN",
+      "codex_outcome_field": "WIN",
+      "diffs": {
+       "value": 0.0,
+       "comparator_value": 0.0,
+       "d": 0.0,
+       "lo": 1.3010426069826053e-18,
+       "hi": 1.1232334506949826e-16,
+       "r": 0.0
+      },
+      "max_diff": 1.1232334506949826e-16,
+      "codex_outcome_rule": "WIN",
+      "ours_outcome_rule": "WIN",
+      "codex_candidate_readout": "center+k10",
+      "codex_comparator_readout": "center+k10"
+     },
+     {
+      "cell": "style/map/q1",
+      "ours_id": "artelingo/clip_l14/clipl14_prefix/style/map/teacher",
+      "codex_id": "clip_l14/map/style/q1",
+      "ours_outcome": "WIN",
+      "codex_outcome_field": "WIN",
+      "diffs": {
+       "value": 0.0,
+       "comparator_value": 0.0,
+       "d": 0.0,
+       "lo": 5.377642775528102e-17,
+       "hi": 1.0755285551056204e-16,
+       "r": 0.0
+      },
+      "max_diff": 1.0755285551056204e-16,
+      "codex_outcome_rule": "WIN",
+      "ours_outcome_rule": "WIN",
+      "codex_candidate_readout": "center+k10",
+      "codex_comparator_readout": "center+k10"
+     },
+     {
+      "cell": "genre/ami/plain",
+      "ours_id": "artelingo/clip_l14/clipl14_prefix/genre/ami10/plain",
+      "codex_id": "clip_l14/ami/genre/plain",
+      "ours_outcome": "WIN",
+      "codex_outcome_field": "WIN",
+      "diffs": {
+       "value": 3.4416913763379853e-15,
+       "comparator_value": 5.773159728050814e-15,
+       "d": 2.3314683517128287e-15,
+       "lo": 5.134781488891349e-16,
+       "hi": 1.4432899320127035e-15,
+       "r": 0.0
+      },
+      "max_diff": 5.773159728050814e-15,
+      "codex_outcome_rule": "WIN",
+      "ours_outcome_rule": "WIN"
+     },
+     {
+      "cell": "genre/ami/q1",
+      "ours_id": "artelingo/clip_l14/clipl14_prefix/genre/ami10/teacher",
+      "codex_id": "clip_l14/ami/genre/q1",
+      "ours_outcome": "WIN",
+      "codex_outcome_field": "WIN",
+      "diffs": {
+       "value": 3.4416913763379853e-15,
+       "comparator_value": 1.4432899320127035e-15,
+       "d": 1.9984014443252818e-15,
+       "lo": 7.19910242530375e-17,
+       "hi": 8.743006318923108e-16,
+       "r": 0.0
+      },
+      "max_diff": 3.4416913763379853e-15,
+      "codex_outcome_rule": "WIN",
+      "ours_outcome_rule": "WIN"
+     },
+     {
+      "cell": "genre/map/plain",
+      "ours_id": "artelingo/clip_l14/clipl14_prefix/genre/map/plain",
+      "codex_id": "clip_l14/map/genre/plain",
+      "ours_outcome": "WIN",
+      "codex_outcome_field": "WIN",
+      "diffs": {
+       "value": 1.1102230246251565e-16,
+       "comparator_value": 0.0,
+       "d": 1.1102230246251565e-16,
+       "lo": 1.1102230246251565e-16,
+       "hi": 0.0,
+       "r": 0.0
+      },
+      "max_diff": 1.1102230246251565e-16,
+      "codex_outcome_rule": "WIN",
+      "ours_outcome_rule": "WIN",
+      "codex_candidate_readout": "center+k10",
+      "codex_comparator_readout": "center+k10"
+     },
+     {
+      "cell": "genre/map/q1",
+      "ours_id": "artelingo/clip_l14/clipl14_prefix/genre/map/teacher",
+      "codex_id": "clip_l14/map/genre/q1",
+      "ours_outcome": "WIN",
+      "codex_outcome_field": "WIN",
+      "diffs": {
+       "value": 0.0,
+       "comparator_value": 0.0,
+       "d": 0.0,
+       "lo": 1.1102230246251565e-16,
+       "hi": 5.204170427930421e-18,
+       "r": 0.0
+      },
+      "max_diff": 1.1102230246251565e-16,
+      "codex_outcome_rule": "WIN",
+      "ours_outcome_rule": "WIN",
+      "codex_candidate_readout": "center+k10",
+      "codex_comparator_readout": "center+k10"
+     }
+    ],
+    "max_abs_diff_cells": 2.8310687127941492e-14,
+    "inputs": {
+     "/project/CoSiR/src/test/20261112_siglip_only/records/image_cells_siglip2_prefix.json": "afe4b6a74ca9caf96674b439586adbf25c0e133e59c24a9bebd38d8f888169d0",
+     "/project/CoSiR/src/test/20261112_siglip_only/records/image_cells_clipl14_prefix.json": "abf9c3dec65f3ef43a7a7d7ebbb566c628907f65f2c32972b7bd80faf757e81a",
+     "/project/CoSiR/src/test/20261112_siglip_only/rederive/s2e_held.json": "114d03904fe90629137d90fb928d6f52b5d1255d9593bc7fe4eb8a7548a09abf"
+    },
+    "written": "2026-11-14 01:26"
    }
   }
  },
@@ -5407,7 +7104,8 @@
   },
   "held": {
    "mmart": [],
-   "photo": []
+   "photo": [],
+   "e2e3": []
   }
  },
  "missing": {
@@ -5416,6 +7114,6 @@
  },
  "written": {
   "val": "2026-11-14 00:23",
-  "held": "2026-11-14 01:18"
+  "held": "2026-11-14 01:26"
  }
 }
