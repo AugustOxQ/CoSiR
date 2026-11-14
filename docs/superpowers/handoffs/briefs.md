@@ -2530,3 +2530,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-13-paper-plan-12-handoff.md
 - New chat: tab 'paper plan 12', session 85727ffd-bff5-4a4e-b7c4-5452b083f43a
 
+[brief] CoSiR: r31 run 3 -> r31 run 4 (2026-11-14 01:17 Amsterdam)
+- Done: part a and part b of stage 2; every validation C13 check passes (E2/E3, SC9, MMArt, photo); MMArt held C13 passes.
+- State: SC9 picks SigLIP 1 (0.3882 against SigLIP 2 0.3838, CLIP L/14 0.3762; close call). One failed step: the ablation scoring (stale code hash of gate (vii)).
+- Next: a recheck path for gate (vii), then the ablation scoring; the held comparisons; ladders; reports.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-14-r31-run-4-handoff.md
+- New chat: tab 'r31 run 4', session 01837b5d-c223-40aa-98b3-699d540f4578
+
