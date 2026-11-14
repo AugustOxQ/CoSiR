@@ -1,0 +1,4 @@
+res-queue: enqueued cpu normal position 1, 0 ahead, estimated start 01:26
+res-queue: start cpu 01:26
+SC7: 24 cells -> /project/CoSiR/src/test/20261112_siglip_only/records/ablation.json
+res-queue: end cpu exit 0, 21.75 minutes run

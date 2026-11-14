@@ -239,3 +239,7 @@ mode. Outputs `/data/SSD2/cosir_r29/20261112_siglip_only/` (stage logs in its `l
   encoder's current model, with paired intervals. SigLIP 2: changes -0.0007 to +0.0027; CLIP L/14: -0.0026 to +0.0011;
   all twelve intervals contain zero (SigLIP 2's first cell barely: lower end -2.9e-6). Descriptive (§3.6).
 - 01:33 Codex's `s2abl held` done (20.4 min, exit 0), `rederive/s2abl_held.json`.
+- 01:48 SC7 scored (21.8 min, exit 0): `records/ablation.json`, 24 cells, complete, A1 marked. C13 comparison
+  `--phase held --pieces ablation`: pass, 360 fields, largest difference 1.1e-14, no mismatch (information items:
+  per-seed lists equal to 1e-16). Codex's `kstar_check.complete` is false only because stage 1's C13 file stores K*'s
+  AMI means, not per-seed values; its mean checks pass. Every held C13 piece (e2e3, mmart, photo, ablation) passes.

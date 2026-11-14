@@ -7092,6 +7092,3148 @@
      "/project/CoSiR/src/test/20261112_siglip_only/rederive/s2e_held.json": "114d03904fe90629137d90fb928d6f52b5d1255d9593bc7fe4eb8a7548a09abf"
     },
     "written": "2026-11-14 01:26"
+   },
+   "ablation": {
+    "status": "pass",
+    "n_compared": 360,
+    "max_abs_diff": 1.1352030426792226e-14,
+    "mismatches": [],
+    "unpaired": [
+     {
+      "side": "ours",
+      "field": "cells.r, cells.outcome",
+      "note": "None: SC7 has no outcome"
+     },
+     {
+      "side": "codex",
+      "field": "kstar_check",
+      "note": "Codex's own consistency check (recorded under codex_status)"
+     }
+    ],
+    "info": [
+     {
+      "item": "ablation/instructed_graphs/emotion/ami d_per_seed",
+      "ours": [
+       -0.03551401860732031,
+       -0.04305277886147203,
+       -0.0376098112018807,
+       -0.03134120375156106,
+       -0.030887799016248413
+      ],
+      "codex": [
+       -0.03551401860732031,
+       -0.04305277886147203,
+       -0.0376098112018807,
+       -0.03134120375156106,
+       -0.030887799016248413
+      ],
+      "equal": true
+     },
+     {
+      "item": "ablation/instructed_graphs/emotion/ami n",
+      "ours": 12281,
+      "codex": 12281,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "ablation/instructed_graphs/emotion/ami n_draws",
+      "ours": 2000,
+      "codex": 2000,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "ablation/instructed_graphs/emotion/map d_per_seed",
+      "ours": [
+       -0.021479253816465954,
+       -0.022062270296172692,
+       -0.018750702157346227,
+       -0.019374911062146505,
+       -0.017909140160949633
+      ],
+      "codex": [
+       -0.021479253816465954,
+       -0.022062270296172692,
+       -0.018750702157346227,
+       -0.019374911062146588,
+       -0.017909140160949633
+      ],
+      "equal": false
+     },
+     {
+      "item": "ablation/instructed_graphs/emotion/map n",
+      "ours": 12281,
+      "codex": 12281,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "ablation/instructed_graphs/emotion/map n_draws",
+      "ours": 10000,
+      "codex": 10000,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "ablation/instructed_graphs/style/ami d_per_seed",
+      "ours": [
+       -0.21551773861362564,
+       -0.21930683346578947,
+       -0.21676479305762547,
+       -0.21096011530964412,
+       -0.21082579942566013
+      ],
+      "codex": [
+       -0.21551773861362564,
+       -0.21930683346578947,
+       -0.21676479305762547,
+       -0.21096011530964412,
+       -0.21082579942566013
+      ],
+      "equal": true
+     },
+     {
+      "item": "ablation/instructed_graphs/style/ami n",
+      "ours": 12281,
+      "codex": 12281,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "ablation/instructed_graphs/style/ami n_draws",
+      "ours": 2000,
+      "codex": 2000,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "ablation/instructed_graphs/style/map d_per_seed",
+      "ours": [
+       -0.1434986998718504,
+       -0.14286897944966875,
+       -0.1423168893970029,
+       -0.13737221227663615,
+       -0.14194186311104307
+      ],
+      "codex": [
+       -0.1434986998718504,
+       -0.14286897944966875,
+       -0.1423168893970029,
+       -0.13737221227663615,
+       -0.14194186311104307
+      ],
+      "equal": true
+     },
+     {
+      "item": "ablation/instructed_graphs/style/map n",
+      "ours": 12281,
+      "codex": 12281,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "ablation/instructed_graphs/style/map n_draws",
+      "ours": 10000,
+      "codex": 10000,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "ablation/instructed_graphs/genre/ami d_per_seed",
+      "ours": [
+       0.018429557168124666,
+       0.018366794730715452,
+       -0.0013502445545012787,
+       -0.016587492243793855,
+       0.001955420859450663
+      ],
+      "codex": [
+       0.018429557168124666,
+       0.018366794730715452,
+       -0.0013502445545012787,
+       -0.016587492243793855,
+       0.001955420859450663
+      ],
+      "equal": true
+     },
+     {
+      "item": "ablation/instructed_graphs/genre/ami n",
+      "ours": 12281,
+      "codex": 12281,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "ablation/instructed_graphs/genre/ami n_draws",
+      "ours": 2000,
+      "codex": 2000,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "ablation/instructed_graphs/genre/map d_per_seed",
+      "ours": [
+       8.445006553248202e-05,
+       0.0006154004280432002,
+       -0.003979744903642168,
+       -0.0006210057211839537,
+       -0.0008505504270982511
+      ],
+      "codex": [
+       8.445006553248202e-05,
+       0.0006154004280433112,
+       -0.003979744903642168,
+       -0.0006210057211840647,
+       -0.0008505504270982511
+      ],
+      "equal": false
+     },
+     {
+      "item": "ablation/instructed_graphs/genre/map n",
+      "ours": 9949,
+      "codex": 9949,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "ablation/instructed_graphs/genre/map n_draws",
+      "ours": 10000,
+      "codex": 10000,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "ablation/content_correction/emotion/ami d_per_seed",
+      "ours": [
+       -0.013698343241248065,
+       -0.0073341182562599305,
+       -0.015315436942946792,
+       -0.014390280565491964,
+       -0.01342957394620084
+      ],
+      "codex": [
+       -0.013698343241248065,
+       -0.0073341182562599305,
+       -0.015315436942946792,
+       -0.014390280565491964,
+       -0.01342957394620084
+      ],
+      "equal": true
+     },
+     {
+      "item": "ablation/content_correction/emotion/ami n",
+      "ours": 12281,
+      "codex": 12281,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "ablation/content_correction/emotion/ami n_draws",
+      "ours": 2000,
+      "codex": 2000,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "ablation/content_correction/emotion/map d_per_seed",
+      "ours": [
+       -0.006820339231268013,
+       -0.0063360949026965985,
+       -0.0030496787723412466,
+       -0.005885142954912881,
+       -0.006322420613009305
+      ],
+      "codex": [
+       -0.006820339231268013,
+       -0.0063360949026965985,
+       -0.0030496787723412466,
+       -0.005885142954912936,
+       -0.006322420613009305
+      ],
+      "equal": false
+     },
+     {
+      "item": "ablation/content_correction/emotion/map n",
+      "ours": 12281,
+      "codex": 12281,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "ablation/content_correction/emotion/map n_draws",
+      "ours": 10000,
+      "codex": 10000,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "ablation/content_correction/style/ami d_per_seed",
+      "ours": [
+       -0.0921726977921053,
+       -0.08727349987587013,
+       -0.08457666782980278,
+       -0.09019427895989851,
+       -0.08358794077967752
+      ],
+      "codex": [
+       -0.0921726977921053,
+       -0.08727349987587013,
+       -0.08457666782980278,
+       -0.09019427895989851,
+       -0.08358794077967752
+      ],
+      "equal": true
+     },
+     {
+      "item": "ablation/content_correction/style/ami n",
+      "ours": 12281,
+      "codex": 12281,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "ablation/content_correction/style/ami n_draws",
+      "ours": 2000,
+      "codex": 2000,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "ablation/content_correction/style/map d_per_seed",
+      "ours": [
+       -0.06955808827461513,
+       -0.06710048484303344,
+       -0.068604762656226,
+       -0.06714791286623362,
+       -0.06480374424507646
+      ],
+      "codex": [
+       -0.06955808827461513,
+       -0.06710048484303344,
+       -0.068604762656226,
+       -0.06714791286623362,
+       -0.06480374424507646
+      ],
+      "equal": true
+     },
+     {
+      "item": "ablation/content_correction/style/map n",
+      "ours": 12281,
+      "codex": 12281,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "ablation/content_correction/style/map n_draws",
+      "ours": 10000,
+      "codex": 10000,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "ablation/content_correction/genre/ami d_per_seed",
+      "ours": [
+       0.03549532530000066,
+       0.004257567210976587,
+       0.009715716224403814,
+       0.010248126216011233,
+       -0.0056421627512759365
+      ],
+      "codex": [
+       0.03549532530000066,
+       0.004257567210976587,
+       0.009715716224403814,
+       0.010248126216011233,
+       -0.0056421627512759365
+      ],
+      "equal": true
+     },
+     {
+      "item": "ablation/content_correction/genre/ami n",
+      "ours": 12281,
+      "codex": 12281,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "ablation/content_correction/genre/ami n_draws",
+      "ours": 2000,
+      "codex": 2000,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "ablation/content_correction/genre/map d_per_seed",
+      "ours": [
+       0.00017709530230214376,
+       0.0005915213907250472,
+       0.000364967151970208,
+       2.3386582043483095e-05,
+       0.0003951803418572597
+      ],
+      "codex": [
+       0.00017709530230214376,
+       0.0005915213907250472,
+       0.000364967151970208,
+       2.3386582043483095e-05,
+       0.0003951803418572597
+      ],
+      "equal": true
+     },
+     {
+      "item": "ablation/content_correction/genre/map n",
+      "ours": 9949,
+      "codex": 9949,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "ablation/content_correction/genre/map n_draws",
+      "ours": 10000,
+      "codex": 10000,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "ablation/buddy/emotion/ami d_per_seed",
+      "ours": [
+       -0.04041893104045638,
+       -0.03582534032526928,
+       -0.03712173093636041,
+       -0.03126289854262304,
+       -0.03478381376521858
+      ],
+      "codex": [
+       -0.04041893104045638,
+       -0.03582534032526928,
+       -0.03712173093636041,
+       -0.03126289854262304,
+       -0.03478381376521858
+      ],
+      "equal": true
+     },
+     {
+      "item": "ablation/buddy/emotion/ami n",
+      "ours": 12281,
+      "codex": 12281,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "ablation/buddy/emotion/ami n_draws",
+      "ours": 2000,
+      "codex": 2000,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "ablation/buddy/emotion/map d_per_seed",
+      "ours": [
+       -0.01925549697311893,
+       -0.01747947061092986,
+       -0.017462575405491787,
+       -0.018011277765410116,
+       -0.017779338591565774
+      ],
+      "codex": [
+       -0.01925549697311893,
+       -0.01747947061092986,
+       -0.017462575405491787,
+       -0.018011277765410144,
+       -0.017779338591565774
+      ],
+      "equal": false
+     },
+     {
+      "item": "ablation/buddy/emotion/map n",
+      "ours": 12281,
+      "codex": 12281,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "ablation/buddy/emotion/map n_draws",
+      "ours": 10000,
+      "codex": 10000,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "ablation/buddy/style/ami d_per_seed",
+      "ours": [
+       -0.17075701071878385,
+       -0.17572968616529877,
+       -0.16306529705560874,
+       -0.16905246214801622,
+       -0.16880207411385134
+      ],
+      "codex": [
+       -0.17075701071878385,
+       -0.17572968616529877,
+       -0.16306529705560874,
+       -0.16905246214801622,
+       -0.16880207411385134
+      ],
+      "equal": true
+     },
+     {
+      "item": "ablation/buddy/style/ami n",
+      "ours": 12281,
+      "codex": 12281,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "ablation/buddy/style/ami n_draws",
+      "ours": 2000,
+      "codex": 2000,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "ablation/buddy/style/map d_per_seed",
+      "ours": [
+       -0.11974256850864481,
+       -0.11735940455263341,
+       -0.11560991579370719,
+       -0.11621329233292471,
+       -0.1145784468444665
+      ],
+      "codex": [
+       -0.11974256850864481,
+       -0.11735940455263341,
+       -0.11560991579370719,
+       -0.11621329233292471,
+       -0.1145784468444665
+      ],
+      "equal": true
+     },
+     {
+      "item": "ablation/buddy/style/map n",
+      "ours": 12281,
+      "codex": 12281,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "ablation/buddy/style/map n_draws",
+      "ours": 10000,
+      "codex": 10000,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "ablation/buddy/genre/ami d_per_seed",
+      "ours": [
+       0.011942747600933945,
+       -0.0022871297293509674,
+       0.01688794567188845,
+       0.0019524518526421453,
+       -0.0038002696130564617
+      ],
+      "codex": [
+       0.011942747600933945,
+       -0.0022871297293509674,
+       0.01688794567188845,
+       0.0019524518526421453,
+       -0.0038002696130564617
+      ],
+      "equal": true
+     },
+     {
+      "item": "ablation/buddy/genre/ami n",
+      "ours": 12281,
+      "codex": 12281,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "ablation/buddy/genre/ami n_draws",
+      "ours": 2000,
+      "codex": 2000,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "ablation/buddy/genre/map d_per_seed",
+      "ours": [
+       0.00030324708469742223,
+       0.00012043016340057555,
+       -0.0023807155559565363,
+       0.0005120820025101835,
+       -0.002056051904837264
+      ],
+      "codex": [
+       0.00030324708469742223,
+       0.00012043016340068657,
+       -0.0023807155559565363,
+       0.0005120820025101835,
+       -0.002056051904837264
+      ],
+      "equal": false
+     },
+     {
+      "item": "ablation/buddy/genre/map n",
+      "ours": 9949,
+      "codex": 9949,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "ablation/buddy/genre/map n_draws",
+      "ours": 10000,
+      "codex": 10000,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "ablation/relational/emotion/ami d_per_seed",
+      "ours": [
+       -0.0017191710846061747,
+       -0.0036724448620226724,
+       -0.0005969225295990588,
+       0.003175842576486565,
+       0.003270434502712416
+      ],
+      "codex": [
+       -0.0017191710846061747,
+       -0.0036724448620226724,
+       -0.0005969225295990588,
+       0.003175842576486565,
+       0.003270434502712416
+      ],
+      "equal": true
+     },
+     {
+      "item": "ablation/relational/emotion/ami n",
+      "ours": 12281,
+      "codex": 12281,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "ablation/relational/emotion/ami n_draws",
+      "ours": 2000,
+      "codex": 2000,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "ablation/relational/emotion/map d_per_seed",
+      "ours": [
+       0.0006463544515627473,
+       -1.3371453943478162e-05,
+       -0.00043983803089731044,
+       -0.00030025763725022303,
+       -0.0005041654296182307
+      ],
+      "codex": [
+       0.0006463544515628028,
+       -1.3371453943478162e-05,
+       -0.00043983803089731044,
+       -0.00030025763725027854,
+       -0.0005041654296182307
+      ],
+      "equal": false
+     },
+     {
+      "item": "ablation/relational/emotion/map n",
+      "ours": 12281,
+      "codex": 12281,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "ablation/relational/emotion/map n_draws",
+      "ours": 10000,
+      "codex": 10000,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "ablation/relational/style/ami d_per_seed",
+      "ours": [
+       -0.00048546066860621906,
+       -0.0027128333788886128,
+       -0.009560732733804644,
+       -0.0008510800373366934,
+       0.005610618724752436
+      ],
+      "codex": [
+       -0.00048546066860621906,
+       -0.0027128333788886128,
+       -0.009560732733804644,
+       -0.0008510800373366934,
+       0.005610618724752436
+      ],
+      "equal": true
+     },
+     {
+      "item": "ablation/relational/style/ami n",
+      "ours": 12281,
+      "codex": 12281,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "ablation/relational/style/ami n_draws",
+      "ours": 2000,
+      "codex": 2000,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "ablation/relational/style/map d_per_seed",
+      "ours": [
+       -0.002295761246893069,
+       -0.0006103177192348097,
+       -0.001045576661178993,
+       -0.0007847201374861501,
+       0.0028309679349730055
+      ],
+      "codex": [
+       -0.002295761246893069,
+       -0.0006103177192348097,
+       -0.001045576661178993,
+       -0.0007847201374861501,
+       0.00283096793497295
+      ],
+      "equal": false
+     },
+     {
+      "item": "ablation/relational/style/map n",
+      "ours": 12281,
+      "codex": 12281,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "ablation/relational/style/map n_draws",
+      "ours": 10000,
+      "codex": 10000,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "ablation/relational/genre/ami d_per_seed",
+      "ours": [
+       -0.043136622501736444,
+       -0.0879598910904606,
+       -0.05473384975825818,
+       -0.060724767116468514,
+       -0.05173599228595677
+      ],
+      "codex": [
+       -0.043136622501736444,
+       -0.0879598910904606,
+       -0.05473384975825818,
+       -0.060724767116468514,
+       -0.05173599228595677
+      ],
+      "equal": true
+     },
+     {
+      "item": "ablation/relational/genre/ami n",
+      "ours": 12281,
+      "codex": 12281,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "ablation/relational/genre/ami n_draws",
+      "ours": 2000,
+      "codex": 2000,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "ablation/relational/genre/map d_per_seed",
+      "ours": [
+       -0.11148786097580654,
+       -0.11029098363122575,
+       -0.11443356231411161,
+       -0.1220514768900311,
+       -0.11368643632913578
+      ],
+      "codex": [
+       -0.11148786097580654,
+       -0.11029098363122575,
+       -0.11443356231411161,
+       -0.1220514768900311,
+       -0.11368643632913578
+      ],
+      "equal": true
+     },
+     {
+      "item": "ablation/relational/genre/map n",
+      "ours": 9949,
+      "codex": 9949,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "ablation/relational/genre/map n_draws",
+      "ours": 10000,
+      "codex": 10000,
+      "diff": 0,
+      "equal": true
+     }
+    ],
+    "codex_status": {
+     "complete": true,
+     "mode": "held",
+     "rows": [
+      "instructed_graphs",
+      "content_correction",
+      "buddy",
+      "relational"
+     ],
+     "replay_certified": true,
+     "kstar_check": {
+      "complete": false,
+      "kstar_per_seed": {
+       "emotion": [
+        0.10509382223687362,
+        0.1019634542106528,
+        0.10245263449424798,
+        0.09936701234154065,
+        0.10012237392854993
+       ],
+       "style": [
+        0.44594343947157267,
+        0.44720777547674245,
+        0.4460736986017218,
+        0.450000001100234,
+        0.44300739231254616
+       ],
+       "genre": [
+        0.5004510627661851,
+        0.5204086116119925,
+        0.5149506079798757,
+        0.5305149742625411,
+        0.5195607747865939
+       ]
+      },
+      "mean_checks_pass": true,
+      "checks": [
+       {
+        "target": "/project/CoSiR/src/test/20261112_siglip_only/rederive/c1_rederived.json",
+        "key": "cells/id=ami/emotion/p1/value",
+        "value": 0.10179985944237299,
+        "recorded_value": 0.10179985944236611,
+        "abs_diff": 6.8833827526759706e-15,
+        "pass_": true,
+        "measure": "ami"
+       },
+       {
+        "target": "/project/CoSiR/src/test/20261112_siglip_only/rederive/c1_rederived.json",
+        "key": "cells/id=ami/style/p1/value",
+        "value": 0.44644646139256344,
+        "recorded_value": 0.44644646139254573,
+        "abs_diff": 1.7708057242771247e-14,
+        "pass_": true,
+        "measure": "ami"
+       },
+       {
+        "target": "/project/CoSiR/src/test/20261112_siglip_only/rederive/c1_rederived.json",
+        "key": "cells/id=ami/genre/p1/value",
+        "value": 0.5171772062814376,
+        "recorded_value": 0.5171772062814352,
+        "abs_diff": 2.4424906541753444e-15,
+        "pass_": true,
+        "measure": "ami"
+       }
+      ],
+      "missing": [
+       "emotion/s0: C1 JSON has no per-seed field and no saved partition cache found",
+       "emotion/s1: C1 JSON has no per-seed field and no saved partition cache found",
+       "emotion/s2: C1 JSON has no per-seed field and no saved partition cache found",
+       "emotion/s3: C1 JSON has no per-seed field and no saved partition cache found",
+       "emotion/s4: C1 JSON has no per-seed field and no saved partition cache found",
+       "style/s0: C1 JSON has no per-seed field and no saved partition cache found",
+       "style/s1: C1 JSON has no per-seed field and no saved partition cache found",
+       "style/s2: C1 JSON has no per-seed field and no saved partition cache found",
+       "style/s3: C1 JSON has no per-seed field and no saved partition cache found",
+       "style/s4: C1 JSON has no per-seed field and no saved partition cache found",
+       "genre/s0: C1 JSON has no per-seed field and no saved partition cache found",
+       "genre/s1: C1 JSON has no per-seed field and no saved partition cache found",
+       "genre/s2: C1 JSON has no per-seed field and no saved partition cache found",
+       "genre/s3: C1 JSON has no per-seed field and no saved partition cache found",
+       "genre/s4: C1 JSON has no per-seed field and no saved partition cache found"
+      ],
+      "notes": [
+       "Mean target is C1 JSON; per-seed targets are independently saved C1 partitions because the JSON omits per-seed values."
+      ]
+     },
+     "ours_inconclusive_removals": {}
+    },
+    "items": [
+     {
+      "item": "ablation/instructed_graphs/emotion/ami removal_mean",
+      "ours": 0.06611873715467649,
+      "codex": 0.06611873715467649,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/emotion/ami kstar_mean",
+      "ours": 0.10179985944237299,
+      "codex": 0.10179985944237299,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/emotion/ami removal_per_seed[0]",
+      "ours": 0.06957980362955331,
+      "codex": 0.06957980362955331,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/emotion/ami removal_per_seed[1]",
+      "ours": 0.05891067534918076,
+      "codex": 0.05891067534918076,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/emotion/ami removal_per_seed[2]",
+      "ours": 0.06484282329236728,
+      "codex": 0.06484282329236728,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/emotion/ami removal_per_seed[3]",
+      "ours": 0.06802580858997959,
+      "codex": 0.06802580858997959,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/emotion/ami removal_per_seed[4]",
+      "ours": 0.06923457491230152,
+      "codex": 0.06923457491230152,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/emotion/ami kstar_per_seed[0]",
+      "ours": 0.10509382223687362,
+      "codex": 0.10509382223687362,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/emotion/ami kstar_per_seed[1]",
+      "ours": 0.1019634542106528,
+      "codex": 0.1019634542106528,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/emotion/ami kstar_per_seed[2]",
+      "ours": 0.10245263449424798,
+      "codex": 0.10245263449424798,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/emotion/ami kstar_per_seed[3]",
+      "ours": 0.09936701234154065,
+      "codex": 0.09936701234154065,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/emotion/ami kstar_per_seed[4]",
+      "ours": 0.10012237392854993,
+      "codex": 0.10012237392854993,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/emotion/ami d",
+      "ours": -0.0356811222876965,
+      "codex": -0.0356811222876965,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/emotion/ami lo",
+      "ours": -0.040558610977897924,
+      "codex": -0.04055861097789703,
+      "diff": 8.951173136040325e-16
+     },
+     {
+      "item": "ablation/instructed_graphs/emotion/ami hi",
+      "ours": -0.030802606522346815,
+      "codex": -0.03080260652234455,
+      "diff": 2.26554885962571e-15
+     },
+     {
+      "item": "ablation/instructed_graphs/emotion/map removal_mean",
+      "ours": 0.24317913091313895,
+      "codex": 0.24317913091313895,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/emotion/map kstar_mean",
+      "ours": 0.26309438641175514,
+      "codex": 0.26309438641175514,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/emotion/map removal_per_seed[0]",
+      "ours": 0.24230508449972157,
+      "codex": 0.24230508449972157,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/emotion/map removal_per_seed[1]",
+      "ours": 0.24108914959389804,
+      "codex": 0.24108914959389804,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/emotion/map removal_per_seed[2]",
+      "ours": 0.2435908392000792,
+      "codex": 0.2435908392000792,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/emotion/map removal_per_seed[3]",
+      "ours": 0.24376531342997265,
+      "codex": 0.24376531342997262,
+      "diff": 2.7755575615628914e-17
+     },
+     {
+      "item": "ablation/instructed_graphs/emotion/map removal_per_seed[4]",
+      "ours": 0.24514526784202317,
+      "codex": 0.24514526784202317,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/emotion/map kstar_per_seed[0]",
+      "ours": 0.2637843383161875,
+      "codex": 0.2637843383161875,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/emotion/map kstar_per_seed[1]",
+      "ours": 0.26315141989007074,
+      "codex": 0.26315141989007074,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/emotion/map kstar_per_seed[2]",
+      "ours": 0.26234154135742543,
+      "codex": 0.26234154135742543,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/emotion/map kstar_per_seed[3]",
+      "ours": 0.26314022449211916,
+      "codex": 0.2631402244921192,
+      "diff": 5.551115123125783e-17
+     },
+     {
+      "item": "ablation/instructed_graphs/emotion/map kstar_per_seed[4]",
+      "ours": 0.2630544080029728,
+      "codex": 0.2630544080029728,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/emotion/map d",
+      "ours": -0.019915255498616224,
+      "codex": -0.019915255498616197,
+      "diff": 2.7755575615628914e-17
+     },
+     {
+      "item": "ablation/instructed_graphs/emotion/map lo",
+      "ours": -0.02143273142257556,
+      "codex": -0.021432731422575593,
+      "diff": 3.122502256758253e-17
+     },
+     {
+      "item": "ablation/instructed_graphs/emotion/map hi",
+      "ours": -0.01842484165076101,
+      "codex": -0.018424841650761074,
+      "diff": 6.591949208711867e-17
+     },
+     {
+      "item": "ablation/instructed_graphs/style/ami removal_mean",
+      "ours": 0.23177140541809446,
+      "codex": 0.23177140541809446,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/style/ami kstar_mean",
+      "ours": 0.44644646139256344,
+      "codex": 0.44644646139256344,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/style/ami removal_per_seed[0]",
+      "ours": 0.23042570085794703,
+      "codex": 0.23042570085794703,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/style/ami removal_per_seed[1]",
+      "ours": 0.22790094201095298,
+      "codex": 0.22790094201095298,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/style/ami removal_per_seed[2]",
+      "ours": 0.22930890554409633,
+      "codex": 0.22930890554409633,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/style/ami removal_per_seed[3]",
+      "ours": 0.2390398857905899,
+      "codex": 0.2390398857905899,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/style/ami removal_per_seed[4]",
+      "ours": 0.23218159288688603,
+      "codex": 0.23218159288688603,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/style/ami kstar_per_seed[0]",
+      "ours": 0.44594343947157267,
+      "codex": 0.44594343947157267,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/style/ami kstar_per_seed[1]",
+      "ours": 0.44720777547674245,
+      "codex": 0.44720777547674245,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/style/ami kstar_per_seed[2]",
+      "ours": 0.4460736986017218,
+      "codex": 0.4460736986017218,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/style/ami kstar_per_seed[3]",
+      "ours": 0.450000001100234,
+      "codex": 0.450000001100234,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/style/ami kstar_per_seed[4]",
+      "ours": 0.44300739231254616,
+      "codex": 0.44300739231254616,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/style/ami d",
+      "ours": -0.21467505597446898,
+      "codex": -0.21467505597446898,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/style/ami lo",
+      "ours": -0.21810013134073708,
+      "codex": -0.21810013134074843,
+      "diff": 1.1352030426792226e-14
+     },
+     {
+      "item": "ablation/instructed_graphs/style/ami hi",
+      "ours": -0.2068569949078657,
+      "codex": -0.20685699490787682,
+      "diff": 1.1129985821867194e-14
+     },
+     {
+      "item": "ablation/instructed_graphs/style/map removal_mean",
+      "ours": 0.1974118258698056,
+      "codex": 0.1974118258698056,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/style/map kstar_mean",
+      "ours": 0.3390115546910458,
+      "codex": 0.3390115546910458,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/style/map removal_per_seed[0]",
+      "ours": 0.19845449639840182,
+      "codex": 0.19845449639840182,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/style/map removal_per_seed[1]",
+      "ours": 0.19570555724982786,
+      "codex": 0.19570555724982786,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/style/map removal_per_seed[2]",
+      "ours": 0.19647426785792818,
+      "codex": 0.19647426785792818,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/style/map removal_per_seed[3]",
+      "ours": 0.20054926957525426,
+      "codex": 0.20054926957525426,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/style/map removal_per_seed[4]",
+      "ours": 0.19587553826761572,
+      "codex": 0.19587553826761572,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/style/map kstar_per_seed[0]",
+      "ours": 0.3419531962702522,
+      "codex": 0.3419531962702522,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/style/map kstar_per_seed[1]",
+      "ours": 0.3385745366994966,
+      "codex": 0.3385745366994966,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/style/map kstar_per_seed[2]",
+      "ours": 0.3387911572549311,
+      "codex": 0.3387911572549311,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/style/map kstar_per_seed[3]",
+      "ours": 0.3379214818518904,
+      "codex": 0.3379214818518904,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/style/map kstar_per_seed[4]",
+      "ours": 0.3378174013786588,
+      "codex": 0.3378174013786588,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/style/map d",
+      "ours": -0.1415997288212402,
+      "codex": -0.14159972882124022,
+      "diff": 2.7755575615628914e-17
+     },
+     {
+      "item": "ablation/instructed_graphs/style/map lo",
+      "ours": -0.14447535746178364,
+      "codex": -0.14447535746178355,
+      "diff": 8.326672684688674e-17
+     },
+     {
+      "item": "ablation/instructed_graphs/style/map hi",
+      "ours": -0.13848915765354747,
+      "codex": -0.13848915765354747,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/genre/ami removal_mean",
+      "ours": 0.5213400134734367,
+      "codex": 0.5213400134734367,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/genre/ami kstar_mean",
+      "ours": 0.5171772062814376,
+      "codex": 0.5171772062814376,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/genre/ami removal_per_seed[0]",
+      "ours": 0.5188806199343098,
+      "codex": 0.5188806199343098,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/genre/ami removal_per_seed[1]",
+      "ours": 0.5387754063427079,
+      "codex": 0.5387754063427079,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/genre/ami removal_per_seed[2]",
+      "ours": 0.5136003634253744,
+      "codex": 0.5136003634253744,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/genre/ami removal_per_seed[3]",
+      "ours": 0.5139274820187473,
+      "codex": 0.5139274820187473,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/genre/ami removal_per_seed[4]",
+      "ours": 0.5215161956460446,
+      "codex": 0.5215161956460446,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/genre/ami kstar_per_seed[0]",
+      "ours": 0.5004510627661851,
+      "codex": 0.5004510627661851,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/genre/ami kstar_per_seed[1]",
+      "ours": 0.5204086116119925,
+      "codex": 0.5204086116119925,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/genre/ami kstar_per_seed[2]",
+      "ours": 0.5149506079798757,
+      "codex": 0.5149506079798757,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/genre/ami kstar_per_seed[3]",
+      "ours": 0.5305149742625411,
+      "codex": 0.5305149742625411,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/genre/ami kstar_per_seed[4]",
+      "ours": 0.5195607747865939,
+      "codex": 0.5195607747865939,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/genre/ami d",
+      "ours": 0.004162807191999129,
+      "codex": 0.004162807191999129,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/genre/ami lo",
+      "ours": -0.007952179246083052,
+      "codex": -0.007952179246080918,
+      "diff": 2.1337098754514727e-15
+     },
+     {
+      "item": "ablation/instructed_graphs/genre/ami hi",
+      "ours": 0.015464608276923402,
+      "codex": 0.0154646082769236,
+      "diff": 1.97758476261356e-16
+     },
+     {
+      "item": "ablation/instructed_graphs/genre/map removal_mean",
+      "ours": 0.5979781849637985,
+      "codex": 0.5979781849637986,
+      "diff": 1.1102230246251565e-16
+     },
+     {
+      "item": "ablation/instructed_graphs/genre/map kstar_mean",
+      "ours": 0.5989284750754682,
+      "codex": 0.5989284750754682,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/genre/map removal_per_seed[0]",
+      "ours": 0.5976285066183944,
+      "codex": 0.5976285066183944,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/genre/map removal_per_seed[1]",
+      "ours": 0.598405682584878,
+      "codex": 0.5984056825848781,
+      "diff": 1.1102230246251565e-16
+     },
+     {
+      "item": "ablation/instructed_graphs/genre/map removal_per_seed[2]",
+      "ours": 0.5959499006083439,
+      "codex": 0.5959499006083439,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/genre/map removal_per_seed[3]",
+      "ours": 0.6000194908175048,
+      "codex": 0.6000194908175047,
+      "diff": 1.1102230246251565e-16
+     },
+     {
+      "item": "ablation/instructed_graphs/genre/map removal_per_seed[4]",
+      "ours": 0.5978873441898714,
+      "codex": 0.5978873441898714,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/genre/map kstar_per_seed[0]",
+      "ours": 0.5975440565528619,
+      "codex": 0.5975440565528619,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/genre/map kstar_per_seed[1]",
+      "ours": 0.5977902821568348,
+      "codex": 0.5977902821568348,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/genre/map kstar_per_seed[2]",
+      "ours": 0.599929645511986,
+      "codex": 0.599929645511986,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/genre/map kstar_per_seed[3]",
+      "ours": 0.6006404965386888,
+      "codex": 0.6006404965386888,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/genre/map kstar_per_seed[4]",
+      "ours": 0.5987378946169697,
+      "codex": 0.5987378946169697,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/genre/map d",
+      "ours": -0.0009502901116695828,
+      "codex": -0.0009502901116695828,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/instructed_graphs/genre/map lo",
+      "ours": -0.002552742834781363,
+      "codex": -0.0025527428347814256,
+      "diff": 6.245004513516506e-17
+     },
+     {
+      "item": "ablation/instructed_graphs/genre/map hi",
+      "ours": 0.00027455827423772096,
+      "codex": 0.0002745582742376218,
+      "diff": 9.915028867379938e-17
+     },
+     {
+      "item": "ablation/content_correction/emotion/ami removal_mean",
+      "ours": 0.08896630885194348,
+      "codex": 0.08896630885194348,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/emotion/ami kstar_mean",
+      "ours": 0.10179985944237299,
+      "codex": 0.10179985944237299,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/emotion/ami removal_per_seed[0]",
+      "ours": 0.09139547899562556,
+      "codex": 0.09139547899562556,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/emotion/ami removal_per_seed[1]",
+      "ours": 0.09462933595439287,
+      "codex": 0.09462933595439287,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/emotion/ami removal_per_seed[2]",
+      "ours": 0.08713719755130118,
+      "codex": 0.08713719755130118,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/emotion/ami removal_per_seed[3]",
+      "ours": 0.08497673177604868,
+      "codex": 0.08497673177604868,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/emotion/ami removal_per_seed[4]",
+      "ours": 0.08669279998234909,
+      "codex": 0.08669279998234909,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/emotion/ami kstar_per_seed[0]",
+      "ours": 0.10509382223687362,
+      "codex": 0.10509382223687362,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/emotion/ami kstar_per_seed[1]",
+      "ours": 0.1019634542106528,
+      "codex": 0.1019634542106528,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/emotion/ami kstar_per_seed[2]",
+      "ours": 0.10245263449424798,
+      "codex": 0.10245263449424798,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/emotion/ami kstar_per_seed[3]",
+      "ours": 0.09936701234154065,
+      "codex": 0.09936701234154065,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/emotion/ami kstar_per_seed[4]",
+      "ours": 0.10012237392854993,
+      "codex": 0.10012237392854993,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/emotion/ami d",
+      "ours": -0.01283355059042951,
+      "codex": -0.01283355059042951,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/emotion/ami lo",
+      "ours": -0.015975797067470224,
+      "codex": -0.01597579706746959,
+      "diff": 6.349087922075114e-16
+     },
+     {
+      "item": "ablation/content_correction/emotion/ami hi",
+      "ours": -0.009401403810665922,
+      "codex": -0.009401403810663707,
+      "diff": 2.2152418788223827e-15
+     },
+     {
+      "item": "ablation/content_correction/emotion/map removal_mean",
+      "ours": 0.25741165111690956,
+      "codex": 0.25741165111690956,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/emotion/map kstar_mean",
+      "ours": 0.26309438641175514,
+      "codex": 0.26309438641175514,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/emotion/map removal_per_seed[0]",
+      "ours": 0.2569639990849195,
+      "codex": 0.2569639990849195,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/emotion/map removal_per_seed[1]",
+      "ours": 0.25681532498737414,
+      "codex": 0.25681532498737414,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/emotion/map removal_per_seed[2]",
+      "ours": 0.2592918625850842,
+      "codex": 0.2592918625850842,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/emotion/map removal_per_seed[3]",
+      "ours": 0.2572550815372063,
+      "codex": 0.2572550815372063,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/emotion/map removal_per_seed[4]",
+      "ours": 0.2567319873899635,
+      "codex": 0.2567319873899635,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/emotion/map kstar_per_seed[0]",
+      "ours": 0.2637843383161875,
+      "codex": 0.2637843383161875,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/emotion/map kstar_per_seed[1]",
+      "ours": 0.26315141989007074,
+      "codex": 0.26315141989007074,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/emotion/map kstar_per_seed[2]",
+      "ours": 0.26234154135742543,
+      "codex": 0.26234154135742543,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/emotion/map kstar_per_seed[3]",
+      "ours": 0.26314022449211916,
+      "codex": 0.2631402244921192,
+      "diff": 5.551115123125783e-17
+     },
+     {
+      "item": "ablation/content_correction/emotion/map kstar_per_seed[4]",
+      "ours": 0.2630544080029728,
+      "codex": 0.2630544080029728,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/emotion/map d",
+      "ours": -0.005682735294845587,
+      "codex": -0.005682735294845587,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/emotion/map lo",
+      "ours": -0.006606540347268891,
+      "codex": -0.006606540347268896,
+      "diff": 5.204170427930421e-18
+     },
+     {
+      "item": "ablation/content_correction/emotion/map hi",
+      "ours": -0.004313275823116593,
+      "codex": -0.00431327582311674,
+      "diff": 1.465841337200402e-16
+     },
+     {
+      "item": "ablation/content_correction/style/ami removal_mean",
+      "ours": 0.3588854443450925,
+      "codex": 0.3588854443450925,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/style/ami kstar_mean",
+      "ours": 0.44644646139256344,
+      "codex": 0.44644646139256344,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/style/ami removal_per_seed[0]",
+      "ours": 0.35377074167946737,
+      "codex": 0.35377074167946737,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/style/ami removal_per_seed[1]",
+      "ours": 0.3599342756008723,
+      "codex": 0.3599342756008723,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/style/ami removal_per_seed[2]",
+      "ours": 0.361497030771919,
+      "codex": 0.361497030771919,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/style/ami removal_per_seed[3]",
+      "ours": 0.3598057221403355,
+      "codex": 0.3598057221403355,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/style/ami removal_per_seed[4]",
+      "ours": 0.35941945153286864,
+      "codex": 0.35941945153286864,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/style/ami kstar_per_seed[0]",
+      "ours": 0.44594343947157267,
+      "codex": 0.44594343947157267,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/style/ami kstar_per_seed[1]",
+      "ours": 0.44720777547674245,
+      "codex": 0.44720777547674245,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/style/ami kstar_per_seed[2]",
+      "ours": 0.4460736986017218,
+      "codex": 0.4460736986017218,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/style/ami kstar_per_seed[3]",
+      "ours": 0.450000001100234,
+      "codex": 0.450000001100234,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/style/ami kstar_per_seed[4]",
+      "ours": 0.44300739231254616,
+      "codex": 0.44300739231254616,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/style/ami d",
+      "ours": -0.08756101704747093,
+      "codex": -0.08756101704747093,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/style/ami lo",
+      "ours": -0.09129547517313881,
+      "codex": -0.09129547517314324,
+      "diff": 4.427014310692812e-15
+     },
+     {
+      "item": "ablation/content_correction/style/ami hi",
+      "ours": -0.08217872312426845,
+      "codex": -0.082178723124271,
+      "diff": 2.55351295663786e-15
+     },
+     {
+      "item": "ablation/content_correction/style/map removal_mean",
+      "ours": 0.27156855611400893,
+      "codex": 0.27156855611400893,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/style/map kstar_mean",
+      "ours": 0.3390115546910458,
+      "codex": 0.3390115546910458,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/style/map removal_per_seed[0]",
+      "ours": 0.2723951079956371,
+      "codex": 0.2723951079956371,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/style/map removal_per_seed[1]",
+      "ours": 0.27147405185646317,
+      "codex": 0.27147405185646317,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/style/map removal_per_seed[2]",
+      "ours": 0.2701863945987051,
+      "codex": 0.2701863945987051,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/style/map removal_per_seed[3]",
+      "ours": 0.2707735689856568,
+      "codex": 0.2707735689856568,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/style/map removal_per_seed[4]",
+      "ours": 0.27301365713358233,
+      "codex": 0.27301365713358233,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/style/map kstar_per_seed[0]",
+      "ours": 0.3419531962702522,
+      "codex": 0.3419531962702522,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/style/map kstar_per_seed[1]",
+      "ours": 0.3385745366994966,
+      "codex": 0.3385745366994966,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/style/map kstar_per_seed[2]",
+      "ours": 0.3387911572549311,
+      "codex": 0.3387911572549311,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/style/map kstar_per_seed[3]",
+      "ours": 0.3379214818518904,
+      "codex": 0.3379214818518904,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/style/map kstar_per_seed[4]",
+      "ours": 0.3378174013786588,
+      "codex": 0.3378174013786588,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/style/map d",
+      "ours": -0.0674429985770369,
+      "codex": -0.0674429985770369,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/style/map lo",
+      "ours": -0.06934302794634278,
+      "codex": -0.06934302794634283,
+      "diff": 4.163336342344337e-17
+     },
+     {
+      "item": "ablation/content_correction/style/map hi",
+      "ours": -0.06550639607569543,
+      "codex": -0.06550639607569536,
+      "diff": 6.938893903907228e-17
+     },
+     {
+      "item": "ablation/content_correction/genre/ami removal_mean",
+      "ours": 0.5279921207214608,
+      "codex": 0.5279921207214608,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/genre/ami kstar_mean",
+      "ours": 0.5171772062814376,
+      "codex": 0.5171772062814376,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/genre/ami removal_per_seed[0]",
+      "ours": 0.5359463880661858,
+      "codex": 0.5359463880661858,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/genre/ami removal_per_seed[1]",
+      "ours": 0.5246661788229691,
+      "codex": 0.5246661788229691,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/genre/ami removal_per_seed[2]",
+      "ours": 0.5246663242042795,
+      "codex": 0.5246663242042795,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/genre/ami removal_per_seed[3]",
+      "ours": 0.5407631004785524,
+      "codex": 0.5407631004785524,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/genre/ami removal_per_seed[4]",
+      "ours": 0.513918612035318,
+      "codex": 0.513918612035318,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/genre/ami kstar_per_seed[0]",
+      "ours": 0.5004510627661851,
+      "codex": 0.5004510627661851,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/genre/ami kstar_per_seed[1]",
+      "ours": 0.5204086116119925,
+      "codex": 0.5204086116119925,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/genre/ami kstar_per_seed[2]",
+      "ours": 0.5149506079798757,
+      "codex": 0.5149506079798757,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/genre/ami kstar_per_seed[3]",
+      "ours": 0.5305149742625411,
+      "codex": 0.5305149742625411,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/genre/ami kstar_per_seed[4]",
+      "ours": 0.5195607747865939,
+      "codex": 0.5195607747865939,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/genre/ami d",
+      "ours": 0.010814914440023249,
+      "codex": 0.010814914440023249,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/genre/ami lo",
+      "ours": -0.0003096636509814149,
+      "codex": -0.00030966365098206714,
+      "diff": 6.522560269672795e-16
+     },
+     {
+      "item": "ablation/content_correction/genre/ami hi",
+      "ours": 0.024022525273350543,
+      "codex": 0.024022525273350314,
+      "diff": 2.2898349882893854e-16
+     },
+     {
+      "item": "ablation/content_correction/genre/map removal_mean",
+      "ours": 0.5992389052292479,
+      "codex": 0.5992389052292479,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/genre/map kstar_mean",
+      "ours": 0.5989284750754682,
+      "codex": 0.5989284750754682,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/genre/map removal_per_seed[0]",
+      "ours": 0.5977211518551641,
+      "codex": 0.5977211518551641,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/genre/map removal_per_seed[1]",
+      "ours": 0.5983818035475599,
+      "codex": 0.5983818035475599,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/genre/map removal_per_seed[2]",
+      "ours": 0.6002946126639562,
+      "codex": 0.6002946126639562,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/genre/map removal_per_seed[3]",
+      "ours": 0.6006638831207323,
+      "codex": 0.6006638831207323,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/genre/map removal_per_seed[4]",
+      "ours": 0.599133074958827,
+      "codex": 0.599133074958827,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/genre/map kstar_per_seed[0]",
+      "ours": 0.5975440565528619,
+      "codex": 0.5975440565528619,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/genre/map kstar_per_seed[1]",
+      "ours": 0.5977902821568348,
+      "codex": 0.5977902821568348,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/genre/map kstar_per_seed[2]",
+      "ours": 0.599929645511986,
+      "codex": 0.599929645511986,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/genre/map kstar_per_seed[3]",
+      "ours": 0.6006404965386888,
+      "codex": 0.6006404965386888,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/genre/map kstar_per_seed[4]",
+      "ours": 0.5987378946169697,
+      "codex": 0.5987378946169697,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/content_correction/genre/map d",
+      "ours": 0.00031043015377962835,
+      "codex": 0.00031043015377973937,
+      "diff": 1.1102230246251565e-16
+     },
+     {
+      "item": "ablation/content_correction/genre/map lo",
+      "ours": 8.192022439698355e-05,
+      "codex": 8.192022439699541e-05,
+      "diff": 1.1858461261560205e-17
+     },
+     {
+      "item": "ablation/content_correction/genre/map hi",
+      "ours": 0.0005504309377675653,
+      "codex": 0.0005504309377675354,
+      "diff": 2.992397996059992e-17
+     },
+     {
+      "item": "ablation/buddy/emotion/ami removal_mean",
+      "ours": 0.06591731652038746,
+      "codex": 0.06591731652038746,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/emotion/ami kstar_mean",
+      "ours": 0.10179985944237299,
+      "codex": 0.10179985944237299,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/emotion/ami removal_per_seed[0]",
+      "ours": 0.06467489119641724,
+      "codex": 0.06467489119641724,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/emotion/ami removal_per_seed[1]",
+      "ours": 0.06613811388538351,
+      "codex": 0.06613811388538351,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/emotion/ami removal_per_seed[2]",
+      "ours": 0.06533090355788757,
+      "codex": 0.06533090355788757,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/emotion/ami removal_per_seed[3]",
+      "ours": 0.0681041137989176,
+      "codex": 0.0681041137989176,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/emotion/ami removal_per_seed[4]",
+      "ours": 0.06533856016333135,
+      "codex": 0.06533856016333135,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/emotion/ami kstar_per_seed[0]",
+      "ours": 0.10509382223687362,
+      "codex": 0.10509382223687362,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/emotion/ami kstar_per_seed[1]",
+      "ours": 0.1019634542106528,
+      "codex": 0.1019634542106528,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/emotion/ami kstar_per_seed[2]",
+      "ours": 0.10245263449424798,
+      "codex": 0.10245263449424798,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/emotion/ami kstar_per_seed[3]",
+      "ours": 0.09936701234154065,
+      "codex": 0.09936701234154065,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/emotion/ami kstar_per_seed[4]",
+      "ours": 0.10012237392854993,
+      "codex": 0.10012237392854993,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/emotion/ami d",
+      "ours": -0.03588254292198553,
+      "codex": -0.03588254292198553,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/emotion/ami lo",
+      "ours": -0.03975055466542271,
+      "codex": -0.03975055466542193,
+      "diff": 7.771561172376096e-16
+     },
+     {
+      "item": "ablation/buddy/emotion/ami hi",
+      "ours": -0.03185786325951164,
+      "codex": -0.03185786325951141,
+      "diff": 2.2898349882893854e-16
+     },
+     {
+      "item": "ablation/buddy/emotion/map removal_mean",
+      "ours": 0.24509675454245183,
+      "codex": 0.24509675454245183,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/emotion/map kstar_mean",
+      "ours": 0.26309438641175514,
+      "codex": 0.26309438641175514,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/emotion/map removal_per_seed[0]",
+      "ours": 0.2445288413430686,
+      "codex": 0.2445288413430686,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/emotion/map removal_per_seed[1]",
+      "ours": 0.24567194927914088,
+      "codex": 0.24567194927914088,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/emotion/map removal_per_seed[2]",
+      "ours": 0.24487896595193365,
+      "codex": 0.24487896595193365,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/emotion/map removal_per_seed[3]",
+      "ours": 0.24512894672670904,
+      "codex": 0.24512894672670907,
+      "diff": 2.7755575615628914e-17
+     },
+     {
+      "item": "ablation/buddy/emotion/map removal_per_seed[4]",
+      "ours": 0.24527506941140703,
+      "codex": 0.24527506941140703,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/emotion/map kstar_per_seed[0]",
+      "ours": 0.2637843383161875,
+      "codex": 0.2637843383161875,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/emotion/map kstar_per_seed[1]",
+      "ours": 0.26315141989007074,
+      "codex": 0.26315141989007074,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/emotion/map kstar_per_seed[2]",
+      "ours": 0.26234154135742543,
+      "codex": 0.26234154135742543,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/emotion/map kstar_per_seed[3]",
+      "ours": 0.26314022449211916,
+      "codex": 0.2631402244921192,
+      "diff": 5.551115123125783e-17
+     },
+     {
+      "item": "ablation/buddy/emotion/map kstar_per_seed[4]",
+      "ours": 0.2630544080029728,
+      "codex": 0.2630544080029728,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/emotion/map d",
+      "ours": -0.017997631869303282,
+      "codex": -0.01799763186930331,
+      "diff": 2.7755575615628914e-17
+     },
+     {
+      "item": "ablation/buddy/emotion/map lo",
+      "ours": -0.018911478621582524,
+      "codex": -0.018911478621582423,
+      "diff": 1.0061396160665481e-16
+     },
+     {
+      "item": "ablation/buddy/emotion/map hi",
+      "ours": -0.01713156099401486,
+      "codex": -0.01713156099401476,
+      "diff": 1.0061396160665481e-16
+     },
+     {
+      "item": "ablation/buddy/style/ami removal_mean",
+      "ours": 0.27696515535225164,
+      "codex": 0.27696515535225164,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/style/ami kstar_mean",
+      "ours": 0.44644646139256344,
+      "codex": 0.44644646139256344,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/style/ami removal_per_seed[0]",
+      "ours": 0.2751864287527888,
+      "codex": 0.2751864287527888,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/style/ami removal_per_seed[1]",
+      "ours": 0.2714780893114437,
+      "codex": 0.2714780893114437,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/style/ami removal_per_seed[2]",
+      "ours": 0.28300840154611306,
+      "codex": 0.28300840154611306,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/style/ami removal_per_seed[3]",
+      "ours": 0.2809475389522178,
+      "codex": 0.2809475389522178,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/style/ami removal_per_seed[4]",
+      "ours": 0.2742053181986948,
+      "codex": 0.2742053181986948,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/style/ami kstar_per_seed[0]",
+      "ours": 0.44594343947157267,
+      "codex": 0.44594343947157267,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/style/ami kstar_per_seed[1]",
+      "ours": 0.44720777547674245,
+      "codex": 0.44720777547674245,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/style/ami kstar_per_seed[2]",
+      "ours": 0.4460736986017218,
+      "codex": 0.4460736986017218,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/style/ami kstar_per_seed[3]",
+      "ours": 0.450000001100234,
+      "codex": 0.450000001100234,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/style/ami kstar_per_seed[4]",
+      "ours": 0.44300739231254616,
+      "codex": 0.44300739231254616,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/style/ami d",
+      "ours": -0.1694813060403118,
+      "codex": -0.1694813060403118,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/style/ami lo",
+      "ours": -0.1736332685393047,
+      "codex": -0.17363326853931405,
+      "diff": 9.353628982466944e-15
+     },
+     {
+      "item": "ablation/buddy/style/ami hi",
+      "ours": -0.1620014078677216,
+      "codex": -0.1620014078677247,
+      "diff": 3.1086244689504383e-15
+     },
+     {
+      "item": "ablation/buddy/style/map removal_mean",
+      "ours": 0.22231082908457048,
+      "codex": 0.22231082908457048,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/style/map kstar_mean",
+      "ours": 0.3390115546910458,
+      "codex": 0.3390115546910458,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/style/map removal_per_seed[0]",
+      "ours": 0.2222106277616074,
+      "codex": 0.2222106277616074,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/style/map removal_per_seed[1]",
+      "ours": 0.2212151321468632,
+      "codex": 0.2212151321468632,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/style/map removal_per_seed[2]",
+      "ours": 0.2231812414612239,
+      "codex": 0.2231812414612239,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/style/map removal_per_seed[3]",
+      "ours": 0.2217081895189657,
+      "codex": 0.2217081895189657,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/style/map removal_per_seed[4]",
+      "ours": 0.2232389545341923,
+      "codex": 0.2232389545341923,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/style/map kstar_per_seed[0]",
+      "ours": 0.3419531962702522,
+      "codex": 0.3419531962702522,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/style/map kstar_per_seed[1]",
+      "ours": 0.3385745366994966,
+      "codex": 0.3385745366994966,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/style/map kstar_per_seed[2]",
+      "ours": 0.3387911572549311,
+      "codex": 0.3387911572549311,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/style/map kstar_per_seed[3]",
+      "ours": 0.3379214818518904,
+      "codex": 0.3379214818518904,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/style/map kstar_per_seed[4]",
+      "ours": 0.3378174013786588,
+      "codex": 0.3378174013786588,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/style/map d",
+      "ours": -0.11670072560647529,
+      "codex": -0.11670072560647535,
+      "diff": 5.551115123125783e-17
+     },
+     {
+      "item": "ablation/buddy/style/map lo",
+      "ours": -0.11934025665270989,
+      "codex": -0.1193402566527099,
+      "diff": 1.3877787807814457e-17
+     },
+     {
+      "item": "ablation/buddy/style/map hi",
+      "ours": -0.11412796950619944,
+      "codex": -0.11412796950619948,
+      "diff": 4.163336342344337e-17
+     },
+     {
+      "item": "ablation/buddy/genre/ami removal_mean",
+      "ours": 0.522116355438049,
+      "codex": 0.522116355438049,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/genre/ami kstar_mean",
+      "ours": 0.5171772062814376,
+      "codex": 0.5171772062814376,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/genre/ami removal_per_seed[0]",
+      "ours": 0.5123938103671191,
+      "codex": 0.5123938103671191,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/genre/ami removal_per_seed[1]",
+      "ours": 0.5181214818826415,
+      "codex": 0.5181214818826415,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/genre/ami removal_per_seed[2]",
+      "ours": 0.5318385536517641,
+      "codex": 0.5318385536517641,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/genre/ami removal_per_seed[3]",
+      "ours": 0.5324674261151833,
+      "codex": 0.5324674261151833,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/genre/ami removal_per_seed[4]",
+      "ours": 0.5157605051735374,
+      "codex": 0.5157605051735374,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/genre/ami kstar_per_seed[0]",
+      "ours": 0.5004510627661851,
+      "codex": 0.5004510627661851,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/genre/ami kstar_per_seed[1]",
+      "ours": 0.5204086116119925,
+      "codex": 0.5204086116119925,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/genre/ami kstar_per_seed[2]",
+      "ours": 0.5149506079798757,
+      "codex": 0.5149506079798757,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/genre/ami kstar_per_seed[3]",
+      "ours": 0.5305149742625411,
+      "codex": 0.5305149742625411,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/genre/ami kstar_per_seed[4]",
+      "ours": 0.5195607747865939,
+      "codex": 0.5195607747865939,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/genre/ami d",
+      "ours": 0.004939149156611422,
+      "codex": 0.004939149156611422,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/genre/ami lo",
+      "ours": -0.0021853223794259494,
+      "codex": -0.0021853223794253973,
+      "diff": 5.520757462296189e-16
+     },
+     {
+      "item": "ablation/buddy/genre/ami hi",
+      "ours": 0.012490246849460658,
+      "codex": 0.012490246849461177,
+      "diff": 5.186823193170653e-16
+     },
+     {
+      "item": "ablation/buddy/genre/map removal_mean",
+      "ours": 0.5982282734334311,
+      "codex": 0.5982282734334311,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/genre/map kstar_mean",
+      "ours": 0.5989284750754682,
+      "codex": 0.5989284750754682,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/genre/map removal_per_seed[0]",
+      "ours": 0.5978473036375593,
+      "codex": 0.5978473036375593,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/genre/map removal_per_seed[1]",
+      "ours": 0.5979107123202354,
+      "codex": 0.5979107123202355,
+      "diff": 1.1102230246251565e-16
+     },
+     {
+      "item": "ablation/buddy/genre/map removal_per_seed[2]",
+      "ours": 0.5975489299560295,
+      "codex": 0.5975489299560295,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/genre/map removal_per_seed[3]",
+      "ours": 0.601152578541199,
+      "codex": 0.601152578541199,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/genre/map removal_per_seed[4]",
+      "ours": 0.5966818427121324,
+      "codex": 0.5966818427121324,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/genre/map kstar_per_seed[0]",
+      "ours": 0.5975440565528619,
+      "codex": 0.5975440565528619,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/genre/map kstar_per_seed[1]",
+      "ours": 0.5977902821568348,
+      "codex": 0.5977902821568348,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/genre/map kstar_per_seed[2]",
+      "ours": 0.599929645511986,
+      "codex": 0.599929645511986,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/genre/map kstar_per_seed[3]",
+      "ours": 0.6006404965386888,
+      "codex": 0.6006404965386888,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/genre/map kstar_per_seed[4]",
+      "ours": 0.5987378946169697,
+      "codex": 0.5987378946169697,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/genre/map d",
+      "ours": -0.0007002016420371016,
+      "codex": -0.0007002016420371016,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/buddy/genre/map lo",
+      "ours": -0.0018373331396168424,
+      "codex": -0.0018373331396169693,
+      "diff": 1.2685165418080402e-16
+     },
+     {
+      "item": "ablation/buddy/genre/map hi",
+      "ours": 0.0003859043013657581,
+      "codex": 0.0003859043013659088,
+      "diff": 1.5070410197548512e-16
+     },
+     {
+      "item": "ablation/relational/emotion/ami removal_mean",
+      "ours": 0.10189140716296721,
+      "codex": 0.10189140716296721,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/emotion/ami kstar_mean",
+      "ours": 0.10179985944237299,
+      "codex": 0.10179985944237299,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/emotion/ami removal_per_seed[0]",
+      "ours": 0.10337465115226745,
+      "codex": 0.10337465115226745,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/emotion/ami removal_per_seed[1]",
+      "ours": 0.09829100934863012,
+      "codex": 0.09829100934863012,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/emotion/ami removal_per_seed[2]",
+      "ours": 0.10185571196464892,
+      "codex": 0.10185571196464892,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/emotion/ami removal_per_seed[3]",
+      "ours": 0.10254285491802721,
+      "codex": 0.10254285491802721,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/emotion/ami removal_per_seed[4]",
+      "ours": 0.10339280843126235,
+      "codex": 0.10339280843126235,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/emotion/ami kstar_per_seed[0]",
+      "ours": 0.10509382223687362,
+      "codex": 0.10509382223687362,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/emotion/ami kstar_per_seed[1]",
+      "ours": 0.1019634542106528,
+      "codex": 0.1019634542106528,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/emotion/ami kstar_per_seed[2]",
+      "ours": 0.10245263449424798,
+      "codex": 0.10245263449424798,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/emotion/ami kstar_per_seed[3]",
+      "ours": 0.09936701234154065,
+      "codex": 0.09936701234154065,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/emotion/ami kstar_per_seed[4]",
+      "ours": 0.10012237392854993,
+      "codex": 0.10012237392854993,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/emotion/ami d",
+      "ours": 9.154772059422056e-05,
+      "codex": 9.154772059422056e-05,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/emotion/ami lo",
+      "ours": -0.0026662154493952944,
+      "codex": -0.0026662154493951222,
+      "diff": 1.721713049906981e-16
+     },
+     {
+      "item": "ablation/relational/emotion/ami hi",
+      "ours": 0.003080409087066031,
+      "codex": 0.0030804090870696905,
+      "diff": 3.6593991725730746e-15
+     },
+     {
+      "item": "ablation/relational/emotion/map removal_mean",
+      "ours": 0.2629721307917258,
+      "codex": 0.2629721307917258,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/emotion/map kstar_mean",
+      "ours": 0.26309438641175514,
+      "codex": 0.26309438641175514,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/emotion/map removal_per_seed[0]",
+      "ours": 0.2644306927677503,
+      "codex": 0.26443069276775033,
+      "diff": 5.551115123125783e-17
+     },
+     {
+      "item": "ablation/relational/emotion/map removal_per_seed[1]",
+      "ours": 0.26313804843612726,
+      "codex": 0.26313804843612726,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/emotion/map removal_per_seed[2]",
+      "ours": 0.2619017033265281,
+      "codex": 0.2619017033265281,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/emotion/map removal_per_seed[3]",
+      "ours": 0.26283996685486893,
+      "codex": 0.26283996685486893,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/emotion/map removal_per_seed[4]",
+      "ours": 0.2625502425733546,
+      "codex": 0.2625502425733546,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/emotion/map kstar_per_seed[0]",
+      "ours": 0.2637843383161875,
+      "codex": 0.2637843383161875,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/emotion/map kstar_per_seed[1]",
+      "ours": 0.26315141989007074,
+      "codex": 0.26315141989007074,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/emotion/map kstar_per_seed[2]",
+      "ours": 0.26234154135742543,
+      "codex": 0.26234154135742543,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/emotion/map kstar_per_seed[3]",
+      "ours": 0.26314022449211916,
+      "codex": 0.2631402244921192,
+      "diff": 5.551115123125783e-17
+     },
+     {
+      "item": "ablation/relational/emotion/map kstar_per_seed[4]",
+      "ours": 0.2630544080029728,
+      "codex": 0.2630544080029728,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/emotion/map d",
+      "ours": -0.0001222556200292657,
+      "codex": -0.00012225562002932122,
+      "diff": 5.551115123125783e-17
+     },
+     {
+      "item": "ablation/relational/emotion/map lo",
+      "ours": -0.00043921850363196486,
+      "codex": -0.0004392185036318741,
+      "diff": 9.074772183703672e-17
+     },
+     {
+      "item": "ablation/relational/emotion/map hi",
+      "ours": 0.00028943443103083275,
+      "codex": 0.0002894344310309625,
+      "diff": 1.297247899378906e-16
+     },
+     {
+      "item": "ablation/relational/style/ami removal_mean",
+      "ours": 0.4448465637737867,
+      "codex": 0.4448465637737867,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/style/ami kstar_mean",
+      "ours": 0.44644646139256344,
+      "codex": 0.44644646139256344,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/style/ami removal_per_seed[0]",
+      "ours": 0.44545797880296645,
+      "codex": 0.44545797880296645,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/style/ami removal_per_seed[1]",
+      "ours": 0.44449494209785384,
+      "codex": 0.44449494209785384,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/style/ami removal_per_seed[2]",
+      "ours": 0.43651296586791716,
+      "codex": 0.43651296586791716,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/style/ami removal_per_seed[3]",
+      "ours": 0.44914892106289733,
+      "codex": 0.44914892106289733,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/style/ami removal_per_seed[4]",
+      "ours": 0.4486180110372986,
+      "codex": 0.4486180110372986,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/style/ami kstar_per_seed[0]",
+      "ours": 0.44594343947157267,
+      "codex": 0.44594343947157267,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/style/ami kstar_per_seed[1]",
+      "ours": 0.44720777547674245,
+      "codex": 0.44720777547674245,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/style/ami kstar_per_seed[2]",
+      "ours": 0.4460736986017218,
+      "codex": 0.4460736986017218,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/style/ami kstar_per_seed[3]",
+      "ours": 0.450000001100234,
+      "codex": 0.450000001100234,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/style/ami kstar_per_seed[4]",
+      "ours": 0.44300739231254616,
+      "codex": 0.44300739231254616,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/style/ami d",
+      "ours": -0.0015998976187767688,
+      "codex": -0.0015998976187767688,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/style/ami lo",
+      "ours": -0.0058898459144950815,
+      "codex": -0.005889845914494725,
+      "diff": 3.5648567431323386e-16
+     },
+     {
+      "item": "ablation/relational/style/ami hi",
+      "ours": 0.0029697636938960425,
+      "codex": 0.0029697636938948767,
+      "diff": 1.1657341758564144e-15
+     },
+     {
+      "item": "ablation/relational/style/map removal_mean",
+      "ours": 0.3386304731250818,
+      "codex": 0.3386304731250818,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/style/map kstar_mean",
+      "ours": 0.3390115546910458,
+      "codex": 0.3390115546910458,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/style/map removal_per_seed[0]",
+      "ours": 0.33965743502335916,
+      "codex": 0.33965743502335916,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/style/map removal_per_seed[1]",
+      "ours": 0.3379642189802618,
+      "codex": 0.3379642189802618,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/style/map removal_per_seed[2]",
+      "ours": 0.3377455805937521,
+      "codex": 0.3377455805937521,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/style/map removal_per_seed[3]",
+      "ours": 0.33713676171440426,
+      "codex": 0.33713676171440426,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/style/map removal_per_seed[4]",
+      "ours": 0.3406483693136318,
+      "codex": 0.34064836931363174,
+      "diff": 5.551115123125783e-17
+     },
+     {
+      "item": "ablation/relational/style/map kstar_per_seed[0]",
+      "ours": 0.3419531962702522,
+      "codex": 0.3419531962702522,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/style/map kstar_per_seed[1]",
+      "ours": 0.3385745366994966,
+      "codex": 0.3385745366994966,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/style/map kstar_per_seed[2]",
+      "ours": 0.3387911572549311,
+      "codex": 0.3387911572549311,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/style/map kstar_per_seed[3]",
+      "ours": 0.3379214818518904,
+      "codex": 0.3379214818518904,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/style/map kstar_per_seed[4]",
+      "ours": 0.3378174013786588,
+      "codex": 0.3378174013786588,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/style/map d",
+      "ours": -0.0003810815659639477,
+      "codex": -0.0003810815659640032,
+      "diff": 5.551115123125783e-17
+     },
+     {
+      "item": "ablation/relational/style/map lo",
+      "ours": -0.0016638413398859892,
+      "codex": -0.0016638413398859305,
+      "diff": 5.876375774871434e-17
+     },
+     {
+      "item": "ablation/relational/style/map hi",
+      "ours": 0.0013033815568671114,
+      "codex": 0.001303381556867093,
+      "diff": 1.8431436932253575e-17
+     },
+     {
+      "item": "ablation/relational/genre/ami removal_mean",
+      "ours": 0.45751898173086153,
+      "codex": 0.45751898173086153,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/genre/ami kstar_mean",
+      "ours": 0.5171772062814376,
+      "codex": 0.5171772062814376,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/genre/ami removal_per_seed[0]",
+      "ours": 0.4573144402644487,
+      "codex": 0.4573144402644487,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/genre/ami removal_per_seed[1]",
+      "ours": 0.4324487205215319,
+      "codex": 0.4324487205215319,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/genre/ami removal_per_seed[2]",
+      "ours": 0.4602167582216175,
+      "codex": 0.4602167582216175,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/genre/ami removal_per_seed[3]",
+      "ours": 0.4697902071460726,
+      "codex": 0.4697902071460726,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/genre/ami removal_per_seed[4]",
+      "ours": 0.46782478250063714,
+      "codex": 0.46782478250063714,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/genre/ami kstar_per_seed[0]",
+      "ours": 0.5004510627661851,
+      "codex": 0.5004510627661851,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/genre/ami kstar_per_seed[1]",
+      "ours": 0.5204086116119925,
+      "codex": 0.5204086116119925,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/genre/ami kstar_per_seed[2]",
+      "ours": 0.5149506079798757,
+      "codex": 0.5149506079798757,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/genre/ami kstar_per_seed[3]",
+      "ours": 0.5305149742625411,
+      "codex": 0.5305149742625411,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/genre/ami kstar_per_seed[4]",
+      "ours": 0.5195607747865939,
+      "codex": 0.5195607747865939,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/genre/ami d",
+      "ours": -0.05965822455057607,
+      "codex": -0.05965822455057607,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/genre/ami lo",
+      "ours": -0.07531353488191463,
+      "codex": -0.07531353488191603,
+      "diff": 1.4016565685892601e-15
+     },
+     {
+      "item": "ablation/relational/genre/ami hi",
+      "ours": -0.04687353772469798,
+      "codex": -0.046873537724699564,
+      "diff": 1.582067810090848e-15
+     },
+     {
+      "item": "ablation/relational/genre/map removal_mean",
+      "ours": 0.48453841104740614,
+      "codex": 0.48453841104740614,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/genre/map kstar_mean",
+      "ours": 0.5989284750754682,
+      "codex": 0.5989284750754682,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/genre/map removal_per_seed[0]",
+      "ours": 0.48605619557705537,
+      "codex": 0.48605619557705537,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/genre/map removal_per_seed[1]",
+      "ours": 0.4874992985256091,
+      "codex": 0.4874992985256091,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/genre/map removal_per_seed[2]",
+      "ours": 0.4854960831978744,
+      "codex": 0.4854960831978744,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/genre/map removal_per_seed[3]",
+      "ours": 0.4785890196486577,
+      "codex": 0.4785890196486577,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/genre/map removal_per_seed[4]",
+      "ours": 0.4850514582878339,
+      "codex": 0.4850514582878339,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/genre/map kstar_per_seed[0]",
+      "ours": 0.5975440565528619,
+      "codex": 0.5975440565528619,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/genre/map kstar_per_seed[1]",
+      "ours": 0.5977902821568348,
+      "codex": 0.5977902821568348,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/genre/map kstar_per_seed[2]",
+      "ours": 0.599929645511986,
+      "codex": 0.599929645511986,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/genre/map kstar_per_seed[3]",
+      "ours": 0.6006404965386888,
+      "codex": 0.6006404965386888,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/genre/map kstar_per_seed[4]",
+      "ours": 0.5987378946169697,
+      "codex": 0.5987378946169697,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/genre/map d",
+      "ours": -0.11439006402806207,
+      "codex": -0.11439006402806207,
+      "diff": 0.0
+     },
+     {
+      "item": "ablation/relational/genre/map lo",
+      "ours": -0.11895549118301892,
+      "codex": -0.11895549118301897,
+      "diff": 5.551115123125783e-17
+     },
+     {
+      "item": "ablation/relational/genre/map hi",
+      "ours": -0.1103809171293745,
+      "codex": -0.11038091712937471,
+      "diff": 2.0816681711721685e-16
+     }
+    ],
+    "cells": [
+     {
+      "cell": "ablation/instructed_graphs/emotion/ami",
+      "max_diff": 2.26554885962571e-15
+     },
+     {
+      "cell": "ablation/instructed_graphs/emotion/map",
+      "max_diff": 6.591949208711867e-17
+     },
+     {
+      "cell": "ablation/instructed_graphs/style/ami",
+      "max_diff": 1.1352030426792226e-14
+     },
+     {
+      "cell": "ablation/instructed_graphs/style/map",
+      "max_diff": 8.326672684688674e-17
+     },
+     {
+      "cell": "ablation/instructed_graphs/genre/ami",
+      "max_diff": 2.1337098754514727e-15
+     },
+     {
+      "cell": "ablation/instructed_graphs/genre/map",
+      "max_diff": 1.1102230246251565e-16
+     },
+     {
+      "cell": "ablation/content_correction/emotion/ami",
+      "max_diff": 2.2152418788223827e-15
+     },
+     {
+      "cell": "ablation/content_correction/emotion/map",
+      "max_diff": 1.465841337200402e-16
+     },
+     {
+      "cell": "ablation/content_correction/style/ami",
+      "max_diff": 4.427014310692812e-15
+     },
+     {
+      "cell": "ablation/content_correction/style/map",
+      "max_diff": 6.938893903907228e-17
+     },
+     {
+      "cell": "ablation/content_correction/genre/ami",
+      "max_diff": 6.522560269672795e-16
+     },
+     {
+      "cell": "ablation/content_correction/genre/map",
+      "max_diff": 1.1102230246251565e-16
+     },
+     {
+      "cell": "ablation/buddy/emotion/ami",
+      "max_diff": 7.771561172376096e-16
+     },
+     {
+      "cell": "ablation/buddy/emotion/map",
+      "max_diff": 1.0061396160665481e-16
+     },
+     {
+      "cell": "ablation/buddy/style/ami",
+      "max_diff": 9.353628982466944e-15
+     },
+     {
+      "cell": "ablation/buddy/style/map",
+      "max_diff": 5.551115123125783e-17
+     },
+     {
+      "cell": "ablation/buddy/genre/ami",
+      "max_diff": 5.520757462296189e-16
+     },
+     {
+      "cell": "ablation/buddy/genre/map",
+      "max_diff": 1.5070410197548512e-16
+     },
+     {
+      "cell": "ablation/relational/emotion/ami",
+      "max_diff": 3.6593991725730746e-15
+     },
+     {
+      "cell": "ablation/relational/emotion/map",
+      "max_diff": 1.297247899378906e-16
+     },
+     {
+      "cell": "ablation/relational/style/ami",
+      "max_diff": 1.1657341758564144e-15
+     },
+     {
+      "cell": "ablation/relational/style/map",
+      "max_diff": 5.876375774871434e-17
+     },
+     {
+      "cell": "ablation/relational/genre/ami",
+      "max_diff": 1.582067810090848e-15
+     },
+     {
+      "cell": "ablation/relational/genre/map",
+      "max_diff": 2.0816681711721685e-16
+     }
+    ],
+    "max_abs_diff_cells": 1.1352030426792226e-14,
+    "inputs": {
+     "/project/CoSiR/src/test/20261112_siglip_only/records/ablation.json": "15975dd9ec57bdff707ab597cf3f78f3f852e5ee303122598bf4b0020cf4e6f5",
+     "/project/CoSiR/src/test/20261112_siglip_only/rederive/s2abl_held.json": "1ec34e6d6158bf1e4c987cd40c45248db72f1aeb4fbf2dcf0412ac5753695623"
+    },
+    "written": "2026-11-14 01:48"
    }
   }
  },
@@ -7105,7 +10247,8 @@
   "held": {
    "mmart": [],
    "photo": [],
-   "e2e3": []
+   "e2e3": [],
+   "ablation": []
   }
  },
  "missing": {
@@ -7114,6 +10257,6 @@
  },
  "written": {
   "val": "2026-11-14 00:23",
-  "held": "2026-11-14 01:26"
+  "held": "2026-11-14 01:48"
  }
 }
