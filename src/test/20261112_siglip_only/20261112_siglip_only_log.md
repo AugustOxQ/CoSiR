@@ -196,3 +196,9 @@ mode. Outputs `/data/SSD2/cosir_r29/20261112_siglip_only/` (stage logs in its `l
 - 00:24 C13 comparison `--phase val --pieces sc9`: pass, 86 fields, no mismatch. Largest differences are K*'s per-seed
   group values (1.6e-8; leader range 9.6e-9, SigLIP 1 mean 4.7e-9), within D23's 1e-6; E2's and E3's SC9 numbers are
   exact. Every val piece (e2e3, sc9, mmart, photo) now passes, so part b may start (SC9 bullet).
+- 00:23 Part b started (`bash r29_run_stage2.sh b --amendment A1`, log `logs/stage2b_run.log`). E2 held export and test
+  cells 10.9 min (ff719bfb); E3 13.2 min (af126f29); MMArt test cells 18.5 min. Codex `held` runs beside it on the CPU
+  queue: `s2mp --piece mmart` (00:24, 39.5 min; `--replay-json r29rd_s2mp_replay_v2.json`, val sha of the committed
+  `s2mp_val.json`), `s2e` (from 00:35).
+- 01:06 C13 comparison `--phase held --pieces mmart`: pass, 96 fields, largest difference 1.7e-14, no mismatch (Codex:
+  12 cells, 11 WIN and 1 LEVEL; SC5 level 3, as information).

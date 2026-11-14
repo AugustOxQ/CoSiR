@@ -3790,6 +3790,964 @@
     },
     "written": "2026-11-14 00:23"
    }
+  },
+  "held": {
+   "mmart": {
+    "status": "pass",
+    "n_compared": 96,
+    "max_abs_diff": 1.6542323066914832e-14,
+    "mismatches": [],
+    "unpaired": [],
+    "info": [
+     {
+      "item": "cell emotion/ami/p1 n",
+      "ours": 16384,
+      "codex": 16384,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell emotion/ami/p1 n_draws",
+      "ours": 2000,
+      "codex": 2000,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell emotion/ami/q1 n",
+      "ours": 16384,
+      "codex": 16384,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell emotion/ami/q1 n_draws",
+      "ours": 2000,
+      "codex": 2000,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell emotion/map/p1 n",
+      "ours": 16384,
+      "codex": 16218,
+      "diff": 166,
+      "equal": false
+     },
+     {
+      "item": "cell emotion/map/p1 n_draws",
+      "ours": 10000,
+      "codex": 10000,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell emotion/map/q1 n",
+      "ours": 16384,
+      "codex": 16218,
+      "diff": 166,
+      "equal": false
+     },
+     {
+      "item": "cell emotion/map/q1 n_draws",
+      "ours": 10000,
+      "codex": 10000,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell style/ami/p1 n",
+      "ours": 16384,
+      "codex": 16384,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell style/ami/p1 n_draws",
+      "ours": 2000,
+      "codex": 2000,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell style/ami/q1 n",
+      "ours": 16384,
+      "codex": 16384,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell style/ami/q1 n_draws",
+      "ours": 2000,
+      "codex": 2000,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell style/map/p1 n",
+      "ours": 16384,
+      "codex": 16384,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell style/map/p1 n_draws",
+      "ours": 10000,
+      "codex": 10000,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell style/map/q1 n",
+      "ours": 16384,
+      "codex": 16384,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell style/map/q1 n_draws",
+      "ours": 10000,
+      "codex": 10000,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell genre/ami/p1 n",
+      "ours": 16384,
+      "codex": 16384,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell genre/ami/p1 n_draws",
+      "ours": 2000,
+      "codex": 2000,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell genre/ami/q1 n",
+      "ours": 16384,
+      "codex": 16384,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell genre/ami/q1 n_draws",
+      "ours": 2000,
+      "codex": 2000,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell genre/map/p1 n",
+      "ours": 16384,
+      "codex": 13420,
+      "diff": 2964,
+      "equal": false
+     },
+     {
+      "item": "cell genre/map/p1 n_draws",
+      "ours": 10000,
+      "codex": 10000,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "cell genre/map/q1 n",
+      "ours": 16384,
+      "codex": 13420,
+      "diff": 2964,
+      "equal": false
+     },
+     {
+      "item": "cell genre/map/q1 n_draws",
+      "ours": 10000,
+      "codex": 10000,
+      "diff": 0,
+      "equal": true
+     },
+     {
+      "item": "ladder/SC5",
+      "ours": "absent",
+      "codex": "present",
+      "equal": null
+     }
+    ],
+    "codex_status": {
+     "mode": "held",
+     "pending": null,
+     "picks_committed_attestation": true,
+     "validation_sha256": "81bfab9e77b47bb97e86a8cc1832af01ae565ac74a95d5f0ad4287930a0c5318",
+     "inconclusive": {}
+    },
+    "items": [
+     {
+      "item": "cell emotion/ami/p1 value",
+      "ours": 0.054629610495835965,
+      "codex": 0.05462961049583122,
+      "diff": 4.746203430272544e-15
+     },
+     {
+      "item": "cell emotion/ami/p1 comparator_value",
+      "ours": 0.03454352778449323,
+      "codex": 0.034543527784487375,
+      "diff": 5.856426454897701e-15
+     },
+     {
+      "item": "cell emotion/ami/p1 d",
+      "ours": 0.020086082711342733,
+      "codex": 0.020086082711343843,
+      "diff": 1.1102230246251565e-15
+     },
+     {
+      "item": "cell emotion/ami/p1 lo",
+      "ours": 0.017378331476969548,
+      "codex": 0.01737833147697087,
+      "diff": 1.321859288694327e-15
+     },
+     {
+      "item": "cell emotion/ami/p1 hi",
+      "ours": 0.022861675652801294,
+      "codex": 0.022861675652807594,
+      "diff": 6.300515664747763e-15
+     },
+     {
+      "item": "cell emotion/ami/p1 r",
+      "ours": 0.00613857925254796,
+      "codex": 0.006138579252548036,
+      "diff": 7.632783294297951e-17
+     },
+     {
+      "item": "cell emotion/ami/q1 value",
+      "ours": 0.054629610495835965,
+      "codex": 0.05462961049583122,
+      "diff": 4.746203430272544e-15
+     },
+     {
+      "item": "cell emotion/ami/q1 comparator_value",
+      "ours": 0.04917345336389683,
+      "codex": 0.04917345336389014,
+      "diff": 6.689093723366568e-15
+     },
+     {
+      "item": "cell emotion/ami/q1 d",
+      "ours": 0.005456157131939136,
+      "codex": 0.005456157131941079,
+      "diff": 1.942890293094024e-15
+     },
+     {
+      "item": "cell emotion/ami/q1 lo",
+      "ours": 0.003222475577217387,
+      "codex": 0.003222475577215149,
+      "diff": 2.237793284010081e-15
+     },
+     {
+      "item": "cell emotion/ami/q1 hi",
+      "ours": 0.007869725364738374,
+      "codex": 0.007869725364737202,
+      "diff": 1.1726730697603216e-15
+     },
+     {
+      "item": "cell emotion/ami/q1 r",
+      "ours": 0.00613857925254796,
+      "codex": 0.006138579252548036,
+      "diff": 7.632783294297951e-17
+     },
+     {
+      "item": "cell emotion/map/p1 value",
+      "ours": 0.19713258323930358,
+      "codex": 0.19713258323930358,
+      "diff": 0.0
+     },
+     {
+      "item": "cell emotion/map/p1 comparator_value",
+      "ours": 0.19125931122827552,
+      "codex": 0.19125931122827552,
+      "diff": 0.0
+     },
+     {
+      "item": "cell emotion/map/p1 d",
+      "ours": 0.005873272011028052,
+      "codex": 0.005873272011028052,
+      "diff": 0.0
+     },
+     {
+      "item": "cell emotion/map/p1 lo",
+      "ours": 0.005554169913356619,
+      "codex": 0.005554169913356673,
+      "diff": 5.377642775528102e-17
+     },
+     {
+      "item": "cell emotion/map/p1 hi",
+      "ours": 0.006192836631033294,
+      "codex": 0.006192836631033401,
+      "diff": 1.0668549377257364e-16
+     },
+     {
+      "item": "cell emotion/map/p1 r",
+      "ours": 0.0004457420055557493,
+      "codex": 0.0004457420055557493,
+      "diff": 0.0
+     },
+     {
+      "item": "cell emotion/map/q1 value",
+      "ours": 0.2021404500343753,
+      "codex": 0.2021404500343753,
+      "diff": 0.0
+     },
+     {
+      "item": "cell emotion/map/q1 comparator_value",
+      "ours": 0.20208184800749496,
+      "codex": 0.20208184800749496,
+      "diff": 0.0
+     },
+     {
+      "item": "cell emotion/map/q1 d",
+      "ours": 5.860202688034999e-05,
+      "codex": 5.860202688034999e-05,
+      "diff": 0.0
+     },
+     {
+      "item": "cell emotion/map/q1 lo",
+      "ours": -0.00039224278454002144,
+      "codex": -0.000392242784539993,
+      "diff": 2.846030702774449e-17
+     },
+     {
+      "item": "cell emotion/map/q1 hi",
+      "ours": 0.0005080335247493099,
+      "codex": 0.0005080335247493655,
+      "diff": 5.551115123125783e-17
+     },
+     {
+      "item": "cell emotion/map/q1 r",
+      "ours": 0.0004457420055557493,
+      "codex": 0.0004457420055557493,
+      "diff": 0.0
+     },
+     {
+      "item": "cell style/ami/p1 value",
+      "ours": 0.45786680113366207,
+      "codex": 0.4578668011336471,
+      "diff": 1.4988010832439613e-14
+     },
+     {
+      "item": "cell style/ami/p1 comparator_value",
+      "ours": 0.391482784477359,
+      "codex": 0.39148278447734247,
+      "diff": 1.6542323066914832e-14
+     },
+     {
+      "item": "cell style/ami/p1 d",
+      "ours": 0.06638401665630306,
+      "codex": 0.06638401665630461,
+      "diff": 1.5543122344752192e-15
+     },
+     {
+      "item": "cell style/ami/p1 lo",
+      "ours": 0.0613272437909143,
+      "codex": 0.06132724379091966,
+      "diff": 5.35682609381638e-15
+     },
+     {
+      "item": "cell style/ami/p1 hi",
+      "ours": 0.07118091828323408,
+      "codex": 0.07118091828323544,
+      "diff": 1.3600232051658168e-15
+     },
+     {
+      "item": "cell style/ami/p1 r",
+      "ours": 0.012728548571371068,
+      "codex": 0.012728548571367071,
+      "diff": 3.9968028886505635e-15
+     },
+     {
+      "item": "cell style/ami/q1 value",
+      "ours": 0.45786680113366207,
+      "codex": 0.4578668011336471,
+      "diff": 1.4988010832439613e-14
+     },
+     {
+      "item": "cell style/ami/q1 comparator_value",
+      "ours": 0.41582478565187536,
+      "codex": 0.4158247856518605,
+      "diff": 1.4876988529977098e-14
+     },
+     {
+      "item": "cell style/ami/q1 d",
+      "ours": 0.04204201548178671,
+      "codex": 0.0420420154817866,
+      "diff": 1.1102230246251565e-16
+     },
+     {
+      "item": "cell style/ami/q1 lo",
+      "ours": 0.03723585795377979,
+      "codex": 0.03723585795377333,
+      "diff": 6.46011022453763e-15
+     },
+     {
+      "item": "cell style/ami/q1 hi",
+      "ours": 0.04696132282816163,
+      "codex": 0.04696132282816017,
+      "diff": 1.457167719820518e-15
+     },
+     {
+      "item": "cell style/ami/q1 r",
+      "ours": 0.012728548571371068,
+      "codex": 0.012728548571367071,
+      "diff": 3.9968028886505635e-15
+     },
+     {
+      "item": "cell style/map/p1 value",
+      "ours": 0.30668736652464224,
+      "codex": 0.30668736652464224,
+      "diff": 0.0
+     },
+     {
+      "item": "cell style/map/p1 comparator_value",
+      "ours": 0.30310640376756215,
+      "codex": 0.30310640376756215,
+      "diff": 0.0
+     },
+     {
+      "item": "cell style/map/p1 d",
+      "ours": 0.003580962757080086,
+      "codex": 0.003580962757080086,
+      "diff": 0.0
+     },
+     {
+      "item": "cell style/map/p1 lo",
+      "ours": 0.002031094440646046,
+      "codex": 0.0020310944406459904,
+      "diff": 5.551115123125783e-17
+     },
+     {
+      "item": "cell style/map/p1 hi",
+      "ours": 0.0051493568820879685,
+      "codex": 0.005149356882087971,
+      "diff": 2.6020852139652106e-18
+     },
+     {
+      "item": "cell style/map/p1 r",
+      "ours": 0.0038970481654196365,
+      "codex": 0.0038970481654196365,
+      "diff": 0.0
+     },
+     {
+      "item": "cell style/map/q1 value",
+      "ours": 0.38266409177556504,
+      "codex": 0.38266409177556504,
+      "diff": 0.0
+     },
+     {
+      "item": "cell style/map/q1 comparator_value",
+      "ours": 0.3475531651604354,
+      "codex": 0.3475531651604354,
+      "diff": 0.0
+     },
+     {
+      "item": "cell style/map/q1 d",
+      "ours": 0.035110926615129656,
+      "codex": 0.035110926615129656,
+      "diff": 0.0
+     },
+     {
+      "item": "cell style/map/q1 lo",
+      "ours": 0.03331258085611212,
+      "codex": 0.033312580856112016,
+      "diff": 1.0408340855860843e-16
+     },
+     {
+      "item": "cell style/map/q1 hi",
+      "ours": 0.03700793062920478,
+      "codex": 0.03700793062920489,
+      "diff": 1.1102230246251565e-16
+     },
+     {
+      "item": "cell style/map/q1 r",
+      "ours": 0.0038970481654196365,
+      "codex": 0.0038970481654196365,
+      "diff": 0.0
+     },
+     {
+      "item": "cell genre/ami/p1 value",
+      "ours": 0.5346223408970031,
+      "codex": 0.5346223408969994,
+      "diff": 3.6637359812630166e-15
+     },
+     {
+      "item": "cell genre/ami/p1 comparator_value",
+      "ours": 0.40957328984635294,
+      "codex": 0.4095732898463478,
+      "diff": 5.162537064506978e-15
+     },
+     {
+      "item": "cell genre/ami/p1 d",
+      "ours": 0.12504905105065017,
+      "codex": 0.12504905105065167,
+      "diff": 1.4988010832439613e-15
+     },
+     {
+      "item": "cell genre/ami/p1 lo",
+      "ours": 0.11668959646310945,
+      "codex": 0.11668959646311076,
+      "diff": 1.3183898417423734e-15
+     },
+     {
+      "item": "cell genre/ami/p1 hi",
+      "ours": 0.1327268851074534,
+      "codex": 0.1327268851074559,
+      "diff": 2.4980018054066022e-15
+     },
+     {
+      "item": "cell genre/ami/p1 r",
+      "ours": 0.021152107870360037,
+      "codex": 0.02115210787036048,
+      "diff": 4.440892098500626e-16
+     },
+     {
+      "item": "cell genre/ami/q1 value",
+      "ours": 0.5346223408970031,
+      "codex": 0.5346223408969994,
+      "diff": 3.6637359812630166e-15
+     },
+     {
+      "item": "cell genre/ami/q1 comparator_value",
+      "ours": 0.5255724519964624,
+      "codex": 0.5255724519964602,
+      "diff": 2.220446049250313e-15
+     },
+     {
+      "item": "cell genre/ami/q1 d",
+      "ours": 0.009049888900540703,
+      "codex": 0.00904988890053926,
+      "diff": 1.4432899320127035e-15
+     },
+     {
+      "item": "cell genre/ami/q1 lo",
+      "ours": 0.001511064322077954,
+      "codex": 0.0015110643220787952,
+      "diff": 8.411240454142543e-16
+     },
+     {
+      "item": "cell genre/ami/q1 hi",
+      "ours": 0.015439345871263232,
+      "codex": 0.015439345871265416,
+      "diff": 2.1840168562548e-15
+     },
+     {
+      "item": "cell genre/ami/q1 r",
+      "ours": 0.021152107870360037,
+      "codex": 0.02115210787036048,
+      "diff": 4.440892098500626e-16
+     },
+     {
+      "item": "cell genre/map/p1 value",
+      "ours": 0.5378740395034988,
+      "codex": 0.5378740395034988,
+      "diff": 0.0
+     },
+     {
+      "item": "cell genre/map/p1 comparator_value",
+      "ours": 0.49322669333886887,
+      "codex": 0.49322669333886887,
+      "diff": 0.0
+     },
+     {
+      "item": "cell genre/map/p1 d",
+      "ours": 0.0446473461646299,
+      "codex": 0.0446473461646299,
+      "diff": 0.0
+     },
+     {
+      "item": "cell genre/map/p1 lo",
+      "ours": 0.04289215853447307,
+      "codex": 0.042892158534473125,
+      "diff": 5.551115123125783e-17
+     },
+     {
+      "item": "cell genre/map/p1 hi",
+      "ours": 0.04646293358173317,
+      "codex": 0.04646293358173318,
+      "diff": 6.938893903907228e-18
+     },
+     {
+      "item": "cell genre/map/p1 r",
+      "ours": 0.00376406935114304,
+      "codex": 0.00376406935114304,
+      "diff": 0.0
+     },
+     {
+      "item": "cell genre/map/q1 value",
+      "ours": 0.6284743913323195,
+      "codex": 0.6284743913323195,
+      "diff": 0.0
+     },
+     {
+      "item": "cell genre/map/q1 comparator_value",
+      "ours": 0.6172051670902616,
+      "codex": 0.6172051670902616,
+      "diff": 0.0
+     },
+     {
+      "item": "cell genre/map/q1 d",
+      "ours": 0.011269224242057896,
+      "codex": 0.011269224242057896,
+      "diff": 0.0
+     },
+     {
+      "item": "cell genre/map/q1 lo",
+      "ours": 0.009795092742613523,
+      "codex": 0.009795092742613417,
+      "diff": 1.0581813203458523e-16
+     },
+     {
+      "item": "cell genre/map/q1 hi",
+      "ours": 0.012707123010294473,
+      "codex": 0.01270712301029448,
+      "diff": 6.938893903907228e-18
+     },
+     {
+      "item": "cell genre/map/q1 r",
+      "ours": 0.00376406935114304,
+      "codex": 0.00376406935114304,
+      "diff": 0.0
+     }
+    ],
+    "cells": [
+     {
+      "cell": "emotion/ami/p1",
+      "ours_id": "mmart/siglip1/siglip1_prefix/emotion/ami9/plain",
+      "codex_id": "mmart/ami/emotion/p1",
+      "ours_outcome": "WIN",
+      "codex_outcome_field": "WIN",
+      "diffs": {
+       "value": 4.746203430272544e-15,
+       "comparator_value": 5.856426454897701e-15,
+       "d": 1.1102230246251565e-15,
+       "lo": 1.321859288694327e-15,
+       "hi": 6.300515664747763e-15,
+       "r": 7.632783294297951e-17
+      },
+      "max_diff": 6.300515664747763e-15,
+      "codex_outcome_rule": "WIN",
+      "ours_outcome_rule": "WIN",
+      "codex_comparator_rebuild": {
+       "pick": null,
+       "value": 0.034543527784487375,
+       "recorded_value": 0.03454352778449323,
+       "passed": true,
+       "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/verdicts.json",
+       "key": "SC1/mmart/siglip1/emotion/ami/9/plain.comp",
+       "full_queries": true
+      }
+     },
+     {
+      "cell": "emotion/ami/q1",
+      "ours_id": "mmart/siglip1/siglip1_prefix/emotion/ami9/teacher",
+      "codex_id": "mmart/ami/emotion/q1",
+      "ours_outcome": "WIN",
+      "codex_outcome_field": "WIN",
+      "diffs": {
+       "value": 4.746203430272544e-15,
+       "comparator_value": 6.689093723366568e-15,
+       "d": 1.942890293094024e-15,
+       "lo": 2.237793284010081e-15,
+       "hi": 1.1726730697603216e-15,
+       "r": 7.632783294297951e-17
+      },
+      "max_diff": 6.689093723366568e-15,
+      "codex_outcome_rule": "WIN",
+      "ours_outcome_rule": "WIN",
+      "codex_comparator_rebuild": {
+       "pick": null,
+       "value": 0.04917345336389014,
+       "recorded_value": 0.04917345336389683,
+       "passed": true,
+       "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/verdicts.json",
+       "key": "SC3/mmart/siglip1/emotion/ami/9/teacher.comp",
+       "full_queries": true
+      }
+     },
+     {
+      "cell": "emotion/map/p1",
+      "ours_id": "mmart/siglip1/siglip1_prefix/emotion/map/plain",
+      "codex_id": "mmart/map/emotion/p1",
+      "ours_outcome": "WIN",
+      "codex_outcome_field": "WIN",
+      "diffs": {
+       "value": 0.0,
+       "comparator_value": 0.0,
+       "d": 0.0,
+       "lo": 5.377642775528102e-17,
+       "hi": 1.0668549377257364e-16,
+       "r": 0.0
+      },
+      "max_diff": 1.0668549377257364e-16,
+      "codex_outcome_rule": "WIN",
+      "ours_outcome_rule": "WIN",
+      "codex_comparator_rebuild": {
+       "pick": "none+k10",
+       "value": 0.19125931122827552,
+       "recorded_value": 0.19125931122827552,
+       "passed": true,
+       "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/verdicts.json",
+       "key": "SC7/mmart/siglip1/emotion/map/-/plain.comp",
+       "full_queries": true
+      }
+     },
+     {
+      "cell": "emotion/map/q1",
+      "ours_id": "mmart/siglip1/siglip1_prefix/emotion/map/teacher",
+      "codex_id": "mmart/map/emotion/q1",
+      "ours_outcome": "LEVEL",
+      "codex_outcome_field": "LEVEL",
+      "diffs": {
+       "value": 0.0,
+       "comparator_value": 0.0,
+       "d": 0.0,
+       "lo": 2.846030702774449e-17,
+       "hi": 5.551115123125783e-17,
+       "r": 0.0
+      },
+      "max_diff": 5.551115123125783e-17,
+      "codex_outcome_rule": "LEVEL",
+      "ours_outcome_rule": "LEVEL",
+      "codex_comparator_rebuild": {
+       "pick": "center+k10",
+       "value": 0.20208184800749496,
+       "recorded_value": 0.20208184800749496,
+       "passed": true,
+       "target_record": "/data/SSD2/cosir_r15/20261102_mmart_test/outputs/stage2/cells_ret.json",
+       "key": "SC4/siglip1/emotion.comparator_value",
+       "full_queries": true
+      }
+     },
+     {
+      "cell": "style/ami/p1",
+      "ours_id": "mmart/siglip1/siglip1_prefix/style/ami20/plain",
+      "codex_id": "mmart/ami/style/p1",
+      "ours_outcome": "WIN",
+      "codex_outcome_field": "WIN",
+      "diffs": {
+       "value": 1.4988010832439613e-14,
+       "comparator_value": 1.6542323066914832e-14,
+       "d": 1.5543122344752192e-15,
+       "lo": 5.35682609381638e-15,
+       "hi": 1.3600232051658168e-15,
+       "r": 3.9968028886505635e-15
+      },
+      "max_diff": 1.6542323066914832e-14,
+      "codex_outcome_rule": "WIN",
+      "ours_outcome_rule": "WIN",
+      "codex_comparator_rebuild": {
+       "pick": null,
+       "value": 0.39148278447734247,
+       "recorded_value": 0.391482784477359,
+       "passed": true,
+       "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/verdicts.json",
+       "key": "SC1/mmart/siglip1/style/ami/20/plain.comp",
+       "full_queries": true
+      }
+     },
+     {
+      "cell": "style/ami/q1",
+      "ours_id": "mmart/siglip1/siglip1_prefix/style/ami20/teacher",
+      "codex_id": "mmart/ami/style/q1",
+      "ours_outcome": "WIN",
+      "codex_outcome_field": "WIN",
+      "diffs": {
+       "value": 1.4988010832439613e-14,
+       "comparator_value": 1.4876988529977098e-14,
+       "d": 1.1102230246251565e-16,
+       "lo": 6.46011022453763e-15,
+       "hi": 1.457167719820518e-15,
+       "r": 3.9968028886505635e-15
+      },
+      "max_diff": 1.4988010832439613e-14,
+      "codex_outcome_rule": "WIN",
+      "ours_outcome_rule": "WIN",
+      "codex_comparator_rebuild": {
+       "pick": null,
+       "value": 0.4158247856518605,
+       "recorded_value": 0.41582478565187536,
+       "passed": true,
+       "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/verdicts.json",
+       "key": "SC3/mmart/siglip1/style/ami/20/teacher.comp",
+       "full_queries": true
+      }
+     },
+     {
+      "cell": "style/map/p1",
+      "ours_id": "mmart/siglip1/siglip1_prefix/style/map/plain",
+      "codex_id": "mmart/map/style/p1",
+      "ours_outcome": "WIN",
+      "codex_outcome_field": "WIN",
+      "diffs": {
+       "value": 0.0,
+       "comparator_value": 0.0,
+       "d": 0.0,
+       "lo": 5.551115123125783e-17,
+       "hi": 2.6020852139652106e-18,
+       "r": 0.0
+      },
+      "max_diff": 5.551115123125783e-17,
+      "codex_outcome_rule": "WIN",
+      "ours_outcome_rule": "WIN",
+      "codex_comparator_rebuild": {
+       "pick": "none+k10",
+       "value": 0.30310640376756215,
+       "recorded_value": 0.30310640376756215,
+       "passed": true,
+       "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/verdicts.json",
+       "key": "SC7/mmart/siglip1/style/map/-/plain.comp",
+       "full_queries": true
+      }
+     },
+     {
+      "cell": "style/map/q1",
+      "ours_id": "mmart/siglip1/siglip1_prefix/style/map/teacher",
+      "codex_id": "mmart/map/style/q1",
+      "ours_outcome": "WIN",
+      "codex_outcome_field": "WIN",
+      "diffs": {
+       "value": 0.0,
+       "comparator_value": 0.0,
+       "d": 0.0,
+       "lo": 1.0408340855860843e-16,
+       "hi": 1.1102230246251565e-16,
+       "r": 0.0
+      },
+      "max_diff": 1.1102230246251565e-16,
+      "codex_outcome_rule": "WIN",
+      "ours_outcome_rule": "WIN",
+      "codex_comparator_rebuild": {
+       "pick": "center+k10",
+       "value": 0.3475531651604354,
+       "recorded_value": 0.3475531651604354,
+       "passed": true,
+       "target_record": "/data/SSD2/cosir_r15/20261102_mmart_test/outputs/stage2/cells_ret.json",
+       "key": "SC4/siglip1/style.comparator_value",
+       "full_queries": true
+      }
+     },
+     {
+      "cell": "genre/ami/p1",
+      "ours_id": "mmart/siglip1/siglip1_prefix/genre/ami10/plain",
+      "codex_id": "mmart/ami/genre/p1",
+      "ours_outcome": "WIN",
+      "codex_outcome_field": "WIN",
+      "diffs": {
+       "value": 3.6637359812630166e-15,
+       "comparator_value": 5.162537064506978e-15,
+       "d": 1.4988010832439613e-15,
+       "lo": 1.3183898417423734e-15,
+       "hi": 2.4980018054066022e-15,
+       "r": 4.440892098500626e-16
+      },
+      "max_diff": 5.162537064506978e-15,
+      "codex_outcome_rule": "WIN",
+      "ours_outcome_rule": "WIN",
+      "codex_comparator_rebuild": {
+       "pick": null,
+       "value": 0.4095732898463478,
+       "recorded_value": 0.40957328984635294,
+       "passed": true,
+       "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/verdicts.json",
+       "key": "SC1/mmart/siglip1/genre/ami/10/plain.comp",
+       "full_queries": true
+      }
+     },
+     {
+      "cell": "genre/ami/q1",
+      "ours_id": "mmart/siglip1/siglip1_prefix/genre/ami10/teacher",
+      "codex_id": "mmart/ami/genre/q1",
+      "ours_outcome": "WIN",
+      "codex_outcome_field": "WIN",
+      "diffs": {
+       "value": 3.6637359812630166e-15,
+       "comparator_value": 2.220446049250313e-15,
+       "d": 1.4432899320127035e-15,
+       "lo": 8.411240454142543e-16,
+       "hi": 2.1840168562548e-15,
+       "r": 4.440892098500626e-16
+      },
+      "max_diff": 3.6637359812630166e-15,
+      "codex_outcome_rule": "WIN",
+      "ours_outcome_rule": "WIN",
+      "codex_comparator_rebuild": {
+       "pick": null,
+       "value": 0.5255724519964602,
+       "recorded_value": 0.5255724519964624,
+       "passed": true,
+       "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/verdicts.json",
+       "key": "SC3/mmart/siglip1/genre/ami/10/teacher.comp",
+       "full_queries": true
+      }
+     },
+     {
+      "cell": "genre/map/p1",
+      "ours_id": "mmart/siglip1/siglip1_prefix/genre/map/plain",
+      "codex_id": "mmart/map/genre/p1",
+      "ours_outcome": "WIN",
+      "codex_outcome_field": "WIN",
+      "diffs": {
+       "value": 0.0,
+       "comparator_value": 0.0,
+       "d": 0.0,
+       "lo": 5.551115123125783e-17,
+       "hi": 6.938893903907228e-18,
+       "r": 0.0
+      },
+      "max_diff": 5.551115123125783e-17,
+      "codex_outcome_rule": "WIN",
+      "ours_outcome_rule": "WIN",
+      "codex_comparator_rebuild": {
+       "pick": "none+k10",
+       "value": 0.49322669333886887,
+       "recorded_value": 0.49322669333886887,
+       "passed": true,
+       "target_record": "/project/CoSiR/src/test/20261103_new_scores/records/verdicts.json",
+       "key": "SC7/mmart/siglip1/genre/map/-/plain.comp",
+       "full_queries": true
+      }
+     },
+     {
+      "cell": "genre/map/q1",
+      "ours_id": "mmart/siglip1/siglip1_prefix/genre/map/teacher",
+      "codex_id": "mmart/map/genre/q1",
+      "ours_outcome": "WIN",
+      "codex_outcome_field": "WIN",
+      "diffs": {
+       "value": 0.0,
+       "comparator_value": 0.0,
+       "d": 0.0,
+       "lo": 1.0581813203458523e-16,
+       "hi": 6.938893903907228e-18,
+       "r": 0.0
+      },
+      "max_diff": 1.0581813203458523e-16,
+      "codex_outcome_rule": "WIN",
+      "ours_outcome_rule": "WIN",
+      "codex_comparator_rebuild": {
+       "pick": "center+k10",
+       "value": 0.6172051670902616,
+       "recorded_value": 0.6172051670902616,
+       "passed": true,
+       "target_record": "/data/SSD2/cosir_r15/20261102_mmart_test/outputs/stage2/cells_ret.json",
+       "key": "SC4/siglip1/genre.comparator_value",
+       "full_queries": true
+      }
+     }
+    ],
+    "max_abs_diff_cells": 1.6542323066914832e-14,
+    "inputs": {
+     "/project/CoSiR/src/test/20261112_siglip_only/records/mmart_cells_siglip1_prefix.json": "d29dbd22a9a386083569ae8b6e595316c6c65c6e240979fdb57e92f030b701f2",
+     "/project/CoSiR/src/test/20261112_siglip_only/rederive/s2mp_held.json": "6a7f8532c07980a561d5e5d3330811f9e483c5481679c722370395ab3c1871db"
+    },
+    "written": "2026-11-14 01:06"
+   }
   }
  },
  "mismatches": {
@@ -3798,12 +4756,17 @@
    "e2e3": [],
    "photo": [],
    "sc9": []
+  },
+  "held": {
+   "mmart": []
   }
  },
  "missing": {
-  "val": {}
+  "val": {},
+  "held": {}
  },
  "written": {
-  "val": "2026-11-14 00:23"
+  "val": "2026-11-14 00:23",
+  "held": "2026-11-14 01:06"
  }
 }
