@@ -2538,3 +2538,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-14-r31-run-4-handoff.md
 - New chat: tab 'r31 run 4', session 01837b5d-c223-40aa-98b3-699d540f4578
 
+[brief] CoSiR: r31 run 4 -> r31 run 5 (2026-11-14 02:07 Amsterdam)
+- Done: every stage 2 number: SC4 (SigLIP 2, CLIP L/14), SC5 (MMArt), SC6 (photos) all level 3; SC7 scored; every C13 check passes.
+- State: SC9 picks SigLIP 1 (0.3882 against 0.3838 and 0.3762; close call). Both report drafts are committed, not yet reviewed.
+- Next: fix the drafts, the claim review, the checks of the user-read report, the index row; then open "r32 decide".
+- Blocked: nothing. GPU and CPU are free from 01:48.
+- Handoff: docs/superpowers/handoffs/2026-11-14-r31-run-5-handoff.md
+- New chat: tab 'r31 run 5', session 93566565-ddc6-46d9-8079-5afefbd18029
+
