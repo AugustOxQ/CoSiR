@@ -246,16 +246,29 @@ def require_committed(name):
 
 
 def require_gate():
-    """The one gate SC7 needs is vii_ablation (ticket 08 parks SC6 on the photo parts). Ladder rule (ticket 08): absent
-    raises "not run"; fail before try 3 raises "still open"; fail at try 3 or parked returns 'parked' (SC7 inconclusive);
-    pass returns 'pass' once the code and trainer-test hashes match."""
+    """SC7 needs a passed vii_ablation, with current code and trainer-test hashes.
+    Changed hashes require a current vii_ablation_recheck pass; the original stays untouched.
+    For either gate: absent raises, fail before try 3 raises "still open", and fail at try 3 or parked
+    returns 'parked' (SC7 inconclusive, §3.5). A recheck cannot override a parked original.
+    """
     status = L.gate_status(P.GATES.parent, 'vii_ablation')
     if status != 'pass':
         return 'parked'
     path = P.GATES / 'vii_ablation.json'
     gate = json.loads(path.read_text())
-    assert gate['details']['code_sha256'] == code_hashes(), f'{path}: ablation code changed; rerun gate-vii'
-    assert gate['details']['trainer_test_sha256'] == T.file_sha(HERE / 'test_r29_ablation.py'), 'trainer test changed'
+    hashes = code_hashes()
+    test_hash = T.file_sha(HERE / 'test_r29_ablation.py')
+    if gate['details']['code_sha256'] == hashes and gate['details']['trainer_test_sha256'] == test_hash:
+        return 'pass'
+    command = 'R29_AMENDMENT=A1 python r29_ablation.py gate-vii-recheck'
+    recheck_path = P.GATES / 'vii_ablation_recheck.json'
+    assert recheck_path.is_file(), f'{path}: ablation code or trainer-test code changed; run {command}'
+    if L.gate_status(P.GATES.parent, 'vii_ablation_recheck') != 'pass':
+        return 'parked'
+    recheck = json.loads(recheck_path.read_text())
+    assert (recheck['details']['code_sha256'] == hashes and
+            recheck['details']['trainer_test_sha256'] == test_hash), \
+        f'{recheck_path}: ablation code or trainer-test code changed since recheck; run {command}'
     return 'pass'
 
 
@@ -297,8 +310,11 @@ def score(root=None):
     for name in ('prefix_pick.json', 'pass_rule.json'):
         require_committed(name)
     if require_gate() != 'pass':
+        parked_gate = ('vii_ablation' if L.gate_status(P.GATES.parent, 'vii_ablation') != 'pass'
+                       else 'vii_ablation_recheck')
         document = dict(kind='r29_ablation', claim='SC7', complete=False, status='inconclusive', set='artelingo',
-                        split='held', encoder='siglip1', kstar=source, cause='gate vii_ablation is parked (a fail at try 3 parks)',
+                        split='held', encoder='siglip1', kstar=source,
+                        cause=f'gate {parked_gate} is parked (a fail at try 3 parks)',
                         code_sha256=code_hashes())
         document.update(P.a1_marks(gate))
         write_json(P.RECORDS / 'ablation.json', document)
@@ -364,15 +380,12 @@ def score(root=None):
     return document
 
 
-def gate_vii():
+def _vii_checks():
     """Run the four fixed-batch tests, then replay all 15 K0 aspect/seed
     exports through THIS scorer. No candidate/pass record is needed in stage 0.
     K0's per-aspect timings in r28's full table sum to ~263 CPU seconds before
     input IO and trainer tests; use a queued CPU job for this CLI.
     """
-    path = P.GATES / 'vii_ablation.json'
-    prior = json.loads(path.read_text())['tries'] if path.exists() else 0
-    assert prior < 3, f'{path}: three tries exhausted; ablation parked'
     command = [sys.executable, '-m', 'pytest', '-q', str(HERE / 'test_r29_ablation.py'),
                '-k', 'qwen_equals_r28_state_loss_and_gradients_on_fixed_batch']
     env = dict(os.environ, OMP_NUM_THREADS='8', MKL_NUM_THREADS='8', PYTHONDONTWRITEBYTECODE='1')
@@ -399,8 +412,38 @@ def gate_vii():
             passed = comparison['pass']
         except Exception as exc:
             details['replay'] = dict(error=f'{type(exc).__name__}: {exc}', **{'pass': False})
+    return passed, details
+
+
+def gate_vii():
+    """Run the shared checks and record gate (vii), with at most three tries."""
+    path = P.GATES / 'vii_ablation.json'
+    prior = json.loads(path.read_text())['tries'] if path.exists() else 0
+    assert prior < 3, f'{path}: three tries exhausted; ablation parked'
+    passed, details = _vii_checks()
     status = 'pass' if passed else ('parked' if prior == 2 else 'fail')
     return T.C.write_gate_record(P.GATES, dict(status=status, details=details), gate='vii_ablation')
+
+
+def gate_vii_recheck():
+    """Re-confirm a passed gate (vii) on current code, with its own three tries."""
+    original_path = P.GATES / 'vii_ablation.json'
+    message = 'recheck only re-confirms a passed gate (vii) on the current code'
+    assert original_path.is_file(), f'{original_path}: {message}'
+    original = json.loads(original_path.read_text())
+    assert original.get('status') == 'pass', f'{original_path}: {message}'
+    path = P.GATES / 'vii_ablation_recheck.json'
+    prior = json.loads(path.read_text())['tries'] if path.exists() else 0
+    assert prior < 3, f'{path}: three tries exhausted; ablation recheck parked'
+    passed, details = _vii_checks()
+    original_hashes = original['details']['code_sha256']
+    current_hashes = details['code_sha256']
+    details.update(rechecks='vii_ablation', original_written=original['written'], original_tries=original['tries'],
+                   original_code_sha256=original_hashes,
+                   changed_files=sorted(name for name in original_hashes.keys() | current_hashes.keys()
+                                        if original_hashes.get(name) != current_hashes.get(name)))
+    status = 'pass' if passed else ('parked' if prior == 2 else 'fail')
+    return T.C.write_gate_record(P.GATES, dict(status=status, details=details), gate='vii_ablation_recheck')
 
 
 def smoke_checkpoint(root, device):
@@ -440,12 +483,17 @@ def main(argv=None):
         else:
             cmd.add_argument('--kind', nargs='+', choices=('val', 'held'), default=['held'])
     commands.add_parser('gate-vii', help='fixed-batch trainer tests + full frozen K0 scorer replay (queued CPU)')
+    commands.add_parser('gate-vii-recheck', help="re-run gate (vii)'s checks on the current code; own record, own three tries")
     cmd = commands.add_parser('score', help='full five-seed SC7 table -> records/ablation.json')
     cmd.add_argument('--root', type=Path, help='removal root; default OUT/ablation/siglip1/<K*>')
     args = parser.parse_args(argv)
     if args.command == 'gate-vii':
         gate = gate_vii()
         print(f'vii_ablation: {gate["status"]}', flush=True)
+        return 0 if gate['status'] == 'pass' else 2
+    if args.command == 'gate-vii-recheck':
+        gate = gate_vii_recheck()
+        print(f'vii_ablation_recheck: {gate["status"]}', flush=True)
         return 0 if gate['status'] == 'pass' else 2
     if args.command == 'score':
         doc = score(args.root)

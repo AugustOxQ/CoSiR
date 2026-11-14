@@ -318,6 +318,134 @@ def test_gate_writes_separate_record_and_requires_trainer_and_replay(tmp_path, m
             A.require_gate()
 
 
+@pytest.fixture
+def ablation_gates(tmp_path, monkeypatch):
+    monkeypatch.setattr(A.P, 'GATES', tmp_path / 'gates')
+    def write(gate='vii_ablation', status='pass', tries=3, **details):
+        hashes = dict(code_sha256=A.code_hashes(), trainer_test_sha256=A.T.file_sha(A.HERE / 'test_r29_ablation.py'))
+        record = dict(gate=gate, status=status, tries=tries, written='2026-11-13 04:04', details=dict(hashes, **details))
+        path = A.P.GATES / f'{gate}.json'
+        A.write_json(path, record)
+        return path
+    return write
+
+
+@pytest.mark.parametrize('field', ['code_sha256', 'trainer_test_sha256'])
+def test_changed_original_requires_a_recheck(ablation_gates, field):
+    ablation_gates(**{field: {} if field == 'code_sha256' else 'stale'})
+    with pytest.raises(AssertionError, match='code.*changed.*gate-vii-recheck'):
+        A.require_gate()
+
+
+@pytest.mark.parametrize('field', ['code_sha256', 'trainer_test_sha256'])
+def test_current_recheck_pass_accepts_changed_original(ablation_gates, field):
+    ablation_gates(**{field: {} if field == 'code_sha256' else 'stale'})
+    ablation_gates('vii_ablation_recheck')
+    assert A.require_gate() == 'pass'
+
+
+@pytest.mark.parametrize('field', ['code_sha256', 'trainer_test_sha256'])
+def test_stale_recheck_pass_is_refused(ablation_gates, field):
+    ablation_gates(code_sha256={})
+    ablation_gates('vii_ablation_recheck', **{field: {} if field == 'code_sha256' else 'stale'})
+    with pytest.raises(AssertionError, match='gate-vii-recheck'):
+        A.require_gate()
+
+
+@pytest.mark.parametrize('status,tries', [('fail', 1), ('fail', 2), ('fail', 3), ('parked', 3)])
+def test_recheck_states_decide_whether_sc7_waits_or_is_inconclusive(tmp_path, monkeypatch, ablation_gates, status, tries):
+    held = score_setup(tmp_path, monkeypatch, gate='pass', trained=False)
+    ablation_gates(code_sha256={})
+    ablation_gates('vii_ablation_recheck', status=status, tries=tries)
+    if status == 'fail' and tries < 3:
+        with pytest.raises(RuntimeError, match='gate vii_ablation_recheck still open'):
+            A.score()
+        assert not (tmp_path / 'ablation.json').exists()
+    else:
+        assert A.require_gate() == 'parked'
+        doc = A.score()
+        assert doc['status'] == 'inconclusive' and not doc['complete'] and 'cells' not in doc
+        assert 'gate vii_ablation_recheck is parked' in doc['cause']
+    assert held == []
+
+
+@pytest.mark.parametrize('status', ['pass', 'fail', 'parked'])
+def test_parked_original_takes_precedence_over_recheck(tmp_path, monkeypatch, ablation_gates, status):
+    held = score_setup(tmp_path, monkeypatch, gate='parked', trained=False)
+    ablation_gates('vii_ablation_recheck', status=status, tries=1)
+    assert A.require_gate() == 'parked'
+    assert 'gate vii_ablation is parked' in A.score()['cause']
+    assert held == []
+
+
+def test_current_original_pass_does_not_need_recheck(ablation_gates):
+    ablation_gates()
+    ablation_gates('vii_ablation_recheck', status='parked')
+    assert A.require_gate() == 'pass'
+
+
+@pytest.mark.parametrize('status', [None, 'fail', 'parked'])
+def test_recheck_only_reconfirms_a_passed_original(ablation_gates, monkeypatch, status):
+    if status is not None:
+        ablation_gates(status=status)
+    called = []
+    monkeypatch.setattr(A, '_vii_checks', lambda: called.append(True))
+    with pytest.raises(AssertionError, match=r'only re-confirms a passed gate \(vii\) on the current code'):
+        A.gate_vii_recheck()
+    assert called == [] and not (A.P.GATES / 'vii_ablation_recheck.json').exists()
+
+
+@pytest.mark.parametrize('passed', [True, False])
+def test_recheck_owns_tries_and_preserves_original(ablation_gates, monkeypatch, passed):
+    current = A.code_hashes()
+    original_hashes = dict(current, **{'r29_ablation.py': 'old', 'removed.py': 'old'})
+    original_hashes.pop('r29_trainer.py')
+    original_path = ablation_gates(code_sha256=original_hashes)
+    original_bytes = original_path.read_bytes()
+    original = json.loads(original_bytes)
+    called = []
+    def checks():
+        called.append(True)
+        return passed, dict(code_sha256=current, trainer_test_sha256=A.T.file_sha(A.HERE / 'test_r29_ablation.py'))
+    monkeypatch.setattr(A, '_vii_checks', checks)
+    for tries in (1, 2, 3):
+        record = A.gate_vii_recheck()
+        assert record == json.loads((A.P.GATES / 'vii_ablation_recheck.json').read_text())
+        assert record['gate'] == 'vii_ablation_recheck' and record['tries'] == tries
+        assert record['status'] == ('pass' if passed else 'parked' if tries == 3 else 'fail')
+        details = record['details']
+        assert details['rechecks'] == 'vii_ablation'
+        assert details['original_written'] == original['written']
+        assert details['original_tries'] == 3 and details['original_code_sha256'] == original_hashes
+        assert details['changed_files'] == ['r29_ablation.py', 'r29_trainer.py', 'removed.py']
+        assert details['code_sha256'] == current
+        assert details['trainer_test_sha256'] == A.T.file_sha(A.HERE / 'test_r29_ablation.py')
+        assert original_path.read_bytes() == original_bytes
+    recheck_bytes = (A.P.GATES / 'vii_ablation_recheck.json').read_bytes()
+    with pytest.raises(AssertionError, match='three tries exhausted'):
+        A.gate_vii_recheck()
+    assert len(called) == 3 and original_path.read_bytes() == original_bytes
+    assert (A.P.GATES / 'vii_ablation_recheck.json').read_bytes() == recheck_bytes
+
+
+def test_both_gates_use_the_same_checks(ablation_gates, monkeypatch):
+    called = []
+    def checks():
+        called.append(True)
+        return True, dict(code_sha256=A.code_hashes(), trainer_test_sha256=A.T.file_sha(A.HERE / 'test_r29_ablation.py'))
+    monkeypatch.setattr(A, '_vii_checks', checks)
+    assert A.gate_vii()['status'] == 'pass'
+    assert A.gate_vii_recheck()['status'] == 'pass'
+    assert called == [True, True]
+
+
+@pytest.mark.parametrize('status', ['pass', 'fail', 'parked'])
+def test_cli_recheck_reports_status_and_exit_code(monkeypatch, capsys, status):
+    monkeypatch.setattr(A, 'gate_vii_recheck', lambda: dict(status=status))
+    assert A.main(['gate-vii-recheck']) == (0 if status == 'pass' else 2)
+    assert capsys.readouterr().out == f'vii_ablation_recheck: {status}\n'
+
+
 def test_cli_smoke_keeps_qwen_standin_and_all_files_under_smoke(tmp_path, monkeypatch):
     monkeypatch.setattr(A.P, 'SMOKE_OUT', tmp_path / 'smoke')
     monkeypatch.setattr(A.P, 'RECORDS', tmp_path)
