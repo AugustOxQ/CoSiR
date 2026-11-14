@@ -1,0 +1,92 @@
+{
+ "claim": "SC6",
+ "arm": "siglip1_prefix",
+ "encoder": "siglip1",
+ "scope": "Affection and EmoSet test, encoder siglip1",
+ "written": "2026-11-14 01:23",
+ "n_cells": 4,
+ "most": 3,
+ "level": 3,
+ "inconclusive_above": false,
+ "report": "level 3",
+ "counts": {
+  "p1_win": 4,
+  "p1_inconclusive": 0,
+  "q1_win_or_level": 4,
+  "q1_win": 4,
+  "q1_level": 0,
+  "q1_inconclusive": 0
+ },
+ "sentence": "With no Qwen3 pass at test time, training adds over the plain embedding in every cell and it is level with or above the instructed Qwen3 in 4 of 4 cells.",
+ "counted": {
+  "p1_win": [
+   "affection/ami",
+   "affection/map",
+   "emoset/ami",
+   "emoset/map"
+  ],
+  "q1_win_or_level": [
+   "affection/ami",
+   "affection/map",
+   "emoset/ami",
+   "emoset/map"
+  ],
+  "p1_inconclusive": [],
+  "q1_inconclusive": []
+ },
+ "cells": [
+  {
+   "cell": "affection/ami",
+   "p1": "WIN",
+   "p1_id": "affection/siglip1/siglip1_prefix/emotion/ami9/plain",
+   "q1": "WIN",
+   "q1_id": "affection/siglip1/siglip1_prefix/emotion/ami9/teacher",
+   "q1_claim": "above"
+  },
+  {
+   "cell": "affection/map",
+   "p1": "WIN",
+   "p1_id": "affection/siglip1/siglip1_prefix/emotion/map/plain",
+   "q1": "WIN",
+   "q1_id": "affection/siglip1/siglip1_prefix/emotion/map/teacher",
+   "q1_claim": "above"
+  },
+  {
+   "cell": "emoset/ami",
+   "p1": "WIN",
+   "p1_id": "emoset/siglip1/siglip1_prefix/emotion/ami8/plain",
+   "q1": "WIN",
+   "q1_id": "emoset/siglip1/siglip1_prefix/emotion/ami8/teacher",
+   "q1_claim": "above"
+  },
+  {
+   "cell": "emoset/map",
+   "p1": "WIN",
+   "p1_id": "emoset/siglip1/siglip1_prefix/emotion/map/plain",
+   "q1": "WIN",
+   "q1_id": "emoset/siglip1/siglip1_prefix/emotion/map/teacher",
+   "q1_claim": "above"
+  }
+ ],
+ "sources": {
+  "photo": "read"
+ },
+ "cell_files": {
+  "photo": {
+   "path": "/project/CoSiR/src/test/20261112_siglip_only/records/photo_cells_siglip1_prefix.json",
+   "sha256": "0895f2f9dec37a4bc34bc85952a98185173c3db12950323936eb7f199d30246f",
+   "n_cells": 8
+  }
+ },
+ "gates": {
+  "v_image": "pass",
+  "v_text": "pass",
+  "v_photo": "pass",
+  "vii_trainer": "pass",
+  "vii_photo": "pass",
+  "viii_affection": "pass"
+ },
+ "parked_by": null,
+ "amendment": "A1",
+ "amendment_line": "stage 2 ran on the fail under A1"
+}

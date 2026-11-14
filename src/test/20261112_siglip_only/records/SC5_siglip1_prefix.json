@@ -1,0 +1,110 @@
+{
+ "claim": "SC5",
+ "arm": "siglip1_prefix",
+ "encoder": "siglip1",
+ "scope": "MMArt test, encoder siglip1",
+ "written": "2026-11-14 01:23",
+ "n_cells": 6,
+ "most": 5,
+ "level": 3,
+ "inconclusive_above": false,
+ "report": "level 3",
+ "counts": {
+  "p1_win": 6,
+  "p1_inconclusive": 0,
+  "q1_win_or_level": 6,
+  "q1_win": 5,
+  "q1_level": 1,
+  "q1_inconclusive": 0
+ },
+ "sentence": "With no Qwen3 pass at test time, training adds over the plain embedding in every cell and it is level with or above the instructed Qwen3 in 6 of 6 cells.",
+ "counted": {
+  "p1_win": [
+   "mmart/emotion/ami",
+   "mmart/emotion/map",
+   "mmart/style/ami",
+   "mmart/style/map",
+   "mmart/genre/ami",
+   "mmart/genre/map"
+  ],
+  "q1_win_or_level": [
+   "mmart/emotion/ami",
+   "mmart/emotion/map",
+   "mmart/style/ami",
+   "mmart/style/map",
+   "mmart/genre/ami",
+   "mmart/genre/map"
+  ],
+  "p1_inconclusive": [],
+  "q1_inconclusive": []
+ },
+ "cells": [
+  {
+   "cell": "mmart/emotion/ami",
+   "p1": "WIN",
+   "p1_id": "mmart/siglip1/siglip1_prefix/emotion/ami9/plain",
+   "q1": "WIN",
+   "q1_id": "mmart/siglip1/siglip1_prefix/emotion/ami9/teacher",
+   "q1_claim": "above"
+  },
+  {
+   "cell": "mmart/emotion/map",
+   "p1": "WIN",
+   "p1_id": "mmart/siglip1/siglip1_prefix/emotion/map/plain",
+   "q1": "LEVEL",
+   "q1_id": "mmart/siglip1/siglip1_prefix/emotion/map/teacher",
+   "q1_claim": "level with"
+  },
+  {
+   "cell": "mmart/style/ami",
+   "p1": "WIN",
+   "p1_id": "mmart/siglip1/siglip1_prefix/style/ami20/plain",
+   "q1": "WIN",
+   "q1_id": "mmart/siglip1/siglip1_prefix/style/ami20/teacher",
+   "q1_claim": "above"
+  },
+  {
+   "cell": "mmart/style/map",
+   "p1": "WIN",
+   "p1_id": "mmart/siglip1/siglip1_prefix/style/map/plain",
+   "q1": "WIN",
+   "q1_id": "mmart/siglip1/siglip1_prefix/style/map/teacher",
+   "q1_claim": "above"
+  },
+  {
+   "cell": "mmart/genre/ami",
+   "p1": "WIN",
+   "p1_id": "mmart/siglip1/siglip1_prefix/genre/ami10/plain",
+   "q1": "WIN",
+   "q1_id": "mmart/siglip1/siglip1_prefix/genre/ami10/teacher",
+   "q1_claim": "above"
+  },
+  {
+   "cell": "mmart/genre/map",
+   "p1": "WIN",
+   "p1_id": "mmart/siglip1/siglip1_prefix/genre/map/plain",
+   "q1": "WIN",
+   "q1_id": "mmart/siglip1/siglip1_prefix/genre/map/teacher",
+   "q1_claim": "above"
+  }
+ ],
+ "sources": {
+  "mmart": "read"
+ },
+ "cell_files": {
+  "mmart": {
+   "path": "/project/CoSiR/src/test/20261112_siglip_only/records/mmart_cells_siglip1_prefix.json",
+   "sha256": "d29dbd22a9a386083569ae8b6e595316c6c65c6e240979fdb57e92f030b701f2",
+   "n_cells": 12
+  }
+ },
+ "gates": {
+  "v_image": "pass",
+  "v_text": "pass",
+  "v_mmart": "pass",
+  "vi": "pass"
+ },
+ "parked_by": null,
+ "amendment": "A1",
+ "amendment_line": "stage 2 ran on the fail under A1"
+}

@@ -221,3 +221,7 @@ mode. Outputs `/data/SSD2/cosir_r29/20261112_siglip_only/` (stage logs in its `l
   writes the gate (vii) recheck (`codex_logs/gate_vii_recheck_fix.log`).
 - 01:19 C13 comparison `--phase held --pieces photo`: pass, 64 fields, largest difference 4.2e-15, no mismatch (8 photo
   cells, all WIN on both sides; Codex lists no inconclusive cell).
+- 01:30 Gate (vii) recheck code committed (10205d96; decision line; Codex bug job, diff read, 62 tests pass). The
+  recheck runs on the CPU queue (`logs/gate_vii_recheck.log`).
+- 01:24 Ladders with `R29_AMENDMENT=A1`: SC5 (MMArt) level 3, P1 WIN 6/6, Q1 WIN or LEVEL 6/6; SC6 (photo model F1)
+  level 3, P1 WIN 4/4, Q1 WIN or LEVEL 4/4. Codex's held files give the same levels and counts (information).
