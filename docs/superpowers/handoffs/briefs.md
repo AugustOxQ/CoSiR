@@ -2546,3 +2546,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-14-r31-run-5-handoff.md
 - New chat: tab 'r31 run 5', session 93566565-ddc6-46d9-8079-5afefbd18029
 
+[brief] CoSiR: r31 run 5 -> r32 decide (2026-11-14 02:18 Amsterdam)
+- Done: r31 (stage 2 of the SigLIP-only model) is reported: auto report 2027-01-19 and user-read report 2026-11-14, both checked.
+- State: every stage 2 claim reaches level 3 (SigLIP 2, CLIP L/14, MMArt, photos); SigLIP 1 wins the encoder pick, a close call (0.3882 against 0.3838).
+- Next: show the user the results brief without our reading, get their reading, then wrap up and decide (step 2).
+- Blocked: nothing. The GPU and CPU are free, so r30 (the small check from saved outputs) can run.
+- Handoff: docs/superpowers/handoffs/2026-11-14-r32-decide-handoff.md
+- New chat: tab 'r32 decide', session 48b6ab3b-8b50-4632-a736-9480dff5504d
+
