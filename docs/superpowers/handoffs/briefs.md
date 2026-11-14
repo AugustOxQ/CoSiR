@@ -2554,3 +2554,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-14-r32-decide-handoff.md
 - New chat: tab 'r32 decide', session 48b6ab3b-8b50-4632-a736-9480dff5504d
 
+[brief] CoSiR: r30 decide -> r30 report (2026-11-14 02:53 Amsterdam)
+- Done: r30 ran (2026-11-14 02:47 to 02:50, after r31 ended): one UMAP map fitted on c*, the valence check, and an islands check.
+- State: long DEC's two emotion islands are the k = 2 groups (AMI 0.879) and split by subject (people against scenes), not valence; c* has the same split without the gap.
+- Next: the short auto report (Codex draft, Claude claim review), the half-page user-read report and its two checks; then the user's reading.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-14-r30-report-handoff.md
+- New chat: tab 'r30 report', session b39c9732-6946-4e9f-a63d-f25037313302
+
