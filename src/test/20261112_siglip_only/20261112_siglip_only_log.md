@@ -213,3 +213,11 @@ mode. Outputs `/data/SSD2/cosir_r29/20261112_siglip_only/` (stage logs in its `l
   chat "r31 run 4" (handoff `2026-11-14-r31-run-4-handoff.md`): a recheck of gate (vii) on the current code, own record.
 - 01:15 GPU check passed (driver 595.99.02; kernel module and library match). Cut to chat "r31 run 4" (context past
   200k). Codex's `s2e`, `s2mp photo` and `s2abl` held runs go on as children of this tab.
+
+### Chat "r31 run 4"
+
+- 01:17 Chat start (handoff `2026-11-14-r31-run-4-handoff.md`). Codex's `s2mp held --piece photo` ended 01:16 (9.7 min,
+  exit 0); `s2e held` and `s2abl held` still run as children of tab "r31 run 3". Codex `bug` job (gpt-6.1-sol, high)
+  writes the gate (vii) recheck (`codex_logs/gate_vii_recheck_fix.log`).
+- 01:19 C13 comparison `--phase held --pieces photo`: pass, 64 fields, largest difference 4.2e-15, no mismatch (8 photo
+  cells, all WIN on both sides; Codex lists no inconclusive cell).
