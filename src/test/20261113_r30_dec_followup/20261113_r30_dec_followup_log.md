@@ -59,7 +59,7 @@ A small loop (exploration) from saved r21 outputs, seed 0. Decided in the "r30 d
 | test, c* | 0.0389 | 0.0423 | 0.0592 | 0.3079 | 0.146 |
 | test, the three DEC forms and λ = 0 | 0.0388 to 0.0399 | 0.0403 to 0.0416 | 0.0552 to 0.0605 | 0.3047 to 0.3112 | 0.140 to 0.150 |
 
-- Add-on (exploration, agent, 03:00; `r30_islands.py` -> `islands.json`, about 1 min, no slot): are the two UMAP
+- Add-on (exploration, agent, 02:51; `r30_islands.py` -> `islands.json`, about 1 min, no slot): are the two UMAP
   islands of long DEC (r21's own emotion map) the same as the k = 2 groups? Yes: AMI 0.879, sizes 3,363 / 2,789 against
   3,362 / 2,790; the islands are 5.7 UMAP units apart at their closest points. c*'s map has no such gap; its k = 2
   groups and a 2-way k-means of its map agree at AMI 0.572.
@@ -71,4 +71,4 @@ A small loop (exploration) from saved r21 outputs, seed 0. Decided in the "r30 d
   already present in c*; long DEC pulls the two halves apart into islands. Valence follows the subject split only in
   part (people paintings carry more negative captions); the split's valence AMI is 0.046 against 0.040 for c*, and its
   genre AMI is 0.33.
-- 03:10: figure `r30_islands_fig.py` -> `islands_emotion.png` (r21's own emotion UMAPs on validation, c* and long DEC, coloured by genre and by positive caption share); copied to the report assets `docs/reports/assets/2027-01-20_dec_emotion_split/` (with the three shared maps and r21's emotion UMAP) and `docs/user_read/assets/2026-11-14_dec_emotion_split/`.
+- 02:52: figure `r30_islands_fig.py` -> `islands_emotion.png` (r21's own emotion UMAPs on validation, c* and long DEC, coloured by genre and by positive caption share); copied to the report assets `docs/reports/assets/2027-01-20_dec_emotion_split/` (with the three shared maps and r21's emotion UMAP) and `docs/user_read/assets/2026-11-14_dec_emotion_split/`.
