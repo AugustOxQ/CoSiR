@@ -243,3 +243,5 @@ mode. Outputs `/data/SSD2/cosir_r29/20261112_siglip_only/` (stage logs in its `l
   `--phase held --pieces ablation`: pass, 360 fields, largest difference 1.1e-14, no mismatch (information items:
   per-seed lists equal to 1e-16). Codex's `kstar_check.complete` is false only because stage 1's C13 file stores K*'s
   AMI means, not per-seed values; its mean checks pass. Every held C13 piece (e2e3, mmart, photo, ablation) passes.
+- 01:48 Numbers sheet `paper_cells.md` rewritten (`r29_ladder.py sheet`, A1): SC4, SC5, SC6, Table 5 (ablation) and
+  SC9 filled; no stage 2 piece "not run".
