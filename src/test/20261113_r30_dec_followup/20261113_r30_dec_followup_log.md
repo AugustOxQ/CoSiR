@@ -42,3 +42,33 @@ A small loop (exploration) from saved r21 outputs, seed 0. Decided in the "r30 d
 - `r30_queue.sh` (background, started 16:42): waits until a job labelled `r29:*` or `r31:*` (r31 runs r29's runner)
   has been seen in `res-queue` and then none for 60 minutes in a row; gives up when none is seen by 2026-11-14 11:00.
   Then `umap`, `valence`, `plot`, each `res-queue cpu --short --label r30:<step>`. Logs: `<outputs>/logs/`.
+- 2026-11-14 02:47 to 02:50: the wait saw the first r31 job at 17:30 and the last at about 01:47; 60 quiet minutes,
+  then `umap` (2.3 min), `valence` (0.3 min), `plot` (0.2 min), all exit 0. r31 had ended: its reports were committed
+  at 02:18 and "r32 decide" opened. UMAP warnings only (legacy layout default; `n_jobs` set to 1 by `random_state`).
+
+## Results (seed 0, descriptive)
+
+- Shared map (fit on c*): the four test arms land almost where c* is on all three aspects; long DEC on validation also
+  keeps c*'s layout (emotion: the contentment edge gets denser). Figures `shared_umap_<aspect>.png`.
+- Valence check, k = 2 groups of the emotion head (`valence.md`, `valence.json`). AMI of the two groups, mean of 3 states:
+
+| Split, arm | Valence | Emotion (9) | Style (27) | Genre (10) | Positive share gap |
+|---|---:|---:|---:|---:|---:|
+| validation, c* | 0.0402 | 0.0392 | 0.0622 | 0.3136 | 0.152 |
+| validation, long DEC plain | 0.0459 | 0.0377 | 0.0751 | 0.3255 | 0.137 |
+| test, c* | 0.0389 | 0.0423 | 0.0592 | 0.3079 | 0.146 |
+| test, the three DEC forms and λ = 0 | 0.0388 to 0.0399 | 0.0403 to 0.0416 | 0.0552 to 0.0605 | 0.3047 to 0.3112 | 0.140 to 0.150 |
+
+- Add-on (exploration, agent, 03:00; `r30_islands.py` -> `islands.json`, about 1 min, no slot): are the two UMAP
+  islands of long DEC (r21's own emotion map) the same as the k = 2 groups? Yes: AMI 0.879, sizes 3,363 / 2,789 against
+  3,362 / 2,790; the islands are 5.7 UMAP units apart at their closest points. c*'s map has no such gap; its k = 2
+  groups and a 2-way k-means of its map agree at AMI 0.572.
+- The two groups (long DEC, validation, state 0): group A, 3,362 paintings: portrait 0.39, genre painting 0.22,
+  religious painting 0.19 of the genre-labelled; mean positive caption share 0.563, negative 0.330. Group B, 2,790:
+  landscape 0.43, abstract 0.17, cityscape 0.15, still life 0.09; positive 0.700, negative 0.182. c*'s k = 2 groups
+  have the same make-up (portrait 0.36 / landscape 0.47; positive 0.564 / 0.716).
+- Reading (agent): the split is by subject (paintings of people against landscapes, abstracts, cities and objects),
+  already present in c*; long DEC pulls the two halves apart into islands. Valence follows the subject split only in
+  part (people paintings carry more negative captions); the split's valence AMI is 0.046 against 0.040 for c*, and its
+  genre AMI is 0.33.
+- 03:10: figure `r30_islands_fig.py` -> `islands_emotion.png` (r21's own emotion UMAPs on validation, c* and long DEC, coloured by genre and by positive caption share); copied to the report assets `docs/reports/assets/2027-01-20_dec_emotion_split/` (with the three shared maps and r21's emotion UMAP) and `docs/user_read/assets/2026-11-14_dec_emotion_split/`.
