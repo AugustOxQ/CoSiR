@@ -1,0 +1,24 @@
+Fidelity check of a user-read report against its full report. Read-only job: edit nothing, write nothing except your
+final reply. Work only in /project/CoSiR. Do not create .ccg task records. Delete nothing; list what you would remove.
+Keep command output short. No single command over about 4 minutes.
+
+Files:
+- The user-read report (the text you check): /project/CoSiR/docs/user_read/2026-11-14_siglip_only_stage2.md
+- The full report (the source of truth for facts): /project/CoSiR/docs/reports/auto/percept/2027-01-19_siglip_only_stage2.md
+- The decision rule: /project/CoSiR/docs/superpowers/specs/2026-11-12-siglip-only-adapter-design.md, §3.4, §3.5, §6
+  (the claim ladders SC4 to SC9 and the WIN / LEVEL / BELOW outcome rule), and amendment A1 in
+  /project/CoSiR/src/test/20261112_siglip_only/records/amendment_A1.json.
+Do not read the raw result records except the two named above; check against the full report and the rule.
+
+The user-read report's facts must be a subset of the full report's. Report only:
+1. Numbers wrong at the precision shown (quote the user-read line and the full-report line).
+2. Claims stronger than the full report or the rule supports (for example "above" where the rule gives only LEVEL;
+   "level" said without the caveat that one LEVEL cell's interval lies wholly below zero; a generalisation beyond the
+   tested datasets, encoders or seeds).
+3. Missing caveats that change a result's meaning (for example: the stage 1 text fail stands; LEVEL is not equality;
+   the tests are image-only; no correction for many comparisons; amendment A1 was approved after seeing results).
+   If the full report also lacks a caveat, say so.
+4. Anything that contradicts the full report.
+
+Do not report style, wording, length or layout. Reply as a numbered list: user-read line (quoted), the problem, the
+fix you propose, and severity (wrong / too strong / missing caveat). If nothing is wrong, say "No fidelity issue".

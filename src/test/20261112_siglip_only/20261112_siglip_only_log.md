@@ -251,3 +251,22 @@ mode. Outputs `/data/SSD2/cosir_r29/20261112_siglip_only/` (stage logs in its `l
   long (the 12-row ablation table) and several cryptic lines. Committed as drafts, claim review pending.
 - 02:06 GPU check passed (driver 595.99.02; kernel module and library match). Cut to chat "r31 run 5" (context past
   200k); handoff `2026-11-14-r31-run-5-handoff.md`.
+
+### Chat "r31 run 5"
+
+- 02:07 Chat start (handoff `2026-11-14-r31-run-5-handoff.md`). Run mode night. Codex fix round on both report drafts by
+  resume of the draft session (`codex_logs/stage2_reports_fix1.txt`; Codex room 81%).
+- 02:10 Claim review (Claude), from the records: SC9 means, margin, seeds ahead and seed range recomputed from the
+  per-seed groups (SigLIP 2's also from its six cells); every Q1 and P1 outcome recomputed from lo and r; SC7 changes
+  from the per-seed arm values; all match. Agent choice rank 3 (shared against independent seed draws, genre mAP
+  without content correction) recomputed by Claude from the per-query APs: shared [+0.00008, +0.00055], independent
+  [-0.00114, +0.00170], as Codex's exploration (`claim_review/rank3_seed_pairing.py` and `.txt`). LEVEL unit (decision
+  line 2026-11-12 23:04): under K0's own validation range (CLIP L/14 emotion mAP 0.0017, r28 `valpick.json`), CLIP L/14's
+  emotion retrieval against Q1 would be BELOW; SC4 stays level 3 (5 Q1 WIN).
+- 02:15 Codex fix round done (both drafts); Claude finished the brief (rendering, options list, folded block with the
+  "other yes lines" note), agent-choice rows 1, 4, 5, the encoder pick section and the claim review. Index row added;
+  `check_reports_sum.py` OK, `docs-check` silent.
+- 02:17 User-read checks (Codex, fresh sessions): fidelity (gpt-6.1-terra medium) "No fidelity issue"; cold read
+  (gpt-6-luna medium) 10 terms undefined at first use and 2 process passages. One fix wave by Claude: comparators,
+  claim levels, cells, WIN, LEVEL and seed range defined in "How we got here"; caption prefix and read-outs named;
+  the four removed parts listed; the gate passage cut; the crash passage shortened; "Next" as a numbered list.

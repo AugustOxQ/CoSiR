@@ -1,0 +1,90 @@
+Fix round on the two stage 2 report drafts you wrote in this session. Edit only these two files:
+- /project/CoSiR/docs/reports/auto/percept/2027-01-19_siglip_only_stage2.md (auto report)
+- /project/CoSiR/docs/user_read/2026-11-14_siglip_only_stage2.md (user-read report)
+Work only in /project/CoSiR. Do not commit. Do not create .ccg task records. Delete nothing; list what you would remove.
+Keep command output short. No single command over about 4 minutes. Never edit any file under records/.
+Leave the auto report's "## Claim review" section as it is (Claude fills it after you).
+
+Writing rules (unchanged from the draft job): plain English, one idea per sentence, at most 25 words per sentence;
+lead each section with its conclusion; internal code names (SC4, K*, A1, E2...) may stay in tables and in the
+auto report, but the prose must say in plain words what each one is at its first use. The results brief must fit on
+one screen: about 35 lines, counting table rows.
+
+## Fixes
+
+a. Auto report, brief too long. Move the 12-row ablation table out of the brief into Results, "### Ablation (SC7)"
+   (keep the table and the "Blank part cells repeat the part above" note there; the current section text "Removals/
+   intervals: brief" must then point at the table instead). In the brief, give SC7 in two or three plain sentences with
+   the main changes, from the records:
+   - Style falls most without the instructed graphs (AMI -0.215) or without the graph-positive loss (buddy) (-0.170).
+   - Only the removal of the relational term lowers genre (AMI -0.060, mAP -0.114).
+   - SC7 has no claim level; it is an attribution with intervals.
+   Also shorten the SC9 lines in the brief to one or two full sentences (no fragments like "Against SigLIP 2 and
+   CLIP L/14, respectively."). Keep the spec's SC9 sentence verbatim in quotes.
+
+b. The SC7 licensed sentence shows "&lt,part&gt,". Write it as `<part>` (in backticks) so it renders. It moves to
+   Results with the table (fix a).
+
+c. Rewrite these cryptic lines as plain sentences:
+   - "Each painting row licenses: ..." and "Photos license: ..." -> "The sentence each painting row allows us to
+     write: ..." (or similar plain wording).
+   - "The fail stands." / "The user approved A1 after seeing stage 1 results." -> say plainly: stage 1 failed its
+     validation rule on text (SC2); after seeing those results, the user allowed stage 2 to run anyway (amendment A1);
+     the fail stands and keeps the model an extra (ablation or supplementary) row.
+   - "Stage 2 tested encoders, datasets and removals." -> one or two sentences naming what was tested: the same
+     SigLIP-only adapter on two more encoders (SigLIP 2, CLIP L/14), on MMArt paintings outside ArtELingo, on photos
+     (Affection, EmoSet); the removal of four training parts one at a time; a validation pick among the three encoders.
+   - "Timing belongs to stage 1." -> "The caption timing test (SC8) ran in stage 1 and is not repeated here."
+   - "LEVEL uses a validation seed range, with an inherited EmoSet exception." -> say what LEVEL means (the interval's
+     lower end is above minus r, where r is the leader's seed range on validation) and what the EmoSet exception is.
+     Check the exception in the spec (docs/superpowers/specs/2026-11-12-siglip-only-adapter-design.md, §3.4/§3.5 and
+     the EmoSet rows) and say it in one plain sentence; also note that it does not matter here because every EmoSet
+     cell is a WIN.
+   - "Both use SigLIP 1's chosen prefix, no own check" (and similar in the user-read report) -> "E2 (SigLIP 2) and E3
+     (CLIP L/14) use the caption form picked for SigLIP 1 (the prefixed caption); they had no caption-form pick of
+     their own."
+   - "Sidecars select `/cosir_r29/`, all seeds." -> say which files were read in plain words (the per-query AP arrays
+     of the round's own outputs under /data/SSD2/cosir_r29/, all five seeds).
+   - "Top levels hold. The validation fail sets placement." -> "Every stage 2 claim reached its top level. Stage 1's
+     text fail (SC2) still decides the paper placement: an extra row."
+   - "highest, exact tie to SigLIP 1/none/none" in the SC9 Results row, and "SC9 decides no replacement." -> plain
+     words: the rule picks the highest validation mean, an exact tie goes to SigLIP 1; SC9 only picks among the
+     SigLIP-only models and does not replace the current model.
+   - Agent choices rows 5 and 6: rewrite each as plain sentences: what the choice was, the alternative, and the effect
+     (recomputed or not, and why not).
+   - Folded block and row 2, "runner blocks CLIP": the correct effect is: with the void start-up counted as a second
+     crash, SigLIP 2 has no trained model, so there is no encoder pick (SC9 not run), and the runner's part b runs
+     neither encoder's test cells (both SC4 claims not run, SigLIP 2 and CLIP L/14). Say exactly that in plain words.
+   - Analysis, "Machines differ, so this proves neither equality nor a switch cost." -> the new models trained on the
+     local GPU, the current models on DAS6 node402; in r14 the machine change alone moved single cells by up to
+     0.0024 (spec §1 point 3 and D25); so these differences show neither equality nor a cost of the switch.
+   - "Same-device exports unchecked." in "Other yes/maybe lines" -> one plain sentence of what was not checked, or drop
+     it if you cannot say what it means from decisions.md.
+   - Files and storage: replace "Storage: see the wrap-up, disk ledger rows dated 2026-11-14. ... Defer storage to the
+     wrap-up ledger." with the facts: the outputs folder is 23 GB (5.8 GB before stage 2; ablation 10 GB, cstar
+     7.7 GB, mmart 1.5 GB); new feature stores on /data/SSD2/pre_extract/: affection_local/siglip_so400m_txt 1.2 GB,
+     artelingo_full/siglip2_so400m_capprefix 0.7 GB, artelingo_full/clip_l14_capprefix 0.5 GB; Codex's untracked
+     re-derivation files in rederive/ about 114 MB, out of git; nothing deleted; the next decide chat's storage
+     summary decides them.
+
+d. "What it does not show" (brief) and the user-read report: CLIP L/14's emotion retrieval against the instructed
+   Qwen3 is LEVEL only by the LEVEL unit: its interval [-0.0027, -0.0004] lies wholly below zero, so the new model is
+   lower there, inside the allowed margin r = 0.0041. The three Q1 LEVEL cells (SigLIP 2, CLIP L/14, MMArt emotion
+   mAP) are "level with", never "above". Check every sentence of both reports that says "level with or above" or
+   "above" for the instructed Qwen3: it must not imply these three cells are above. For the photo model all four Q1
+   cells are WIN, so "above" is correct there.
+
+e. The data table says MMArt validation is "5,769 labeled ArtELingo paintings". The record
+   records/mmart_picks_siglip1_prefix.json gives n_val 5,769, and spec §3.3 (line ~147) says: "the 5,769 ArtELingo
+   validation paintings MMArt labels, r17". Write: "5,769 ArtELingo validation paintings that carry MMArt labels
+   (r17)". In the user-read report, if MMArt validation is mentioned, say the same in plain words.
+
+f. The user-read report: carry the same facts after fixes a to e (its facts must be a subset of the auto report's).
+   In particular fix d in its Summary and the encoders section, and the SC9 crash sentence ("If counted as a training
+   crash, ..." -> both the encoder pick and the SigLIP 2 and CLIP L/14 image tests would not have run). Keep its
+   layout. Also: its "How we got here" says "The paper deadline is close." Give the date: the paper is due 2026-11-16.
+
+## When done
+
+Reply with: the list of changes per file (one line each), any number you changed and the record it came from, any
+sentence you could not fix and why, and the brief's line count after fix a.

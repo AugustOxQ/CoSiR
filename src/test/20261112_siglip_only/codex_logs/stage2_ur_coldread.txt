@@ -1,0 +1,16 @@
+Cold read of a short research report. Read-only job: edit nothing, write nothing except your final reply. Read ONLY
+this one file: /project/CoSiR/docs/user_read/2026-11-14_siglip_only_stage2.md. Do not open any other file, link or
+code. Do not create .ccg task records. Delete nothing. Keep command output short.
+
+You are the reader: an ML researcher who knows roughly what the project is for (an image-text model that learns
+separate embeddings for emotion, style and genre of paintings) but has been away for weeks and has forgotten the recent
+experiments, internal names and decisions.
+
+Report:
+1. Can you say, in one line each: what was tried, whether it worked, what the authors advise, and what comes next?
+   Give your four lines. Say where you were unsure.
+2. Terms you could not follow at their first use (quote them).
+3. Paragraphs that are too long or too dense with numbers.
+4. Sentences over 25 words (quote the first words of each and give the word count).
+5. Implementation detail a reader at this level does not need (code, paths, configs, internal process).
+Report only what would confuse the reader or leave a wrong idea. Numbered list per heading; "none" where nothing.
