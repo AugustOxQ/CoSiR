@@ -237,5 +237,5 @@ mode. Outputs `/data/SSD2/cosir_r29/20261112_siglip_only/` (stage logs in its `l
   WIN or LEVEL 6/6. Codex's `s2e_held.json` gives the same levels and counts (information).
 - 01:28 to 01:47 Diagnostic (d) for SC4 (CPU queue, 10.0 and 8.5 min): per test image cell, the new arm minus that
   encoder's current model, with paired intervals. SigLIP 2: changes -0.0007 to +0.0027; CLIP L/14: -0.0026 to +0.0011;
-  every interval but one (SigLIP 2's first cell, lower end -0.0000) contains zero. Descriptive (§3.6).
+  all twelve intervals contain zero (SigLIP 2's first cell barely: lower end -2.9e-6). Descriptive (§3.6).
 - 01:33 Codex's `s2abl held` done (20.4 min, exit 0), `rederive/s2abl_held.json`.
