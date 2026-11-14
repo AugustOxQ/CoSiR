@@ -221,7 +221,10 @@ mode. Outputs `/data/SSD2/cosir_r29/20261112_siglip_only/` (stage logs in its `l
   writes the gate (vii) recheck (`codex_logs/gate_vii_recheck_fix.log`).
 - 01:19 C13 comparison `--phase held --pieces photo`: pass, 64 fields, largest difference 4.2e-15, no mismatch (8 photo
   cells, all WIN on both sides; Codex lists no inconclusive cell).
-- 01:30 Gate (vii) recheck code committed (10205d96; decision line; Codex bug job, diff read, 62 tests pass). The
+- 01:23 Gate (vii) recheck code committed (10205d96; decision line; Codex bug job, diff read, 62 tests pass). The
   recheck runs on the CPU queue (`logs/gate_vii_recheck.log`).
 - 01:24 Ladders with `R29_AMENDMENT=A1`: SC5 (MMArt) level 3, P1 WIN 6/6, Q1 WIN or LEVEL 6/6; SC6 (photo model F1)
   level 3, P1 WIN 4/4, Q1 WIN or LEVEL 4/4. Codex's held files give the same levels and counts (information).
+- 01:26 Gate (vii) recheck (`records/gates/vii_ablation_recheck.json`): pass at try 1 (2.8 min): fixed-batch trainer
+  test pass; full frozen K0 replay within 1e-9 (emotion AMI 0.0985, style 0.4408, genre 0.5279); changed files listed
+  r29_ablation.py and r29_trainer.py. `vii_ablation.json` unchanged.

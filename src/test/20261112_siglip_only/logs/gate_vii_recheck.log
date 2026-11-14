@@ -1,0 +1,7 @@
+res-queue: enqueued cpu short position 1, 0 ahead, estimated start 01:23
+res-queue: start cpu 01:23
+K0 replay emotion: AMI 0.0985423789, mAP 0.2628536891
+K0 replay style: AMI 0.4407907284, mAP 0.3401066609
+K0 replay genre: AMI 0.5279032590, mAP 0.5986201303
+vii_ablation_recheck: pass
+res-queue: end cpu exit 0, 2.81 minutes run
