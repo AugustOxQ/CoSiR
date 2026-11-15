@@ -51,7 +51,7 @@ All on 2026-11-14 and 2026-11-15, each a README row in PF:
   Supplementary deadline: 2026-11-24 12:59.
 - Codex at 03:10: five-hour window 99% left, weekly 51% used.
 - The loop chats have moved on. The r32 decide handoff (2026-11-14) is about stage 2 of the SigLIP-only model, and the
-  encoder pick there is a close call. Not checked: whether the paper's main model will switch. If it does, the teaser
+  encoder pick there is a close call. Project memory (2026-11-13): the SigLIP-only model (r29) stays an ablation or supplementary row, not the main model (user with the co-authors). Not checked: whether r31 or r32 changed that. If it does, the teaser
   and Figures 4 and 5 are built on c* SigLIP 1 (r28) and need a rerun. The user's TODO of `40cd409` names this risk.
 
 ## 4. Open points for the next step
