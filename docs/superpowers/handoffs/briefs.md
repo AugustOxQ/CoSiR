@@ -2578,3 +2578,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-15-paper-plan-14-handoff.md
 - New chat: tab 'paper plan 14', session 903d8bfd-3ff0-46bb-8856-6685bb290d94
 
+[brief] CoSiR: paper plan 14 -> paper plan 15 (2026-11-15 22:42 Amsterdam)
+- Done: introduction paragraphs 4 and 5; bold run-in headings; Sec. 3.1 title; "SigLIP" for SigLIP 1 (item 9).
+- State: a co-author's first read gave nine points; their Overleaf edits are accepted for now; REPO push freeze.
+- Next: points 2, 3 and 1 (CLAY and CRL pass, the four directions, PercepT and the tasks), then the results order.
+- Blocked: pushing REPO waits until the user says the Overleaf tracked changes and comments are resolved.
+- Handoff: docs/superpowers/handoffs/2026-11-15-paper-plan-15-handoff.md
+- New chat: tab 'paper plan 15', session adb91d96-85d7-40c4-96b5-43c45a7a31fc
+
