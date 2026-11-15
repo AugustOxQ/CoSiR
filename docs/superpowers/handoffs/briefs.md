@@ -2562,3 +2562,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-14-r30-report-handoff.md
 - New chat: tab 'r30 report', session b39c9732-6946-4e9f-a63d-f25037313302
 
+[brief] CoSiR: paper plan 12 -> paper plan 13 (2026-11-15 03:26 Amsterdam)
+- Done: the introduction layout is decided (all 8 questions). The one-column teaser is built and placed on page 1. The CVPR 2027 rules are checked: an LLM Usage Statement is mandatory.
+- State: the user writes the introduction. Teaser in REPO `b540d16`, caption empty. About 1.7 to 2 columns still to cut.
+- Next: ask the user how the method overview figure should change, then build it with agents. After it: the neighbour-graph figure (fig2_graphs).
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-15-paper-plan-13-handoff.md
+- New chat: tab 'paper plan 13', session d5015479-1516-4862-ace8-f4cf3fd81ad5
+
