@@ -2570,3 +2570,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-15-paper-plan-13-handoff.md
 - New chat: tab 'paper plan 13', session d5015479-1516-4862-ace8-f4cf3fd81ad5
 
+[brief] CoSiR: paper plan 13 -> paper plan 14 (2026-11-15 04:16 Amsterdam)
+- Done: introduction paragraphs 1 to 3 written and approved (REPO `53e04d7`). Overview figure toy draft built; the user holds Figures 2 and 3 until after the co-authors' read.
+- State: five-paragraph introduction; paragraphs 4 (evaluation and results) and 5 (contributions) are still the user's skeleton list.
+- Next: write paragraph 4 from the layout note, build, show the user; then paragraph 5.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-15-paper-plan-14-handoff.md
+- New chat: tab 'paper plan 14', session 903d8bfd-3ff0-46bb-8856-6685bb290d94
+
