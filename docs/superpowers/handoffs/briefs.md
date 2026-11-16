@@ -2642,3 +2642,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-16-paper-plan-22-handoff.md
 - New chat: tab 'paper plan 22', session b1dfabfc-922e-409d-9931-ff7b8bd5ad79
 
+[brief] CoSiR: paper plan 22 -> paper plan 23 (2026-11-16 14:58 Amsterdam)
+- Done: all ten Overleaf comments solved; the "Retrieval" heading fixed; the new teaser in the old design (no plain SigLIP row).
+- State: REPO `d87a90d` pushed; 8 pages + references; page 8 ends at line 545, about 9 lines freed on page 1.
+- Next: propose the Sec. 4 opening (how we evaluate and why two tasks); apply after the yes, build, check floats.
+- Blocked: nothing; paper due 2026-11-17 12:59 Amsterdam, co-author discussion 2026-11-17 morning.
+- Handoff: docs/superpowers/handoffs/2026-11-16-paper-plan-23-handoff.md
+- New chat: tab 'paper plan 23', session 665be329-49cf-4668-9fbe-9a13737404e5
+
