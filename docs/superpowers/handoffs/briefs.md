@@ -2702,3 +2702,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-16-paper-plan-29-handoff.md
 - New chat: tab 'paper plan 29', session 3d2feffb-acc6-46a3-a989-c72d49a62c1d
 
+[brief] CoSiR: paper plan 29 -> paper plan 30 (2026-11-16 19:10 Amsterdam)
+- Done: new Figure 1 (draft F, REPO `cbc0e23`): neighbours picked from the 20 nearest to vary in content; old figure and all drafts kept.
+- State: 8 pages, every float in place, no overfull box, about 3.4 free lines on page 8.
+- Next: the user's Figure 1 caption and abstract: test each in a scratch copy, fact check, apply with a yes.
+- Blocked: the user's caption and abstract, the Overleaf pull, OpenReview. Paper due 2026-11-17 12:59 Amsterdam.
+- Handoff: docs/superpowers/handoffs/2026-11-16-paper-plan-30-handoff.md
+- New chat: tab 'paper plan 30', session 8e6846bc-5c19-4993-ba28-51fd3d82c48e
+
