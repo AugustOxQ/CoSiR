@@ -2658,3 +2658,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-16-paper-plan-24-handoff.md
 - New chat: tab 'paper plan 24', session e9b69953-b03e-4e4c-a1c4-689f81fd0bf4
 
+[brief] CoSiR: paper plan 24 -> paper plan 25 (2026-11-16 16:00 Amsterdam)
+- Done: kit check (low risk), reference check (52 of 57 OK, 6 fixes applied), points a ("label-free" defined) and e (review findings B1, B2, B5, B7, B9, C12).
+- State: REPO `9db589c` pushed; 8 pages + references, page 8 ends at line 557, 3 free lines.
+- Next: propose exact text for point b, the 8 "direction" places, the loss sentence included (the user's yes).
+- Blocked: nothing; paper due 2026-11-17 12:59 Amsterdam.
+- Handoff: docs/superpowers/handoffs/2026-11-16-paper-plan-25-handoff.md
+- New chat: tab 'paper plan 25', session 4304b2f6-a704-442b-a403-395e83bacd60
+
