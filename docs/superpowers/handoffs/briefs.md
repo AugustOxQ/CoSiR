@@ -2650,3 +2650,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-16-paper-plan-23-handoff.md
 - New chat: tab 'paper plan 23', session 665be329-49cf-4668-9fbe-9a13737404e5
 
+[brief] CoSiR: paper plan 23 -> paper plan 24 (2026-11-16 15:38 Amsterdam)
+- Done: co-author points 2 to 4 (Sec. 4 opening, Fig. 2 caption, an ms column in Table 3), "any VLM" to "VLM", Table 3 width fix, float gaps 4 pt smaller.
+- State: REPO `8804679` pushed; 8 pages + references, page 8 ends at line 550, about 7 free lines on page 8.
+- Next: launch the kit check and the reference check in the background, then propose the "label-free" definition (point a) with the review findings (point e).
+- Blocked: nothing; paper due 2026-11-17 12:59 Amsterdam.
+- Handoff: docs/superpowers/handoffs/2026-11-16-paper-plan-24-handoff.md
+- New chat: tab 'paper plan 24', session e9b69953-b03e-4e4c-a1c4-689f81fd0bf4
+
