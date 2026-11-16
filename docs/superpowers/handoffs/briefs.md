@@ -2710,3 +2710,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-16-paper-plan-30-handoff.md
 - New chat: tab 'paper plan 30', session 8e6846bc-5c19-4993-ba28-51fd3d82c48e
 
+[brief] CoSiR: paper plan 30 -> paper plan 31 (2026-11-16 20:00 Amsterdam)
+- Done: the co-author's label-free sentence merged, and Figure 3's source block moved (REPO `a56c4c1`). A second review panel ran: eight Fable `xhigh` reviewers, each blind to the others, plus an Opus `xhigh` merge (PF `a0c8f93`).
+- State: 8 pages, every float in place, about 1.4 free lines on page 8. The panel says borderline. Every number holds. The devil's advocate's critical point is validated.
+- Next: the user sends their own review. Merge it into the panel's list, then go through Part A (24 groups) with the user, one exact text at a time.
+- Blocked: the user's review and abstract, the …
+- Handoff: docs/superpowers/handoffs/2026-11-16-paper-plan-31-handoff.md
+- New chat: tab 'paper plan 31', session c5f1c039-2951-4eba-8fe0-950d676af284
+
