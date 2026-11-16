@@ -2626,3 +2626,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-16-paper-plan-20-handoff.md
 - New chat: tab 'paper plan 20', session 58fc538c-fc19-4c23-92be-da04943002d3
 
+[brief] CoSiR: paper plan 20 -> paper plan 21 (2026-11-16 12:50 Amsterdam)
+- Done: checks before upload, numbers check, web checks, two reviews (ARS, Ducktor), one sorted findings file; co-author notes all solved except point 6; contribution 3 fixed.
+- State: REPO `c124a38` pushed, 8 pages + references, page 8 ends with the conclusion, about 10 lines free.
+- Next: the user brings the co-author discussion's outcome; apply the fixes the user picks, build, recheck page 8.
+- Blocked: the co-author discussion (2026-11-17); paper due 2026-11-17 12:59 Amsterdam.
+- Handoff: docs/superpowers/handoffs/2026-11-16-paper-plan-21-handoff.md
+- New chat: tab 'paper plan 21', session 508e89a2-bb4f-4a56-9a2a-c4443726de84
+
