@@ -2634,3 +2634,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-16-paper-plan-21-handoff.md
 - New chat: tab 'paper plan 21', session 508e89a2-bb4f-4a56-9a2a-c4443726de84
 
+[brief] CoSiR: paper plan 21 -> paper plan 22 (2026-11-16 14:26 Amsterdam)
+- Done: wrong facts A1 to A3 fixed; Overleaf comments 1 to 7 solved one by one (log in PF notes); headings now bold text.
+- State: REPO `dfff09a` pushed; 8 pages + references; page 8 ends at line 548, about 1 line free.
+- Next: the user pastes the next Overleaf comment; propose, apply after the yes, build, check page 8 and the float pages.
+- Blocked: nothing; paper due 2026-11-17 12:59 Amsterdam, co-author discussion 2026-11-17 morning.
+- Handoff: docs/superpowers/handoffs/2026-11-16-paper-plan-22-handoff.md
+- New chat: tab 'paper plan 22', session b1dfabfc-922e-409d-9931-ff7b8bd5ad79
+
