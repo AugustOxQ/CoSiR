@@ -2610,3 +2610,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-16-paper-plan-18-handoff.md
 - New chat: tab 'paper plan 18', session 7f7579ce-605f-4d18-82a2-7d7e5cda26b0
 
+[brief] CoSiR: paper plan 18 -> paper plan 19 (2026-11-16 04:02 Amsterdam)
+- Done: point 8 decided (Affection candidate 12, supplementary maybe); page budget measured; Fig. 5 to the supplementary, which now builds from its own `supp.tex`; 22 short last lines removed.
+- State: REPO `2e31292` pushed; the text ends in page 8's right column, Conclusion heading at y 249 (was 434); page 1 has about 6 free lines for the abstract.
+- Next: the abstract, the Fig. 1 caption and the conclusion; then the supplementary review.
+- Blocked: nothing; the user pulls REPO into Overleaf.
+- Handoff: docs/superpowers/handoffs/2026-11-16-paper-plan-19-handoff.md
+- New chat: tab 'paper plan 19', session 443139ca-639f-4057-8eab-b2cd6d025666
+
