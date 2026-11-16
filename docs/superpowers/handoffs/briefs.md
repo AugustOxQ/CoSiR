@@ -2718,3 +2718,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-16-paper-plan-31-handoff.md
 - New chat: tab 'paper plan 31', session c5f1c039-2951-4eba-8fe0-950d676af284
 
+[brief] CoSiR: paper plan 31 -> paper plan 32 (2026-11-16 20:32 Amsterdam)
+- Done: the author's own review is merged into the panel's list (PF `20696d8`). A1, A3 and A5 are approved; built together, they cost 0 lines.
+- State: the approved fixes are rows in PF `tools/apply_fixes.py`, not yet in REPO (`a56c4c1`). Page 8 keeps about 1.4 free lines.
+- Next: A6, then A15, A19, A13 and A10 with the user, one exact text at a time; then all rows into REPO, build, commit, push.
+- Blocked: the user's abstract, the Overleaf pull, OpenReview. Paper due 2026-11-17 12:59 Amsterdam.
+- Handoff: docs/superpowers/handoffs/2026-11-16-paper-plan-32-handoff.md
+- New chat: tab 'paper plan 32', session b0b99321-62dc-4361-96b1-713cf4f515a1
+
