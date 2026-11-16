@@ -2734,3 +2734,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-16-paper-plan-33-handoff.md
 - New chat: tab 'paper plan 33', session d1bb7a20-3d20-4a0c-9075-ad5ba412ad4b
 
+[brief] CoSiR: paper plan 33 -> paper plan 34 (2026-11-16 21:26 Amsterdam)
+- Done: A24, A6 and A10 (reopened, bolder) and nine underclaim fixes approved (PF `1363cd9`); a co-author asked for bolder claims, so A4 and A7 are dropped.
+- State: all rows built together: every float on its page, no overfull box, but the main text runs about 4 lines onto page 9 (lines not weighed now, the user).
+- Next: A8, A9, A11, A12, A14, A16, A17, A18, A20 to A23 with the user; REPO only after the co-authors finish in Overleaf.
+- Blocked: the co-authors' Overleaf edits, the user's abstract, OpenReview. Paper due 2026-11-17 12:59 Amsterdam.
+- Handoff: docs/superpowers/handoffs/2026-11-16-paper-plan-34-handoff.md
+- New chat: tab 'paper plan 34', session c3abbf7b-41dc-4d38-bcf7-b79fbd89f55a
+
