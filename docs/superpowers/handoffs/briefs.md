@@ -2694,3 +2694,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-16-paper-plan-28-handoff.md
 - New chat: tab 'paper plan 28', session bb022a48-390a-4d9c-8d0e-783cbd593f9c
 
+[brief] CoSiR: paper plan 28 -> paper plan 29 (2026-11-16 18:26 Amsterdam)
+- Done: rows 11, 12, 13 and C3 settled with the user (REPO `bea5a4c`, `c22519a`); status table updated (PF `eb41e37`).
+- State: 8 pages, every float in place, no overfull box, about 3.4 free lines on page 8.
+- Next: the user's abstract: test in a scratch copy, move Figure 3 if it slips, fact check its numbers, apply with a yes.
+- Blocked: the user's abstract, the Overleaf pull, OpenReview. Paper due 2026-11-17 12:59 Amsterdam.
+- Handoff: docs/superpowers/handoffs/2026-11-16-paper-plan-29-handoff.md
+- New chat: tab 'paper plan 29', session 3d2feffb-acc6-46a3-a989-c72d49a62c1d
+
