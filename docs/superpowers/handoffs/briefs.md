@@ -2666,3 +2666,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-16-paper-plan-25-handoff.md
 - New chat: tab 'paper plan 25', session 4304b2f6-a704-442b-a403-395e83bacd60
 
+[brief] CoSiR: paper plan 25 -> paper plan 26 (2026-11-16 17:14 Amsterdam)
+- Done: points b ("intra-modal" and "cross-modal" retrieval), c (Fig. 1 query labels), d (Fig. 3 simplified) and the new point f ("seed" only in the setting).
+- State: REPO `8267a7e` pushed; 8 pages + references, page 8 ends at line 553, 7 free lines; every float in place.
+- Next: point ii, a cold read and fact check of the final text (numbers and claims must not contradict each other).
+- Blocked: nothing; paper due 2026-11-17 12:59 Amsterdam.
+- Handoff: docs/superpowers/handoffs/2026-11-16-paper-plan-26-handoff.md
+- New chat: tab 'paper plan 26', session ce2e730d-aa83-4ad1-9375-1d43ad73c68c
+
