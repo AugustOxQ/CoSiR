@@ -2674,3 +2674,14 @@
 - Handoff: docs/superpowers/handoffs/2026-11-16-paper-plan-26-handoff.md
 - New chat: tab 'paper plan 26', session ce2e730d-aa83-4ad1-9375-1d43ad73c68c
 
+[brief] CoSiR: paper plan 26 -> paper plan 27 (2026-11-16 17:39 Amsterdam)
+- Done: title and method name ANGLE (row g, REPO `e8a9295`); Overleaf branch merged with the user's picks (row h, REPO
+  `4dcc88c`); the user's own `main.tex` edit committed at their request (REPO `b0db8a7`). Three checks of the final
+  text written: the Codex fact check and two cold reads (files below).
+- State: REPO `b0db8a7` = origin, working tree clean; 8 pages + references, every float in place, about 4 free lines
+  on page 8.
+- Next: review the three check files as controller, drop false alarms and known items, and give the user ONE list of
+  exact text fixes, with the τ_t fix. Then th …
+- Handoff: docs/superpowers/handoffs/2026-11-16-paper-plan-27-handoff.md
+- New chat: tab 'paper plan 27', session 7de77c4a-9ee8-47b2-b27d-9f42cce9e56d
+
