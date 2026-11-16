@@ -2618,3 +2618,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-16-paper-plan-19-handoff.md
 - New chat: tab 'paper plan 19', session 443139ca-639f-4057-8eab-b2cd6d025666
 
+[brief] CoSiR: paper plan 19 -> paper plan 20 (2026-11-16 04:45 Amsterdam)
+- Done: abstract (156 words), Fig. 1 caption, conclusion (93 words), all from the user's skeletons; Sec. 4 TODOs out; Fig. 3 and Tables 2 and 5 moved; status table has one Status column.
+- State: REPO `86aa696` pushed; paper 8 pages + references, about 12 lines free under the conclusion.
+- Next: compile after the user's Overleaf change; discuss rows 16 and 17 (checks before upload, LLM policy re-read).
+- Blocked: the user makes one layout change in Overleaf first.
+- Handoff: docs/superpowers/handoffs/2026-11-16-paper-plan-20-handoff.md
+- New chat: tab 'paper plan 20', session 58fc538c-fc19-4c23-92be-da04943002d3
+
