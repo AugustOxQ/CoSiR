@@ -2594,3 +2594,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-16-paper-plan-16-handoff.md
 - New chat: tab 'paper plan 16', session 779530c5-64db-46d8-bc4a-84b7633aaf2e
 
+[brief] CoSiR: paper plan 16 -> paper plan 17 (2026-11-16 02:52 Amsterdam)
+- Done: co-author point 5 (datasets paragraph); point 6 in part: overview redrawn left/right (170 pt, was 243), time table to the supplementary, Table 2 caption 107 to 47 words.
+- State: REPO `a907b3f` pushed; 11 pages; main text ends on page 8, Figures 4 and 5 on page 9.
+- Next: the user's Table 3 caption cut (agent view given, one gap), then Tables 4 to 7 by the same rule.
+- Blocked: nothing; the user pulls REPO into Overleaf.
+- Handoff: docs/superpowers/handoffs/2026-11-16-paper-plan-17-handoff.md
+- New chat: tab 'paper plan 17', session 03bfe35f-d3a3-4d0c-85a8-e2c44c348a1e
+
