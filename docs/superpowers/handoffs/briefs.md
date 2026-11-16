@@ -2726,3 +2726,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-16-paper-plan-32-handoff.md
 - New chat: tab 'paper plan 32', session b0b99321-62dc-4361-96b1-713cf4f515a1
 
+[brief] CoSiR: paper plan 32 -> paper plan 33 (2026-11-16 21:04 Amsterdam)
+- Done: A6, A15, A19, A13, A10, A26 and A25 approved (PF `8f6ebb8`); with A1, A3, A5 they cost 0 lines, and A13 gained room.
+- State: all approved rows built together: 11 pages, every float on its page, about 3.4 free lines on page 8 (was 1.4). Not yet in REPO (`a56c4c1`).
+- Next: A24's small items (source lines below), then A4, A7, A8, A9, A11, A12, A14, A16 to A18, A20 to A23; then all rows into REPO.
+- Blocked: the user's abstract, the Overleaf pull, OpenReview. Paper due 2026-11-17 12:59 Amsterdam.
+- Handoff: docs/superpowers/handoffs/2026-11-16-paper-plan-33-handoff.md
+- New chat: tab 'paper plan 33', session d1bb7a20-3d20-4a0c-9075-ad5ba412ad4b
+
