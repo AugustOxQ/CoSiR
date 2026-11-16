@@ -2586,3 +2586,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-15-paper-plan-15-handoff.md
 - New chat: tab 'paper plan 15', session adb91d96-85d7-40c4-96b5-43c45a7a31fc
 
+[brief] CoSiR: paper plan 15 -> paper plan 16 (2026-11-16 01:44 Amsterdam)
+- Done: co-author points 2, 3, 1 and 7 (CLAY and CRL, retrieval directions, PercepT and the tasks, results by dataset).
+- State: push freeze ended; REPO pushed to `cd9c4aa`; 5 of the co-author's 9 points done; builds clean, 12 pages.
+- Next: point 5, the datasets paragraph: propose the wording, write it after the user's OK, build, show the PDF.
+- Blocked: the user pulls REPO into Overleaf (asked, not confirmed).
+- Handoff: docs/superpowers/handoffs/2026-11-16-paper-plan-16-handoff.md
+- New chat: tab 'paper plan 16', session 779530c5-64db-46d8-bc4a-84b7633aaf2e
+
