@@ -2767,3 +2767,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-17-paper-plan-37-handoff.md
 - New chat: tab 'paper plan 37', session e18af866-6e3f-45e7-9834-58cbcd199dbf
 
+[brief] CoSiR: paper plan 37 -> paper plan 38 (2026-11-17 09:33 Amsterdam)
+- Done: the paper is uploaded (REPO `adfdb3c`, the co-authors' final abstract); all checks passed.
+- State: 8 pages, 2.4 free lines on page 8; the anonymity and desk-reject check found no fail.
+- Next: the supplementary, from status row 15: the open items, Figure S1's legend, limitations.
+- Blocked: nothing; the user picks each change. Supplementary due 24 November 12:59.
+- Handoff: docs/superpowers/handoffs/2026-11-17-paper-plan-38-handoff.md
+- New chat: tab 'paper plan 38', session dd2b21b4-5915-4cc0-ba23-752971a22909
+
