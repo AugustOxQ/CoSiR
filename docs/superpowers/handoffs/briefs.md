@@ -2751,3 +2751,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-17-paper-plan-35-handoff.md
 - New chat: tab 'paper plan 35', session 8d833491-a084-4706-af6f-35a54537843d
 
+[brief] CoSiR: paper plan 35 -> paper plan 36 (2026-11-17 03:27 Amsterdam)
+- Done: "instruction-tuned" in 8 places; three Claude checks of the merged text; the user's picks in (REPO `4c98972`).
+- State: 8 pages, about 1.4 free lines on page 8, every float on its page; a reserve of 11 short-line cuts (about 6.7 lines).
+- Next: the five-seat ARS panel on Fable `xhigh` (editor, R1 to R3 with new fields, Devil's Advocate), then one merged list.
+- Blocked: the abstract (the user's morning talk with the co-authors), the Overleaf pull, OpenReview. Paper due 12:59.
+- Handoff: docs/superpowers/handoffs/2026-11-17-paper-plan-36-handoff.md
+- New chat: tab 'paper plan 36', session 0cd120e1-5210-4805-ace6-63b21c8d45a8
+
