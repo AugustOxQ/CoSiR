@@ -2742,3 +2742,12 @@
 - Handoff: docs/superpowers/handoffs/2026-11-16-paper-plan-34-handoff.md
 - New chat: tab 'paper plan 34', session c3abbf7b-41dc-4d38-bcf7-b79fbd89f55a
 
+[brief] CoSiR: paper plan 34 -> paper plan 35 (2026-11-17 02:59 Amsterdam)
+- Done: the co-authors' night edits merged; the fixes that still apply, the conclusion sentence, 9 slips, the
+  co-author notes, A23, A11 and the reference list are in (REPO `34ec426`).
+- State: the text fits 8 pages (about 0.4 free lines on page 8), every float on its page, no printed note.
+- Next: the user's "other issues" (not yet named); then the new five-seat ARS review of the merged text.
+- Blocked: the user's Overleaf pull, the abstract claim (status row 2), OpenReview. Paper due 2026-11-17 12:59.
+- Handoff: docs/superpowers/handoffs/2026-11-17-paper-plan-35-handoff.md
+- New chat: tab 'paper plan 35', session 8d833491-a084-4706-af6f-35a54537843d
+
