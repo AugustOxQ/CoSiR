@@ -2759,3 +2759,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-17-paper-plan-36-handoff.md
 - New chat: tab 'paper plan 36', session 0cd120e1-5210-4805-ace6-63b21c8d45a8
 
+[brief] CoSiR: paper plan 36 -> paper plan 37 (2026-11-17 04:10 Amsterdam)
+- Done: the five-seat panel on REPO `4c98972` (all borderline, no CRITICAL); the user's picks applied (REPO `ef21c90`).
+- State: 8 pages, about 0.4 free lines on page 8, every float on its page; P10c would free one line.
+- Next: wait for the user's morning talk; then the abstract (row 2) and P10c, a build check, Overleaf and OpenReview.
+- Blocked: the abstract and P10c wait for the user's talk with the co-authors. Paper due 12:59.
+- Handoff: docs/superpowers/handoffs/2026-11-17-paper-plan-37-handoff.md
+- New chat: tab 'paper plan 37', session e18af866-6e3f-45e7-9834-58cbcd199dbf
+
