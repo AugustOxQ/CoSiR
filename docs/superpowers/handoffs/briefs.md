@@ -2775,3 +2775,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-17-paper-plan-38-handoff.md
 - New chat: tab 'paper plan 38', session dd2b21b4-5915-4cc0-ba23-752971a22909
 
+[brief] CoSiR: paper plan 38 -> paper plan 39 (2026-11-20 16:35 Amsterdam)
+- Done: the list for status row 15, with exact texts: 11 fix rows, tested together (the supplementary builds again).
+- State: nothing applied to REPO yet; REPO is still `adfdb3c`, the uploaded paper. The paper submission is closed.
+- Next: show the user the six open points of PF `notes/review/2026-11-17_supp_list.md` and apply their picks.
+- Blocked: nothing; the user picks each change. Supplementary due 24 November 12:59.
+- Handoff: docs/superpowers/handoffs/2026-11-20-paper-plan-39-handoff.md
+- New chat: tab 'paper plan 39', session 88c64740-dcb0-40d9-93f0-d158733bed60
+
